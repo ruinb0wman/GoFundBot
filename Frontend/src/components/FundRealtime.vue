@@ -277,16 +277,12 @@
           <button class="modal-close" @click="closeAddFundModal" aria-label="关闭">×</button>
         </div>
 
-        <div class="add-search-box">
-          <input
-            v-model="searchTerm"
-            @input="handleSearchInput"
-            @keyup.enter="confirmAddFund"
-            placeholder="输入基金名称或代码"
-            class="modal-input add-search-input"
-            autofocus
-          />
-        </div>
+        <SearchBar
+          v-model="searchTerm"
+          placeholder="输入基金名称或代码"
+          @search="confirmAddFund"
+          autofocus
+        />
 
         <div v-if="searchLoading" class="add-loading">搜索中...</div>
         <div v-else-if="searchResults.length > 0" class="add-result-list">
@@ -1308,14 +1304,14 @@ export default {
       }
     }
 
-    const handleSearchInput = () => {
+    watch(searchTerm, (val) => {
       if (searchTimeoutRef.value) clearTimeout(searchTimeoutRef.value)
-      if (!String(searchTerm.value || '').trim()) {
+      if (!String(val || '').trim()) {
         searchResults.value = []
         return
       }
       searchTimeoutRef.value = setTimeout(() => performSearch(), 150)
-    }
+    })
 
     // 通过后端接口获取基金数据
     const fetchFundData = async (code) => {
@@ -2114,7 +2110,6 @@ export default {
       getSparklineFill,
       openFundDetail,
       hasFreshEstimate,
-      handleSearchInput,
       confirmAddFund,
       batchAddFunds,
       refreshAll,
@@ -2499,18 +2494,6 @@ export default {
 .modal-close:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
-}
-.add-search-box {
-  margin-bottom: 12px;
-}
-.add-search-input {
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  outline: none;
-}
-.add-search-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-bg);
 }
 .add-result-list {
   display: flex;

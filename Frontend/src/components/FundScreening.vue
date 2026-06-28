@@ -124,29 +124,29 @@
         <!-- 基础筛选栏 -->
         <div class="filter-bar">
           <div class="filter-bar-row">
-            <div class="search-wrap" ref="searchWrapRef">
-              <span class="input-icon"><LucideIcon name="Search" :size="16" /></span>
-              <input
+            <div ref="searchWrapRef" style="display:contents">
+              <SearchBar
                 v-model="filters.keyword"
-                type="text"
                 placeholder="基金代码/名称"
-                class="filter-keyword"
-                @keyup.enter="search(true)"
-                @input="onKeywordInput"
-                @focus="onKeywordFocus"
-              />
-              <div class="search-dropdown" v-if="searchSuggestions.length && showSearchDropdown">
-                <div
-                  v-for="item in searchSuggestions"
-                  :key="item.CODE"
-                  class="search-dropdown-item"
-                  @click="selectSearchSuggestion(item)"
-                >
-                  <span class="sug-code">{{ item.CODE }}</span>
-                  <span class="sug-name">{{ item.NAME }}</span>
-                  <span class="sug-type">{{ item.TYPE }}</span>
-                </div>
-              </div>
+                :clearable="true"
+                @search="search(true)"
+                @focus="onSearchFocus"
+              >
+                <template #dropdown>
+                  <div class="search-dropdown" v-if="searchSuggestions.length && showSearchDropdown">
+                    <div
+                      v-for="item in searchSuggestions"
+                      :key="item.CODE"
+                      class="search-dropdown-item"
+                      @click="selectSearchSuggestion(item)"
+                    >
+                      <span class="sug-code">{{ item.CODE }}</span>
+                      <span class="sug-name">{{ item.NAME }}</span>
+                      <span class="sug-type">{{ item.TYPE }}</span>
+                    </div>
+                  </div>
+                </template>
+              </SearchBar>
             </div>
             <!-- 基金类型下拉 -->
             <div class="type-select-wrap" ref="typeDropdownRef">
@@ -426,7 +426,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { screeningAPI, watchlistAPI, fundAPI } from '../services/api'
 
 export default {
@@ -489,26 +489,7 @@ export default {
     const showSearchDropdown = ref(false)
     let searchDebounce = null
 
-    const onKeywordInput = () => {
-      clearTimeout(searchDebounce)
-      const kw = filters.keyword.trim()
-      if (!kw || kw.length < 2) {
-        searchSuggestions.value = []
-        showSearchDropdown.value = false
-        return
-      }
-      searchDebounce = setTimeout(async () => {
-        try {
-          const res = await fundAPI.searchFunds(kw)
-          searchSuggestions.value = (res.data.data || []).slice(0, 10)
-          showSearchDropdown.value = searchSuggestions.value.length > 0
-        } catch (e) {
-          // ignore
-        }
-      }, 150)
-    }
-
-    const onKeywordFocus = () => {
+    const onSearchFocus = () => {
       if (searchSuggestions.value.length > 0) {
         showSearchDropdown.value = true
       }
@@ -666,7 +647,26 @@ export default {
       volatility_max: null,
       calmar_min: null
     })
-    
+
+    watch(() => filters.keyword, (val) => {
+      clearTimeout(searchDebounce)
+      const kw = (val || '').trim()
+      if (!kw || kw.length < 2) {
+        searchSuggestions.value = []
+        showSearchDropdown.value = false
+        return
+      }
+      searchDebounce = setTimeout(async () => {
+        try {
+          const res = await fundAPI.searchFunds(kw)
+          searchSuggestions.value = (res.data.data || []).slice(0, 10)
+          showSearchDropdown.value = searchSuggestions.value.length > 0
+        } catch (e) {
+          // ignore
+        }
+      }, 150)
+    })
+
     // 多级基金类型选项
     const fundTypeCategories = [
       {
@@ -1460,8 +1460,7 @@ export default {
       searchSuggestions,
       showSearchDropdown,
       searchWrapRef,
-      onKeywordInput,
-      onKeywordFocus,
+      onSearchFocus,
       selectSearchSuggestion,
       removeFundType,
       showTypeDropdown,
@@ -1643,59 +1642,11 @@ export default {
   color: var(--text-inverse);
 }
 
-/* 关键词搜索 */
-.search-row {
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 4px;
-}
-
-.search-keyword-input {
-  flex: 1;
-  padding: 8px 14px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.search-keyword-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
-}
-
-.btn-search-inline {
-  padding: 8px 18px;
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-left: 8px;
-}
-
-.btn-search-inline:hover {
-  background: var(--color-primary-hover);
-}
-
-.search-input-wrap {
-  display: flex;
-  align-items: center;
-  flex: 1;
-}
-
 /* 搜索下拉 */
-.search-wrap {
-  position: relative;
-}
-
 .search-dropdown {
   position: absolute;
   top: 100%;
-  left: -28px;
+  left: 0;
   z-index: 300;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
@@ -2415,7 +2366,6 @@ export default {
   flex-wrap: wrap;
 }
 
-.search-wrap,
 .type-select-wrap {
   display: flex;
   align-items: center;
@@ -2426,27 +2376,9 @@ export default {
   transition: border-color 0.2s;
 }
 
-.search-wrap:focus-within,
 .type-select-wrap:focus-within {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.08);
-}
-
-.input-icon {
-  display: inline-flex;
-  align-items: center;
-  margin-right: 6px;
-  flex-shrink: 0;
-}
-
-.filter-keyword {
-  border: none;
-  background: transparent;
-  padding: 8px 0;
-  font-size: 14px;
-  outline: none;
-  min-width: 240px;
-  flex: 1;
 }
 
 .filter-type-select {

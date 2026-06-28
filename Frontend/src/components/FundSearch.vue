@@ -2,12 +2,10 @@
   <div class="fund-search" :class="{ 'compact-mode': compact }">
     <div class="search-header">
       <div class="search-box">
-        <input
+        <SearchBar
           v-model="searchKeyword"
-          @input="handleSearch"
-          @keyup.enter="performSearch"
-          :placeholder="compact ? '输入基金代码或名称搜索...' : '输入基金代码或名称搜索...'"
-          class="search-input"
+          placeholder="输入基金代码或名称搜索..."
+          @search="performSearch"
         />
         <button @click="performSearch" class="search-btn">搜索</button>
         <button 
@@ -68,6 +66,16 @@ export default {
   mounted() {
     this.fetchDbStatus()
   },
+  watch: {
+    searchKeyword(val) {
+      clearTimeout(this.searchTimer)
+      if (val && val.length >= 1) {
+        this.searchTimer = setTimeout(this.performSearch, 150)
+      } else {
+        this.searchResults = []
+      }
+    }
+  },
   methods: {
     async fetchDbStatus() {
       try {
@@ -108,15 +116,7 @@ export default {
       return dateStr.split(' ')[0]
     },
     
-    handleSearch() {
-      clearTimeout(this.searchTimer)
-      if (this.searchKeyword.length >= 1) {
-        this.searchTimer = setTimeout(this.performSearch, 150)
-      } else {
-        this.searchResults = []
-      }
-    },
-    
+
     async performSearch() {
       if (!this.searchKeyword.trim()) return
       
@@ -196,20 +196,8 @@ export default {
   align-items: center;
 }
 
-.search-input {
+.search-box .search-bar {
   flex: 1;
-  padding: 10px 14px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
-  min-width: 150px;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-bg);
 }
 
 .search-btn {

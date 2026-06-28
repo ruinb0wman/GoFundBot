@@ -3,10 +3,11 @@
   <div class="sector-rank-container">
     <div class="section-header">
       <h3><LucideIcon name="Factory" :size="20" /> 行业板块排行</h3>
-      <input
+      <SearchBar
         v-model.trim="keyword"
-        class="search-input header-search"
         placeholder="搜索板块名称或代码..."
+        compact
+        size="sm"
       />
       <button class="refresh-btn" @click="fetchSectors" :disabled="loading" title="刷新板块数据">
         <span :class="{ 'spinning': loading }"><LucideIcon name="RefreshCw" :size="16" /></span>
@@ -486,30 +487,6 @@ export default {
 .stat-chip.page {
   color: var(--color-primary);
   background: var(--color-primary-bg);
-}
-
-.search-input {
-  min-width: 0;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 13px;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.search-input:focus {
-  border-color: var(--color-primary);
-  background: var(--bg-card);
-  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
-}
-
-.header-search {
-  flex: 1;
-  max-width: 400px;
 }
 
 .refresh-btn {

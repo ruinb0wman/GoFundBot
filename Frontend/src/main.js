@@ -28,6 +28,9 @@ app.use(router)
 import LucideIcon from './components/LucideIcon.vue'
 app.component('LucideIcon', LucideIcon)
 
+import SearchBar from './components/SearchBar.vue'
+app.component('SearchBar', SearchBar)
+
 // 等待路由初始导航完成后再挂载
 router.isReady().then(() => {
   app.mount('#app')
