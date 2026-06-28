@@ -488,61 +488,63 @@ export default {
 
 :root[data-theme="dark"] {
   /* ── Surfaces ── */
-  --bg-page: #0f1117;
-  --bg-primary: #12141c;
-  --bg-card: #1a1d2b;
-  --bg-elevated: #232738;
-  --bg-hover: #272c3d;
-  --bg-subtle: #161821;
-  --bg-overlay: rgba(0, 0, 0, 0.65);
+  --bg-page: #1b1b1f;
+  --bg-primary: #1b1b1f;
+  --bg-card: #202127;
+  --bg-elevated: #202127;
+  --bg-hover: #2a2b31;
+  --bg-subtle: #161618;
+  --bg-overlay: rgba(0, 0, 0, 0.70);
+  --bg-gradient: linear-gradient(135deg, #202127 0%, #1b1b1f 100%);
 
   /* ── Text ── */
-  --text-primary: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-  --text-disabled: #475569;
+  --text-primary: #dfdfd6;
+  --text-secondary: #98989f;
+  --text-tertiary: #6a6a71;
+  --text-disabled: #4a4a52;
+  --text-inverse: #1b1b1f;
 
   /* ── Borders ── */
-  --border-default: #2a3040;
-  --border-subtle: #232738;
-  --border-strong: #3b82f6;
+  --border-default: #3c3f44;
+  --border-subtle: #2e2e32;
+  --border-strong: #a8b1ff;
 
   /* ── Semantic colors ── */
-  --color-primary: #3b82f6;
-  --color-primary-hover: #60a5fa;
-  --color-primary-bg: #1e2d4a;
-  --color-primary-border: #2a4a8a;
-  --color-success: #4ade80;
-  --color-success-bg: #1a2e1a;
-  --color-success-border: #2a5a2a;
-  --color-danger: #f87171;
-  --color-danger-bg: #2e1a1a;
-  --color-danger-border: #5a2a2a;
-  --color-warning: #fbbf24;
-  --color-warning-bg: #2e2410;
-  --color-warning-border: #5a4a10;
-  --color-info: #22d3ee;
-  --color-info-bg: #102a2e;
+  --color-primary: #a8b1ff;
+  --color-primary-hover: #5c73e7;
+  --color-primary-bg: rgba(100, 108, 255, 0.12);
+  --color-primary-border: rgba(100, 108, 255, 0.30);
+  --color-success: #3dd68c;
+  --color-success-bg: rgba(16, 185, 129, 0.12);
+  --color-success-border: rgba(16, 185, 129, 0.25);
+  --color-danger: #f66f81;
+  --color-danger-bg: rgba(244, 63, 94, 0.12);
+  --color-danger-border: rgba(244, 63, 94, 0.25);
+  --color-warning: #f9b44e;
+  --color-warning-bg: rgba(234, 179, 8, 0.12);
+  --color-warning-border: rgba(234, 179, 8, 0.25);
+  --color-info: #5c73e7;
+  --color-info-bg: rgba(100, 108, 255, 0.10);
 
   /* ── Chart palette ── */
-  --chart-1: #3b82f6;
-  --chart-2: #4ade80;
-  --chart-3: #fbbf24;
-  --chart-4: #f87171;
+  --chart-1: #a8b1ff;
+  --chart-2: #3dd68c;
+  --chart-3: #f9b44e;
+  --chart-4: #f66f81;
   --chart-5: #38bdf8;
-  --chart-6: #34d399;
+  --chart-6: #c8abfa;
   --chart-7: #fb923c;
-  --chart-8: #c084fc;
+  --chart-8: #f67373;
   --chart-9: #f0abfc;
-  --chart-10: #787878;
-  --chart-bg: #1a1d2b;
-  --chart-grid: #2a3040;
-  --chart-axis-label: #94a3b8;
+  --chart-10: #6a6a71;
+  --chart-bg: #202127;
+  --chart-grid: #2e2e32;
+  --chart-axis-label: #98989f;
 
   /* ── Shadows ── */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.50);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.60);
 
   /* ── Legacy aliases ── */
   --primary-color: var(--color-primary);
@@ -634,18 +636,18 @@ export default {
 }
 
 .header-search :deep(.search-btn) {
-  background: linear-gradient(135deg, #ff9f43 0%, #f39c12 100%);
+  background: linear-gradient(135deg, #f9b44e 0%, #da8b17 100%);
   height: 40px;
   padding: 0 24px;
   color: white;
   font-weight: 600;
   border: none;
-  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.35);
+  box-shadow: 0 2px 8px rgba(218, 139, 23, 0.35);
 }
 
 .header-search :deep(.search-btn:hover) {
-  background: linear-gradient(135deg, #ffb366 0%, #f5a623 100%);
-  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.45);
+  background: linear-gradient(135deg, #fcc162 0%, #f9b44e 100%);
+  box-shadow: 0 4px 12px rgba(249, 180, 78, 0.45);
   transform: translateY(-1px);
 }
 

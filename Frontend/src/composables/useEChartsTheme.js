@@ -24,18 +24,18 @@ function buildLightTheme() {
 
 function buildDarkTheme() {
   return {
-    color: ['#3b82f6', '#4ade80', '#fbbf24', '#f87171', '#38bdf8', '#34d399', '#fb923c', '#c084fc', '#f0abfc', '#787878'],
-    backgroundColor: '#1a1d2b',
-    textStyle: { color: '#94a3b8' },
-    title: { textStyle: { color: '#e2e8f0' } },
-    legend: { textStyle: { color: '#94a3b8' } },
-    axisLine: { lineStyle: { color: '#2a3040' } },
-    axisLabel: { color: '#94a3b8' },
-    splitLine: { lineStyle: { color: '#232738' } },
+    color: ['#a8b1ff', '#3dd68c', '#f9b44e', '#f66f81', '#38bdf8', '#c8abfa', '#fb923c', '#f67373', '#f0abfc', '#6a6a71'],
+    backgroundColor: '#202127',
+    textStyle: { color: '#98989f' },
+    title: { textStyle: { color: '#dfdfd6' } },
+    legend: { textStyle: { color: '#98989f' } },
+    axisLine: { lineStyle: { color: '#2e2e32' } },
+    axisLabel: { color: '#98989f' },
+    splitLine: { lineStyle: { color: '#2e2e32' } },
     tooltip: {
-      backgroundColor: 'rgba(26,29,43,0.96)',
-      borderColor: '#2a3040',
-      textStyle: { color: '#e2e8f0' }
+      backgroundColor: 'rgba(32,33,39,0.96)',
+      borderColor: '#3c3f44',
+      textStyle: { color: '#dfdfd6' }
     }
   }
 }
