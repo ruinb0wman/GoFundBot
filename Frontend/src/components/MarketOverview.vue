@@ -1,9 +1,9 @@
 ﻿<template>
   <div class="market-overview-container">
-    <!-- 1. 市场指数实时走势 (置顶 & 折线图) -->
+    <!-- 1. 市场指数近一月走势 (收盘价折线) -->
     <div class="market-section" v-if="showSSE30Min">
       <div class="section-header">
-        <h3><LucideIcon name="TrendingDown" :size="20" /> 市场指数实时走势</h3>
+        <h3><LucideIcon name="TrendingDown" :size="20" /> 市场指数近一月走势</h3>
         <div class="tab-group">
           <span 
             v-for="tab in tabs" 
@@ -14,7 +14,7 @@
             {{ tab.name }}
           </span>
         </div>
-        <span class="update-tag" v-if="updateTime">{{ updateTime.split(' ')[1] }} 更新</span>
+        <span class="update-tag" v-if="latestKlineDate">截至 {{ latestKlineDate }}</span>
       </div>
       <div class="chart-container sse-chart-container">
         <v-chart class="chart" :option="currentChartOption" autoresize :theme="echartThemeName" v-if="hasCurrentData" />
@@ -263,7 +263,7 @@ export default {
       }
     }
     
-    // 指数分时数据
+    // 指数日K数据（近一月收盘价）
     const indicesIntraday = ref({ sh: [], sz: [], hs300: [] })
     const activeTab = ref('sh')
     const tabs = [
@@ -274,6 +274,11 @@ export default {
 
     const activeTabName = computed(() => tabs.find(t => t.key === activeTab.value)?.name || '')
     const hasCurrentData = computed(() => indicesIntraday.value[activeTab.value]?.length > 0)
+    const latestKlineDate = computed(() => {
+      const data = indicesIntraday.value[activeTab.value]
+      if (!data || !data.length) return ''
+      return data[data.length - 1].date || ''
+    })
     
     // 指数分组
     const indices = computed(() => {
@@ -286,39 +291,43 @@ export default {
       }
     })
 
-    // 当前选中的指数图表配置
+    // 当前选中的指数图表配置（收盘价折线）
     const currentChartOption = computed(() => {
       echartThemeName.value; // track theme changes
       const data = indicesIntraday.value[activeTab.value]
       if (!data || !data.length) return {}
       
-      const times = data.map(i => i.time)
-      const prices = data.map(i => parseFloat(i.price))
-      const basePrice = prices[0]
-      const isUp = prices[prices.length - 1] >= basePrice
+      const dates = data.map(i => {
+        const d = String(i.date || '')
+        const match = d.match(/(\d{4})[-/]?(\d{1,2})[-/]?(\d{1,2})/)
+        if (match) return `${parseInt(match[2])}-${parseInt(match[3])}`
+        return d.slice(-5)
+      })
+      const closes = data.map(i => i.close)
+      const basePrice = closes[0]
+      const isUp = closes[closes.length - 1] >= basePrice
       const lineColor = isUp ? cssVar('--color-danger', '#ff4d4f') : cssVar('--color-success', '#52c41a')
 
       return {
-        grid: { top: 10, right: 10, bottom: 20, left: 50, containLabel: false },
+        grid: { top: 10, right: 20, bottom: 20, left: 55, containLabel: false },
         tooltip: { 
           trigger: 'axis',
           formatter: (params) => {
             const p = params[0]
             if (!p) return ''
             const item = data[p.dataIndex]
-            const pctText = item.change_pct && item.change_pct !== '0.00%' ? ` (${item.change_pct})` : ''
-            const changeText = item.change && item.change !== '0' && item.change !== '+0' ? `${item.change}${pctText}` : pctText.replace(/[()]/g, '')
+            const changeVal = item.change
+            const changeText = changeVal != null ? `${changeVal >= 0 ? '+' : ''}${changeVal.toFixed(2)}%` : ''
             return `
-              <div>${item.time}</div>
-              <div style="font-weight:bold;color:${lineColor}">${item.price}</div>
+              <div>${dates[p.dataIndex]}</div>
+              <div style="font-weight:bold;color:${lineColor}">${item.close.toFixed(2)}</div>
               ${changeText ? `<div>${changeText}</div>` : ''}
-              <div>量: ${item.volume}</div>
             `
           }
         },
         xAxis: { 
           type: 'category', 
-          data: times,
+          data: dates,
           axisLine: { lineStyle: { color: cssVar('--border-default', '#e5e7eb') } },
           axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 },
           axisTick: { show: false }
@@ -330,10 +339,11 @@ export default {
           axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 }
         },
         series: [{
-          data: prices,
+          data: closes,
           type: 'line',
           smooth: true,
-          symbol: 'none',
+          symbol: 'circle',
+          symbolSize: 3,
           lineStyle: { width: 2, color: lineColor },
           areaStyle: {
             color: {
@@ -422,22 +432,38 @@ export default {
       }
     }
 
-    const fetchIntraday = async () => {
-      const intradayRes = await marketAPI.getIndicesIntraday()
-      if (intradayRes.data.success) {
-        indicesIntraday.value = intradayRes.data.data
-      }
+    const fetchKline = async () => {
+      const now = new Date()
+      const monthAgo = new Date(now)
+      monthAgo.setDate(monthAgo.getDate() - 35)
+      const startDate = monthAgo.toISOString().slice(0, 10).replace(/-/g, '')
+
+      const codes = { sh: 'sh000001', sz: 'sz399001', hs300: 'sh000300' }
+      const results = { sh: [], sz: [], hs300: [] }
+
+      const tasks = Object.entries(codes).map(async ([key, code]) => {
+        try {
+          const res = await marketAPI.getIndexKline(code, { period: 'daily', startDate })
+          if (res.data.success && Array.isArray(res.data.data)) {
+            results[key] = res.data.data.slice(-22).map(item => ({
+              date: item.date,
+              close: parseFloat(item.close) || 0,
+              change: Number(item.changePercent),
+            }))
+          }
+        } catch (e) {
+          console.error(`获取 ${key} K线失败:`, e)
+        }
+      })
+
+      await Promise.all(tasks)
+      indicesIntraday.value = results
     }
 
     const fetchAll = async () => {
       loading.value = true
       try {
-        const [overviewResult, intradayResult] = await Promise.allSettled([
-          fetchOverview(),
-          fetchIntraday()
-        ])
-        if (overviewResult.status === 'rejected') console.error(overviewResult.reason)
-        if (intradayResult.status === 'rejected') console.error(intradayResult.reason)
+        await Promise.allSettled([fetchOverview(), fetchKline()])
       } catch (e) {
         console.error(e)
       } finally {
@@ -488,7 +514,7 @@ export default {
       aVolume, updateTime,
       formatDate, getChangeClass, getUpDnClass, navigateToIndex,
       volumeOption,
-      tabs, activeTab, activeTabName, hasCurrentData, currentChartOption,
+      tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate, currentChartOption,
       echartThemeName
     }
   }
