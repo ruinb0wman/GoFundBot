@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: detect-private-key
+        name: 检测私钥泄露
+      - id: trailing-whitespace
+        name: 移除行尾空格
+      - id: end-of-file-fixer
+        name: 文件末尾换行符
+
+  - repo: local
+    hooks:
+      - id: prevent-env-commit
+        name: 禁止提交 .env 文件
+        entry: 禁止将 .env 文件添加到 Git
+        language: fail
+        files: \.env$
+        exclude: \.env\.example$

@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from database import init_db, SessionLocal
 from models import (FundBasicInfo, FundTrend, FundEstimate, FundPortfolio, 
                     FundExtraData, FundWatchlist, FundWatchlistGroup, 
@@ -12,6 +14,18 @@ from fund_master_routes import fund_master_bp
 from data_service_routes import data_service_bp
 from services.data_service_client import DataServiceClient, DataServiceError, get_data_service_client
 from services.data_service_legacy_mapper import map_data_service_detail_to_legacy
+from core.logging import init_logging, get_logger
+from core.cors_config import parse_cors_origins
+from core.validation import validate_body, validate_query
+from schemas.watchlist_schemas import (
+    AddWatchlistSchema, BatchDeleteSchema, ReorderSchema,
+    MoveFundSchema, CreateGroupSchema,
+)
+from schemas.backtest_schemas import FixedInvestmentSchema
+from schemas.screening_schemas import ScreeningQuerySchema
+from config import get_config, ConfigValidationError
+
+logger = get_logger(__name__)
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc, and_, or_, func, cast, Float
 from datetime import datetime, timedelta
@@ -26,7 +40,13 @@ import re
 import requests
 
 app = Flask(__name__, static_folder='static', static_url_path='')
-CORS(app)  # 允许跨域请求
+CORS(app, origins=parse_cors_origins())
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
+limiter.init_app(app)
 
 # 注册市场数据 Blueprint
 app.register_blueprint(fund_master_bp)
@@ -1827,6 +1847,7 @@ def get_stock_kline(code):
 
 
 @app.route('/api/market/daily', methods=['GET'])
+@limiter.limit("10 per hour")
 def get_daily_market():
     """
     获取每日市场行情摘要（AI 驱动）
@@ -1865,6 +1886,7 @@ def get_daily_market():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/fund/<fund_code>/analyze', methods=['GET'])
+@limiter.limit("10 per hour")
 def analyze_fund(fund_code):
     """
     使用 AI 分析基金（基于硅基流动 API）
@@ -2032,6 +2054,8 @@ def check_watchlist(fund_code):
 
 
 @app.route('/api/watchlist', methods=['POST'])
+@limiter.limit("30 per hour")
+@validate_body(AddWatchlistSchema)
 def add_to_watchlist():
     """添加基金到自选列表"""
     data = request.get_json()
@@ -2104,6 +2128,7 @@ def add_to_watchlist():
 
 
 @app.route('/api/watchlist/<fund_code>', methods=['DELETE'])
+@limiter.limit("30 per hour")
 def remove_from_watchlist(fund_code):
     fund_code = _normalize_fund_code(fund_code)
     """从自选列表移除基金"""
@@ -2123,6 +2148,8 @@ def remove_from_watchlist(fund_code):
 
 
 @app.route('/api/watchlist/batch-delete', methods=['POST'])
+@limiter.limit("30 per hour")
+@validate_body(BatchDeleteSchema)
 def batch_delete_from_watchlist():
     """批量删除自选基金"""
     data = request.get_json()
@@ -2148,6 +2175,8 @@ def batch_delete_from_watchlist():
 
 
 @app.route('/api/watchlist/reorder', methods=['PUT'])
+@limiter.limit("30 per hour")
+@validate_body(ReorderSchema)
 def reorder_watchlist():
     """
     更新自选基金排序
@@ -2198,6 +2227,8 @@ def get_groups():
 
 
 @app.route('/api/watchlist/groups', methods=['POST'])
+@limiter.limit("30 per hour")
+@validate_body(CreateGroupSchema)
 def create_group():
     """创建新分组"""
     data = request.get_json()
@@ -2231,6 +2262,7 @@ def create_group():
 
 
 @app.route('/api/watchlist/groups/<int:group_id>', methods=['PUT'])
+@limiter.limit("30 per hour")
 def update_group(group_id):
     """更新分组（重命名）"""
     data = request.get_json()
@@ -2255,6 +2287,7 @@ def update_group(group_id):
 
 
 @app.route('/api/watchlist/groups/<int:group_id>', methods=['DELETE'])
+@limiter.limit("30 per hour")
 def delete_group(group_id):
     """删除分组（分组内的基金会变为未分组）"""
     db = get_db()
@@ -2275,6 +2308,7 @@ def delete_group(group_id):
 
 
 @app.route('/api/watchlist/groups/reorder', methods=['PUT'])
+@limiter.limit("30 per hour")
 def reorder_groups():
     """更新分组排序"""
     data = request.get_json()
@@ -2298,6 +2332,8 @@ def reorder_groups():
 
 
 @app.route('/api/watchlist/move', methods=['PUT'])
+@limiter.limit("30 per hour")
+@validate_body(MoveFundSchema)
 def move_fund_to_group():
     """移动基金到指定分组"""
     data = request.get_json()
@@ -2747,6 +2783,7 @@ def _refresh_single_fund_estimate(db, fund_code):
 
 
 @app.route('/api/watchlist/refresh-estimates', methods=['GET', 'POST'])
+@limiter.limit("10 per hour")
 def refresh_watchlist_estimates():
     """
     批量刷新自选基金的实时估值数据
@@ -4743,6 +4780,7 @@ def batch_fill_risk_metrics(db=None, task_id=None):
 
 
 @app.route('/api/screening/fill-risk', methods=['POST'])
+@limiter.limit("5 per hour")
 def start_fill_risk():
     """启动后台补全风险指标任务"""
     global screening_update_status
@@ -4864,6 +4902,7 @@ def get_screening_progress():
 
 
 @app.route('/api/screening/update', methods=['POST'])
+@limiter.limit("5 per hour")
 def start_screening_update():
     """启动基金数据批量更新"""
     data = request.get_json() or {}
@@ -4921,6 +4960,7 @@ def start_screening_update():
 
 
 @app.route('/api/screening/stop', methods=['POST'])
+@limiter.limit("5 per hour")
 def stop_screening_update():
     """停止基金数据更新"""
     global screening_stop_flag, screening_update_status
@@ -5312,6 +5352,8 @@ def build_stock_industry_from_akshare():
 
 
 @app.route('/api/screening/query', methods=['POST'])
+@limiter.limit("30 per hour")
+@validate_body(ScreeningQuerySchema)
 def query_screening_funds():
     """
     高级基金筛选查询（使用 JOIN 关联查询）
@@ -5694,6 +5736,7 @@ def get_screening_fund_detail(fund_code):
 
 
 @app.route('/api/screening/update-single/<fund_code>', methods=['POST'])
+@limiter.limit("30 per hour")
 def update_single_fund(fund_code):
     fund_code = _normalize_fund_code(fund_code)
     """更新单只基金数据"""
@@ -5776,6 +5819,8 @@ def get_data_stats():
 # ==================== 基金回测功能 ====================
 
 @app.route('/api/backtest/fixed-investment', methods=['POST'])
+@limiter.limit("20 per hour")
+@validate_body(FixedInvestmentSchema)
 def backtest_fixed_investment():
     """
     基金定投回测
@@ -6859,9 +6904,9 @@ def preload_services():
         try:
             ai_service = get_ai_service()
             if ai_service.is_available():
-                print("AI 服务已就绪（硅基流动 API）")
+                logger.info("AI 服务已就绪（硅基流动 API）")
         except Exception as e:
-            print(f"Preload failed: {e}")
+            logger.error("Preload failed", extra={"error": str(e)})
     
     thread = threading.Thread(target=_preload, daemon=True)
     thread.start()
@@ -6903,23 +6948,23 @@ def _auto_ranking_scheduler():
                 db.close()
 
                 if should_run:
-                    print("[自动排名] 开始每周同类排名计算...", flush=True)
+                    logger.info("[自动排名] 开始每周同类排名计算...")
                     db2 = SessionLocal()
                     try:
                         calculate_same_type_rankings(db2)
                         db2.commit()
-                        print("[自动排名] 每周同类排名计算完成", flush=True)
+                        logger.info("[自动排名] 每周同类排名计算完成")
                     except Exception as e:
                         db2.rollback()
-                        print(f"[自动排名] 计算失败: {e}", flush=True)
+                        logger.error("[自动排名] 计算失败", extra={"error": str(e)})
                     finally:
                         db2.close()
             except Exception as e:
-                print(f"[自动排名] 调度检查失败: {e}", flush=True)
+                logger.error("[自动排名] 调度检查失败", extra={"error": str(e)})
 
     t = threading.Thread(target=_run_weekly, daemon=True)
     t.start()
-    print("[自动排名] 后台周度排名调度已启动", flush=True)
+    logger.info("[自动排名] 后台周度排名调度已启动")
 
 
 def _cleanup_stale_tasks_on_startup():
@@ -6936,13 +6981,22 @@ def _cleanup_stale_tasks_on_startup():
             task.updated_time = datetime.now()
         if stale:
             db.commit()
-            print(f"[启动清理] 已将 {len(stale)} 个残留任务标记为失败", flush=True)
+            logger.info(f"[启动清理] 已将 {len(stale)} 个残留任务标记为失败")
         db.close()
     except Exception as e:
-        print(f"[启动清理] 失败: {e}", flush=True)
+        logger.error("[启动清理] 失败", extra={"error": str(e)})
 
 
 if __name__ == '__main__':
+    init_logging()
+    logger.info("GoFundBot Backend 启动中...")
+    try:
+        get_config().validate()
+        logger.info("配置校验通过")
+    except ConfigValidationError as e:
+        logger.error(f"配置校验失败:\n{e}")
+        sys.exit(1)
     _cleanup_stale_tasks_on_startup()
     _auto_ranking_scheduler()
+    logger.info("GoFundBot Backend 已就绪")
     app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)

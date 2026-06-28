@@ -101,6 +101,7 @@ GoFundBot 是一个基于 Python (Flask) 和 Vue 3 构建的智能基金分析�
 ### 后端 (Backend)
 *   **语言**: Python 3
 *   **框架**: Flask
+*   **安全/限流**: Flask-Limiter, Pydantic, Flask-CORS
 *   **AI/LLM**: LangChain, OpenAI SDK (适配 SiliconFlow/DeepSeek 等模型)
 *   **数据存储**: SQLAlchemy (SQLite)
 *   **网络请求**: Requests, Curl_cffi (处理复杂反爬)
@@ -151,6 +152,9 @@ LLM_MODEL=Qwen/Qwen2.5-7B-Instruct
 # Flask 配置
 FLASK_ENV=development
 FLASK_DEBUG=True
+
+# CORS 白名单（逗号分隔，留空或 * 为全部放行）
+CORS_ORIGINS=http://localhost:5173,http://localhost:8080
 
 # 禁用 akshare 备用数据源（除非同花顺接口异常，否则不要设置）
 # DISABLE_AKSHARE_FALLBACK=1
@@ -252,10 +256,17 @@ MyBot/
 │   ├── ai_service.py            # AI 分析服务（LangChain + LLM）
 │   ├── core/                    # 公共模块
 │   │   ├── request.py           # HTTP 请求层（熔断器 + 多会话）
-│   │   └── errors.py            # 错误类型
+│   │   ├── errors.py            # 错误类型
+│   │   ├── logging.py           # 结构化 JSON 日志
+│   │   ├── validation.py        # 请求校验装饰器（Pydantic）
+│   │   └── cors_config.py       # CORS 白名单配置
 │   ├── providers/               # 数据源封装
 │   │   ├── eastmoney.py         # 东方财富 API
 │   │   └── tencent.py           # 腾讯财经 API
+│   ├── schemas/                 # Pydantic 校验模型
+│   │   ├── watchlist_schemas.py
+│   │   ├── backtest_schemas.py
+│   │   └── screening_schemas.py
 │   ├── services/                # 业务服务层
 │   │   ├── market_data.py       # 市场数据服务
 │   │   └── data_service_client.py # DataService HTTP 客户端

@@ -39,11 +39,21 @@ npm run build && npm start
 cd Frontend && npm install
 npm run dev
 npm run build            # output in Frontend/dist/, served by Flask in prod
+
+# Pre-commit hooks (optional, for development)
+pip install pre-commit && pre-commit install
 ```
 
 ## Key details
 
-- **No CI/lint/formatter** configured for Python. DataService has `npm run typecheck`.
+- **Pre-commit hooks** are set up in `.pre-commit-config.yaml` — `detect-private-key` + .env prevention. Install with `pip install pre-commit && pre-commit install`.
+- **No CI/lint/formatter** configured for Python (ruff recommended). DataService has `npm run typecheck`.
+- **Rate limiting**: Flask-Limiter (200/day, 50/hour default; AI endpoints 10/hour, write endpoints 30/hour) + `express-rate-limit` (300/15min).
+- **Input validation**: Pydantic `@validate_body` / `@validate_query` decorators on key POST/PUT routes (`schemas/`).
+- **CORS**: `CORS_ORIGINS` env var controls allowed origins (comma-separated, `*` = all).
+- **Security headers**: DataService uses `helmet` (CSP/COEP disabled).
+- **Structured logging**: JSON format via `core/logging.py` (Backend) and `core/logger.ts` (DataService) with `requestId` per request.
+- **Config validation**: `config.py:validate()` checks `LLM_API_KEY` and `DATA_SERVICE_BASE_URL` at startup.
 - **Database**: SQLite at `Backend/Data/funds.db`, auto-created on startup.
 - **Cache TTLs** (DataService): fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
 - **Frontend Vite** proxies `/api` → `localhost:5000`; production: Flask serves `Frontend/dist/`.
@@ -54,10 +64,15 @@ npm run build            # output in Frontend/dist/, served by Flask in prod
 
 | Directory | What |
 |-----------|------|
-| `Backend/app.py` | ~3000-line Flask monolith — core business logic, routes, industry classification |
+| `Backend/app.py` | ~7000-line Flask monolith — core business logic, routes, industry classification |
 | `Backend/services/data_service_client.py` | DataService HTTP client — all external data fetch goes here |
 | `Backend/ai_service.py` | LLM analysis via LangChain + OpenAI-compatible API |
+| `Backend/schemas/` | Pydantic input validation models |
+| `Backend/core/validation.py` | `@validate_body` / `@validate_query` decorators |
+| `Backend/core/logging.py` | Structured JSON logging setup |
+| `Backend/config.py` | Config validation on startup |
 | `DataService/src/` | TypeScript Express app with ProviderChain |
+| `.pre-commit-config.yaml` | Pre-commit hooks (private key + .env check) |
 
 ## Testing
 

@@ -1,5 +1,12 @@
 type LogLevel = 'info' | 'warn' | 'error';
 
+export interface Logger {
+  info: (message: string, context?: Record<string, unknown>) => void;
+  warn: (message: string, context?: Record<string, unknown>) => void;
+  error: (message: string, context?: Record<string, unknown>) => void;
+  child: (baseContext: Record<string, unknown>) => Logger;
+}
+
 function write(level: LogLevel, message: string, context?: Record<string, unknown>) {
   const payload = {
     level,
@@ -20,8 +27,16 @@ function write(level: LogLevel, message: string, context?: Record<string, unknow
   console.log(line);
 }
 
-export const logger = {
-  info: (message: string, context?: Record<string, unknown>) => write('info', message, context),
-  warn: (message: string, context?: Record<string, unknown>) => write('warn', message, context),
-  error: (message: string, context?: Record<string, unknown>) => write('error', message, context),
-};
+function createLogger(baseContext?: Record<string, unknown>): Logger {
+  const merge = (context?: Record<string, unknown>) =>
+    baseContext ? { ...baseContext, ...context } : context;
+
+  return {
+    info: (message: string, context?: Record<string, unknown>) => write('info', message, merge(context)),
+    warn: (message: string, context?: Record<string, unknown>) => write('warn', message, merge(context)),
+    error: (message: string, context?: Record<string, unknown>) => write('error', message, merge(context)),
+    child: (context: Record<string, unknown>) => createLogger(merge(context)),
+  };
+}
+
+export const logger: Logger = createLogger();

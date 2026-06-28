@@ -1,5 +1,8 @@
+import crypto from 'node:crypto';
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { errorHandler, notFoundHandler } from './core/errors.js';
 import { logger } from './core/logger.js';
 import { fundRouter } from './routes/fund.routes.js';
@@ -12,8 +15,19 @@ export function createApp() {
   const app = express();
 
   app.disable('x-powered-by');
-  app.use(cors({ origin: parseCorsOrigin(process.env.CORS_ORIGIN) }));
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
+  app.use(cors({ origin: parseCorsOrigin(process.env.CORS_ORIGINS) }));
   app.use(express.json({ limit: '256kb' }));
+  app.use(rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, code: 'RATE_LIMITED', message: '请求过于频繁，请稍后重试' },
+  }));
   app.use(requestLogger);
 
   app.use('/api/health', healthRouter);
@@ -29,15 +43,19 @@ export function createApp() {
 }
 
 function requestLogger(req: Request, res: Response, next: NextFunction): void {
+  const requestId = crypto.randomUUID().slice(0, 8);
+  const reqLogger = logger.child({ requestId });
+  (req as unknown as Record<string, unknown>).requestId = requestId;
+
   const startedAt = Date.now();
-  logger.info('request start', {
+  reqLogger.info('request start', {
     method: req.method,
     path: req.path,
     query: Object.keys(req.query),
   });
 
   res.on('finish', () => {
-    logger.info('request end', {
+    reqLogger.info('request end', {
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,

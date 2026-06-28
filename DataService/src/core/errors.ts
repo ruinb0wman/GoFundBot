@@ -39,6 +39,37 @@ export function assertCode(value: string | undefined, field = 'code'): string {
   return code;
 }
 
+export function assertNumberRange(
+  value: string | undefined,
+  min: number,
+  max: number,
+  field = 'value'
+): number {
+  const num = Number(value);
+  if (isNaN(num) || !isFinite(num)) {
+    throw new AppError('INVALID_ARGUMENT', `${field} must be a valid number`, 400, { [field]: value });
+  }
+  if (num < min || num > max) {
+    throw new AppError('INVALID_ARGUMENT', `${field} must be between ${min} and ${max}`, 400, { [field]: value });
+  }
+  return num;
+}
+
+export function assertDate(value: string | undefined, field = 'date'): string {
+  if (!value) {
+    throw new AppError('INVALID_ARGUMENT', `${field} is required`, 400, { [field]: value });
+  }
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    throw new AppError('INVALID_ARGUMENT', `${field} must be in YYYY-MM-DD format`, 400, { [field]: value });
+  }
+  const d = new Date(trimmed);
+  if (isNaN(d.getTime())) {
+    throw new AppError('INVALID_ARGUMENT', `${field} is not a valid date`, 400, { [field]: value });
+  }
+  return trimmed;
+}
+
 export function toAppError(error: unknown): AppError {
   if (error instanceof AppError) {
     return error;
@@ -74,8 +105,10 @@ export const notFoundHandler = (req: Request, res: Response): void => {
 
 export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   const appError = error instanceof AppError ? error : toAppError(error);
+  const requestId = (req as unknown as Record<string, unknown>).requestId as string | undefined;
 
-  logger.error('request failed', {
+  const reqLogger = requestId ? logger.child({ requestId }) : logger;
+  reqLogger.error('request failed', {
     method: req.method,
     path: req.path,
     code: appError.code,
