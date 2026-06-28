@@ -10,21 +10,6 @@
           <FundSearch @fund-selected="handleHeaderSearch" :compact="true" />
         </div>
         <div class="header-right">
-          <button
-            v-if="canGoBack"
-            class="back-btn"
-            @click="goBack"
-            title="返回上一步"
-          >
-            <LucideIcon name="ArrowLeft" :size="18" /> 返回
-          </button>
-          <button
-            class="theme-toggle"
-            @click="toggleTheme"
-            :title="themeTitle"
-          >
-            <span class="theme-icon"><LucideIcon :name="themeIcon" :size="20" /></span>
-          </button>
           <div class="mode-switch">
             <button
               class="mode-btn"
@@ -62,6 +47,13 @@
               投研看板
             </button>
           </div>
+          <button
+            class="theme-toggle"
+            @click="toggleTheme"
+            :title="themeTitle"
+          >
+            <span class="theme-icon"><LucideIcon :name="themeIcon" :size="20" /></span>
+          </button>
         </div>
       </div>
     </header>
@@ -155,12 +147,6 @@ export default {
       !!route.params.code || (compareMode.value && compareFunds.value.length >= 2)
     )
 
-    const canGoBack = computed(() => window.history.length > 1)
-
-    const goBack = () => {
-      router.back()
-    }
-
     const themeIcon = computed(() => {
       if (savedTheme.value === 'dark') return 'Moon'
       if (savedTheme.value === 'auto') return 'Monitor'
@@ -245,8 +231,6 @@ export default {
       compareFunds,
       compareMode,
       showFullContent,
-      canGoBack,
-      goBack,
       themeIcon,
       themeTitle,
       toggleTheme,
@@ -539,23 +523,6 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.back-btn {
-  padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-}
-
-.back-btn:hover {
-  background: rgba(255, 255, 255, 0.28);
 }
 
 .theme-toggle {
