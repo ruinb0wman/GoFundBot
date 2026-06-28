@@ -27,6 +27,7 @@
 <script>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 
 export default {
   name: 'FundAssetAllocation',
@@ -37,11 +38,25 @@ export default {
     }
   },
   setup(props) {
+    const cssColor = (name, fallback = '') => {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+    }
+    const { echartThemeName } = useEChartsTheme()
     const chartEl = ref(null)
     let chartInstance = null
 
-    const colors = ['#1677ff', '#52c41a', '#faad14', '#ff4d4f', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc']
-    const otherColor = '#bfbfbf'
+    const getColors = () => [
+      cssColor('--chart-1', '#1677ff'),
+      cssColor('--chart-2', '#52c41a'),
+      cssColor('--chart-3', '#faad14'),
+      cssColor('--chart-4', '#ff4d4f'),
+      cssColor('--chart-5', '#73c0de'),
+      cssColor('--chart-6', '#3ba272'),
+      cssColor('--chart-7', '#fc8452'),
+      cssColor('--chart-8', '#9a60b4'),
+      cssColor('--chart-9', '#ea7ccc')
+    ]
+    const getOtherColor = () => cssColor('--chart-10', '#bfbfbf')
 
     // 去掉名称中的"占净比"后缀
     const cleanName = (name) => {
@@ -118,12 +133,13 @@ export default {
 
     // 柱状图颜色："其他"固定灰色，其余按非"其他"顺序分配颜色（保持插入前后颜色一致）
     const getBarColor = (name, _index) => {
-      if (name === '其他') return otherColor
+      if (name === '其他') return getOtherColor()
       const nonOtherBarNames = series.value
         .filter(s => s.name !== '净资产' && s.name !== '其他')
         .map(s => s.name)
       const nonOtherIdx = nonOtherBarNames.indexOf(name)
-      return nonOtherIdx >= 0 ? colors[nonOtherIdx % colors.length] : colors[0]
+      const cols = getColors()
+      return nonOtherIdx >= 0 ? cols[nonOtherIdx % cols.length] : cols[0]
     }
 
     const getBarIndex = (name) => {
@@ -146,7 +162,7 @@ export default {
         chartInstance.dispose()
       }
 
-      chartInstance = echarts.init(chartEl.value)
+      chartInstance = echarts.init(chartEl.value, echartThemeName.value)
 
       // 准备柱状图数据（排除净资产，它用折线图）
       const barSeries = series.value
@@ -174,7 +190,7 @@ export default {
         yAxisIndex: 1, // 使用右侧Y轴
         data: netAssetSerie.data,
         itemStyle: {
-          color: '#ee6666'
+          color: cssColor('--chart-4', '#ee6666')
         },
         lineStyle: {
             width: 3
@@ -250,6 +266,13 @@ export default {
       })
     }, { deep: true })
 
+    watch(echartThemeName, () => {
+      nextTick(() => {
+        initChart()
+      })
+    })
+
+
     // 用于显示的系列（排除净资产）
     const displaySeries = computed(() => series.value.filter(s => s.name !== '净资产'))
 
@@ -277,7 +300,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   color: white;
   padding: 12px 16px;
   flex-shrink: 0;
@@ -304,10 +327,10 @@ export default {
   left: 8px;
   z-index: 10;
   padding: 4px 10px;
-  background: #fff3cd;
-  border: 1px solid #ffc107;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning);
   border-radius: 4px;
-  color: #856404;
+  color: var(--color-warning);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
@@ -357,12 +380,12 @@ export default {
 }
 
 .legend-name {
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .legend-value {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .no-data {
@@ -370,6 +393,6 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: var(--text-tertiary);
 }
 </style>

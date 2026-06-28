@@ -1511,7 +1511,7 @@ export default {
 
 <style scoped>
 .fund-screening {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
@@ -1536,8 +1536,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 14px 24px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .header-title h2 {
@@ -1573,8 +1573,8 @@ export default {
 }
 
 .stat-chip {
-  background: #f0f5ff;
-  color: #1677ff;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
   padding: 3px 10px;
   border-radius: 20px;
   font-weight: 500;
@@ -1582,20 +1582,20 @@ export default {
 }
 
 .stat-chip.complete {
-  background: #f0fdf4;
-  color: #16a34a;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .update-time-chip {
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 0.8rem;
   margin-left: 4px;
 }
 
 /* 内联更新进度条 */
 .inline-update-bar {
-  background: #fff7e6;
-  border-bottom: 2px solid #fa8c16;
+  background: var(--color-warning-bg);
+  border-bottom: 2px solid var(--color-warning);
   padding: 10px 24px;
   display: flex;
   align-items: center;
@@ -1612,7 +1612,7 @@ export default {
 
 .inline-current {
   font-size: 13px;
-  color: #333;
+  color: var(--text-primary);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1621,16 +1621,16 @@ export default {
 
 .inline-count {
   font-size: 12px;
-  color: #999;
+  color: var(--text-tertiary);
   white-space: nowrap;
 }
 
 .btn-stop-inline {
   padding: 5px 14px;
-  background: #fff;
-  border: 1px solid #fa8c16;
+  background: var(--bg-card);
+  border: 1px solid var(--color-warning);
   border-radius: 6px;
-  color: #fa8c16;
+  color: var(--color-warning);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
@@ -1639,21 +1639,21 @@ export default {
 }
 
 .btn-stop-inline:hover {
-  background: #fa8c16;
-  color: #fff;
+  background: var(--color-warning);
+  color: var(--text-inverse);
 }
 
 /* 关键词搜索 */
 .search-row {
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 4px;
 }
 
 .search-keyword-input {
   flex: 1;
   padding: 8px 14px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   font-size: 14px;
   outline: none;
@@ -1661,14 +1661,14 @@ export default {
 }
 
 .search-keyword-input:focus {
-  border-color: #1677ff;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
 }
 
 .btn-search-inline {
   padding: 8px 18px;
-  background: #1677ff;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
   border: none;
   border-radius: 8px;
   font-size: 13px;
@@ -1678,7 +1678,7 @@ export default {
 }
 
 .btn-search-inline:hover {
-  background: #0958d9;
+  background: var(--color-primary-hover);
 }
 
 .search-input-wrap {
@@ -1697,10 +1697,10 @@ export default {
   top: 100%;
   left: -28px;
   z-index: 300;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-lg);
   max-height: 340px;
   overflow-y: auto;
   margin-top: 4px;
@@ -1715,7 +1715,7 @@ export default {
   cursor: pointer;
   font-size: 13px;
   transition: background 0.1s;
-  border-bottom: 1px solid #f8f8f8;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .search-dropdown-item:last-child {
@@ -1723,18 +1723,18 @@ export default {
 }
 
 .search-dropdown-item:hover {
-  background: #f0f5ff;
+  background: var(--color-primary-bg);
 }
 
 .sug-code {
   font-weight: 600;
-  color: #1677ff;
+  color: var(--color-primary);
   min-width: 60px;
 }
 
 .sug-name {
   flex: 1;
-  color: #333;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1742,8 +1742,8 @@ export default {
 
 .sug-type {
   font-size: 11px;
-  color: #999;
-  background: #f5f5f5;
+  color: var(--text-tertiary);
+  background: var(--bg-subtle);
   padding: 1px 8px;
   border-radius: 10px;
   flex-shrink: 0;
@@ -1765,20 +1765,20 @@ export default {
 }
 
 .btn-update {
-  background: #1677ff;
-  color: #fff;
-  border: 1px solid #1677ff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  border: 1px solid var(--color-primary);
 }
 
-.btn-update:hover:not(:disabled) { background: #0958d9; }
+.btn-update:hover:not(:disabled) { background: var(--color-primary-hover); }
 
 .btn-secondary {
-  background: #fff;
-  color: #4b5563;
-  border: 1px solid #d1d5db;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
 }
 
-.btn-secondary:hover:not(:disabled) { background: #f9fafb; }
+.btn-secondary:hover:not(:disabled) { background: var(--bg-subtle); }
 
 .btn-update:disabled,
 .btn-secondary:disabled {
@@ -1794,16 +1794,16 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(15, 23, 42, 0.42);
+  background: var(--bg-overlay);
 }
 
 .update-dialog {
   width: min(620px, 100%);
   max-height: calc(100vh - 40px);
   overflow-y: auto;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 10px;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+  box-shadow: var(--shadow-lg);
 }
 
 .dialog-head {
@@ -1812,19 +1812,19 @@ export default {
   justify-content: space-between;
   gap: 16px;
   padding: 20px 22px 14px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .dialog-head h3 {
   margin: 0 0 6px;
   font-size: 18px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .dialog-head p {
   margin: 0;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .dialog-close {
@@ -1832,8 +1832,8 @@ export default {
   height: 30px;
   border: none;
   border-radius: 8px;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
@@ -1850,7 +1850,7 @@ export default {
   align-items: flex-start;
   gap: 12px;
   padding: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   cursor: pointer;
 }
@@ -1862,7 +1862,7 @@ export default {
 .task-item strong {
   display: block;
   font-size: 14px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .task-item em {
@@ -1870,7 +1870,7 @@ export default {
   margin-top: 4px;
   font-style: normal;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .dialog-options {
@@ -1884,14 +1884,14 @@ export default {
   display: grid;
   gap: 6px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .dialog-options input {
   width: 100%;
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   font-size: 13px;
 }
@@ -1901,15 +1901,15 @@ export default {
   justify-content: flex-end;
   gap: 10px;
   padding: 14px 22px 20px;
-  border-top: 1px solid #eef2f7;
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* 自定义确认弹窗 */
 .confirm-dialog {
   width: min(480px, 100%);
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 10px;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -1925,15 +1925,15 @@ export default {
   align-items: flex-start;
   gap: 14px;
   padding: 14px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .confirm-option:hover {
-  border-color: #1677ff;
-  background: #f0f5ff;
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .confirm-option-icon {
@@ -1945,7 +1945,7 @@ export default {
 .confirm-option strong {
   display: block;
   font-size: 14px;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .confirm-option em {
@@ -1953,7 +1953,7 @@ export default {
   margin-top: 4px;
   font-style: normal;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 /* 结果区域 */
@@ -1984,7 +1984,7 @@ export default {
 
 .result-count {
   font-weight: normal;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -1996,7 +1996,7 @@ export default {
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: #f8fafc;
+  background: var(--bg-primary);
   border-radius: 10px;
   overflow: visible;
   position: relative;
@@ -2005,7 +2005,7 @@ export default {
 
 .filter-label-inline {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -2024,30 +2024,30 @@ export default {
 
 .quick-tag {
   padding: 4px 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 15px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
 }
 
 .quick-tag:hover {
-  border-color: #a5b4fc;
-  color: #4f46e5;
+  border-color: var(--color-primary-border);
+  color: var(--color-primary);
 }
 
 .quick-tag.active {
-  background: #667eea;
-  border-color: #667eea;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: rgb(50, 53, 218);
 }
 
 .quick-tag.has-active {
-  border-color: #a5b4fc;
-  background: #eef2ff;
+  border-color: var(--color-primary-border);
+  background: var(--color-primary-bg);
 }
 
 /* 下拉菜单容器 */
@@ -2079,10 +2079,10 @@ export default {
   min-width: 140px;
   max-height: 280px;
   overflow-y: auto;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
   z-index: 1000;
   margin-top: 4px;
   padding: 4px 0;
@@ -2091,38 +2091,38 @@ export default {
 .dropdown-item {
   padding: 8px 14px;
   font-size: 12px;
-  color: #374151;
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
 
 .dropdown-item:hover {
-  background: #f3f4f6;
-  color: #4f46e5;
+  background: var(--bg-subtle);
+  color: var(--color-primary);
 }
 
 .dropdown-item.active {
-  background: #eef2ff;
-  color: #667eea;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
   font-weight: 500;
 }
 
 .dropdown-item.unavailable {
-  color: #ccc;
+  color: var(--text-disabled);
   cursor: default;
 }
 
 .unavailable-hint {
   font-size: 10px;
-  color: #ddd;
+  color: var(--text-disabled);
   margin-left: auto;
 }
 
 .dropdown-empty {
   padding: 12px 14px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   text-align: center;
 }
 
@@ -2142,7 +2142,7 @@ export default {
   text-overflow: ellipsis;
   vertical-align: middle;
   white-space: nowrap;
-  color: #111827;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -2152,8 +2152,8 @@ export default {
   max-width: 96px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #f0f5ff;
-  color: #1677ff;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2170,14 +2170,14 @@ export default {
 .results-table td {
   padding: 12px 10px;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-default);
   white-space: nowrap;
 }
 
 .results-table th {
-  background: #f8f9fa;
+  background: var(--bg-subtle);
   font-weight: 600;
-  color: #666;
+  color: var(--text-secondary);
   position: sticky;
   top: 0;
 }
@@ -2185,20 +2185,20 @@ export default {
 .results-table .sticky-col {
   position: sticky;
   left: 0;
-  background: white;
+  background: var(--bg-card);
   z-index: 1;
 }
 
 .results-table .sticky-col-2 {
   position: sticky;
   left: 70px;
-  background: white;
+  background: var(--bg-card);
   z-index: 1;
 }
 
 .results-table th.sticky-col,
 .results-table th.sticky-col-2 {
-  background: #f8f9fa;
+  background: var(--bg-subtle);
   z-index: 2;
 }
 
@@ -2208,12 +2208,12 @@ export default {
 }
 
 .clickable-row:hover {
-  background: #f8f9fa;
+  background: var(--bg-subtle);
 }
 
 .fund-code {
   font-family: monospace;
-  color: #1677ff;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -2224,28 +2224,28 @@ export default {
 }
 
 .positive {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 .negative {
-  color: #10b981;
+  color: var(--color-success);
 }
 
 .excellent {
-  color: #10b981;
+  color: var(--color-success);
   font-weight: 600;
 }
 
 .good {
-  color: #3b82f6;
+  color: var(--color-primary);
 }
 
 .normal {
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .poor {
-  color: #9ca3af;
+  color: var(--text-tertiary);
 }
 
 .style-tag {
@@ -2255,32 +2255,32 @@ export default {
 }
 
 .pass-badge {
-  color: #059669;
+  color: var(--color-success);
   font-weight: bold;
 }
 
 .fail-badge {
-  color: #9ca3af;
+  color: var(--text-tertiary);
 }
 
 .style-stock {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .style-bond {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
 }
 
 .style-balanced {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .style-mixed {
-  background: #f3e8ff;
-  color: #6b21a8;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
 }
 
 .actions {
@@ -2290,7 +2290,7 @@ export default {
 
 .btn-action {
   padding: 4px 8px;
-  background: #f5f7fa;
+  background: var(--bg-primary);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -2298,7 +2298,7 @@ export default {
 }
 
 .btn-action:hover {
-  background: #e9ecef;
+  background: var(--bg-subtle);
   transform: scale(1.1);
 }
 
@@ -2310,19 +2310,19 @@ export default {
   gap: 16px;
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-default);
 }
 
 .page-btn {
   padding: 8px 16px;
-  background: #f5f7fa;
-  border: 1px solid #ddd;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   cursor: pointer;
 }
 
 .page-btn:hover:not(:disabled) {
-  background: #e9ecef;
+  background: var(--bg-subtle);
 }
 
 .page-btn:disabled {
@@ -2331,7 +2331,7 @@ export default {
 }
 
 .page-info {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -2341,7 +2341,7 @@ export default {
 .initial-state {
   text-align: center;
   padding: 120px 20px;
-  color: #666;
+  color: var(--text-secondary);
   min-height: 60vh;
   display: flex;
   flex-direction: column;
@@ -2353,7 +2353,7 @@ export default {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid #fff;
+  border: 2px solid var(--text-inverse);
   border-radius: 50%;
   border-top-color: transparent;
   animation: spin 0.8s linear infinite;
@@ -2365,7 +2365,7 @@ export default {
   width: 14px;
   height: 14px;
   border-width: 2px;
-  border-color: #fa8c16;
+  border-color: var(--color-warning);
   border-top-color: transparent;
 }
 
@@ -2373,7 +2373,7 @@ export default {
   width: 40px;
   height: 40px;
   border-width: 3px;
-  border-color: #1677ff;
+  border-color: var(--color-primary);
   border-top-color: transparent;
   margin-bottom: 16px;
 }
@@ -2392,18 +2392,18 @@ export default {
 
 .hint {
   font-size: 0.9rem;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   margin-top: 8px;
 }
 
 .sub-hint {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 /* ── New ifund-style filter layout ── */
 .filter-bar {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 8px;
 }
 
@@ -2418,8 +2418,8 @@ export default {
 .type-select-wrap {
   display: flex;
   align-items: center;
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 0 10px;
   transition: border-color 0.2s;
@@ -2427,7 +2427,7 @@ export default {
 
 .search-wrap:focus-within,
 .type-select-wrap:focus-within {
-  border-color: #1677ff;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.08);
 }
 
@@ -2459,15 +2459,15 @@ export default {
 
 .type-count {
   font-size: 11px;
-  color: #1677ff;
+  color: var(--color-primary);
   font-weight: 600;
   margin-left: 4px;
 }
 
 .btn-query {
   padding: 8px 20px;
-  background: #1677ff;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
   border: none;
   border-radius: 8px;
   font-size: 13px;
@@ -2476,13 +2476,13 @@ export default {
   transition: background 0.2s;
 }
 
-.btn-query:hover { background: #0958d9; }
+.btn-query:hover { background: var(--color-primary-hover); }
 
 .btn-reset {
   padding: 8px 16px;
-  background: #fff;
-  color: #666;
-  border: 1px solid #d9d9d9;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
@@ -2490,9 +2490,9 @@ export default {
 }
 
 .btn-reset:hover {
-  border-color: #1677ff;
-  color: #1677ff;
-  background: #f0f5ff;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .selected-types-tags {
@@ -2507,17 +2507,17 @@ export default {
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  background: #f0f5ff;
-  border: 1px solid #b3d4ff;
+  background: var(--color-primary-bg);
+  border: 1px solid var(--color-primary-border);
   border-radius: 16px;
   font-size: 12px;
-  color: #1677ff;
+  color: var(--color-primary);
   cursor: pointer;
 }
 
 .type-tag-selected:hover {
-  background: #e6f0ff;
-  border-color: #1677ff;
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary);
 }
 
 /* ====== 标签筛选区 ====== */
@@ -2533,7 +2533,7 @@ export default {
 /* 分区标题 */
 .filter-zone-title {
   font-size: 14px;
-  color: #374151;
+  color: var(--text-primary);
   font-weight: 700;
   margin-bottom: 8px;
   display: flex;
@@ -2544,7 +2544,7 @@ export default {
 /* 展开/收起按钮 */
 .zone-expand-btn {
   font-size: 11px;
-  color: #1677ff;
+  color: var(--color-primary);
   background: none;
   border: none;
   cursor: pointer;
@@ -2579,10 +2579,10 @@ export default {
   min-width: 100px;
   max-width: 160px;
   padding: 6px 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: #f9fafb;
-  color: #4b5563;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 13px;
   transition: all 0.15s;
@@ -2594,25 +2594,25 @@ export default {
   max-width: 180px;
   height: 34px;
   padding: 0 12px;
-  border-color: #dbe3ef;
-  background: #fff;
+  border-color: var(--border-default);
+  background: var(--bg-card);
 }
 
 .tag-chip-primary.expanded {
-  border-color: #1677ff;
-  background: #f0f6ff;
-  color: #0f5fc7;
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
 }
 
 .tag-chip:hover {
-  background: #f0f0f0;
-  border-color: #d1d5db;
+  background: var(--bg-subtle);
+  border-color: var(--border-default);
 }
 
 .tag-chip.active {
-  background: #1677ff;
-  border-color: #1677ff;
-  color: #fff;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-inverse);
   box-shadow: 0 2px 6px rgba(22,119,255,0.25);
 }
 
@@ -2632,7 +2632,7 @@ export default {
 /* 标签数字 */
 .tag-chip-count {
   font-size: 10px;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   line-height: 1.3;
   margin-top: 0;
   flex-shrink: 0;
@@ -2645,7 +2645,7 @@ export default {
   gap: 6px;
   margin: -2px 0 6px 10px;
   padding: 6px 0 2px 10px;
-  border-left: 2px solid #e6f0ff;
+  border-left: 2px solid var(--color-primary-bg);
 }
 
 /* 二级子标签 */
@@ -2655,7 +2655,7 @@ export default {
   padding: 4px 8px;
   font-size: 12px;
   border-radius: 6px;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 /* 高级筛选区 */
@@ -2670,19 +2670,19 @@ export default {
   padding: 10px 14px;
   font-size: 13px;
   font-weight: 600;
-  color: #555;
+  color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
-  background: #f8f9fa;
-  border: 1px solid #e8e8e8;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   transition: all 0.2s;
 }
 
 .advanced-toggle:hover {
-  color: #1677ff;
-  border-color: #1677ff;
-  background: #f0f5ff;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .toggle-arrow { font-size: 10px; }
@@ -2691,8 +2691,8 @@ export default {
 .advanced-section {
   padding: 14px;
   margin-top: 8px;
-  background: #fafbfc;
-  border: 1px solid #eee;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
 }
 
@@ -2708,7 +2708,7 @@ export default {
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 700;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 .adv-grid-simple {
@@ -2722,14 +2722,14 @@ export default {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: #fff;
-  border: 1px solid #eee;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
 }
 
 .adv-item label {
   font-size: 13px;
-  color: #555;
+  color: var(--text-secondary);
   font-weight: 500;
   white-space: nowrap;
   flex-shrink: 0;
@@ -2747,13 +2747,13 @@ export default {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #374151;
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .adv-op {
   min-width: 24px;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-weight: 700;
   text-align: center;
 }
@@ -2761,7 +2761,7 @@ export default {
 .adv-inp {
   width: 80px;
   padding: 6px 8px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   font-size: 13px;
   outline: none;
@@ -2770,23 +2770,23 @@ export default {
 }
 
 .adv-inp:focus {
-  border-color: #1677ff;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.08);
 }
 
 .adv-inp::placeholder {
-  color: #ccc;
+  color: var(--text-disabled);
   font-size: 12px;
 }
 
 .adv-sep {
-  color: #bbb;
+  color: var(--text-tertiary);
   font-size: 14px;
 }
 
 .adv-unit {
   font-size: 12px;
-  color: #999;
+  color: var(--text-tertiary);
   flex-shrink: 0;
 }
 
@@ -2808,12 +2808,12 @@ export default {
 }
 
 .type-trigger-text {
-  color: #333;
+  color: var(--text-primary);
 }
 
 .type-trigger-arrow {
   font-size: 10px;
-  color: #999;
+  color: var(--text-tertiary);
   transition: transform 0.2s;
 }
 
@@ -2822,8 +2822,8 @@ export default {
   top: 100%;
   left: 0;
   z-index: 200;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   max-height: 420px;
@@ -2833,7 +2833,7 @@ export default {
 }
 
 .type-cat-group {
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .type-cat-group:last-child {
@@ -2848,27 +2848,27 @@ export default {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  color: #555;
+  color: var(--text-secondary);
   transition: background 0.15s;
 }
 
 .type-cat-header:hover {
-  background: #f0f5ff;
+  background: var(--color-primary-bg);
 }
 
 .type-cat-header.all {
-  color: #1677ff;
-  background: #f0f5ff;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .type-cat-header.partial {
-  color: #1677ff;
+  color: var(--color-primary);
 }
 
 .cat-check {
   width: 18px;
   height: 18px;
-  border: 2px solid #d9d9d9;
+  border: 2px solid var(--border-default);
   border-radius: 4px;
   display: inline-flex;
   align-items: center;
@@ -2879,9 +2879,9 @@ export default {
 
 .type-cat-header.all .cat-check,
 .type-cat-header.partial .cat-check {
-  background: #1677ff;
-  border-color: #1677ff;
-  color: #fff;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-inverse);
 }
 
 .type-cat-items {
@@ -2896,24 +2896,24 @@ export default {
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border-default);
   border-radius: 14px;
   font-size: 12px;
   cursor: pointer;
-  color: #666;
+  color: var(--text-secondary);
   transition: all 0.15s;
   user-select: none;
 }
 
 .type-item-label:hover {
-  border-color: #1677ff;
-  color: #1677ff;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .type-item-label.active {
-  background: #f0f5ff;
-  border-color: #1677ff;
-  color: #1677ff;
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   font-weight: 500;
 }
 

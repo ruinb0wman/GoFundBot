@@ -161,6 +161,7 @@
 <script>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { marketAPI } from '../services/api'
 
 export default {
@@ -180,6 +181,10 @@ export default {
     }
   },
   setup(props) {
+    const { echartThemeName } = useEChartsTheme()
+    const cssColor = (name, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+    const hexToRgba = (hex, a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})` }
+
     // ── K 线图表状态 ──────────────────────────────────────────
     const klineChartEl = ref(null)
     const klineData = ref([])
@@ -294,15 +299,18 @@ export default {
 
     // 判断整体涨跌趋势（用于图表颜色）
     const getTrendColor = (data) => {
-      if (data.length < 2) return { line: '#1677ff', area: ['rgba(22,119,255,0.2)', 'rgba(22,119,255,0.0)'] }
+      const dangerColor = cssColor('--color-danger', '#ff4d4f')
+      const successColor = cssColor('--color-success', '#52c41a')
+      const primaryColor = cssColor('--color-primary', '#1677ff')
+      if (data.length < 2) return { line: primaryColor, area: [hexToRgba(primaryColor, 0.2), hexToRgba(primaryColor, 0.0)] }
       const firstClose = data[0].close
       const lastClose = data[data.length - 1].close
       const isUp = lastClose >= firstClose
       return {
-        line: isUp ? '#cf1322' : '#389e0d',
+        line: isUp ? dangerColor : successColor,
         area: isUp
-          ? ['rgba(207,19,34,0.2)', 'rgba(207,19,34,0.0)']
-          : ['rgba(56,158,29,0.2)', 'rgba(56,158,29,0.0)']
+          ? [hexToRgba(dangerColor, 0.2), hexToRgba(dangerColor, 0.0)]
+          : [hexToRgba(successColor, 0.2), hexToRgba(successColor, 0.0)]
       }
     }
 
@@ -318,7 +326,7 @@ export default {
       }
 
       if (!klineChartInstance) {
-        klineChartInstance = echarts.init(klineChartEl.value)
+        klineChartInstance = echarts.init(klineChartEl.value, echartThemeName.value)
       }
 
       const colors = getTrendColor(data)
@@ -332,6 +340,10 @@ export default {
         ohlcMap[item.timestamp] = item
       })
 
+      const gridColor = cssColor('--chart-grid', '#e5e7eb')
+      const axisLabelColor = cssColor('--chart-axis-label', '#6b7280')
+      const dangerColor = cssColor('--color-danger', '#ff4d4f')
+      const successColor = cssColor('--color-success', '#52c41a')
       const option = {
         grid: {
           left: '3%',
@@ -342,10 +354,6 @@ export default {
         },
         tooltip: {
           trigger: 'axis',
-          backgroundColor: 'rgba(255,255,255,0.96)',
-          borderColor: '#e0e0e0',
-          borderWidth: 1,
-          textStyle: { color: '#333', fontSize: 12 },
           formatter: function (params) {
             if (!params || params.length === 0) return ''
             const ts = params[0].value[0]
@@ -355,18 +363,18 @@ export default {
             const date = new Date(ts)
             const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
-            const changeColor = (item.changePercent || 0) >= 0 ? '#cf1322' : '#389e0d'
+            const changeColor = (item.changePercent || 0) >= 0 ? dangerColor : successColor
             const changeSign = (item.changePercent || 0) >= 0 ? '+' : ''
 
             return `
               <div style="font-weight:600;margin-bottom:6px">${dateStr}</div>
               <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:12px">
-                <span style="color:#888">收盘：</span><span style="font-weight:600">${item.close?.toFixed(2) || '--'}</span>
-                <span style="color:#888">开盘：</span><span>${item.open?.toFixed(2) || '--'}</span>
-                <span style="color:#888">最高：</span><span style="color:#cf1322">${item.high?.toFixed(2) || '--'}</span>
-                <span style="color:#888">最低：</span><span style="color:#389e0d">${item.low?.toFixed(2) || '--'}</span>
-                <span style="color:#888">涨跌幅：</span><span style="color:${changeColor}">${changeSign}${(item.changePercent || 0).toFixed(2)}%</span>
-                <span style="color:#888">成交量：</span><span>${formatKlineVolume(item.volume)}</span>
+                <span style="color:${axisLabelColor}">收盘：</span><span style="font-weight:600">${item.close?.toFixed(2) || '--'}</span>
+                <span style="color:${axisLabelColor}">开盘：</span><span>${item.open?.toFixed(2) || '--'}</span>
+                <span style="color:${axisLabelColor}">最高：</span><span style="color:${dangerColor}">${item.high?.toFixed(2) || '--'}</span>
+                <span style="color:${axisLabelColor}">最低：</span><span style="color:${successColor}">${item.low?.toFixed(2) || '--'}</span>
+                <span style="color:${axisLabelColor}">涨跌幅：</span><span style="color:${changeColor}">${changeSign}${(item.changePercent || 0).toFixed(2)}%</span>
+                <span style="color:${axisLabelColor}">成交量：</span><span>${formatKlineVolume(item.volume)}</span>
               </div>
             `
           }
@@ -374,10 +382,10 @@ export default {
         xAxis: {
           type: 'time',
           boundaryGap: false,
-          axisLine: { lineStyle: { color: '#e0e0e0' } },
+          axisLine: { lineStyle: { color: gridColor } },
           axisTick: { show: false },
           axisLabel: {
-            color: '#999',
+            color: axisLabelColor,
             fontSize: 10,
             formatter: function (value) {
               const d = new Date(value)
@@ -391,9 +399,9 @@ export default {
         yAxis: {
           type: 'value',
           scale: true,
-          splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } },
+          splitLine: { lineStyle: { color: gridColor, type: 'dashed' } },
           axisLabel: {
-            color: '#999',
+            color: axisLabelColor,
             fontSize: 10,
             formatter: '{value}'
           }
@@ -415,10 +423,10 @@ export default {
             markLine: {
               silent: true,
               symbol: 'none',
-              lineStyle: { type: 'dashed', color: '#bbb', width: 1 },
+              lineStyle: { type: 'dashed', color: axisLabelColor, width: 1 },
               data: data.length > 0 ? [{
                 yAxis: data[0].close,
-                label: { formatter: '{c}', fontSize: 10, color: '#999' }
+                label: { formatter: '{c}', fontSize: 10, color: axisLabelColor }
               }] : []
             }
           }
@@ -448,6 +456,14 @@ export default {
         klineChartInstance.resize()
       }
     }
+
+    watch(echartThemeName, () => {
+      if (klineChartInstance) {
+        klineChartInstance.dispose()
+        klineChartInstance = null
+      }
+      nextTick(() => renderKlineChart())
+    })
 
     onMounted(() => {
       window.addEventListener('resize', handleResize)
@@ -571,14 +587,14 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .loading-spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid #f0f0f0;
-  border-top: 3px solid #1677ff;
+  border: 3px solid var(--border-subtle);
+  border-top: 3px solid var(--color-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 12px;
@@ -595,7 +611,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #d32f2f;
+  color: var(--color-danger);
 }
 
 .error-icon {
@@ -614,22 +630,22 @@ export default {
 .stock-header {
   margin-bottom: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .stock-title h2 {
   margin: 0 0 6px 0;
   font-size: 22px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text-primary);
 }
 
 .stock-code {
   display: inline-block;
   font-family: monospace;
   font-size: 14px;
-  color: #1677ff;
-  background: #e6f7ff;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
   padding: 2px 10px;
   border-radius: 4px;
   margin-right: 8px;
@@ -637,8 +653,8 @@ export default {
 
 .stock-exchange {
   font-size: 12px;
-  color: #888;
-  background: #f5f5f5;
+  color: var(--text-tertiary);
+  background: var(--bg-subtle);
   padding: 2px 8px;
   border-radius: 4px;
 }
@@ -648,7 +664,7 @@ export default {
   text-align: center;
   padding: 16px 0;
   margin-bottom: 20px;
-  background: #fafafa;
+  background: var(--bg-subtle);
   border-radius: 12px;
 }
 
@@ -657,15 +673,15 @@ export default {
   font-weight: 700;
   font-family: 'DIN Alternate', 'Helvetica Neue', monospace;
   line-height: 1.2;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .current-price.up {
-  color: #cf1322;
+  color: var(--color-danger);
 }
 
 .current-price.down {
-  color: #389e0d;
+  color: var(--color-success);
 }
 
 .price-change {
@@ -679,17 +695,17 @@ export default {
 
 .change-value.up,
 .change-percent.up {
-  color: #cf1322;
+  color: var(--color-danger);
 }
 
 .change-value.down,
 .change-percent.down {
-  color: #389e0d;
+  color: var(--color-success);
 }
 
 .change-value:not(.up):not(.down),
 .change-percent:not(.up):not(.down) {
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 /* 详情网格 */
@@ -704,31 +720,31 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .detail-item:nth-child(odd) {
-  border-right: 1px solid #f5f5f5;
+  border-right: 1px solid var(--border-subtle);
 }
 
 .detail-label {
   font-size: 13px;
-  color: #888;
+  color: var(--text-tertiary);
 }
 
 .detail-value {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   font-family: 'DIN Alternate', 'Helvetica Neue', monospace;
 }
 
 .detail-value.high {
-  color: #cf1322;
+  color: var(--color-danger);
 }
 
 .detail-value.low {
-  color: #389e0d;
+  color: var(--color-success);
 }
 
 /* 分区 */
@@ -739,10 +755,10 @@ export default {
 .section-title {
   font-size: 14px;
   font-weight: 600;
-  color: #666;
+  color: var(--text-secondary);
   margin: 0 0 8px 0;
   padding-bottom: 8px;
-  border-bottom: 2px solid #1677ff;
+  border-bottom: 2px solid var(--color-primary);
 }
 
 /* 空状态 */
@@ -751,7 +767,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 /* ── 走势图区块 ─────────────────────────────────── */
@@ -782,23 +798,23 @@ export default {
 .period-btn {
   padding: 3px 10px;
   font-size: 11px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: #fff;
-  color: #888;
+  background: var(--bg-card);
+  color: var(--text-tertiary);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .period-btn:hover {
-  border-color: #1677ff;
-  color: #1677ff;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .period-btn.active {
-  background: #1677ff;
-  color: #fff;
-  border-color: #1677ff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  border-color: var(--color-primary);
 }
 
 .chart-loading {
@@ -807,7 +823,7 @@ export default {
   justify-content: center;
   gap: 8px;
   padding: 24px;
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 13px;
 }
 
@@ -821,14 +837,14 @@ export default {
 .chart-error {
   text-align: center;
   padding: 20px;
-  color: #d32f2f;
+  color: var(--color-danger);
   font-size: 13px;
 }
 
 .chart-empty {
   text-align: center;
   padding: 20px;
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 13px;
 }
 
@@ -846,7 +862,7 @@ export default {
   display: flex;
   justify-content: space-around;
   padding: 12px 8px 4px;
-  border-top: 1px solid #f5f5f5;
+  border-top: 1px solid var(--border-subtle);
   margin-top: 8px;
 }
 
@@ -857,30 +873,30 @@ export default {
 .summary-label {
   display: block;
   font-size: 11px;
-  color: #999;
+  color: var(--text-tertiary);
   margin-bottom: 2px;
 }
 
 .summary-value {
   font-size: 13px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   font-family: 'DIN Alternate', 'Helvetica Neue', monospace;
 }
 
 .summary-value.up {
-  color: #cf1322;
+  color: var(--color-danger);
 }
 
 .summary-value.down {
-  color: #389e0d;
+  color: var(--color-success);
 }
 
 .summary-value.high {
-  color: #cf1322;
+  color: var(--color-danger);
 }
 
 .summary-value.low {
-  color: #389e0d;
+  color: var(--color-success);
 }
 </style>

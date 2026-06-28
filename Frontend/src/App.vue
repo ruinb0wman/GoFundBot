@@ -21,6 +21,13 @@
           >
             ← 返回
           </button>
+          <button
+            class="theme-toggle"
+            @click="toggleTheme"
+            :title="themeTitle"
+          >
+            <span class="theme-icon">{{ themeIcon }}</span>
+          </button>
           <div class="mode-switch">
             <button 
               class="mode-btn" 
@@ -166,6 +173,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import { useTheme } from './composables/useTheme'
 import FundSearch from './components/FundSearch.vue'
 import FundDetail from './components/FundDetail.vue'
 import FundWatchlist from './components/FundWatchlist.vue'
@@ -194,6 +202,7 @@ export default {
     SectorRank
   },
   setup() {
+    const { theme: appTheme, savedTheme, toggleTheme } = useTheme()
     const selectedFundCode = ref('')
     const currentTime = ref('')
     const viewMode = ref('dashboard') // 默认显示市场大盘
@@ -240,6 +249,18 @@ export default {
       const previous = navStack.value.pop()
       if (previous) restoreState(previous)
     }
+
+    const themeIcon = computed(() => {
+      if (savedTheme.value === 'dark') return '🌙'
+      if (savedTheme.value === 'auto') return '🖥️'
+      return '☀️'
+    })
+
+    const themeTitle = computed(() => {
+      if (savedTheme.value === 'light') return '浅色模式（点击切换）'
+      if (savedTheme.value === 'dark') return '深色模式（点击切换）'
+      return '跟随系统（点击切换）'
+    })
 
     const normalizeFundCode = (fundOrCode) => {
       if (fundOrCode && typeof fundOrCode === 'object') {
@@ -371,6 +392,9 @@ export default {
       compareFunds,
       compareMode,
       canGoBack,
+      themeIcon,
+      themeTitle,
+      toggleTheme,
       handleFundSelected,
       handleHeaderSearch,
       handleDashboardFundView,
@@ -392,23 +416,139 @@ export default {
 
 <style>
 :root {
-  --primary-color: #1677ff;
-  --primary-gradient: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
-  --success-color: #52c41a;
-  --danger-color: #ff4d4f;
-  --warning-color: #faad14;
+  /* ── Surfaces ── */
+  --bg-page: #f5f7fa;
+  --bg-primary: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-hover: #f0f2f5;
+  --bg-subtle: #f3f4f6;
+  --bg-overlay: rgba(0, 0, 0, 0.45);
+  --bg-gradient: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+
+  /* ── Text ── */
   --text-primary: #1f2937;
   --text-secondary: #6b7280;
   --text-tertiary: #9ca3af;
-  --bg-primary: #f8fafc;
-  --bg-card: #ffffff;
-  --border-color: #e5e7eb;
+  --text-disabled: #d1d5db;
+  --text-inverse: #ffffff;
+
+  /* ── Borders ── */
+  --border-default: #e5e7eb;
+  --border-subtle: #f0f0f0;
+  --border-strong: #1677ff;
+
+  /* ── Semantic colors ── */
+  --color-primary: #1677ff;
+  --color-primary-hover: #0958d9;
+  --color-primary-bg: #eef4ff;
+  --color-primary-border: #91bffa;
+  --color-success: #52c41a;
+  --color-success-bg: #f6ffed;
+  --color-success-border: #b7eb8f;
+  --color-danger: #ff4d4f;
+  --color-danger-bg: #fff1f0;
+  --color-danger-border: #ffa39e;
+  --color-warning: #faad14;
+  --color-warning-bg: #fff7e6;
+  --color-warning-border: #ffd591;
+  --color-info: #13c2c2;
+  --color-info-bg: #e6fffb;
+
+  /* ── Chart palette ── */
+  --chart-1: #1677ff;
+  --chart-2: #52c41a;
+  --chart-3: #faad14;
+  --chart-4: #ff4d4f;
+  --chart-5: #73c0de;
+  --chart-6: #3ba272;
+  --chart-7: #fc8452;
+  --chart-8: #9a60b4;
+  --chart-9: #ea7ccc;
+  --chart-10: #bfbfbf;
+  --chart-bg: #ffffff;
+  --chart-grid: #e5e7eb;
+  --chart-axis-label: #6b7280;
+
+  /* ── Shadows ── */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  /* ── Legacy aliases (backward compat) ── */
+  --primary-color: var(--color-primary);
+  --primary-gradient: var(--bg-gradient);
+  --success-color: var(--color-success);
+  --danger-color: var(--color-danger);
+  --warning-color: var(--color-warning);
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
+}
+
+:root[data-theme="dark"] {
+  /* ── Surfaces ── */
+  --bg-page: #0f1117;
+  --bg-primary: #12141c;
+  --bg-card: #1a1d2b;
+  --bg-elevated: #232738;
+  --bg-hover: #272c3d;
+  --bg-subtle: #161821;
+  --bg-overlay: rgba(0, 0, 0, 0.65);
+
+  /* ── Text ── */
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-disabled: #475569;
+
+  /* ── Borders ── */
+  --border-default: #2a3040;
+  --border-subtle: #232738;
+  --border-strong: #3b82f6;
+
+  /* ── Semantic colors ── */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #60a5fa;
+  --color-primary-bg: #1e2d4a;
+  --color-primary-border: #2a4a8a;
+  --color-success: #4ade80;
+  --color-success-bg: #1a2e1a;
+  --color-success-border: #2a5a2a;
+  --color-danger: #f87171;
+  --color-danger-bg: #2e1a1a;
+  --color-danger-border: #5a2a2a;
+  --color-warning: #fbbf24;
+  --color-warning-bg: #2e2410;
+  --color-warning-border: #5a4a10;
+  --color-info: #22d3ee;
+  --color-info-bg: #102a2e;
+
+  /* ── Chart palette ── */
+  --chart-1: #3b82f6;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
+  --chart-4: #f87171;
+  --chart-5: #38bdf8;
+  --chart-6: #34d399;
+  --chart-7: #fb923c;
+  --chart-8: #c084fc;
+  --chart-9: #f0abfc;
+  --chart-10: #787878;
+  --chart-bg: #1a1d2b;
+  --chart-grid: #2a3040;
+  --chart-axis-label: #94a3b8;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+
+  /* ── Legacy aliases ── */
+  --primary-color: var(--color-primary);
+  --success-color: var(--color-success);
+  --danger-color: var(--color-danger);
+  --warning-color: var(--color-warning);
 }
 
 * {
@@ -429,7 +569,7 @@ export default {
 }
 
 .app-header {
-  background: var(--primary-gradient);
+  background: var(--bg-gradient);
   color: white;
   padding: 12px 24px;
   box-shadow: var(--shadow-md);
@@ -552,6 +692,29 @@ export default {
 
 .back-btn:hover {
   background: rgba(255, 255, 255, 0.28);
+}
+
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.theme-icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .mode-switch {
@@ -721,7 +884,7 @@ export default {
 .welcome-icon {
   font-size: 48px;
   margin-bottom: 16px;
-  background: linear-gradient(135deg, #1677ff20 0%, #0958d920 100%);
+  background: var(--color-primary-bg);
   width: 80px;
   height: 80px;
   line-height: 80px;
@@ -860,11 +1023,11 @@ export default {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: var(--text-disabled);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--text-tertiary);
 }
 </style>

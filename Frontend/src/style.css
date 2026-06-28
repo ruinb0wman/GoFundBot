@@ -11,8 +11,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
-  color: #333;
-  background-color: #f5f7fa;
+  color: var(--text-primary, #1f2937);
+  background-color: var(--bg-page, #f5f7fa);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* 滚动条样式 */
@@ -22,17 +23,17 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--bg-subtle, #f1f1f1);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: var(--text-disabled, #888);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--text-tertiary, #555);
 }
 
 /* 工具类 */
@@ -70,4 +71,92 @@ body {
   .container {
     padding: 0 10px;
   }
+}
+
+/* ── VXETable dark mode overrides ── */
+[data-theme="dark"] .vxe-table {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .vxe-table--render-default,
+[data-theme="dark"] .vxe-table--body-wrapper,
+[data-theme="dark"] .vxe-table--footer-wrapper {
+  background-color: var(--bg-card);
+}
+
+[data-theme="dark"] .vxe-header--row {
+  background-color: var(--bg-subtle);
+}
+
+[data-theme="dark"] .vxe-header--row th {
+  background-color: var(--bg-subtle);
+  color: var(--text-secondary);
+  border-bottom-color: var(--border-default);
+}
+
+[data-theme="dark"] .vxe-body--row {
+  background-color: var(--bg-card);
+}
+
+[data-theme="dark"] .vxe-body--row td {
+  border-bottom-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .vxe-body--row.row--stripe {
+  background-color: var(--bg-subtle);
+}
+
+[data-theme="dark"] .vxe-body--row.row--hover {
+  background-color: var(--bg-hover);
+}
+
+[data-theme="dark"] .vxe-table--border-line {
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .vxe-input--inner {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .vxe-input--inner:focus {
+  border-color: var(--border-strong);
+}
+
+[data-theme="dark"] .vxe-modal--box {
+  background-color: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .vxe-modal--header {
+  background-color: var(--bg-subtle);
+  border-bottom-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .vxe-modal--footer {
+  border-top-color: var(--border-default);
+}
+
+[data-theme="dark"] .vxe-pager--wrapper {
+  background-color: var(--bg-card);
+  border-top-color: var(--border-default);
+}
+
+[data-theme="dark"] .vxe-pager--num-btn {
+  color: var(--text-secondary);
+  background-color: var(--bg-card);
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .vxe-pager--num-btn.active--btn {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+[data-theme="dark"] .vxe-empty--wrapper .vxe-empty--message {
+  color: var(--text-tertiary);
 }

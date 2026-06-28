@@ -75,6 +75,7 @@
 <script>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 
 export default {
   name: 'FundManagerInfo',
@@ -85,6 +86,10 @@ export default {
     }
   },
   setup(props) {
+    const cssColor = (name, fallback = '') => {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+    }
+    const { echartThemeName } = useEChartsTheme()
     const chartRefs = ref({})
     const chartInstances = {}
 
@@ -163,7 +168,7 @@ export default {
         chartInstances[index].dispose()
       }
 
-      chartInstances[index] = echarts.init(el)
+      chartInstances[index] = echarts.init(el, echartThemeName.value)
 
       const ability = manager.ability_assessment
       const indicators = ability.categories.map((cat, i) => ({
@@ -182,18 +187,18 @@ export default {
           radius: '60%',
           center: ['50%', '50%'],
           axisName: {
-            color: '#666',
+            color: cssColor('--chart-axis-label', '#666'),
             fontSize: 11,
             padding: [3, 5]
           },
           splitLine: {
             lineStyle: {
-              color: ['#e5e5e5']
+              color: [cssColor('--chart-grid', '#e5e5e5')]
             }
           },
           splitArea: {
             areaStyle: {
-              color: ['rgba(22, 119, 255, 0.05)', 'rgba(22, 119, 255, 0.1)']
+              color: [cssColor('--color-primary-bg', '#eef4ff'), cssColor('--color-primary-bg', '#eef4ff')]
             }
           }
         },
@@ -203,14 +208,14 @@ export default {
             value: ability.scores,
             name: '能力评估',
             areaStyle: {
-              color: 'rgba(22, 119, 255, 0.3)'
+              color: cssColor('--color-primary-bg', 'rgba(22, 119, 255, 0.3)')
             },
             lineStyle: {
-              color: '#1677ff',
+              color: cssColor('--color-primary', '#1677ff'),
               width: 2
             },
             itemStyle: {
-              color: '#1677ff'
+              color: cssColor('--color-primary', '#1677ff')
             }
           }]
         }]
@@ -239,6 +244,13 @@ export default {
       })
     }, { deep: true })
 
+    watch(echartThemeName, () => {
+      Object.values(chartInstances).forEach(c => c.dispose())
+      nextTick(() => {
+        initAllCharts()
+      })
+    })
+
     return {
       managers,
       hasManagers,
@@ -262,7 +274,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   padding: 12px 16px;
   flex-shrink: 0;
 }
@@ -287,16 +299,16 @@ export default {
 }
 
 .manager-item {
-  border: 1px solid #eee;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 12px;
-  background: #fafafa;
+  background: var(--bg-subtle);
 }
 
 .manager-header {
   margin-bottom: 10px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .manager-basic {
@@ -307,7 +319,7 @@ export default {
 .manager-name {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 4px;
   display: flex;
   align-items: center;
@@ -319,11 +331,11 @@ export default {
 }
 
 .star {
-  color: #ddd;
+  color: var(--border-default);
 }
 
 .star.filled {
-  color: #ffc107;
+  color: var(--color-warning);
 }
 
 .manager-meta {
@@ -334,7 +346,7 @@ export default {
 
 .meta-item {
   font-size: 11px;
-  color: #666;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 2px;
@@ -347,10 +359,10 @@ export default {
 .section-title {
   font-size: 12px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 8px;
   padding-left: 6px;
-  border-left: 2px solid #1677ff;
+  border-left: 2px solid var(--color-primary);
 }
 
 .manager-ability {
@@ -370,12 +382,12 @@ export default {
 .ability-score {
   text-align: center;
   font-size: 11px;
-  color: #666;
+  color: var(--text-secondary);
   margin-top: 4px;
 }
 
 .ability-score strong {
-  color: #1677ff;
+  color: var(--color-primary);
   font-size: 14px;
 }
 
@@ -397,13 +409,13 @@ export default {
 .performance-table td {
   padding: 5px 6px;
   text-align: center;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .performance-table th {
-  background: #f5f5f5;
+  background: var(--bg-subtle);
   font-weight: 600;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .performance-table .serie-name {
@@ -412,11 +424,11 @@ export default {
 }
 
 .positive {
-  color: #f5222d;
+  color: var(--color-danger);
 }
 
 .negative {
-  color: #52c41a;
+  color: var(--color-success);
 }
 
 .no-data {
@@ -424,7 +436,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 13px;
 }
 </style>

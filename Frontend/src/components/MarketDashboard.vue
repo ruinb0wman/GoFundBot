@@ -88,9 +88,9 @@ export default {
 
 <style scoped>
 .market-dashboard {
-  background: var(--card-bg, #fff);
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   min-height: calc(100vh - 200px);
 }
@@ -100,15 +100,15 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
-  border-bottom: 1px solid var(--border-color, #e8e8e8);
+  background: var(--bg-gradient);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .dashboard-header h2 {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .tab-switch {
@@ -116,7 +116,7 @@ export default {
   gap: 6px;
   background: rgba(255, 255, 255, 0.15);
   padding: 4px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .tab-btn {
@@ -134,13 +134,13 @@ export default {
 
 .tab-btn:hover {
   background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .tab-btn.active {
-  background: #fff;
-  color: #1677ff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: var(--bg-elevated);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-md);
 }
 
 .dashboard-content {

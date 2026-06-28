@@ -183,10 +183,13 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { fundAPI } from '../services/api'
 
 const STORAGE_KEY = 'gofundbot_positions'
 const today = new Date().toISOString().split('T')[0]
+const { echartThemeName } = useEChartsTheme()
+const cssColor = (name, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
 
 const positions = ref([])
 const helperText = ref('')
@@ -669,8 +672,10 @@ const calendarPnl = computed(() => {
 
 const renderPnlBarChart = () => {
   if (!pnlBarChartEl.value || positions.value.length === 0) return
-  if (!pnlBarChart) pnlBarChart = echarts.init(pnlBarChartEl.value)
+  if (!pnlBarChart) pnlBarChart = echarts.init(pnlBarChartEl.value, echartThemeName.value)
 
+  const successColor = cssColor('--color-success', '#52c41a')
+  const dangerColor = cssColor('--color-danger', '#ff4d4f')
   const labels = positions.value.map(item => `${item.name || item.code}(${item.code})`)
   const values = positions.value.map(item => Number(profit(item).toFixed(2)))
 
@@ -684,7 +689,7 @@ const renderPnlBarChart = () => {
         type: 'bar',
         data: values,
         itemStyle: {
-          color: params => (params.value >= 0 ? '#16a34a' : '#dc2626')
+          color: params => (params.value >= 0 ? successColor : dangerColor)
         }
       }
     ]
@@ -693,8 +698,9 @@ const renderPnlBarChart = () => {
 
 const renderReturnTrendChart = () => {
   if (!returnTrendChartEl.value || positions.value.length === 0) return
-  if (!returnTrendChart) returnTrendChart = echarts.init(returnTrendChartEl.value)
+  if (!returnTrendChart) returnTrendChart = echarts.init(returnTrendChartEl.value, echartThemeName.value)
 
+  const primaryColor = cssColor('--color-primary', '#1677ff')
   const seriesData = buildPortfolioReturnSeries()
   returnTrendChart.setOption({
     tooltip: { trigger: 'axis', valueFormatter: value => `${Number(value).toFixed(2)}%` },
@@ -707,8 +713,8 @@ const renderReturnTrendChart = () => {
         type: 'line',
         smooth: true,
         data: seriesData.map(i => i.rate),
-        lineStyle: { width: 2, color: '#2563eb' },
-        areaStyle: { color: 'rgba(37,99,235,0.15)' }
+        lineStyle: { width: 2, color: primaryColor },
+        areaStyle: { color: primaryColor + '26' }
       }
     ]
   })
@@ -804,6 +810,12 @@ const formatSigned = value => `${value >= 0 ? '+' : ''}${formatNumber(value, 2)}
 watch(positions, save, { deep: true })
 watch([quoteMap, historyMap], () => renderCharts(), { deep: true })
 
+watch(echartThemeName, () => {
+  if (pnlBarChart) { pnlBarChart.dispose(); pnlBarChart = null }
+  if (returnTrendChart) { returnTrendChart.dispose(); returnTrendChart = null }
+  renderCharts()
+})
+
 onMounted(async () => {
   load()
   await Promise.all([refreshRealtimeQuotes(), loadHistoryForPositions()])
@@ -821,46 +833,48 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.positions-container { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+.positions-container { background: var(--bg-card); border-radius: 12px; padding: 16px; box-shadow: var(--shadow-md); }
 .positions-header { margin-bottom: 16px; }
 .positions-header h2 { margin: 0 0 6px; }
-.positions-header p { margin: 0; color: #666; }
+.positions-header p { margin: 0; color: var(--text-secondary); }
 .position-form { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 10px; margin-bottom: 10px; align-items: end; }
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field label { font-size: 12px; color: #555; }
-.position-form input, .position-form button { border: 1px solid #d9d9d9; border-radius: 8px; padding: 8px 10px; font-size: 14px; }
-.position-form button { background: #2563eb; color: #fff; border: none; cursor: pointer; height: 38px; }
+.field label { font-size: 12px; color: var(--text-secondary); }
+.position-form input, .position-form button { border: 1px solid var(--border-default); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+.position-form button { background: var(--color-primary); color: var(--text-inverse); border: none; cursor: pointer; height: 38px; }
 .position-form button:disabled { opacity: .6; cursor: not-allowed; }
-.tips { margin: 6px 0 12px; color: #475569; font-size: 13px; }
+.tips { margin: 6px 0 12px; color: var(--text-secondary); font-size: 13px; }
 
-.operation-panel { border: 1px dashed #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 14px; background: #f8fafc; }
+.operation-panel { border: 1px dashed var(--border-default); border-radius: 10px; padding: 12px; margin-bottom: 14px; background: var(--bg-subtle); }
 .operation-panel h3 { margin: 0 0 6px; font-size: 15px; }
-.operation-tip { margin: 0 0 10px; color: #334155; font-size: 13px; }
+.operation-tip { margin: 0 0 10px; color: var(--text-secondary); font-size: 13px; }
 .operation-form { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 10px; align-items: end; }
-.operation-form select, .operation-form input, .operation-form button { border: 1px solid #d9d9d9; border-radius: 8px; padding: 8px 10px; font-size: 14px; }
-.operation-form button { background: #0f766e; color: #fff; border: none; cursor: pointer; height: 38px; }
+.operation-form select, .operation-form input, .operation-form button { border: 1px solid var(--border-default); border-radius: 8px; padding: 8px 10px; font-size: 14px; background: var(--bg-card); color: var(--text-primary); }
+.operation-form button { background: var(--color-primary); color: var(--text-inverse); border: none; cursor: pointer; height: 38px; }
 .operation-form button:disabled { opacity: .6; cursor: not-allowed; }
 .summary { margin: 8px 0 12px; display: flex; flex-wrap: wrap; gap: 12px; font-weight: 600; }
-.up { color: #16a34a; }
-.down { color: #dc2626; }
+.up { color: var(--color-success); }
+.down { color: var(--color-danger); }
 
 .calendar-pnl { display: grid; grid-template-columns: repeat(3, minmax(140px, 1fr)); gap: 12px; margin-bottom: 14px; }
-.pnl-card { border-radius: 10px; padding: 10px 12px; border: 1px solid #e5e7eb; }
-.pnl-card .label { font-size: 12px; color: #475569; }
-.pnl-card .value { font-size: 18px; font-weight: 700; margin-top: 4px; }
-.up-bg { background: rgba(22,163,74,.08); }
-.down-bg { background: rgba(220,38,38,.08); }
+.pnl-card { border-radius: 10px; padding: 10px 12px; border: 1px solid var(--border-default); }
+.pnl-card .label { font-size: 12px; color: var(--text-secondary); }
+.pnl-card .value { font-size: 18px; font-weight: 700; margin-top: 4px; color: var(--text-primary); }
+.up-bg { background: var(--color-success-bg); }
+.down-bg { background: var(--color-danger-bg); }
 
 .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-.chart-card { border: 1px solid #eee; border-radius: 10px; padding: 10px; background: #fff; }
-.chart-card h3 { margin: 0 0 8px; font-size: 15px; }
+.chart-card { border: 1px solid var(--border-subtle); border-radius: 10px; padding: 10px; background: var(--bg-card); }
+.chart-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--text-primary); }
 .chart-el { height: 300px; width: 100%; }
 
 .positions-table-wrap { overflow: auto; }
 .positions-table { width: 100%; border-collapse: collapse; min-width: 1320px; }
-.positions-table th, .positions-table td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; font-size: 13px; }
-.empty { padding: 18px; text-align: center; color: #888; background: #f8fafc; border-radius: 8px; }
-.danger { background: #ef4444; color: #fff; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.positions-table th, .positions-table td { border-bottom: 1px solid var(--border-subtle); padding: 10px; text-align: left; font-size: 13px; }
+.positions-table th { color: var(--text-secondary); }
+.positions-table td { color: var(--text-primary); }
+.empty { padding: 18px; text-align: center; color: var(--text-tertiary); background: var(--bg-subtle); border-radius: 8px; }
+.danger { background: var(--color-danger); color: var(--text-inverse); border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
 
 @media (max-width: 1200px) {
   .position-form { grid-template-columns: repeat(2, minmax(140px, 1fr)); }

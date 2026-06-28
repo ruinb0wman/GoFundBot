@@ -532,9 +532,9 @@ export default {
 
 <style scoped>
 .research-dashboard {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   min-height: calc(100vh - 120px);
 }
@@ -544,7 +544,7 @@ export default {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .research-header h2 {
@@ -554,7 +554,7 @@ export default {
 
 .research-header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -565,15 +565,15 @@ export default {
 }
 
 .updated-time {
-  color: #9ca3af;
+  color: var(--text-tertiary);
   font-size: 12px;
 }
 
 .refresh-btn {
-  border: 1px solid #1677ff;
+  border: 1px solid var(--color-primary);
   border-radius: 8px;
-  background: #1677ff;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
   padding: 8px 16px;
   cursor: pointer;
 }
@@ -590,9 +590,9 @@ export default {
 }
 
 .tab-btn {
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #4b5563;
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-secondary);
   border-radius: 8px 8px 0 0;
   padding: 10px 16px;
   cursor: pointer;
@@ -600,9 +600,9 @@ export default {
 }
 
 .tab-btn.active {
-  color: #1677ff;
-  border-color: #1677ff;
-  background: #f0f5ff;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .tab-section {
@@ -613,15 +613,15 @@ export default {
   margin: 24px;
   padding: 48px;
   text-align: center;
-  color: #6b7280;
-  border: 1px solid #e5e7eb;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
-  background: #f9fafb;
+  background: var(--bg-subtle);
 }
 
 .state-card.error {
-  color: #b91c1c;
-  background: #fff1f2;
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
 .metric-grid {
@@ -632,15 +632,15 @@ export default {
 }
 
 .metric-card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 14px;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .metric-label {
   display: block;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 12px;
   margin-bottom: 8px;
 }
@@ -652,7 +652,7 @@ export default {
 }
 
 .metric-card small {
-  color: #9ca3af;
+  color: var(--text-tertiary);
 }
 
 .split-grid {
@@ -662,17 +662,17 @@ export default {
 }
 
 .panel {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .panel-title {
   padding: 12px 14px;
   font-weight: 700;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-page);
 }
 
 .data-table,
@@ -716,7 +716,7 @@ export default {
 .compact-table th,
 .compact-table td {
   padding: 10px 8px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle);
   text-align: left;
   vertical-align: middle;
 }
@@ -728,8 +728,8 @@ export default {
 
 .data-table th,
 .compact-table th {
-  color: #6b7280;
-  background: #fbfdff;
+  color: var(--text-secondary);
+  background: var(--bg-card);
   font-weight: 600;
 }
 
@@ -740,13 +740,13 @@ export default {
 
 .data-table tbody tr:hover,
 .compact-table tbody tr:hover {
-  background: #f8fafc;
+  background: var(--bg-page);
 }
 
 .data-table td span {
   display: block;
   max-width: 220px;
-  color: #6b7280;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -766,13 +766,13 @@ export default {
 }
 
 .fund-identity strong {
-  color: #111827;
+  color: var(--text-primary);
   font-weight: 700;
 }
 
 .fund-identity span {
   margin-top: 2px;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-weight: 400;
 }
@@ -787,7 +787,7 @@ export default {
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .group-row:last-child {
@@ -796,14 +796,14 @@ export default {
 
 .group-row span {
   display: block;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   font-size: 12px;
 }
 
 .bar {
   height: 8px;
   border-radius: 999px;
-  background: #eef2ff;
+  background: var(--color-primary-bg);
   overflow: hidden;
 }
 
@@ -811,7 +811,7 @@ export default {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #1677ff;
+  background: var(--color-primary);
 }
 
 .card-grid {
@@ -821,10 +821,10 @@ export default {
 }
 
 .fund-card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .fund-card-head {
@@ -832,8 +832,8 @@ export default {
   justify-content: space-between;
   gap: 12px;
   padding: 14px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-page);
 }
 
 .fund-card-head h3 {
@@ -843,7 +843,7 @@ export default {
 
 .fund-card-head p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -855,10 +855,10 @@ export default {
 .notice {
   margin-bottom: 14px;
   padding: 10px 12px;
-  border: 1px solid #fde68a;
+  border: 1px solid var(--color-warning);
   border-radius: 8px;
-  background: #fffbeb;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--text-primary);
   font-size: 13px;
 }
 
@@ -886,7 +886,7 @@ export default {
   gap: 12px;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .sector-row:last-child {
@@ -895,13 +895,13 @@ export default {
 
 .sector-row strong {
   display: block;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .sector-row span {
   display: block;
   margin-top: 2px;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -915,11 +915,11 @@ export default {
 }
 
 .up {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 .down {
-  color: #10b981;
+  color: var(--color-success);
 }
 
 @media (max-width: 1100px) {
@@ -943,12 +943,12 @@ export default {
   align-items: center;
   gap: 10px;
   padding: 12px 20px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.16);
+  box-shadow: var(--shadow-lg);
   font-size: 14px;
-  color: #111827;
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
@@ -961,8 +961,8 @@ export default {
   height: 24px;
   border: none;
   border-radius: 6px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
@@ -973,7 +973,7 @@ export default {
 }
 
 .toast-close:hover {
-  background: #e5e7eb;
+  background: var(--border-default);
 }
 
 .toast-fade-enter-active,

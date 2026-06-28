@@ -124,7 +124,7 @@ export default {
 .section-header h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -136,21 +136,21 @@ export default {
 .period-tab {
   padding: 4px 8px;
   font-size: 11px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  background: white;
-  color: #666;
+  background: var(--bg-card);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .period-tab:hover {
-  border-color: #1677ff;
-  color: #1677ff;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .period-tab.active {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   color: white;
   border-color: transparent;
 }
@@ -171,7 +171,7 @@ export default {
 }
 
 .fund-item:hover {
-  background: #f5f7fa;
+  background: var(--bg-page);
 }
 
 .rank {
@@ -183,8 +183,8 @@ export default {
   justify-content: center;
   font-size: 12px;
   font-weight: 600;
-  color: #999;
-  background: #f0f0f0;
+  color: var(--text-tertiary);
+  background: var(--bg-subtle);
   margin-right: 10px;
   flex-shrink: 0;
 }
@@ -213,7 +213,7 @@ export default {
 .fund-name {
   font-size: 13px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -221,7 +221,7 @@ export default {
 
 .fund-code {
   font-size: 11px;
-  color: #999;
+  color: var(--text-tertiary);
   margin-top: 2px;
 }
 
@@ -232,11 +232,11 @@ export default {
 }
 
 .return-rate.positive {
-  color: #e74c3c;
+  color: var(--color-danger);
 }
 
 .return-rate.negative {
-  color: #27ae60;
+  color: var(--color-success);
 }
 
 .empty-state {
@@ -244,7 +244,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 14px;
 }
 
@@ -254,16 +254,16 @@ export default {
 }
 
 .fund-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--bg-subtle);
   border-radius: 2px;
 }
 
 .fund-list::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: var(--border-default);
   border-radius: 2px;
 }
 
 .fund-list::-webkit-scrollbar-thumb:hover {
-  background: #999;
+  background: var(--text-tertiary);
 }
 </style>

@@ -133,15 +133,15 @@ export default {
   align-items: center;
   padding: 8px 12px;
   gap: 8px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border-subtle);
   transition: all 0.15s;
   cursor: pointer;
 }
 
 .list-item:last-child { border-bottom: none; }
-.list-item:hover { background: #f9fafb; }
-.list-item.selected { background: #eef2ff; }
-.list-item.dragging { opacity: 0.5; background: #eef2ff; }
+.list-item:hover { background: var(--bg-subtle); }
+.list-item.selected { background: var(--color-primary-bg); }
+.list-item.dragging { opacity: 0.5; background: var(--color-primary-bg); }
 
 .col-checkbox { width: 24px; flex-shrink: 0; }
 .col-drag { width: 20px; flex-shrink: 0; }
@@ -152,7 +152,7 @@ export default {
 .col-action { width: 30px; flex-shrink: 0; display: flex; justify-content: flex-end; }
 
 .fund-name {
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
@@ -160,26 +160,26 @@ export default {
   text-overflow: ellipsis;
 }
 
-.fund-code { color: #9ca3af; font-size: 11px; margin-top: 1px; }
-.nav-value { color: #1f2937; font-size: 12px; font-weight: 500; }
-.nav-date { color: #9ca3af; font-size: 10px; margin-top: 1px; }
+.fund-code { color: var(--text-tertiary); font-size: 11px; margin-top: 1px; }
+.nav-value { color: var(--text-primary); font-size: 12px; font-weight: 500; }
+.nav-date { color: var(--text-tertiary); font-size: 10px; margin-top: 1px; }
 
-.change-up { color: #ef4444; }
-.change-down { color: #10b981; }
-.change-flat { color: #9ca3af; }
+.change-up { color: var(--color-danger); }
+.change-down { color: var(--color-success); }
+.change-flat { color: var(--text-tertiary); }
 
-.checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: #1677ff; }
+.checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--color-primary); }
 
-.drag-handle { cursor: grab; color: #9ca3af; font-size: 14px; user-select: none; }
+.drag-handle { cursor: grab; color: var(--text-tertiary); font-size: 14px; user-select: none; }
 .drag-handle:active { cursor: grabbing; }
 
 .btn-compare {
   width: 22px;
   height: 22px;
-  border: 2px solid #1677ff;
+  border: 2px solid var(--color-primary);
   border-radius: 50%;
-  background: white;
-  color: #1677ff;
+  background: var(--bg-card);
+  color: var(--color-primary);
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
@@ -190,17 +190,17 @@ export default {
 }
 
 .btn-compare:hover {
-  background: #1677ff;
+  background: var(--color-primary);
   color: white;
 }
 
 .btn-compare.in-compare {
-  background: #1677ff;
+  background: var(--color-primary);
   color: white;
 }
 
 .list-item.in-compare {
-  background: #f0f5ff;
+  background: var(--color-primary-bg);
 }
 
 .btn-icon {
@@ -211,22 +211,22 @@ export default {
   background: transparent;
   cursor: pointer;
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.btn-icon:hover { background: #fee2e2; color: #ef4444; }
+.btn-icon:hover { background: var(--color-danger-bg); color: var(--color-danger); }
 
 .btn-add-realtime {
   font-size: 16px;
   font-weight: bold;
-  color: #10b981;
+  color: var(--color-success);
 }
 
 .btn-add-realtime:hover {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 </style>

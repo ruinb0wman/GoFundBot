@@ -579,7 +579,7 @@ export default {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 16px;
-  background: #f0f2f5;
+  background: var(--bg-hover);
   min-height: 100vh;
 }
 
@@ -626,9 +626,9 @@ export default {
 
 /* 卡片基础样式 */
 .card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 
@@ -673,14 +673,14 @@ export default {
 .loading {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .loading-spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #1677ff;
+  border: 4px solid var(--bg-subtle);
+  border-top: 4px solid var(--color-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 20px;
@@ -700,8 +700,8 @@ export default {
 .error {
   text-align: center;
   padding: 60px 40px;
-  color: #d32f2f;
-  background: #ffebee;
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
   border-radius: 12px;
   margin: 20px 0;
 }
@@ -717,7 +717,7 @@ export default {
 }
 
 .retry-btn {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   color: white;
   border: none;
   padding: 12px 32px;
@@ -730,7 +730,7 @@ export default {
 
 .retry-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .retry-btn:active {
@@ -741,8 +741,8 @@ export default {
 .empty-state {
   text-align: center;
   padding: 80px 20px;
-  color: #666;
-  background: white;
+  color: var(--text-secondary);
+  background: var(--bg-card);
   border-radius: 12px;
   margin: 20px 0;
 }
@@ -755,7 +755,7 @@ export default {
 
 .empty-state p {
   font-size: 18px;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 /* 响应式设计 */
@@ -826,7 +826,7 @@ export default {
 
 .clickable:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-lg);
 }
 
 /* 模态框样式 */
@@ -836,7 +836,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bg-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -845,7 +845,7 @@ export default {
 }
 
 .modal-content {
-  background: white;
+  background: var(--bg-elevated);
   border-radius: 16px;
   width: 90vw;
   max-width: 900px;
@@ -854,7 +854,7 @@ export default {
   position: relative;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-lg);
   animation: modalIn 0.3s ease;
 }
 
@@ -876,7 +876,7 @@ export default {
   width: 36px;
   height: 36px;
   border: none;
-  background: #f0f0f0;
+  background: var(--bg-subtle);
   border-radius: 50%;
   font-size: 24px;
   cursor: pointer;
@@ -888,7 +888,7 @@ export default {
 }
 
 .modal-close:hover {
-  background: #e0e0e0;
+  background: var(--bg-hover);
 }
 
 .modal-body {

@@ -48,6 +48,7 @@
 <script>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 
 export default {
   name: 'FundRankingTrend',
@@ -69,6 +70,17 @@ export default {
     const rankingChartEl = ref(null)
     let rankingChartInstance = null
     const selectedRange = ref('1y')
+
+    const { echartThemeName } = useEChartsTheme()
+
+    const cssColor = (name, fallback = '') => {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+      return val || fallback
+    }
+    const hexToRgba = (hex, alpha) => {
+      const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16)
+      return `rgba(${r},${g},${b},${alpha})`
+    }
 
     const timeRanges = [
       { label: '近1年', value: '1y' },
@@ -169,7 +181,7 @@ export default {
         rankingChartInstance.dispose()
       }
 
-      rankingChartInstance = echarts.init(rankingChartEl.value)
+      rankingChartInstance = echarts.init(rankingChartEl.value, echartThemeName.value)
 
       // 准备排名百分比数据（Y轴反转，越小越好）- 使用过滤后的数据
       const percentData = filteredData.value.map(item => [item.x, item.percent])
@@ -212,10 +224,10 @@ export default {
           show: false,
           dimension: 1,
           pieces: [
-            { lte: 10, color: '#52c41a' },  // 前10%
-            { gt: 10, lte: 25, color: '#91cc75' }, // 10-25%
-            { gt: 25, lte: 50, color: '#fac858' }, // 25-50%
-            { gt: 50, color: '#ff4d4f' }  // 50%以后
+            { lte: 10, color: cssColor('--color-success', '#52c41a') },
+            { gt: 10, lte: 25, color: cssColor('--chart-2', '#91cc75') },
+            { gt: 25, lte: 50, color: cssColor('--chart-3', '#fac858') },
+            { gt: 50, color: cssColor('--color-danger', '#ff4d4f') }
           ]
         },
         series: [{
@@ -235,9 +247,9 @@ export default {
             silent: true,
             symbol: 'none',
             data: [
-              { yAxis: 10, label: { formatter: '后10%' }, lineStyle: { color: '#52c41a', type: 'dashed' } },
-              { yAxis: 25, label: { formatter: '后25%' }, lineStyle: { color: '#91cc75', type: 'dashed' } },
-              { yAxis: 50, label: { formatter: '中位数' }, lineStyle: { color: '#fac858', type: 'dashed' } }
+              { yAxis: 10, label: { formatter: '后10%' }, lineStyle: { color: cssColor('--color-success', '#52c41a'), type: 'dashed' } },
+              { yAxis: 25, label: { formatter: '后25%' }, lineStyle: { color: cssColor('--chart-2', '#91cc75'), type: 'dashed' } },
+              { yAxis: 50, label: { formatter: '中位数' }, lineStyle: { color: cssColor('--chart-3', '#fac858'), type: 'dashed' } }
             ]
           }
         }]
@@ -257,6 +269,14 @@ export default {
         initRankingChart()
       })
     }, { deep: true })
+
+    watch(echartThemeName, () => {
+      if (rankingChartInstance) {
+        rankingChartInstance.dispose()
+        rankingChartInstance = null
+        nextTick(() => initRankingChart())
+      }
+    })
 
     return {
       rankingChartEl,
@@ -281,7 +301,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   color: white;
   padding: 10px 16px;
   flex-shrink: 0;
@@ -320,7 +340,7 @@ export default {
 
 .range-btn.active {
   background: white;
-  color: #1677ff;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -360,38 +380,38 @@ export default {
 .ranking-table td {
   padding: 6px 8px;
   text-align: center;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .ranking-table th {
-  background: #f5f5f5;
+  background: var(--bg-subtle);
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .rank-value {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .excellent {
-  color: #f81303;
+  color: var(--color-danger);
   font-weight: 600;
 }
 
 .good {
-  color: #f76b58;
+  color: var(--color-danger);
   font-weight: 500;
 }
 
 .normal {
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .no-data {
   text-align: center;
   padding: 60px 20px;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .no-data p {

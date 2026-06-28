@@ -38,7 +38,7 @@
         <div class="score-card" :class="scoreColorClass">
           <div class="score-ring">
             <svg viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="45" fill="none" stroke="#e8e8e8" stroke-width="8"/>
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--border-default)" stroke-width="8"/>
               <circle cx="50" cy="50" r="45" fill="none" :stroke="scoreColor" stroke-width="8"
                       :stroke-dasharray="scoreProgress" stroke-linecap="round"
                       transform="rotate(-90 50 50)"/>
@@ -279,11 +279,11 @@ defineExpose({
 
 <style scoped>
 .fund-ai-analysis {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  border: 1px solid #f0f0f0;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-subtle);
 }
 
 .header {
@@ -310,7 +310,7 @@ defineExpose({
 }
 
 .badge {
-  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  background: var(--color-success);
   color: white;
   font-size: 0.7em;
   padding: 2px 8px;
@@ -324,7 +324,7 @@ defineExpose({
 }
 
 .analyze-btn {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   color: white;
   border: none;
   padding: 6px 12px;
@@ -339,21 +339,21 @@ defineExpose({
 }
 
 .analyze-btn.mini {
-  background: #f0f0f0;
-  color: #666;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   box-shadow: none;
 }
 
 .analyze-btn.mini:hover {
-  background: #e0e0e0;
-  color: #333;
+  background: var(--bg-hover);
+  color: var(--text-primary);
   transform: none;
 }
 
 .close-btn {
   background: transparent;
   border: none;
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 1.2em;
   cursor: pointer;
   padding: 4px 8px;
@@ -365,8 +365,8 @@ defineExpose({
 }
 
 .close-btn:hover {
-  background: #f5f5f5;
-  color: #666;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
 }
 
 /* 评分区域 */
@@ -407,14 +407,14 @@ defineExpose({
   font-weight: bold;
 }
 
-.score-excellent .score-value { color: #52c41a; }
-.score-good .score-value { color: #1677ff; }
-.score-normal .score-value { color: #faad14; }
-.score-poor .score-value { color: #f5222d; }
+.score-excellent .score-value { color: var(--color-success); }
+.score-good .score-value { color: var(--color-primary); }
+.score-normal .score-value { color: var(--color-warning); }
+.score-poor .score-value { color: var(--color-danger); }
 
 .score-label {
   margin-top: 8px;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9em;
 }
 
@@ -425,19 +425,19 @@ defineExpose({
   gap: 12px;
   padding: 16px 24px;
   border-radius: 12px;
-  background: #f5f5f5;
+  background: var(--bg-subtle);
 }
 
 .advice-buy {
-  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+  background: linear-gradient(135deg, var(--color-success-bg) 0%, var(--color-success-border) 100%);
 }
 
 .advice-sell {
-  background: linear-gradient(135deg, #fff1f0 0%, #ffa39e 100%);
+  background: linear-gradient(135deg, var(--color-danger-bg) 0%, var(--color-danger-border) 100%);
 }
 
 .advice-hold {
-  background: linear-gradient(135deg, #e6f7ff 0%, #91d5ff 100%);
+  background: linear-gradient(135deg, var(--color-primary-bg) 0%, var(--color-primary-border) 100%);
 }
 
 .advice-icon {
@@ -451,18 +451,18 @@ defineExpose({
 
 /* 摘要区域 */
 .summary-section {
-  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-hover) 100%);
   padding: 16px 20px;
   border-radius: 10px;
   margin-bottom: 20px;
-  border-left: 4px solid #1677ff;
+  border-left: 4px solid var(--color-primary);
 }
 
 /* 深度分析报告 */
 .detailed-report {
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-default);
 }
 
 .report-header {
@@ -479,24 +479,24 @@ defineExpose({
 .detailed-report h4 {
   margin: 0;
   font-size: 1.1em;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .markdown-content {
-  color: #444;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
 .markdown-content :deep(h3) {
   font-size: 1.1em;
-  color: #1890ff;
+  color: var(--color-info);
   margin: 16px 0 12px;
   font-weight: 600;
 }
 
 .markdown-content :deep(h4) {
   font-size: 1em;
-  color: #555;
+  color: var(--text-secondary);
   margin: 12px 0 8px;
   font-weight: 600;
 }
@@ -518,7 +518,7 @@ defineExpose({
 .summary-section p {
   margin: 0;
   line-height: 1.8;
-  color: #333;
+  color: var(--text-primary);
 }
 
 /* 仪表盘 */
@@ -534,13 +534,13 @@ defineExpose({
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: #fafafa;
+  background: var(--bg-subtle);
   border-radius: 10px;
   transition: all 0.3s ease;
 }
 
 .dash-item:hover {
-  background: #f0f0f0;
+  background: var(--bg-hover);
   transform: translateY(-2px);
 }
 
@@ -555,7 +555,7 @@ defineExpose({
 
 .dash-content label {
   font-size: 0.8em;
-  color: #999;
+  color: var(--text-tertiary);
   margin-bottom: 4px;
 }
 
@@ -564,10 +564,10 @@ defineExpose({
   font-size: 1em;
 }
 
-.eval-excellent { color: #52c41a; }
-.eval-good { color: #1890ff; }
-.eval-normal { color: #666; }
-.eval-poor { color: #f5222d; }
+.eval-excellent { color: var(--color-success); }
+.eval-good { color: var(--color-info); }
+.eval-normal { color: var(--text-secondary); }
+.eval-poor { color: var(--color-danger); }
 
 /* 详情网格 */
 .details-grid {
@@ -583,11 +583,11 @@ defineExpose({
 }
 
 .detail-col.highlights {
-  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 50%);
+  background: linear-gradient(135deg, var(--color-success-bg) 0%, var(--color-success-border) 50%);
 }
 
 .detail-col.risks {
-  background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 50%);
+  background: linear-gradient(135deg, var(--color-warning-bg) 0%, var(--color-warning-border) 50%);
 }
 
 .detail-col h4 {
@@ -613,17 +613,17 @@ defineExpose({
   align-items: flex-start;
   gap: 8px;
   margin-bottom: 8px;
-  color: #333;
+  color: var(--text-primary);
   line-height: 1.5;
 }
 
 .bullet {
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 /* 新闻区域 */
 .news-section {
-  background: #f9f9f9;
+  background: var(--bg-subtle);
   padding: 16px;
   border-radius: 10px;
   margin-bottom: 16px;
@@ -644,8 +644,8 @@ defineExpose({
 
 .news-section li {
   padding: 8px 0;
-  border-bottom: 1px dashed #e8e8e8;
-  color: #666;
+  border-bottom: 1px dashed var(--border-default);
+  color: var(--text-secondary);
   font-size: 0.9em;
 }
 
@@ -656,10 +656,10 @@ defineExpose({
 /* 免责声明 */
 .disclaimer {
   text-align: center;
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 0.8em;
   padding: 12px;
-  background: #fafafa;
+  background: var(--bg-subtle);
   border-radius: 8px;
 }
 
@@ -680,8 +680,8 @@ defineExpose({
 .spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #1677ff;
+  border: 4px solid var(--bg-subtle);
+  border-top: 4px solid var(--color-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -694,7 +694,7 @@ defineExpose({
 .loading-dots span {
   width: 8px;
   height: 8px;
-  background: #1677ff;
+  background: var(--color-primary);
   border-radius: 50%;
   animation: bounce 1.4s ease-in-out infinite;
 }
@@ -715,13 +715,13 @@ defineExpose({
 
 .loading-text {
   font-size: 1.1em;
-  color: #333;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .loading-sub {
   font-size: 0.9em;
-  color: #999;
+  color: var(--text-tertiary);
   margin: 8px 0 0;
 }
 
@@ -729,7 +729,7 @@ defineExpose({
 .empty-state {
   text-align: center;
   padding: 50px 20px;
-  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-hover) 100%);
   border-radius: 10px;
 }
 
@@ -740,13 +740,13 @@ defineExpose({
 
 .empty-title {
   font-size: 1em;
-  color: #666;
+  color: var(--text-secondary);
   margin: 0 0 8px;
 }
 
 .empty-sub {
   font-size: 0.85em;
-  color: #999;
+  color: var(--text-tertiary);
   margin: 0;
 }
 
@@ -754,7 +754,7 @@ defineExpose({
 .error {
   text-align: center;
   padding: 40px 20px;
-  background: #fff1f0;
+  background: var(--color-danger-bg);
   border-radius: 10px;
 }
 
@@ -763,12 +763,12 @@ defineExpose({
 }
 
 .error p {
-  color: #f5222d;
+  color: var(--color-danger);
   margin: 12px 0;
 }
 
 .retry-btn {
-  background: #f5222d;
+  background: var(--color-danger);
   color: white;
   border: none;
   padding: 8px 20px;
@@ -777,7 +777,7 @@ defineExpose({
 }
 
 .retry-btn:hover {
-  background: #cf1322;
+  background: var(--color-danger);
 }
 
 /* 响应式 */

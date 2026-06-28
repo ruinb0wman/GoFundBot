@@ -81,6 +81,7 @@
 <script>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 
 export default {
   name: 'FundChart',
@@ -103,6 +104,17 @@ export default {
     const activeTab = ref('performance')
     const selectedRange = ref('1y')
     let chartInstance = null
+
+    const { echartThemeName } = useEChartsTheme()
+
+    const cssColor = (name, fallback = '') => {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+      return val || fallback
+    }
+    const hexToRgba = (hex, alpha) => {
+      const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16)
+      return `rgba(${r},${g},${b},${alpha})`
+    }
 
     const timeRanges = [
       { label: '近3月', value: '3m' },
@@ -279,7 +291,7 @@ export default {
     const initChart = () => {
       if (!chartEl.value) return
       if (!chartInstance) {
-          chartInstance = echarts.init(chartEl.value)
+          chartInstance = echarts.init(chartEl.value, echartThemeName.value)
       }
       updateChart()
     }
@@ -330,11 +342,11 @@ export default {
               data: chartData,
               smooth: true,
               symbol: 'none',
-              lineStyle: { width: 2, color: '#007bff' },
+              lineStyle: { width: 2, color: cssColor('--color-primary', '#1677ff') },
               areaStyle: {
                   color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                      { offset: 0, color: 'rgba(0, 123, 255, 0.2)' },
-                      { offset: 1, color: 'rgba(0, 123, 255, 0.0)' }
+                      { offset: 0, color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.2) },
+                      { offset: 1, color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0) }
                   ])
               }
           })
@@ -352,7 +364,13 @@ export default {
           const comparisonData = props.grandTotal || []
           
           if (comparisonData.length > 0) {
-              const colors = ['#007bff', '#91cc75', '#fac858', '#ee6666', '#5470c6'];
+              const colors = [
+                cssColor('--chart-1', '#1677ff'),
+                cssColor('--chart-2', '#52c41a'),
+                cssColor('--chart-3', '#faad14'),
+                cssColor('--chart-4', '#ff4d4f'),
+                cssColor('--chart-5', '#73c0de')
+              ];
               
               // Update Legend Info
               comparisonInfo.value = comparisonData.map((item, index) => ({
@@ -405,20 +423,20 @@ export default {
                   data: chartData,
                   smooth: true,
                   symbol: 'none',
-                  lineStyle: { width: 2, color: '#88aaff' },
+                  lineStyle: { width: 2, color: cssColor('--color-primary', '#1677ff') },
                   markArea: {
-                      itemStyle: { color: 'rgba(255, 230, 230, 0.6)' },
+                      itemStyle: { color: hexToRgba(cssColor('--color-danger-bg', '#fff1f0'), 0.6) },
                       data: []
                   },
                   markPoint: {
                       symbol: 'circle',
                       symbolSize: 8,
-                      label: {
-                          show: true,
-                          color: '#fff',
-                          padding: [4, 8],
-                          borderRadius: 4
-                      },
+                          label: {
+                              show: true,
+                              color: cssColor('--text-inverse', '#fff'),
+                              padding: [4, 8],
+                              borderRadius: 4
+                          },
                       data: []
                   }
               }
@@ -434,17 +452,17 @@ export default {
                   const points = [];
                   points.push({
                       coord: [drawdownInfo.peakDate, drawdownInfo.peakValue],
-                      itemStyle: { color: '#ff9800' }, 
+                       itemStyle: { color: cssColor('--color-warning', '#faad14') }, 
                       label: { show: false } 
                   });
                    
                   points.push({
                        coord: [drawdownInfo.valleyDate, drawdownInfo.valleyValue],
-                       itemStyle: { color: '#00bfa5' },
+                       itemStyle: { color: cssColor('--color-success', '#52c41a') },
                        label: {
                            offset: [0, 15],
                            formatter: `最大回撤${drawdownInfo.val}%`,
-                           backgroundColor: 'rgba(0, 191, 165, 0.7)',
+                           backgroundColor: hexToRgba(cssColor('--color-success', '#52c41a'), 0.7),
                            position: 'top'
                        }
                   });
@@ -452,11 +470,11 @@ export default {
                   if (drawdownInfo.recoveryDate) {
                        points.push({
                            coord: [drawdownInfo.recoveryDate, drawdownInfo.recoveryValue],
-                           itemStyle: { color: '#ff5252' },
+                           itemStyle: { color: cssColor('--color-danger', '#ff4d4f') },
                            label: {
                                offset: [0, -15],
                                formatter: `${drawdownInfo.days}天修复`,
-                               backgroundColor: 'rgba(255, 82, 82, 0.7)',
+                               backgroundColor: hexToRgba(cssColor('--color-danger', '#ff4d4f'), 0.7),
                                position: 'bottom'
                            }
                        });
@@ -487,6 +505,14 @@ export default {
     watch([() => props.netWorthTrend, () => props.grandTotal], () => {
       nextTick(() => updateChart()) 
     }, { deep: true })
+
+    watch(echartThemeName, () => {
+      if (chartInstance) {
+        chartInstance.dispose()
+        chartInstance = null
+        nextTick(() => initChart())
+      }
+    })
     
     return {
       chartEl,
@@ -515,7 +541,7 @@ export default {
 
 .top-tabs {
   display: flex;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .tab-item {
@@ -523,14 +549,14 @@ export default {
   text-align: center;
   padding: 15px 0;
   font-size: 16px;
-  color: #666;
+  color: var(--text-secondary);
   cursor: pointer;
   position: relative;
   font-weight: 500;
 }
 
 .tab-item.active {
-  color: #333;
+  color: var(--text-primary);
   font-weight: bold;
 }
 
@@ -542,7 +568,7 @@ export default {
   transform: translateX(-50%);
   width: 20px;
   height: 3px;
-  background: #333;
+  background: var(--color-primary);
   border-radius: 2px;
 }
 
@@ -562,7 +588,7 @@ export default {
     height: 3px;
     vertical-align: middle;
     margin-right: 5px;
-    background: #007bff;
+    background: var(--color-primary);
     border-radius: 2px;
 }
 
@@ -576,20 +602,20 @@ export default {
 .legend-line.green {
     width: 12px;
     height: 3px;
-    background: #00bfa5;
+    background: var(--color-success);
     margin-right: 5px;
 }
 
 .legend-box.pink {
     width: 12px;
     height: 12px;
-    background: rgba(255, 230, 230, 1);
+    background: var(--color-danger-bg);
     margin-right: 5px;
 }
 
 .label {
     font-size: 13px;
-    color: #999;
+    color: var(--text-tertiary);
 }
 
 .value {
@@ -602,11 +628,11 @@ export default {
 .value-row {
     font-size: 18px;
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
 }
 
-.text-red { color: #f5222d; }
-.text-green { color: #52c41a; }
+.text-red { color: var(--color-danger); }
+.text-green { color: var(--color-success); }
 
 .chart-container {
   padding: 0 10px;
@@ -628,15 +654,15 @@ export default {
 
 .range-item {
   padding: 4px 12px;
-  color: #999;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 13px;
   border-radius: 12px;
 }
 
 .range-item.active {
-  background: #e6f7ff;
-  color: #007bff;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
   font-weight: 500;
 }
 </style>

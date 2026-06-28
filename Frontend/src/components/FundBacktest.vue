@@ -329,6 +329,7 @@
 <script>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { backtestAPI, fundAPI } from '../services/api'
 import FundSearch from './FundSearch.vue'
 
@@ -345,6 +346,9 @@ export default {
   },
   setup(props) {
     const chartEl = ref(null)
+    const { echartThemeName } = useEChartsTheme()
+    const cssColor = (name, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+    const hexToRgba = (hex, a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})` }
     const loading = ref(false)
     const error = ref('')
     const result = ref(null)
@@ -554,7 +558,7 @@ export default {
         chartInstance.dispose()
       }
 
-      chartInstance = echarts.init(chartEl.value)
+      chartInstance = echarts.init(chartEl.value, echartThemeName.value)
       updateChart()
     }
 
@@ -564,12 +568,15 @@ export default {
 
       const timeline = result.value.timeline
       const dates = timeline.map(item => item.date)
-      
+      const primaryColor = cssColor('--color-primary', '#1677ff')
+      const dangerColor = cssColor('--color-danger', '#ff4d4f')
+      const warningColor = cssColor('--color-warning', '#faad14')
+      const tertiaryColor = cssColor('--text-tertiary', '#9ca3af')
+
       let series = []
       let yAxisName = ''
       
       if (chartType.value === 'value') {
-        // 市值变化图
         yAxisName = '金额（元）'
         series = [
           {
@@ -577,26 +584,25 @@ export default {
             type: 'line',
             data: timeline.map(item => item.invested),
             smooth: true,
-            lineStyle: { color: '#909399', width: 2 },
-            itemStyle: { color: '#909399' }
+            lineStyle: { color: tertiaryColor, width: 2 },
+            itemStyle: { color: tertiaryColor }
           },
           {
             name: '市值',
             type: 'line',
             data: timeline.map(item => item.value),
             smooth: true,
-            lineStyle: { color: '#409EFF', width: 2 },
-            itemStyle: { color: '#409EFF' },
+            lineStyle: { color: primaryColor, width: 2 },
+            itemStyle: { color: primaryColor },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
-                { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
+                { offset: 0, color: hexToRgba(primaryColor, 0.3) },
+                { offset: 1, color: hexToRgba(primaryColor, 0.05) }
               ])
             }
           }
         ]
       } else {
-        // 收益率图
         yAxisName = '收益率（%）'
         series = [
           {
@@ -604,18 +610,18 @@ export default {
             type: 'line',
             data: timeline.map(item => item.return_rate),
             smooth: true,
-            lineStyle: { color: '#F56C6C', width: 2 },
-            itemStyle: { color: '#F56C6C' },
+            lineStyle: { color: dangerColor, width: 2 },
+            itemStyle: { color: dangerColor },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(245, 108, 108, 0.3)' },
-                { offset: 1, color: 'rgba(245, 108, 108, 0.05)' }
+                { offset: 0, color: hexToRgba(dangerColor, 0.3) },
+                { offset: 1, color: hexToRgba(dangerColor, 0.05) }
               ])
             },
             markLine: {
               silent: true,
               symbol: 'none',
-              lineStyle: { color: '#E6A23C', type: 'dashed' },
+              lineStyle: { color: warningColor, type: 'dashed' },
               data: [{ yAxis: 0 }],
               label: { show: false }
             }
@@ -655,7 +661,7 @@ export default {
           data: dates,
           axisLabel: {
             formatter: (value) => {
-              return value.substring(5) // 只显示月-日
+              return value.substring(5)
             }
           }
         },
@@ -696,6 +702,17 @@ export default {
     watch(result, (newVal) => {
       if (newVal) {
         showDetail.value = false
+      }
+    })
+
+    // 监听主题变化
+    watch(echartThemeName, () => {
+      if (chartInstance) {
+        chartInstance.dispose()
+        chartInstance = null
+      }
+      if (result.value) {
+        nextTick(() => initChart())
       }
     })
 
@@ -745,15 +762,15 @@ export default {
 <style scoped>
 .fund-backtest {
   padding: 20px;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 .date-hint {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-top: 4px;
 }
 
@@ -765,12 +782,12 @@ export default {
 .backtest-header h3 {
   margin: 0 0 8px 0;
   font-size: 24px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .header-desc {
   margin: 0;
-  color: #909399;
+  color: var(--text-tertiary);
   font-size: 14px;
 }
 
@@ -786,7 +803,7 @@ export default {
 }
 
 .select-hint {
-  color: #606266;
+  color: var(--text-secondary);
   margin-bottom: 15px;
   text-align: center;
 }
@@ -796,8 +813,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
-  background: #ecf5ff;
-  border: 1px solid #d9ecff;
+  background: var(--color-primary-bg);
+  border: 1px solid var(--color-primary-border);
   border-radius: 8px;
 }
 
@@ -809,37 +826,37 @@ export default {
 }
 
 .fund-info .label {
-  color: #606266;
+  color: var(--text-secondary);
 }
 
 .fund-info .code {
   font-weight: bold;
-  color: #409eff;
+  color: var(--color-primary);
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .fund-info .name {
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .btn-change {
   padding: 6px 16px;
-  border: 1px solid #409eff;
-  color: #409eff;
-  background: #fff;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  background: var(--bg-card);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .btn-change:hover {
-  background: #409eff;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
 }
 
 /* 参数设置 */
 .backtest-params {
-  background: #f5f7fa;
+  background: var(--bg-subtle);
   padding: 20px;
   border-radius: 8px;
   margin-bottom: 20px;
@@ -864,7 +881,7 @@ export default {
 
 .param-item label {
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
   margin-bottom: 8px;
   font-weight: 500;
 }
@@ -879,19 +896,19 @@ export default {
 .param-item input[type="date"] {
   flex: 1;
   padding: 8px 12px;
-  padding-right: 40px; /* 为右侧单位文字预留空间 */
-  border: 1px solid #dcdfe6;
+  padding-right: 40px;
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   font-size: 14px;
   transition: border-color 0.3s;
   font-family: inherit;
   box-sizing: border-box;
-  height: 40px; /* 固定高度确保对齐 */
+  height: 40px;
 }
 
 .param-item input:focus {
   outline: none;
-  border-color: #409eff;
+  border-color: var(--color-primary);
 }
 
 .param-item .unit {
@@ -899,10 +916,10 @@ export default {
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #909399;
+  color: var(--text-tertiary);
   font-size: 14px;
   pointer-events: none;
-  background: white;
+  background: var(--bg-card);
   padding: 0 4px;
   height: 20px;
   line-height: 20px;
@@ -921,15 +938,17 @@ export default {
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
 }
 
 .sub-param select {
   padding: 4px 8px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   font-size: 14px;
   outline: none;
+  background: var(--bg-card);
+  color: var(--text-primary);
 }
 
 .radio-label {
@@ -937,7 +956,7 @@ export default {
   align-items: center;
   cursor: pointer;
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
 }
 
 .radio-label input[type="radio"] {
@@ -969,32 +988,32 @@ export default {
 }
 
 .btn-primary {
-  background: #409eff;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #66b1ff;
+  background: var(--color-primary-hover);
 }
 
 .btn-secondary {
-  background: #fff;
-  color: #606266;
-  border: 1px solid #dcdfe6;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  color: #409eff;
-  border-color: #409eff;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 /* 错误提示 */
 .error-message {
   padding: 12px 16px;
-  background: #fef0f0;
-  border: 1px solid #fde2e2;
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
   border-radius: 4px;
-  color: #f56c6c;
+  color: var(--color-danger);
   margin-bottom: 20px;
   font-size: 14px;
 }
@@ -1016,7 +1035,7 @@ export default {
 .detail-section h4 {
   margin: 0 0 15px 0;
   font-size: 18px;
-  color: #303133;
+  color: var(--text-primary);
   padding-left: 5px;
 }
 
@@ -1028,7 +1047,7 @@ export default {
 }
 
 .summary-card {
-  background: #f5f7fa;
+  background: var(--bg-subtle);
   padding: 16px;
   border-radius: 8px;
   text-align: center;
@@ -1041,27 +1060,27 @@ export default {
 
 .summary-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .summary-card.highlight {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
-  color: #fff;
+  background: var(--bg-gradient);
+  color: var(--text-inverse);
 }
 
 .summary-card.positive {
-  background: #f0f9ff;
-  border: 1px solid #c6f6d5;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
 }
 
 .summary-card.negative {
-  background: #fff5f5;
-  border: 1px solid #fed7d7;
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
 }
 
 .card-label {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-bottom: 8px;
   line-height: 1.2;
 }
@@ -1073,21 +1092,21 @@ export default {
 .card-value {
   font-size: 20px;
   font-weight: bold;
-  color: #303133;
+  color: var(--text-primary);
   line-height: 1.2;
   word-break: break-all;
 }
 
 .summary-card.highlight .card-value {
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .card-value.positive {
-  color: #f56c6c;
+  color: var(--color-danger);
 }
 
 .card-value.negative {
-  color: #67c23a;
+  color: var(--color-success);
 }
 
 /* 图表 */
@@ -1100,31 +1119,31 @@ export default {
 
 .tab-item {
   padding: 8px 16px;
-  background: #f5f7fa;
+  background: var(--bg-subtle);
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
   transition: all 0.3s;
   border: 1px solid transparent;
 }
 
 .tab-item:hover {
-  background: #e4e7ed;
-  border-color: #dcdfe6;
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .tab-item.active {
-  background: #409eff;
-  color: #fff;
-  border-color: #409eff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  border-color: var(--color-primary);
 }
 
 .chart-container {
   width: 100%;
   height: 400px;
-  background: #fff;
-  border: 1px solid #ebeef5;
+  background: var(--chart-bg);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
 }
 
@@ -1135,26 +1154,26 @@ export default {
   align-items: center;
   cursor: pointer;
   padding: 12px 15px;
-  background: #f5f7fa;
+  background: var(--bg-subtle);
   border-radius: 4px;
   transition: background 0.3s;
   border: 1px solid transparent;
 }
 
 .detail-header:hover {
-  background: #e4e7ed;
-  border-color: #dcdfe6;
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .toggle-icon {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
 }
 
 .detail-table-wrapper {
   margin-top: 15px;
   overflow-x: auto;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--border-default);
   border-radius: 4px;
 }
 
@@ -1169,34 +1188,34 @@ export default {
 .detail-table td {
   padding: 12px 15px;
   text-align: left;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--border-default);
   line-height: 1.4;
 }
 
 .detail-table th {
-  background: #f5f7fa;
-  color: #606266;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-weight: 600;
   white-space: nowrap;
 }
 
 .detail-table tbody tr:hover {
-  background: #f5f7fa;
+  background: var(--bg-hover);
 }
 
 .detail-table tbody tr.investment-day {
-  background: #ecf5ff;
+  background: var(--color-primary-bg);
 }
 
 .detail-table tbody tr.sold-day {
-  background: #fff5f5;
+  background: var(--color-danger-bg);
 }
 
 .invest-badge {
   display: inline-block;
   padding: 2px 6px;
-  background: #409eff;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
   font-size: 12px;
   border-radius: 3px;
   margin-left: 8px;
@@ -1206,8 +1225,8 @@ export default {
 .sold-badge {
   display: inline-block;
   padding: 2px 6px;
-  background: #f56c6c;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--text-inverse);
   font-size: 12px;
   border-radius: 3px;
   margin-left: 8px;
@@ -1215,12 +1234,12 @@ export default {
 }
 
 .detail-table .positive {
-  color: #f56c6c;
+  color: var(--color-danger);
   font-weight: 500;
 }
 
 .detail-table .negative {
-  color: #67c23a;
+  color: var(--color-success);
   font-weight: 500;
 }
 
@@ -1232,25 +1251,26 @@ export default {
   gap: 15px;
   margin-top: 20px;
   padding: 15px;
-  background: #f5f7fa;
-  border-top: 1px solid #ebeef5;
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--border-default);
 }
 
 .pagination button {
   padding: 6px 12px;
-  border: 1px solid #dcdfe6;
-  background: #fff;
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s;
   min-width: 80px;
+  color: var(--text-primary);
 }
 
 .pagination button:hover:not(:disabled) {
-  color: #409eff;
-  border-color: #409eff;
-  background: #ecf5ff;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .pagination button:disabled {
@@ -1260,7 +1280,7 @@ export default {
 
 .pagination span {
   font-size: 14px;
-  color: #606266;
+  color: var(--text-secondary);
   min-width: 100px;
   text-align: center;
 }

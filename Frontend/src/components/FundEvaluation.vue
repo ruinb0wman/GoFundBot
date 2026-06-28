@@ -71,6 +71,7 @@
 <script>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 
 export default {
   name: 'FundEvaluation',
@@ -85,6 +86,10 @@ export default {
     }
   },
   setup(props) {
+    const cssColor = (name, fallback = '') => {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+    }
+    const { echartThemeName } = useEChartsTheme()
     const radarChartEl = ref(null)
     const redemptionChartEl = ref(null)
     let radarChart = null
@@ -143,17 +148,17 @@ export default {
     }
 
     const getBarColor = (score) => {
-      if (score >= 80) return 'linear-gradient(90deg, #52c41a 0%, #73d13d 100%)'
-      if (score >= 60) return 'linear-gradient(90deg, #1890ff 0%, #69c0ff 100%)'
-      if (score >= 40) return 'linear-gradient(90deg, #faad14 0%, #ffc53d 100%)'
-      return 'linear-gradient(90deg, #ff4d4f 0%, #ff7875 100%)'
+      if (score >= 80) return 'linear-gradient(90deg, var(--color-success) 0%, var(--color-success) 100%)'
+      if (score >= 60) return 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary) 100%)'
+      if (score >= 40) return 'linear-gradient(90deg, var(--color-warning) 0%, var(--color-warning) 100%)'
+      return 'linear-gradient(90deg, var(--color-danger) 0%, var(--color-danger) 100%)'
     }
 
     const initRadarChart = () => {
       if (!radarChartEl.value || !hasEvalData.value) return
 
       if (radarChart) radarChart.dispose()
-      radarChart = echarts.init(radarChartEl.value)
+      radarChart = echarts.init(radarChartEl.value, echartThemeName.value)
 
       const categories = props.performanceEvaluation?.categories || []
       const data = props.performanceEvaluation?.data || []
@@ -169,22 +174,22 @@ export default {
           })),
           radius: '65%',
           axisName: {
-            color: '#666',
+            color: cssColor('--chart-axis-label', '#666'),
             fontSize: 11
           },
           splitArea: {
             areaStyle: {
-              color: ['rgba(22, 119, 255, 0.05)', 'rgba(9, 88, 217, 0.1)']
+              color: [cssColor('--color-primary-bg', '#eef4ff'), cssColor('--color-primary-bg', '#eef4ff')]
             }
           },
           axisLine: {
             lineStyle: {
-              color: 'rgba(22, 119, 255, 0.3)'
+              color: cssColor('--chart-grid', 'rgba(22, 119, 255, 0.3)')
             }
           },
           splitLine: {
             lineStyle: {
-              color: 'rgba(22, 119, 255, 0.3)'
+              color: cssColor('--border-subtle', 'rgba(22, 119, 255, 0.3)')
             }
           }
         },
@@ -194,14 +199,14 @@ export default {
             value: data,
             name: '能力评分',
             areaStyle: {
-              color: 'rgba(22, 119, 255, 0.3)'
+              color: cssColor('--color-primary-bg', 'rgba(22, 119, 255, 0.3)')
             },
             lineStyle: {
-              color: '#1677ff',
+              color: cssColor('--color-primary', '#1677ff'),
               width: 2
             },
             itemStyle: {
-              color: '#1677ff'
+              color: cssColor('--color-primary', '#1677ff')
             }
           }]
         }]
@@ -214,11 +219,11 @@ export default {
       if (!redemptionChartEl.value || !hasRedemptionData.value) return
 
       if (redemptionChart) redemptionChart.dispose()
-      redemptionChart = echarts.init(redemptionChartEl.value)
+      redemptionChart = echarts.init(redemptionChartEl.value, echartThemeName.value)
 
       const categories = props.subscriptionRedemption?.categories || []
       const series = props.subscriptionRedemption?.series || []
-      
+
       const buyData = series.find(s => s.name === '期间申购')?.data || []
       const sellData = series.find(s => s.name === '期间赎回')?.data || []
       const totalData = series.find(s => s.name === '总份额')?.data || []
@@ -276,7 +281,7 @@ export default {
             type: 'bar',
             data: buyData,
             itemStyle: {
-              color: '#52c41a'
+              color: cssColor('--color-success', '#52c41a')
             },
             barWidth: '25%'
           },
@@ -285,7 +290,7 @@ export default {
             type: 'bar',
             data: sellData,
             itemStyle: {
-              color: '#ff4d4f'
+              color: cssColor('--color-danger', '#ff4d4f')
             },
             barWidth: '25%'
           },
@@ -295,7 +300,7 @@ export default {
             yAxisIndex: 1,
             data: totalData,
             itemStyle: {
-              color: '#1890ff'
+              color: cssColor('--color-primary', '#1890ff')
             },
             lineStyle: {
               width: 2
@@ -323,6 +328,13 @@ export default {
       })
     }, { deep: true })
 
+    watch(echartThemeName, () => {
+      nextTick(() => {
+        initRadarChart()
+        initRedemptionChart()
+      })
+    })
+
     return {
       radarChartEl,
       redemptionChartEl,
@@ -347,7 +359,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   padding: 10px 16px;
   flex-shrink: 0;
   display: flex;
@@ -381,10 +393,10 @@ export default {
   background: rgba(255,255,255,0.2);
 }
 
-.score-value.excellent { color: #52c41a; background: rgba(82, 196, 26, 0.2); }
-.score-value.good { color: #69c0ff; background: rgba(24, 144, 255, 0.2); }
-.score-value.normal { color: #faad14; background: rgba(250, 173, 20, 0.2); }
-.score-value.poor { color: #ff4d4f; background: rgba(255, 77, 79, 0.2); }
+.score-value.excellent { color: var(--color-success); background: var(--color-success-bg); }
+.score-value.good { color: var(--color-primary); background: var(--color-primary-bg); }
+.score-value.normal { color: var(--color-warning); background: var(--color-warning-bg); }
+.score-value.poor { color: var(--color-danger); background: var(--color-danger-bg); }
 
 .card-body {
   padding: 12px;
@@ -401,10 +413,10 @@ export default {
 .section-title {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 12px;
   padding-left: 8px;
-  border-left: 3px solid #1677ff;
+  border-left: 3px solid var(--color-primary);
 }
 
 .eval-section .eval-grid {
@@ -426,7 +438,7 @@ export default {
 
 .eval-item {
   padding: 8px;
-  background: #fafafa;
+  background: var(--bg-subtle);
   border-radius: 8px;
 }
 
@@ -440,7 +452,7 @@ export default {
 .eval-name {
   font-size: 13px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .eval-score {
@@ -448,14 +460,14 @@ export default {
   font-weight: bold;
 }
 
-.eval-score.excellent { color: #52c41a; }
-.eval-score.good { color: #1890ff; }
-.eval-score.normal { color: #faad14; }
-.eval-score.poor { color: #ff4d4f; }
+.eval-score.excellent { color: var(--color-success); }
+.eval-score.good { color: var(--color-primary); }
+.eval-score.normal { color: var(--color-warning); }
+.eval-score.poor { color: var(--color-danger); }
 
 .eval-bar {
   height: 6px;
-  background: #e8e8e8;
+  background: var(--border-default);
   border-radius: 3px;
   overflow: hidden;
   margin-bottom: 4px;
@@ -469,7 +481,7 @@ export default {
 
 .eval-desc {
   font-size: 11px;
-  color: #999;
+  color: var(--text-tertiary);
   line-height: 1.4;
 }
 
@@ -493,26 +505,26 @@ export default {
 .redemption-table td {
   padding: 8px 10px;
   text-align: center;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .redemption-table th {
-  background: #f5f5f5;
+  background: var(--bg-subtle);
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
-.redemption-table .buy { color: #52c41a; }
-.redemption-table .sell { color: #ff4d4f; }
-.redemption-table .positive { color: #52c41a; font-weight: 600; }
-.redemption-table .negative { color: #ff4d4f; font-weight: 600; }
+.redemption-table .buy { color: var(--color-success); }
+.redemption-table .sell { color: var(--color-danger); }
+.redemption-table .positive { color: var(--color-success); font-weight: 600; }
+.redemption-table .negative { color: var(--color-danger); font-weight: 600; }
 
 .no-data {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 600px) {

@@ -396,10 +396,10 @@ export default {
 
 <style scoped>
 .sector-rank-container {
-  background: var(--card-bg, #fff);
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .section-header {
@@ -409,7 +409,7 @@ export default {
   gap: 12px;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color, #eee);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .section-header h3 {
@@ -417,7 +417,7 @@ export default {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .filter-panel {
@@ -436,11 +436,11 @@ export default {
 .sort-select {
   height: 32px;
   padding: 0 10px;
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   font-size: 12px;
-  background: var(--card-bg, #fff);
-  color: var(--text-secondary, #666);
+  background: var(--bg-card);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -464,46 +464,46 @@ export default {
 }
 
 .stat-chip.total {
-  color: var(--primary-color, #1677ff);
-  background: #eef4ff;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .stat-chip.up {
-  color: #e74c3c;
-  background: #fff1f0;
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
 .stat-chip.flat {
-  color: #64748b;
-  background: #f1f5f9;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
 }
 
 .stat-chip.down {
-  color: #27ae60;
-  background: #f0fdf4;
+  color: var(--color-success);
+  background: var(--color-success-bg);
 }
 
 .stat-chip.page {
-  color: #7c3aed;
-  background: #f3efff;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .search-input {
   min-width: 0;
   height: 32px;
   padding: 0 12px;
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: #f8fafc;
-  color: var(--text-primary, #333);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-size: 13px;
   outline: none;
   transition: all 0.2s;
 }
 
 .search-input:focus {
-  border-color: var(--primary-color, #1677ff);
-  background: #fff;
+  border-color: var(--color-primary);
+  background: var(--bg-card);
   box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
 }
 
@@ -518,8 +518,8 @@ export default {
   justify-content: center;
   width: 34px;
   height: 34px;
-  background: var(--item-bg, #f5f5f5);
-  border: 1px solid var(--border-color, #ddd);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
   cursor: pointer;
   font-size: 16px;
   border-radius: 8px;
@@ -528,8 +528,8 @@ export default {
 }
 
 .refresh-btn:hover {
-  background: #e8e8e8;
-  border-color: #bbb;
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .refresh-btn:disabled {
@@ -543,10 +543,10 @@ export default {
   justify-content: center;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: #fff;
-  color: var(--text-secondary, #666);
+  background: var(--bg-card);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 16px;
   font-weight: 700;
@@ -555,9 +555,9 @@ export default {
 }
 
 .expand-btn:hover:not(:disabled) {
-  border-color: var(--primary-color, #1677ff);
-  color: var(--primary-color, #1677ff);
-  background: #eef4ff;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .expand-btn:disabled {
@@ -575,14 +575,14 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-/* 涨跌分布�?*/
+/* 涨跌分布概览 */
 .overview-bar {
   display: flex;
   height: 28px;
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 16px;
-  background: #f1f5f9;
+  background: var(--bg-subtle);
 }
 
 .bar-section {
@@ -591,20 +591,20 @@ export default {
   justify-content: center;
   font-size: 11px;
   font-weight: 500;
-  color: #fff;
+  color: var(--text-inverse);
   transition: width 0.3s;
 }
 
 .bar-section.up {
-  background: #e74c3c;
+  background: var(--color-danger);
 }
 
 .bar-section.flat {
-  background: #94a3b8;
+  background: var(--text-tertiary);
 }
 
 .bar-section.down {
-  background: #27ae60;
+  background: var(--color-success);
 }
 
 /* 板块列表 */
@@ -621,7 +621,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  background: var(--item-bg, #f9f9f9);
+  background: var(--bg-subtle);
   border-radius: 8px;
   transition: all 0.2s;
   border-left: 3px solid transparent;
@@ -629,17 +629,17 @@ export default {
 }
 
 .sector-item:hover {
-  background: var(--item-hover-bg, #f0f0f0);
+  background: var(--bg-hover);
 }
 
 .sector-item.up {
-  border-left-color: #e74c3c;
-  background: #fff8f7;
+  border-left-color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
 .sector-item.down {
-  border-left-color: #27ae60;
-  background: #f7fff9;
+  border-left-color: var(--color-success);
+  background: var(--color-success-bg);
 }
 
 .sector-rank {
@@ -648,11 +648,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--rank-bg, #e8e8e8);
+  background: var(--bg-hover);
   border-radius: 50%;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   margin-right: 12px;
 }
 
@@ -678,13 +678,13 @@ export default {
 .sector-name {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
   margin-bottom: 2px;
 }
 
 .sector-flow {
   font-size: 12px;
-  color: var(--text-secondary, #999);
+  color: var(--text-secondary);
 }
 
 .sector-flow .label {
@@ -692,16 +692,16 @@ export default {
 }
 
 .sector-flow .inflow {
-  color: #e74c3c;
+  color: var(--color-danger);
 }
 
 .sector-flow .outflow {
-  color: #27ae60;
+  color: var(--color-success);
 }
 
 .sector-flow .pct {
   margin-left: 4px;
-  color: var(--text-tertiary, #bbb);
+  color: var(--text-tertiary);
 }
 
 .sector-change {
@@ -712,22 +712,22 @@ export default {
 }
 
 .sector-change.up {
-  color: #e74c3c;
+  color: var(--color-danger);
 }
 
 .sector-change.down {
-  color: #27ae60;
+  color: var(--color-success);
 }
 
 .empty-filter {
   margin-top: 12px;
   padding: 28px 12px;
-  border: 1px dashed var(--border-color, #ddd);
-  border-radius: 10px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
   text-align: center;
-  color: var(--text-secondary, #999);
+  color: var(--text-secondary);
   font-size: 13px;
-  background: #fafafa;
+  background: var(--bg-subtle);
 }
 
 .pagination {
@@ -738,17 +738,17 @@ export default {
   flex-wrap: wrap;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--border-color, #eee);
+  border-top: 1px solid var(--border-default);
 }
 
 .page-btn {
   min-width: 64px;
   height: 32px;
   padding: 0 10px;
-  border: 1px solid #dbe4f0;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: #fff;
-  color: var(--text-primary, #333);
+  background: var(--bg-card);
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -756,9 +756,9 @@ export default {
 }
 
 .page-btn:hover:not(:disabled) {
-  border-color: var(--primary-color, #1677ff);
-  color: var(--primary-color, #1677ff);
-  background: #eef4ff;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .page-btn:disabled {
@@ -769,12 +769,12 @@ export default {
 .page-info {
   min-width: 92px;
   text-align: center;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
-/* 状�?*/
+/* 状态 */
 .loading-state,
 .error-state {
   display: flex;
@@ -782,14 +782,14 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  color: var(--text-secondary, #999);
+  color: var(--text-secondary);
 }
 
 .loading-spinner {
   width: 24px;
   height: 24px;
-  border: 2px solid var(--border-color, #eee);
-  border-top-color: var(--primary-color, #81D8CF);
+  border: 2px solid var(--border-default);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 8px;
@@ -798,8 +798,8 @@ export default {
 .error-state button {
   margin-top: 12px;
   padding: 6px 16px;
-  background: var(--primary-color, #81D8CF);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-inverse);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -812,7 +812,7 @@ export default {
   gap: 8px;
   flex-wrap: wrap;
   font-size: 11px;
-  color: var(--text-tertiary, #bbb);
+  color: var(--text-tertiary);
 }
 
 .data-source-badge {
@@ -820,24 +820,24 @@ export default {
   border-radius: 4px;
   font-weight: 600;
   font-size: 11px;
-  background: #fef3c7;
-  color: #d97706;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .data-source-badge.stale {
-  background: #e0e7ff;
-  color: #4f46e5;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
 }
 
 .data-date {
-  color: #8b5cf6;
-  background: #f3efff;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
   padding: 1px 6px;
   border-radius: 4px;
 }
 
 .last-refresh {
-  color: var(--text-tertiary, #bbb);
+  color: var(--text-tertiary);
 }
 
 .sector-modal-overlay {
@@ -848,7 +848,7 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 32px;
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--bg-overlay);
   backdrop-filter: blur(4px);
 }
 
@@ -859,8 +859,8 @@ export default {
   flex-direction: column;
   padding: 20px;
   border-radius: 12px;
-  background: var(--card-bg, #fff);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -870,13 +870,13 @@ export default {
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color, #eee);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .modal-header h3 {
   margin: 0 0 6px;
   font-size: 20px;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .modal-header p {
@@ -885,7 +885,7 @@ export default {
   gap: 12px;
   flex-wrap: wrap;
   font-size: 13px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .modal-close {
@@ -893,15 +893,15 @@ export default {
   height: 34px;
   border: none;
   border-radius: 8px;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 22px;
   line-height: 1;
 }
 
 .modal-close:hover {
-  background: #e2e8f0;
+  background: var(--bg-hover);
 }
 
 .modal-overview {
@@ -927,22 +927,22 @@ export default {
   padding: 12px;
   border: 1px solid transparent;
   border-left: 4px solid transparent;
-  border-radius: 10px;
-  background: #f8fafc;
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
 }
 
 .modal-sector-item.up {
-  border-left-color: #e74c3c;
-  background: #fff8f7;
+  border-left-color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
 .modal-sector-item.down {
-  border-left-color: #27ae60;
-  background: #f7fff9;
+  border-left-color: var(--color-success);
+  background: var(--color-success-bg);
 }
 
 .modal-sector-item.selected {
-  border-color: var(--primary-color, #1677ff);
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
 }
 
@@ -954,8 +954,8 @@ export default {
   justify-content: center;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-weight: 700;
 }
 
@@ -966,23 +966,23 @@ export default {
 
 .modal-sector-name {
   margin-bottom: 4px;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 700;
 }
 
 .modal-sector-flow {
-  color: var(--text-secondary, #777);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .modal-sector-flow .inflow {
-  color: #e74c3c;
+  color: var(--color-danger);
   font-weight: 700;
 }
 
 .modal-sector-flow .outflow {
-  color: #27ae60;
+  color: var(--color-success);
   font-weight: 700;
 }
 
@@ -994,11 +994,11 @@ export default {
 }
 
 .modal-sector-change.up {
-  color: #e74c3c;
+  color: var(--color-danger);
 }
 
 .modal-sector-change.down {
-  color: #27ae60;
+  color: var(--color-success);
 }
 
 @media (max-width: 1280px) {

@@ -17,7 +17,7 @@
         <span class="update-tag" v-if="updateTime">{{ updateTime.split(' ')[1] }} 更新</span>
       </div>
       <div class="chart-container sse-chart-container">
-        <v-chart class="chart" :option="currentChartOption" autoresize v-if="hasCurrentData" />
+        <v-chart class="chart" :option="currentChartOption" autoresize :theme="echartThemeName" v-if="hasCurrentData" />
         <div v-else class="empty-state">暂无数据 ({{ activeTabName }})</div>
       </div>
     </div>
@@ -62,7 +62,7 @@
         <h3>📊 近7日A股成交量</h3>
       </div>
       <div class="chart-container volume-chart-container">
-        <v-chart class="chart" :option="volumeOption" autoresize v-if="aVolume.length" />
+        <v-chart class="chart" :option="volumeOption" autoresize :theme="echartThemeName" v-if="aVolume.length" />
         <div v-else class="empty-state">暂无成交量数据</div>
       </div>
     </div>
@@ -114,7 +114,7 @@
             </div>
           </div>
           <div class="gold-modal-body">
-            <v-chart v-if="goldChartOption" class="gold-chart" :option="goldChartOption" autoresize />
+            <v-chart v-if="goldChartOption" class="gold-chart" :option="goldChartOption" autoresize :theme="echartThemeName" />
             <div v-else class="empty-state">暂无历史数据</div>
           </div>
         </div>
@@ -126,6 +126,7 @@
 <script>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { marketAPI } from '../services/api'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"
 import { LineChart, BarChart } from "echarts/charts"
@@ -152,16 +153,30 @@ export default {
     const updateTime = ref('')
     let refreshTimer = null
 
+    const { echartThemeName } = useEChartsTheme()
+
+    const cssVar = (name, fallback = '') =>
+      getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+
+    const hexToRgba = (hex, alpha) => {
+      const clean = hex.replace('#', '')
+      const r = parseInt(clean.slice(0, 2), 16)
+      const g = parseInt(clean.slice(2, 4), 16)
+      const b = parseInt(clean.slice(4, 6), 16)
+      return `rgba(${r},${g},${b},${alpha})`
+    }
+
     // ── 黄金弹窗 ──
     const goldModal = ref({ visible: false, name: '', code: '' })
     const goldDays = ref(10)
     const goldModalHistory = ref([])
 
     const goldChartOption = computed(() => {
+      echartThemeName.value; // track theme changes
       const data = goldModalHistory.value
       if (!data.length) return null
 
-      const dates = data.map(i => i.date.slice(5)) // MM-DD
+      const dates = data.map(i => i.date.slice(5))
       const chinaGold = data.map(i => parseFloat(i.china_gold_price) || null)
       const zhoudafu = data.map(i => parseFloat(i.zhoudafu_price) || null)
 
@@ -186,14 +201,14 @@ export default {
         xAxis: {
           type: 'category',
           data: dates,
-          axisLabel: { color: '#999', fontSize: 10 },
+          axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 },
           axisTick: { show: false }
         },
         yAxis: {
           type: 'value',
           scale: true,
-          splitLine: { lineStyle: { type: 'dashed', color: '#f0f0f0' } },
-          axisLabel: { color: '#999', fontSize: 10 }
+          splitLine: { lineStyle: { type: 'dashed', color: cssVar('--border-subtle', '#f0f0f0') } },
+          axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 }
         },
         series: [
           {
@@ -203,8 +218,8 @@ export default {
             smooth: true,
             symbol: 'circle',
             symbolSize: 4,
-            lineStyle: { width: 2, color: '#fa8c16' },
-            itemStyle: { color: '#fa8c16' }
+            lineStyle: { width: 2, color: cssVar('--color-warning', '#faad14') },
+            itemStyle: { color: cssVar('--color-warning', '#faad14') }
           },
           {
             name: '周大福',
@@ -213,8 +228,8 @@ export default {
             smooth: true,
             symbol: 'circle',
             symbolSize: 4,
-            lineStyle: { width: 2, color: '#1677ff' },
-            itemStyle: { color: '#1677ff' }
+            lineStyle: { width: 2, color: cssVar('--color-primary', '#1677ff') },
+            itemStyle: { color: cssVar('--color-primary', '#1677ff') }
           }
         ]
       }
@@ -271,15 +286,15 @@ export default {
 
     // 当前选中的指数图表配置
     const currentChartOption = computed(() => {
+      echartThemeName.value; // track theme changes
       const data = indicesIntraday.value[activeTab.value]
       if (!data || !data.length) return {}
       
       const times = data.map(i => i.time)
       const prices = data.map(i => parseFloat(i.price))
-      // 计算涨跌色：基于第一笔数据
       const basePrice = prices[0]
       const isUp = prices[prices.length - 1] >= basePrice
-      const color = isUp ? '#f5222d' : '#52c41a' // 红涨绿跌
+      const lineColor = isUp ? cssVar('--color-danger', '#ff4d4f') : cssVar('--color-success', '#52c41a')
 
       return {
         grid: { top: 10, right: 10, bottom: 20, left: 50, containLabel: false },
@@ -293,7 +308,7 @@ export default {
             const changeText = item.change && item.change !== '0' && item.change !== '+0' ? `${item.change}${pctText}` : pctText.replace(/[()]/g, '')
             return `
               <div>${item.time}</div>
-              <div style="font-weight:bold;color:${color}">${item.price}</div>
+              <div style="font-weight:bold;color:${lineColor}">${item.price}</div>
               ${changeText ? `<div>${changeText}</div>` : ''}
               <div>量: ${item.volume}</div>
             `
@@ -302,29 +317,29 @@ export default {
         xAxis: { 
           type: 'category', 
           data: times,
-          axisLine: { lineStyle: { color: '#ddd' } },
-          axisLabel: { color: '#999', fontSize: 10 },
+          axisLine: { lineStyle: { color: cssVar('--border-default', '#e5e7eb') } },
+          axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 },
           axisTick: { show: false }
         },
         yAxis: { 
           type: 'value', 
-          scale: true, // 不从0开始
-          splitLine: { lineStyle: { type: 'dashed', color: '#eee' } },
-          axisLabel: { color: '#999', fontSize: 10 }
+          scale: true,
+          splitLine: { lineStyle: { type: 'dashed', color: cssVar('--border-subtle', '#f0f0f0') } },
+          axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 }
         },
         series: [{
           data: prices,
           type: 'line',
           smooth: true,
           symbol: 'none',
-          lineStyle: { width: 2, color: color },
+          lineStyle: { width: 2, color: lineColor },
           areaStyle: {
             color: {
               type: 'linear',
               x: 0, y: 0, x2: 0, y2: 1,
               colorStops: [
-                { offset: 0, color: isUp ? 'rgba(245,34,45,0.2)' : 'rgba(82,196,26,0.2)' },
-                { offset: 1, color: isUp ? 'rgba(245,34,45,0)' : 'rgba(82,196,26,0)' }
+                { offset: 0, color: hexToRgba(lineColor, 0.2) },
+                { offset: 1, color: hexToRgba(lineColor, 0) }
               ]
             }
           }
@@ -334,11 +349,14 @@ export default {
 
     // 成交量图表配置
     const volumeOption = computed(() => {
+      echartThemeName.value; // track theme changes
       if (!aVolume.value.length) return {}
       
       const dates = aVolume.value.map(i => formatDate(i.date))
       const values = aVolume.value.map(i => parseFloat(i.total.replace('亿', '')))
       
+      const barColor = cssVar('--color-primary', '#1677ff')
+
       return {
         grid: { top: 30, right: 10, bottom: 20, left: 10, containLabel: true },
         tooltip: { 
@@ -358,12 +376,12 @@ export default {
         xAxis: { 
           type: 'category', 
           data: dates,
-          axisLine: { lineStyle: { color: '#ddd' } },
+          axisLine: { lineStyle: { color: cssVar('--border-default', '#e5e7eb') } },
           axisTick: { show: false }
         },
         yAxis: { 
           type: 'value',
-          splitLine: { lineStyle: { type: 'dashed', color: '#eee' } }
+          splitLine: { lineStyle: { type: 'dashed', color: cssVar('--border-subtle', '#f0f0f0') } }
         },
         series: [{
           data: values,
@@ -374,8 +392,8 @@ export default {
               type: 'linear',
               x: 0, y: 0, x2: 0, y2: 1,
               colorStops: [
-                { offset: 0, color: '#1890ff' }, 
-                { offset: 1, color: '#69c0ff' }
+                { offset: 0, color: barColor },
+                { offset: 1, color: hexToRgba(barColor, 0.5) }
               ]
             },
             borderRadius: [4, 4, 0, 0]
@@ -384,7 +402,7 @@ export default {
             show: true,
             position: 'top',
             formatter: '{c}亿',
-            color: '#666',
+            color: cssVar('--text-secondary', '#6b7280'),
             fontSize: 10
           }
         }]
@@ -462,7 +480,8 @@ export default {
       aVolume, updateTime,
       formatDate, getChangeClass, getUpDnClass,
       volumeOption,
-      tabs, activeTab, activeTabName, hasCurrentData, currentChartOption
+      tabs, activeTab, activeTabName, hasCurrentData, currentChartOption,
+      echartThemeName
     }
   }
 }
@@ -476,10 +495,10 @@ export default {
 }
 
 .market-section {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .section-header {
@@ -487,14 +506,14 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 8px;
 }
 
 .section-header h3 {
   margin: 0;
   font-size: 1.1em;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .tab-group {
@@ -506,7 +525,7 @@ export default {
 
 .tab-group span {
   font-size: 0.85em;
-  color: #666;
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 2px 8px;
   border-radius: 4px;
@@ -515,22 +534,20 @@ export default {
 }
 
 .tab-group span:hover {
-  color: #1677ff;
-  background: #e6f4ff;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 .tab-group span.active {
-  color: #1677ff;
+  color: var(--color-primary);
   font-weight: bold;
-  background: #e6f4ff;
+  background: var(--color-primary-bg);
 }
 
-/* 上证指数 */
 .sse-chart-container {
   height: 200px;
 }
 
-/* 全球市场 */
 .market-sub-section {
   margin-bottom: 16px;
 }
@@ -541,7 +558,7 @@ export default {
 
 .sub-title {
   font-size: 0.95em;
-  color: #666;
+  color: var(--text-secondary);
   margin: 0 0 10px 4px;
   display: flex;
   align-items: center;
@@ -549,7 +566,7 @@ export default {
 }
 
 .sub-desc {
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 0.85em;
   font-weight: normal;
 }
@@ -572,31 +589,29 @@ export default {
   padding: 10px;
   border-radius: 8px;
   text-align: center;
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
   transition: transform 0.2s;
 }
 
 .index-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
 }
 
-.index-card.up { background: #fff1f0; border-color: #ffa39e; }
-.index-card.down { background: #f6ffed; border-color: #b7eb8f; }
+.index-card.up { background: var(--color-danger-bg); border-color: var(--color-danger-border); }
+.index-card.down { background: var(--color-success-bg); border-color: var(--color-success-border); }
 
-.index-name { font-size: 0.85em; color: #666; margin-bottom: 4px; }
-.index-price { font-weight: bold; font-size: 1.1em; color: #333; }
-.index-card.up .index-price, .index-card.up .index-change { color: #f5222d; }
-.index-card.down .index-price, .index-card.down .index-change { color: #52c41a; }
+.index-name { font-size: 0.85em; color: var(--text-secondary); margin-bottom: 4px; }
+.index-price { font-weight: bold; font-size: 1.1em; color: var(--text-primary); }
+.index-card.up .index-price, .index-card.up .index-change { color: var(--color-danger); }
+.index-card.down .index-price, .index-card.down .index-change { color: var(--color-success); }
 .index-change { font-size: 0.8em; margin-top: 2px; }
 
-/* 成交量图表 */
 .volume-chart-container {
   height: 220px;
 }
 
-/* 黄金 */
 .gold-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -605,24 +620,22 @@ export default {
 
 .gold-card {
   padding: 12px;
-  background: #fffcf0;
-  border: 1px solid #ffe58f;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
   border-radius: 8px;
   text-align: center;
 }
 
-.gold-name { font-size: 0.9em; color: #666; margin-bottom: 4px; }
-.gold-price { font-weight: bold; font-size: 1.2em; color: #fa8c16; }
+.gold-name { font-size: 0.9em; color: var(--text-secondary); margin-bottom: 4px; }
+.gold-price { font-weight: bold; font-size: 1.2em; color: var(--color-warning); }
 .gold-change { font-size: 0.85em; margin-top: 4px; display: flex; justify-content: center; gap: 6px; }
 .gold-change .pct { padding: 0 4px; border-radius: 4px; }
-.gold-card.up .pct { background: #fff1f0; color: #f5222d; }
-.gold-card.down .pct { background: #e6fffb; color: #13c2c2; } /* Try teal for down or green */
-.gold-card.down .pct { background: #f6ffed; color: #52c41a; }
+.gold-card.up .pct { background: var(--color-danger-bg); color: var(--color-danger); }
+.gold-card.down .pct { background: var(--color-success-bg); color: var(--color-success); }
 
-/* ── 黄金弹窗 ── */
 .gold-modal-overlay {
   position: fixed; inset: 0; z-index: 9999;
-  background: rgba(0,0,0,0.45);
+  background: var(--bg-overlay);
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
   animation: fadeIn 0.2s ease;
@@ -630,51 +643,51 @@ export default {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .gold-modal {
-  background: #fff; border-radius: 16px;
+  background: var(--bg-elevated); border-radius: 16px;
   width: 100%; max-width: 680px; max-height: 80vh;
   display: flex; flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-lg);
   animation: slideUp 0.25s ease;
 }
 @keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
 
 .gold-modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+  padding: 16px 20px; border-bottom: 1px solid var(--border-subtle);
 }
-.gold-modal-header h3 { margin: 0; font-size: 16px; color: #1a1a1a; }
+.gold-modal-header h3 { margin: 0; font-size: 16px; color: var(--text-primary); }
 
 .gold-modal-controls { display: flex; align-items: center; gap: 10px; }
 
 .days-select {
-  padding: 4px 10px; border: 1px solid #ddd; border-radius: 6px;
-  font-size: 12px; background: #fafafa; color: #666; cursor: pointer;
+  padding: 4px 10px; border: 1px solid var(--border-default); border-radius: 6px;
+  font-size: 12px; background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer;
 }
 
 .modal-close-btn {
   width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center;
-  border: none; border-radius: 8px; background: #f5f5f5;
-  font-size: 16px; color: #595959; cursor: pointer; transition: all 0.15s;
+  border: none; border-radius: 8px; background: var(--bg-subtle);
+  font-size: 16px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
 }
-.modal-close-btn:hover { background: #e8e8e8; color: #1a1a1a; }
+.modal-close-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 .gold-modal-body { padding: 20px; flex: 1; min-height: 320px; }
 .gold-chart { width: 100%; height: 380px; }
 
 .gold-card.clickable { cursor: pointer; }
-.gold-card.clickable:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(250,140,22,0.2); }
+.gold-card.clickable:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 
 .refresh-btn, .toggle-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: #1677ff;
+  color: var(--color-primary);
 }
 
 .empty-state {
   text-align: center;
-  color: #999;
+  color: var(--text-tertiary);
   padding: 20px;
   font-size: 0.9em;
 }
@@ -686,8 +699,8 @@ export default {
 
 .update-tag {
   font-size: 0.8em;
-  color: #999;
-  background: #f5f5f5;
+  color: var(--text-tertiary);
+  background: var(--bg-subtle);
   padding: 2px 6px;
   border-radius: 4px;
 }

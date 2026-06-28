@@ -264,6 +264,7 @@
 <script>
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { fundAPI } from '../services/api'
 
 export default {
@@ -281,12 +282,23 @@ export default {
   emits: ['remove-fund', 'clear-funds'],
   setup(props, { emit }) {
     const chartEl = ref(null)
+    const { echartThemeName } = useEChartsTheme()
+    const cssColor = (name, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
     const selectedRange = ref('1y')
     const loading = ref(false)
     const maxFunds = 5
     let chartInstance = null
 
-    const colors = ['#1677ff', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4']
+    const colors = [
+      cssColor('--chart-1', '#1677ff'),
+      cssColor('--chart-2', '#52c41a'),
+      cssColor('--chart-3', '#faad14'),
+      cssColor('--chart-4', '#ff4d4f'),
+      cssColor('--chart-5', '#73c0de'),
+      cssColor('--chart-6', '#3ba272'),
+      cssColor('--chart-7', '#fc8452'),
+      cssColor('--chart-8', '#9a60b4')
+    ]
 
     const timeRanges = [
       { label: '近3月', value: '3m' },
@@ -465,7 +477,7 @@ export default {
       if (chartInstance) {
         chartInstance.dispose()
       }
-      chartInstance = echarts.init(chartEl.value)
+      chartInstance = echarts.init(chartEl.value, echartThemeName.value)
       updateChart()
     }
 
@@ -496,6 +508,9 @@ export default {
 
       if (series.length === 0) return
 
+      const dangerColor = cssColor('--color-danger', '#ff4d4f')
+      const successColor = cssColor('--color-success', '#52c41a')
+
       const option = {
         tooltip: {
           trigger: 'axis',
@@ -504,7 +519,7 @@ export default {
                       echarts.format.formatTime('yyyy-MM-dd', params[0].value[0]) + '</div>'
             params.forEach(item => {
               const val = item.value[1]
-              const color = val >= 0 ? '#f5222d' : '#52c41a'
+              const color = val >= 0 ? dangerColor : successColor
               res += `<div style="display:flex;align-items:center;margin:3px 0;">
                 <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};margin-right:8px;"></span>
                 <span style="flex:1;">${item.seriesName}</span>
@@ -668,6 +683,16 @@ export default {
 
     watch(selectedRange, () => updateChart())
 
+    watch(echartThemeName, () => {
+      if (chartInstance) {
+        chartInstance.dispose()
+        chartInstance = null
+      }
+      if (selectedFunds.value.length >= 2) {
+        setTimeout(() => initChart(), 50)
+      }
+    })
+
     onMounted(() => {
       window.addEventListener('resize', () => chartInstance?.resize())
     })
@@ -703,9 +728,9 @@ export default {
 
 <style scoped>
 .fund-comparison {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
   margin-bottom: 20px;
   overflow: hidden;
 }
@@ -749,10 +774,10 @@ export default {
   justify-content: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-size: 13px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .empty-compare-hint .hint-icon {
@@ -769,8 +794,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 14px 20px;
-  border-bottom: 1px solid #f0f0f0;
-  background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-subtle);
 }
 
 .comparison-header h2 {
@@ -779,15 +804,15 @@ export default {
   gap: 8px;
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .header-icon { font-size: 18px; }
 
 .count-badge {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--color-primary);
+  color: var(--text-inverse);
   padding: 2px 10px;
   border-radius: 10px;
   font-size: 12px;
@@ -806,16 +831,16 @@ export default {
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-clear {
-  background: #f5f5f5;
-  color: #666;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
 }
 
-.btn-clear:hover:not(:disabled) { background: #e8e8e8; }
+.btn-clear:hover:not(:disabled) { background: var(--bg-hover); }
 
 .selection-area {
   padding: 12px 20px;
-  background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .selection-tags {
@@ -831,7 +856,7 @@ export default {
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  background: white;
+  background: var(--bg-card);
   border: 2px solid;
   border-radius: 20px;
   font-size: 13px;
@@ -844,40 +869,40 @@ export default {
 }
 
 .tag-name {
-  color: #333;
+  color: var(--text-primary);
   max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tag-code { color: #999; font-size: 12px; }
+.tag-code { color: var(--text-tertiary); font-size: 12px; }
 
 .tag-remove {
   background: none;
   border: none;
-  color: #999;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
   padding: 0 2px;
 }
 
-.tag-remove:hover { color: #f5222d; }
+.tag-remove:hover { color: var(--color-danger); }
 
-.add-fund-hint { color: #999; font-size: 13px; }
+.add-fund-hint { color: var(--text-tertiary); font-size: 13px; }
 
 .single-fund-hint {
   padding: 20px;
   text-align: center;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .comparison-content { padding: 0; }
 
 .chart-section {
   padding: 15px 20px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .section-header {
@@ -890,7 +915,7 @@ export default {
 .section-header h3 {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -901,18 +926,18 @@ export default {
 
 .range-item {
   padding: 4px 12px;
-  color: #666;
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 12px;
   border-radius: 12px;
   transition: all 0.2s;
 }
 
-.range-item:hover { background: #f5f5f5; }
+.range-item:hover { background: var(--bg-hover); }
 
 .range-item.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--color-primary);
+  color: var(--text-inverse);
   font-weight: 500;
 }
 
@@ -932,14 +957,14 @@ export default {
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid #f0f0f0;
-  border-top-color: #1677ff;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -953,13 +978,13 @@ export default {
 .data-table-section h3 {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 12px 0;
 }
 
 .table-wrapper {
   overflow-x: auto;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
 }
 
@@ -974,12 +999,12 @@ export default {
 .comparison-table td {
   padding: 10px 12px;
   text-align: center;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .comparison-table th {
-  background: #fafafa;
-  color: #666;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
   font-weight: 500;
   position: sticky;
   top: 0;
@@ -989,18 +1014,18 @@ export default {
 .sticky-col {
   position: sticky;
   left: 0;
-  background: white;
+  background: var(--bg-card);
   text-align: left !important;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   min-width: 90px;
   z-index: 1;
 }
 
 .section-row td {
-  background: #f8f9ff !important;
+  background: var(--color-primary-bg) !important;
   font-weight: 600;
-  color: #1677ff;
+  color: var(--color-primary);
   text-align: left !important;
   padding: 8px 12px;
 }
@@ -1028,8 +1053,8 @@ export default {
   flex-shrink: 0;
 }
 
-.positive { color: #f5222d; font-weight: 500; }
-.negative { color: #52c41a; font-weight: 500; }
+.positive { color: var(--color-danger); font-weight: 500; }
+.negative { color: var(--color-success); font-weight: 500; }
 
 .score-badge {
   display: inline-block;
@@ -1039,9 +1064,9 @@ export default {
   font-weight: 600;
 }
 
-.score-high { background: #fff1f0; color: #f5222d; }
-.score-mid { background: #fff7e6; color: #fa8c16; }
-.score-low { background: #f6ffed; color: #52c41a; }
+.score-high { background: var(--color-danger-bg); color: var(--color-danger); }
+.score-mid { background: var(--color-warning-bg); color: var(--color-warning); }
+.score-low { background: var(--color-success-bg); color: var(--color-success); }
 
 /* 响应式 */
 @media (max-width: 768px) {

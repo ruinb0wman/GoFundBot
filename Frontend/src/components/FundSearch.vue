@@ -145,10 +145,10 @@ export default {
 <style scoped>
 .fund-search {
   margin-bottom: 20px;
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
   position: relative;
 }
 
@@ -175,10 +175,10 @@ export default {
   right: 0;
   z-index: 1000;
   margin-top: 4px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .search-header {
@@ -199,7 +199,7 @@ export default {
 .search-input {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -208,7 +208,7 @@ export default {
 
 .search-input:focus {
   outline: none;
-  border-color: #1677ff;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.1);
 }
 
@@ -257,8 +257,8 @@ export default {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid #e5e7eb;
-  border-top-color: #1677ff;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -268,18 +268,18 @@ export default {
 }
 
 .search-results {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   max-height: 240px;
   overflow-y: auto;
-  background: white;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
   margin-top: 10px;
 }
 
 .fund-item {
   padding: 10px 12px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -292,12 +292,12 @@ export default {
 }
 
 .fund-item:hover {
-  background: #f9fafb;
+  background: var(--bg-subtle);
 }
 
 .fund-code {
   font-weight: 600;
-  color: #1677ff;
+  color: var(--color-primary);
   font-family: 'SF Mono', Monaco, monospace;
   font-size: 13px;
   min-width: 60px;
@@ -305,14 +305,14 @@ export default {
 
 .fund-name {
   flex: 1;
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
 .fund-type {
   font-size: 11px;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -320,7 +320,7 @@ export default {
 .loading {
   text-align: center;
   padding: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 </style>

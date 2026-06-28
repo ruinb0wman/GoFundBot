@@ -37,6 +37,7 @@
 <script>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 
 export default {
   name: 'FundScaleChange',
@@ -49,6 +50,17 @@ export default {
   setup(props) {
     const chartEl = ref(null)
     let chartInstance = null
+
+    const { echartThemeName } = useEChartsTheme()
+
+    const cssColor = (name, fallback = '') => {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+      return val || fallback
+    }
+    const hexToRgba = (hex, alpha) => {
+      const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16)
+      return `rgba(${r},${g},${b},${alpha})`
+    }
 
     const categories = computed(() => props.fluctuationScale?.categories || [])
     const tableData = computed(() => props.fluctuationScale?.series || [])
@@ -67,7 +79,7 @@ export default {
         chartInstance.dispose()
       }
 
-      chartInstance = echarts.init(chartEl.value)
+      chartInstance = echarts.init(chartEl.value, echartThemeName.value)
 
       const scaleData = tableData.value.map(item => item.y)
 
@@ -111,8 +123,8 @@ export default {
           data: scaleData,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#1677ff' },
-              { offset: 1, color: '#0958d9' }
+              { offset: 0, color: cssColor('--color-primary', '#1677ff') },
+              { offset: 1, color: cssColor('--color-primary-hover', '#0958d9') }
             ])
           },
           label: {
@@ -138,6 +150,14 @@ export default {
       })
     }, { deep: true })
 
+    watch(echartThemeName, () => {
+      if (chartInstance) {
+        chartInstance.dispose()
+        chartInstance = null
+        nextTick(() => initChart())
+      }
+    })
+
     return {
       chartEl,
       categories,
@@ -158,7 +178,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   color: white;
   padding: 12px 16px;
   flex-shrink: 0;
@@ -206,20 +226,20 @@ export default {
 .scale-table td {
   padding: 6px 8px;
   text-align: center;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .scale-table th {
-  background: #f5f5f5;
+  background: var(--bg-subtle);
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   position: sticky;
   top: 0;
 }
 
 .scale-value {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .mom-value {
@@ -227,11 +247,11 @@ export default {
 }
 
 .mom-value.positive {
-  color: #ff4d4f;
+  color: var(--color-danger);
 }
 
 .mom-value.negative {
-  color: #52c41a;
+  color: var(--color-success);
 }
 
 .no-data {
@@ -239,6 +259,6 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: var(--text-tertiary);
 }
 </style>

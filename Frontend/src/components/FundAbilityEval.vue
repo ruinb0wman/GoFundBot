@@ -36,6 +36,7 @@
 <script>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 
 export default {
   name: 'FundAbilityEval',
@@ -48,6 +49,17 @@ export default {
   setup(props) {
     const radarChartEl = ref(null)
     let radarChart = null
+
+    const { echartThemeName } = useEChartsTheme()
+
+    const cssColor = (name, fallback = '') => {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+      return val || fallback
+    }
+    const hexToRgba = (hex, alpha) => {
+      const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16)
+      return `rgba(${r},${g},${b},${alpha})`
+    }
 
     const hasEvalData = computed(() => {
       const data = props.performanceEvaluation?.data
@@ -74,17 +86,17 @@ export default {
     }
 
     const getBarColor = (score) => {
-      if (score >= 80) return 'linear-gradient(90deg, #52c41a 0%, #73d13d 100%)'
-      if (score >= 60) return 'linear-gradient(90deg, #1890ff 0%, #69c0ff 100%)'
-      if (score >= 40) return 'linear-gradient(90deg, #faad14 0%, #ffc53d 100%)'
-      return 'linear-gradient(90deg, #ff4d4f 0%, #ff7875 100%)'
+      if (score >= 80) return cssColor('--color-success', '#52c41a')
+      if (score >= 60) return cssColor('--color-primary', '#1890ff')
+      if (score >= 40) return cssColor('--color-warning', '#faad14')
+      return cssColor('--color-danger', '#ff4d4f')
     }
 
     const initRadarChart = () => {
       if (!radarChartEl.value || !hasEvalData.value) return
 
       if (radarChart) radarChart.dispose()
-      radarChart = echarts.init(radarChartEl.value)
+      radarChart = echarts.init(radarChartEl.value, echartThemeName.value)
 
       const categories = props.performanceEvaluation?.categories || []
       const data = props.performanceEvaluation?.data || []
@@ -93,49 +105,49 @@ export default {
         tooltip: {
           trigger: 'item'
         },
-        radar: {
-          indicator: categories.map(name => ({
-            name,
-            max: 100
-          })),
-          radius: '70%',
-          axisName: {
-            color: '#666',
-            fontSize: 10
-          },
-          splitArea: {
-            areaStyle: {
-              color: ['rgba(22, 119, 255, 0.05)', 'rgba(22, 119, 255, 0.1)']
-            }
-          },
-          axisLine: {
-            lineStyle: {
-              color: 'rgba(22, 119, 255, 0.3)'
-            }
-          },
-          splitLine: {
-            lineStyle: {
-              color: 'rgba(22, 119, 255, 0.3)'
-            }
-          }
-        },
-        series: [{
-          type: 'radar',
-          data: [{
-            value: data,
-            name: '能力评分',
-            areaStyle: {
-              color: 'rgba(22, 119, 255, 0.3)'
+          radar: {
+            indicator: categories.map(name => ({
+              name,
+              max: 100
+            })),
+            radius: '70%',
+            axisName: {
+              color: cssColor('--chart-axis-label', '#666'),
+              fontSize: 10
             },
-            lineStyle: {
-              color: '#1677ff',
-              width: 2
+            splitArea: {
+              areaStyle: {
+                color: [hexToRgba(cssColor('--color-primary', '#1677ff'), 0.05), hexToRgba(cssColor('--color-primary', '#1677ff'), 0.1)]
+              }
             },
-            itemStyle: {
-              color: '#1677ff'
+            axisLine: {
+              lineStyle: {
+                color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.3)
+              }
+            },
+            splitLine: {
+              lineStyle: {
+                color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.3)
+              }
             }
+          },
+          series: [{
+            type: 'radar',
+            data: [{
+              value: data,
+              name: '能力评分',
+              areaStyle: {
+                color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.3)
+              },
+              lineStyle: {
+                color: cssColor('--color-primary', '#1677ff'),
+                width: 2
+              },
+              itemStyle: {
+                color: cssColor('--color-primary', '#1677ff')
+              }
+            }]
           }]
-        }]
       }
 
       radarChart.setOption(option)
@@ -152,6 +164,14 @@ export default {
         initRadarChart()
       })
     }, { deep: true })
+
+    watch(echartThemeName, () => {
+      if (radarChart) {
+        radarChart.dispose()
+        radarChart = null
+        nextTick(() => initRadarChart())
+      }
+    })
 
     return {
       radarChartEl,
@@ -174,7 +194,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   padding: 10px 14px;
   flex-shrink: 0;
   display: flex;
@@ -208,10 +228,10 @@ export default {
   background: rgba(255,255,255,0.2);
 }
 
-.score-value.excellent { color: #52c41a; }
-.score-value.good { color: #69c0ff; }
-.score-value.normal { color: #faad14; }
-.score-value.poor { color: #ff4d4f; }
+.score-value.excellent { color: var(--color-success); }
+.score-value.good { color: var(--color-primary); }
+.score-value.normal { color: var(--color-warning); }
+.score-value.poor { color: var(--color-danger); }
 
 .card-body {
   padding: 10px;
@@ -240,7 +260,7 @@ export default {
 
 .eval-item {
   padding: 6px 8px;
-  background: #fafafa;
+  background: var(--bg-subtle);
   border-radius: 6px;
 }
 
@@ -254,7 +274,7 @@ export default {
 .eval-name {
   font-size: 11px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .eval-score {
@@ -262,14 +282,14 @@ export default {
   font-weight: bold;
 }
 
-.eval-score.excellent { color: #52c41a; }
-.eval-score.good { color: #1890ff; }
-.eval-score.normal { color: #faad14; }
-.eval-score.poor { color: #ff4d4f; }
+.eval-score.excellent { color: var(--color-success); }
+.eval-score.good { color: var(--color-primary); }
+.eval-score.normal { color: var(--color-warning); }
+.eval-score.poor { color: var(--color-danger); }
 
 .eval-bar {
   height: 4px;
-  background: #e8e8e8;
+  background: var(--border-subtle);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -285,7 +305,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 13px;
 }
 </style>

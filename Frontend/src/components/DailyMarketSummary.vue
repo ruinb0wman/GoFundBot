@@ -268,14 +268,14 @@ onUnmounted(() => {
 
 <style scoped>
 .daily-market-summary {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   border-radius: 16px;
   padding: 4px;
   margin: 20px 0;
 }
 
 .daily-market-summary > * {
-  background: white;
+  background: var(--bg-card);
   border-radius: 14px;
 }
 
@@ -284,7 +284,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 24px 28px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
   border-radius: 14px 14px 0 0;
 }
 
@@ -296,13 +296,13 @@ onUnmounted(() => {
 
 .summary-header h3 {
   margin: 0;
-  color: #1a1a2e;
+  color: var(--text-primary);
   font-size: 1.5em;
   font-weight: 600;
 }
 
 .date {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.95em;
 }
 
@@ -310,7 +310,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   color: white;
   border: none;
   border-radius: 8px;
@@ -318,12 +318,12 @@ onUnmounted(() => {
   cursor: pointer;
   font-size: 0.9em;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .refresh-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.4);
+  box-shadow: var(--shadow-md);
 }
 
 /* ============ 加载状态样式 ============ */
@@ -345,13 +345,13 @@ onUnmounted(() => {
   margin-bottom: 32px;
   font-size: 1.2em;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .pulse-dot {
   width: 12px;
   height: 12px;
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   border-radius: 50%;
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -378,7 +378,7 @@ onUnmounted(() => {
 }
 
 .step-item.active {
-  background: linear-gradient(135deg, rgba(22, 119, 255, 0.1) 0%, rgba(9, 88, 217, 0.1) 100%);
+  background: var(--color-primary-bg);
 }
 
 .step-item.completed {
@@ -404,18 +404,18 @@ onUnmounted(() => {
 }
 
 .step-item.pending .step-circle {
-  background: #f0f0f0;
-  color: #999;
+  background: var(--border-subtle);
+  color: var(--text-tertiary);
 }
 
 .step-item.active .step-circle {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   color: white;
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.4);
+  box-shadow: var(--shadow-md);
 }
 
 .step-item.completed .step-circle {
-  background: #52c41a;
+  background: var(--color-success);
   color: white;
 }
 
@@ -439,13 +439,13 @@ onUnmounted(() => {
 .step-line {
   width: 2px;
   height: 24px;
-  background: #e0e0e0;
+  background: var(--border-default);
   margin-top: 4px;
   transition: background 0.3s ease;
 }
 
 .step-line.active {
-  background: #52c41a;
+  background: var(--color-success);
 }
 
 .step-content {
@@ -455,35 +455,35 @@ onUnmounted(() => {
 
 .step-name {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .step-item.pending .step-name {
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .step-description {
   font-size: 0.85em;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .current-status {
   text-align: center;
   padding: 20px;
-  background: #fafafa;
+  background: var(--bg-subtle);
   border-radius: 12px;
 }
 
 .status-message {
-  color: #1677ff;
+  color: var(--color-primary);
   font-weight: 500;
   margin-bottom: 8px;
 }
 
 .status-hint {
   font-size: 0.85em;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 /* ============ 错误状态样式 ============ */
@@ -497,9 +497,9 @@ onUnmounted(() => {
   margin: 0 auto;
   text-align: center;
   padding: 32px;
-  background: #fff5f5;
+  background: var(--color-danger-bg);
   border-radius: 12px;
-  border: 1px solid #ffccc7;
+  border: 1px solid var(--color-danger-border);
 }
 
 .error-icon {
@@ -508,7 +508,7 @@ onUnmounted(() => {
 }
 
 .error-message {
-  color: #cf1322;
+  color: var(--color-danger);
   margin-bottom: 20px;
   line-height: 1.6;
 }
@@ -517,7 +517,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #ff4d4f;
+  background: var(--color-danger);
   color: white;
   border: none;
   border-radius: 8px;
@@ -528,7 +528,7 @@ onUnmounted(() => {
 }
 
 .retry-btn:hover {
-  background: #ff7875;
+  background: var(--color-danger);
   transform: translateY(-2px);
 }
 
@@ -554,31 +554,31 @@ onUnmounted(() => {
 }
 
 .sentiment-positive { 
-  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
-  color: #389e0d;
-  border: 1px solid #b7eb8f;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
 }
 
 .sentiment-negative { 
-  background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
-  color: #cf1322;
-  border: 1px solid #ffa39e;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
 }
 
 .sentiment-neutral { 
-  background: linear-gradient(135deg, #f0f5ff 0%, #d6e4ff 100%);
-  color: #1890ff;
-  border: 1px solid #91d5ff;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary-border);
 }
 
 .summary-text {
   display: flex;
   gap: 16px;
   padding: 20px 24px;
-  background: linear-gradient(135deg, #f8f9ff 0%, #f0f5ff 100%);
+  background: var(--color-primary-bg);
   border-radius: 12px;
   margin-bottom: 28px;
-  border-left: 4px solid #1677ff;
+  border-left: 4px solid var(--color-primary);
 }
 
 .summary-icon {
@@ -589,7 +589,7 @@ onUnmounted(() => {
 .summary-body {
   font-size: 1.15em;
   line-height: 1.8;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .indices-grid {
@@ -600,17 +600,17 @@ onUnmounted(() => {
 }
 
 .index-card {
-  background: #fafafa;
+  background: var(--bg-subtle);
   padding: 20px;
   border-radius: 12px;
   text-align: center;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--border-subtle);
   transition: all 0.3s ease;
 }
 
 .index-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .index-header {
@@ -628,27 +628,27 @@ onUnmounted(() => {
 .index-name { 
   font-weight: 600;
   font-size: 1.1em;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .index-change { 
   font-weight: 700;
   font-size: 1.3em;
   margin-bottom: 12px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .index-change.change-up {
-  color: #cf1322;
+  color: var(--color-danger);
 }
 
 .index-change.change-down {
-  color: #389e0d;
+  color: var(--color-success);
 }
 
 .index-analysis { 
   font-size: 0.9em;
-  color: #666;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
@@ -659,14 +659,14 @@ onUnmounted(() => {
 }
 
 .section {
-  background: #fafafa;
+  background: var(--bg-subtle);
   padding: 20px 24px;
   border-radius: 12px;
 }
 
 .section h4 {
   margin: 0 0 16px 0;
-  color: #333;
+  color: var(--text-primary);
   font-size: 1.15em;
   display: flex;
   align-items: center;
@@ -684,7 +684,7 @@ onUnmounted(() => {
 }
 
 .tag {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   color: white;
   padding: 6px 14px;
   border-radius: 20px;
@@ -704,11 +704,11 @@ onUnmounted(() => {
   gap: 10px;
   margin-bottom: 12px;
   line-height: 1.6;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .news-bullet {
-  color: #1677ff;
+  color: var(--color-primary);
   font-weight: bold;
   flex-shrink: 0;
 }
@@ -716,7 +716,7 @@ onUnmounted(() => {
 .outlook-text {
   margin: 0;
   line-height: 1.8;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 /* 响应式 */

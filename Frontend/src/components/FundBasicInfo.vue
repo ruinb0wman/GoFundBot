@@ -405,12 +405,12 @@ export default {
 
 <style scoped>
 .fund-basic-info {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   padding: 24px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   margin-bottom: 24px;
-  color: white;
+  color: var(--text-inverse);
 }
 
 .info-header {
@@ -614,7 +614,7 @@ export default {
 }
 
 .risk-value.negative {
-  color: #2ed573;
+  color: var(--color-success);
   background: rgba(46, 213, 115, 0.2);
 }
 
@@ -648,11 +648,11 @@ export default {
 }
 
 .positive {
-  color: #ff6b6b; /* 上涨显示红色 */
+  color: var(--color-danger); /* 上涨显示红色 */
 }
 
 .negative {
-  color: #2ed573; /* 下跌显示绿色 */
+  color: var(--color-success); /* 下跌显示绿色 */
 }
 
 .loading {

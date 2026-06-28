@@ -120,7 +120,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   padding: 10px 14px;
   display: flex;
   justify-content: space-between;
@@ -152,19 +152,19 @@ export default {
 .portfolio-header {
   display: flex;
   padding: 8px 0;
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px solid var(--border-default);
   font-weight: 600;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 11px;
   position: sticky;
   top: 0;
-  background: white;
+  background: var(--bg-card);
 }
 
 .portfolio-item {
   display: flex;
   padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
   align-items: center;
   font-size: 12px;
 }
@@ -175,14 +175,14 @@ export default {
 }
 
 .stock-clickable:hover {
-  background: #e6f7ff;
+  background: var(--color-primary-bg);
   transform: translateX(2px);
 }
 
 .col-rank {
   width: 40px;
   text-align: center;
-  color: #999;
+  color: var(--text-tertiary);
   font-weight: 500;
   margin: 0 8px;
   flex-shrink: 0;
@@ -192,7 +192,7 @@ export default {
   width: 24px;
   height: 24px;
   line-height: 24px;
-  background: #f0f0f0;
+  background: var(--bg-subtle);
   border-radius: 50%;
   font-size: 11px;
   display: inline-block;
@@ -205,7 +205,7 @@ export default {
 
 .col-code {
   width: 68px;
-  color: #1677ff;
+  color: var(--color-primary);
   font-family: monospace;
   font-size: 11px;
   flex-shrink: 0;
@@ -214,7 +214,7 @@ export default {
 .col-name {
   flex: 1;
   min-width: 88px;
-  color: #333;
+  color: var(--text-primary);
   font-weight: 500;
   padding-right: 8px;
   overflow: hidden;
@@ -224,7 +224,7 @@ export default {
 
 .col-ratio {
   width: 56px;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 11px;
   text-align: right;
   padding-right: 10px;
@@ -234,7 +234,7 @@ export default {
 .col-industry {
   width: 76px;
   text-align: left;
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 11px;
   flex-shrink: 0;
   overflow: hidden;

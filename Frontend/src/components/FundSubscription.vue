@@ -39,6 +39,7 @@
 <script>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 
 export default {
   name: 'FundSubscription',
@@ -49,6 +50,10 @@ export default {
     }
   },
   setup(props) {
+    const cssColor = (name, fallback = '') => {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+    }
+    const { echartThemeName } = useEChartsTheme()
     const chartEl = ref(null)
     let chartInstance = null
 
@@ -82,7 +87,7 @@ export default {
       if (!chartEl.value || !hasRedemptionData.value) return
 
       if (chartInstance) chartInstance.dispose()
-      chartInstance = echarts.init(chartEl.value)
+      chartInstance = echarts.init(chartEl.value, echartThemeName.value)
 
       const categories = props.subscriptionRedemption?.categories || []
       const series = props.subscriptionRedemption?.series || []
@@ -143,7 +148,7 @@ export default {
             type: 'bar',
             data: buyData,
             itemStyle: {
-              color: '#ff4d4f'
+              color: cssColor('--color-danger', '#ff4d4f')
             },
             barWidth: '20%'
           },
@@ -152,7 +157,7 @@ export default {
             type: 'bar',
             data: sellData,
             itemStyle: {
-              color: '#52c41a'
+              color: cssColor('--color-success', '#52c41a')
             },
             barWidth: '20%'
           },
@@ -162,7 +167,7 @@ export default {
             yAxisIndex: 1,
             data: totalData,
             itemStyle: {
-              color: '#1890ff'
+              color: cssColor('--color-primary', '#1890ff')
             },
             lineStyle: {
               width: 2
@@ -188,6 +193,12 @@ export default {
       })
     }, { deep: true })
 
+    watch(echartThemeName, () => {
+      nextTick(() => {
+        initChart()
+      })
+    })
+
     return {
       chartEl,
       hasRedemptionData,
@@ -206,7 +217,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   padding: 10px 16px;
   flex-shrink: 0;
 }
@@ -254,25 +265,25 @@ export default {
 .subscription-table td {
   padding: 8px 12px;
   text-align: center;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .subscription-table th {
-  background: #f5f5f5;
+  background: var(--bg-subtle);
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
-.subscription-table .buy { color: #ff4d4f; }
-.subscription-table .sell { color: #52c41a; }
-.subscription-table .positive { color: #ff4d4f; font-weight: 600; }
-.subscription-table .negative { color: #52c41a; font-weight: 600; }
+.subscription-table .buy { color: var(--color-danger); }
+.subscription-table .sell { color: var(--color-success); }
+.subscription-table .positive { color: var(--color-danger); font-weight: 600; }
+.subscription-table .negative { color: var(--color-success); font-weight: 600; }
 
 .no-data {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: #999;
+  color: var(--text-tertiary);
 }
 </style>

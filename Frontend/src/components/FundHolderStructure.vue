@@ -40,6 +40,7 @@
 <script>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { useEChartsTheme } from '../composables/useEChartsTheme'
 
 export default {
   name: 'FundHolderStructure',
@@ -50,6 +51,10 @@ export default {
     }
   },
   setup(props) {
+    const cssColor = (name, fallback = '') => {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+    }
+    const { echartThemeName } = useEChartsTheme()
     const chartEl = ref(null)
     let chartInstance = null
 
@@ -57,17 +62,16 @@ export default {
     const series = computed(() => props.holderStructure?.series || [])
     const hasData = computed(() => categories.value.length > 0 && series.value.length > 0)
 
-    const colors = {
-      '机构持有比例': '#1677ff', // 蓝色
-      '个人持有比例': '#ee6666', // 红色
-      '内部持有比例': '#52c41a', // 绿色
-      '机构持有': '#1677ff',
-      '个人持有': '#ee6666',
-      '内部持有': '#52c41a'
-    }
-
     const getColor = (name) => {
-      return colors[name] || '#1677ff'
+      const colors = {
+        '机构持有比例': cssColor('--chart-1', '#1677ff'),
+        '个人持有比例': cssColor('--chart-4', '#ee6666'),
+        '内部持有比例': cssColor('--chart-2', '#52c41a'),
+        '机构持有': cssColor('--chart-1', '#1677ff'),
+        '个人持有': cssColor('--chart-4', '#ee6666'),
+        '内部持有': cssColor('--chart-2', '#52c41a')
+      }
+      return colors[name] || cssColor('--chart-1', '#1677ff')
     }
 
     const formatLegendName = (name) => {
@@ -87,7 +91,7 @@ export default {
         chartInstance.dispose()
       }
 
-      chartInstance = echarts.init(chartEl.value)
+      chartInstance = echarts.init(chartEl.value, echartThemeName.value)
 
       // 准备堆叠柱状图数据
       const seriesData = series.value.map(serie => ({
@@ -167,6 +171,12 @@ export default {
       })
     }, { deep: true })
 
+    watch(echartThemeName, () => {
+      nextTick(() => {
+        initChart()
+      })
+    })
+
     return {
       chartEl,
       categories,
@@ -189,7 +199,7 @@ export default {
 }
 
 .card-header {
-  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  background: var(--bg-gradient);
   padding: 12px 16px;
   flex-shrink: 0;
 }
@@ -240,13 +250,13 @@ export default {
 .holder-table td {
   padding: 6px 8px;
   text-align: center;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .holder-table th {
-  background: #f5f5f5;
+  background: var(--bg-subtle);
   font-weight: 600;
-  color: #666;
+  color: var(--text-secondary);
   position: sticky;
   top: 0;
 }
@@ -261,17 +271,17 @@ export default {
 
 .date-cell {
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .value-cell {
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .no-data {
   text-align: center;
   padding: 40px;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 768px) {
