@@ -53,6 +53,11 @@ pip install pre-commit && pre-commit install
 - **CORS**: `CORS_ORIGINS` env var controls allowed origins (comma-separated, `*` = all).
 - **Security headers**: DataService uses `helmet` (CSP/COEP disabled).
 - **Structured logging**: JSON format via `core/logging.py` (Backend) and `core/logger.ts` (DataService) with `requestId` per request.
+- **Health check**: Backend `GET /health` — deep check (DB + DataService). DataService `GET /api/health` includes cache stats.
+- **Metrics**: Prometheus client at `/metrics` — `http_requests_total`, `http_request_duration_seconds`, `db_connections_active`, etc.
+- **Graceful shutdown**: Both services handle `SIGTERM`/`SIGINT` — 10s wait for in-flight requests, then force exit.
+- **API versioning**: Progressive `/api/v1/` rollout. Old routes marked `@deprecated_route` (returns `X-Deprecated` header).
+- **API docs**: Swagger UI at `/api/docs` via flasgger. `@swag_from` decorators on v1 endpoints.
 - **Config validation**: `config.py:validate()` checks `LLM_API_KEY` and `DATA_SERVICE_BASE_URL` at startup.
 - **Database**: SQLite at `Backend/Data/funds.db`, auto-created on startup.
 - **Cache TTLs** (DataService): fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
@@ -70,6 +75,10 @@ pip install pre-commit && pre-commit install
 | `Backend/schemas/` | Pydantic input validation models |
 | `Backend/core/validation.py` | `@validate_body` / `@validate_query` decorators |
 | `Backend/core/logging.py` | Structured JSON logging setup |
+| `Backend/core/metrics.py` | Prometheus metrics (`/metrics` endpoint) |
+| `Backend/core/version_shim.py` | `@deprecated_route` decorator for API versioning |
+| `Backend/routes_v1/` | API v1 blueprints (progressive rollout) |
+| `Backend/schemas/apidoc.py` | Swagger OpenAPI response models |
 | `Backend/config.py` | Config validation on startup |
 | `DataService/src/` | TypeScript Express app with ProviderChain |
 | `.pre-commit-config.yaml` | Pre-commit hooks (private key + .env check) |

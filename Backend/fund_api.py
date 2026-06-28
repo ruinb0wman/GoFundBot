@@ -10,6 +10,9 @@ import re
 from datetime import datetime
 from typing import Dict, List, Any, Union
 from stock_service import StockService
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 # --- 数据清洗器 (原 api_handler.py) ---
 
@@ -252,7 +255,7 @@ class FundDataCleaner:
                         if data and isinstance(data, dict):
                             ds_lookup[item['code']] = data
             except Exception as e:
-                print(f"clean_portfolio_data: batch DataService call failed: {e}")
+                logger.error(f"clean_portfolio_data: batch DataService call failed: {e}")
 
         # Phase 3: 逐只拼装（优先用批量结果，缺失时回退本地 StockService 缓存）
         enriched_stocks = []
@@ -280,7 +283,7 @@ class FundDataCleaner:
                         'ratio': 0  # 数据源缺失占比，设为0
                     })
                 except Exception as e:
-                    print(f"Error processing stock code {code}: {e}")
+                    logger.error(f"Error processing stock code {code}: {e}")
                     enriched_stocks.append({'code': str(code), 'name': 'Unknown', 'market': '--', 'ratio': 0})
         
         portfolio = {
@@ -496,7 +499,7 @@ class FundAPI:
             else:
                 self._fund_type_cache = {}
         except Exception as e:
-            print(f"Error loading fund type cache: {e}")
+            logger.error(f"Error loading fund type cache: {e}")
             self._fund_type_cache = {}
         
         return self._fund_type_cache
@@ -520,7 +523,7 @@ class FundAPI:
         try:
             return self.cleaner.clean_all_data(raw_data)
         except Exception as e:
-            print(f"Error cleaning data for {fund_code}: {e}")
+            logger.error(f"Error cleaning data for {fund_code}: {e}")
             return None
 
     def search_funds(self, keyword: str) -> List[Dict[str, Any]]:
@@ -542,7 +545,7 @@ class FundAPI:
                     return funds
             return []
         except Exception as e:
-            print(f"Search error: {e}")
+            logger.error(f"Search error: {e}")
             return []
 
     def _parse_js_value(self, js_content: str, start_pos: int) -> tuple:
@@ -658,7 +661,7 @@ class FundAPI:
                             data[var_name] = raw_value
                         
         except Exception as e:
-            print(f"Error fetching detail for {fund_code}: {e}")
+            logger.error(f"Error fetching detail for {fund_code}: {e}")
             return None
 
         # 2. 抓取实时估值数据 (可选，用于补充实时信息)
@@ -689,18 +692,18 @@ if __name__ == "__main__":
     # 测试代码
     api = FundAPI()
     code = "019127" 
-    print(f"Fetching data for {code}...")
+    logger.info(f"Fetching data for {code}...")
     fund_data = api.get_fund_data(code)
     
     if fund_data:
-        print("\n=== Data Fetch Success ===")
-        print(f"Name: {fund_data['basic_info']['fund_name']}")
-        print(f"Manager: {len(fund_data['fund_managers'])} managers recorded")
-        print(f"Latest Net Worth: {fund_data['net_worth_trend'][-1] if fund_data['net_worth_trend'] else 'N/A'}")
+        logger.info("\n=== Data Fetch Success ===")
+        logger.info(f"Name: {fund_data['basic_info']['fund_name']}")
+        logger.info(f"Manager: {len(fund_data['fund_managers'])} managers recorded")
+        logger.info(f"Latest Net Worth: {fund_data['net_worth_trend'][-1] if fund_data['net_worth_trend'] else 'N/A'}")
         
         # 保存测试数据
         with open(f"fund_{code}_full.json", 'w', encoding='utf-8') as f:
             json.dump(fund_data, f, ensure_ascii=False, indent=2)
-        print(f"Saved to fund_{code}_full.json")
+        logger.info(f"Saved to fund_{code}_full.json")
     else:
-        print("Failed to fetch data.")
+        logger.error("Failed to fetch data.")

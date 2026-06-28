@@ -2,6 +2,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from models import Base
 from pathlib import Path
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 # 获取当前文件所在目录（Backend/）
 BACKEND_DIR = Path(__file__).parent.resolve()
@@ -26,9 +29,9 @@ def migrate_db():
             if 'group_id' not in columns:
                 conn.execute(text("ALTER TABLE fund_watchlist ADD COLUMN group_id INTEGER DEFAULT NULL"))
                 conn.commit()
-                print("Migration: Added group_id column to fund_watchlist table")
+                logger.info("Migration: Added group_id column to fund_watchlist table")
         except Exception as e:
-            print(f"Migration check for fund_watchlist: {e}")
+            logger.warning(f"Migration check for fund_watchlist: {e}")
         
         # 检查并添加 daily_market_summary 表的新列
         try:
@@ -37,13 +40,13 @@ def migrate_db():
             if 'current_step' not in columns:
                 conn.execute(text("ALTER TABLE daily_market_summary ADD COLUMN current_step INTEGER DEFAULT 0"))
                 conn.commit()
-                print("Migration: Added current_step column to daily_market_summary table")
+                logger.info("Migration: Added current_step column to daily_market_summary table")
             if 'step_message' not in columns:
                 conn.execute(text("ALTER TABLE daily_market_summary ADD COLUMN step_message VARCHAR(200)"))
                 conn.commit()
-                print("Migration: Added step_message column to daily_market_summary table")
+                logger.info("Migration: Added step_message column to daily_market_summary table")
         except Exception as e:
-            print(f"Migration check for daily_market_summary: {e}")
+            logger.warning(f"Migration check for daily_market_summary: {e}")
 
         # Screening no longer persists full NAV history; risk metrics are stored in fund_risk_metrics.
         try:
@@ -54,9 +57,9 @@ def migrate_db():
                 if row_count > 0:
                     conn.execute(text("DELETE FROM fund_nav_history"))
                     conn.commit()
-                    print(f"Migration: Cleared {row_count} rows from fund_nav_history")
+                    logger.info(f"Migration: Cleared {row_count} rows from fund_nav_history")
         except Exception as e:
-            print(f"Migration cleanup for fund_nav_history: {e}")
+            logger.warning(f"Migration cleanup for fund_nav_history: {e}")
 
 def init_db():
     # 确保 Data 目录存在

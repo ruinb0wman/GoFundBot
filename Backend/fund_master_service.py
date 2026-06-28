@@ -13,6 +13,9 @@ Fund-Master 核心功能服务模块
 
 import datetime
 import html
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 import json
 import os
 import re
@@ -265,16 +268,16 @@ class FundMasterService:
     def _get_sector_rank_akshare(self, limit):
         import os, sys
         if os.environ.get('DISABLE_AKSHARE_FALLBACK') == '1':
-            print("[FundMaster] akshare 被 DISABLE_AKSHARE_FALLBACK 禁用，跳过")
+            logger.warning("[FundMaster] akshare 被 DISABLE_AKSHARE_FALLBACK 禁用，跳过")
             return []
         try:
             import akshare as ak
             import pandas as pd
         except ImportError as e:
-            print(f"[FundMaster] akshare 导入失败（未安装?）: {e}")
+            logger.error(f"[FundMaster] akshare 导入失败（未安装?）: {e}")
             return []
         except Exception as e:
-            print(f"[FundMaster] akshare 导入异常: {e}")
+            logger.warning(f"[FundMaster] akshare 导入异常: {e}")
             return []
 
         candidates = []
@@ -282,19 +285,19 @@ class FundMasterService:
             try:
                 fn = getattr(ak, fn_name, None)
                 if not fn:
-                    print(f"[FundMaster] akshare 未找到函数 {fn_name}")
+                    logger.info(f"[FundMaster] akshare 未找到函数 {fn_name}")
                     continue
                 df = fn()
                 if df is None or df.empty:
-                    print(f"[FundMaster] akshare {fn_name} 返回空数据")
+                    logger.info(f"[FundMaster] akshare {fn_name} 返回空数据")
                     continue
                 candidates.append(df)
             except Exception as e:
-                print(f"[FundMaster] akshare {fn_name} 调用失败: {e}")
+                logger.error(f"[FundMaster] akshare {fn_name} 调用失败: {e}")
                 continue
 
         if not candidates:
-            print("[FundMaster] akshare 所有数据源均无数据")
+            logger.info("[FundMaster] akshare 所有数据源均无数据")
             return []
 
         for df in candidates:
@@ -324,10 +327,10 @@ class FundMasterService:
                 })
             rows.sort(key=lambda x: x["raw_change"], reverse=True)
             if self._is_valid_sector_rank(rows):
-                print(f"[FundMaster] akshare 板块数据获取成功，共 {len(rows)} 条（来源: {fn_name}）")
+                logger.info(f"[FundMaster] akshare 板块数据获取成功，共 {len(rows)} 条（来源: {fn_name}）")
                 return rows[:limit]
-            print(f"[FundMaster] akshare {fn_name} 数据被 _is_valid_sector_rank 否决（可能非交易日）")
-        print("[FundMaster] akshare 板块数据获取失败或数据无效")
+            logger.info(f"[FundMaster] akshare {fn_name} 数据被 _is_valid_sector_rank 否决（可能非交易日）")
+        logger.error("[FundMaster] akshare 板块数据获取失败或数据无效")
         return []
     
     # ==================== 7x24 快讯 ====================
@@ -601,19 +604,19 @@ class FundMasterService:
             self._save_sector_rank_file_cache(data)
             return data
 
-        print(f"[FundMaster] akshare 无数据，尝试过期缓存...")
+        logger.info(f"[FundMaster] akshare 无数据，尝试过期缓存...")
         stale = self._get_stale_cache(cache_key)
         if stale and stale.get("data"):
-            print(f"[FundMaster] 使用过期内存缓存，{len(stale['data'])} 条")
+            logger.warning(f"[FundMaster] 使用过期内存缓存，{len(stale['data'])} 条")
             return {**stale, "is_stale": True, "source": "stale_cache"}
 
-        print(f"[FundMaster] 过期缓存无数据，尝试文件缓存...")
+        logger.info(f"[FundMaster] 过期缓存无数据，尝试文件缓存...")
         file_cached = self._load_sector_rank_file_cache(limit, data_date, require_full=False)
         if file_cached:
-            print(f"[FundMaster] 使用文件缓存，{len(file_cached.get('data', []))} 条")
+            logger.info(f"[FundMaster] 使用文件缓存，{len(file_cached.get('data', []))} 条")
             return {**file_cached, "is_stale": True, "source": "file_cache"}
 
-        print(f"[FundMaster] 文件缓存无数据，使用占位数据")
+        logger.info(f"[FundMaster] 文件缓存无数据，使用占位数据")
         fallback_rows = self._get_sector_rank_fallback(limit)
         if fallback_rows:
             return {
@@ -1092,7 +1095,7 @@ class FundMasterService:
                 })
             return result
         except Exception as e:
-            print(f"Error fetching sina intraday for {code}: {e}")
+            logger.error(f"Error fetching sina intraday for {code}: {e}")
             return []
 
     def get_indices_intraday(self) -> dict:
@@ -1127,7 +1130,7 @@ class FundMasterService:
                 try:
                     intraday[key] = future.result(timeout=5)
                 except Exception as e:
-                    print(f"Error fetching intraday index {key}: {e}")
+                    logger.error(f"Error fetching intraday index {key}: {e}")
 
         data = {
             "success": True,
@@ -1189,7 +1192,7 @@ class FundMasterService:
                 try:
                     results[key] = future.result(timeout=30)
                 except Exception as e:
-                    print(f"[MarketOverview] fetch {key} failed: {e}")
+                    logger.error(f"[MarketOverview] fetch {key} failed: {e}")
                     results[key] = {"success": False, "error": str(e), "data": []}
 
         return {

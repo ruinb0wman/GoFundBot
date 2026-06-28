@@ -24,6 +24,9 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 from dotenv import load_dotenv
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 # 加载环境变量
 env_path = Path(__file__).parent / '.env'
@@ -57,7 +60,7 @@ class AIService:
             from langchain_openai import ChatOpenAI
             
             if not self._api_key:
-                print("未配置 LLM_API_KEY 环境变量")
+                logger.info("未配置 LLM_API_KEY 环境变量")
                 return None
             
             # 根据模式调整参数
@@ -75,10 +78,10 @@ class AIService:
             return llm
             
         except ImportError:
-            print("请安装 langchain-openai: pip install langchain-openai")
+            logger.info("请安装 langchain-openai: pip install langchain-openai")
             return None
         except Exception as e:
-            print(f"初始化 LLM 失败: {e}")
+            logger.error(f"初始化 LLM 失败: {e}")
             return None
     
     def _call_llm_simple(self, prompt: str, system_prompt: str = "") -> Optional[str]:
@@ -115,10 +118,10 @@ class AIService:
             return response.choices[0].message.content
             
         except ImportError:
-            print("请安装 openai: pip install openai")
+            logger.info("请安装 openai: pip install openai")
             return None
         except Exception as e:
-            print(f"调用 LLM 失败: {e}")
+            logger.error(f"调用 LLM 失败: {e}")
             return None
     
     def analyze_fund(self, fund_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -182,7 +185,7 @@ class AIService:
             return self._parse_fund_analysis_result(result)
             
         except Exception as e:
-            print(f"基金分析出错: {e}")
+            logger.warning(f"基金分析出错: {e}")
             return {"error": f"分析过程出错: {str(e)}"}
     
     def _build_fund_analysis_prompt(self, fund_data: Dict[str, Any]) -> str:
@@ -304,7 +307,7 @@ class AIService:
             return data
             
         except json.JSONDecodeError as e:
-            print(f"JSON 解析失败: {e}")
+            logger.error(f"JSON 解析失败: {e}")
             # 返回默认结构
             return {
                 "sentiment_score": 50,
@@ -386,7 +389,7 @@ class AIService:
             return self._parse_market_summary_result(result)
             
         except Exception as e:
-            print(f"市场分析出错: {e}")
+            logger.warning(f"市场分析出错: {e}")
             return {"error": f"分析过程出错: {str(e)}"}
     
     def _build_market_summary_prompt(self, market_data: Dict[str, Any]) -> str:

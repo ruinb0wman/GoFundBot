@@ -9,6 +9,9 @@ import json
 import threading
 import time
 import os
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 class StockService:
     _instance = None
@@ -52,7 +55,7 @@ class StockService:
             self.stock_details = data.get("stock_details", {})
             return bool(self.stock_details)
         except Exception as e:
-            print(f"Error loading stock cache: {e}")
+            logger.error(f"Error loading stock cache: {e}")
             return False
 
     def _is_cache_expired(self):
@@ -69,7 +72,7 @@ class StockService:
                     "stock_details": self.stock_details
                 }, f, ensure_ascii=False)
         except Exception as e:
-            print(f"Error saving stock cache: {e}")
+            logger.error(f"Error saving stock cache: {e}")
 
     def _refresh_cache(self):
         """Download stock list and save to local cache."""
@@ -80,7 +83,7 @@ class StockService:
         self._fetch_hk_stocks()
         self._fetch_ashare_stocks()
         self.last_update = time.time()
-        print(f"Stock data loaded. Total: {len(self.stock_details)}")
+        logger.info(f"Stock data loaded. Total: {len(self.stock_details)}")
 
     def _fetch_hk_stocks(self):
         url = "https://api.biyingapi.com/hk/list/all/biyinglicence"
@@ -99,7 +102,7 @@ class StockService:
                             'market': '港交所'
                         }
         except Exception as e:
-            print(f"Error fetching HK stocks: {e}")
+            logger.error(f"Error fetching HK stocks: {e}")
 
     def _fetch_ashare_stocks(self):
         url = "https://api.mairuiapi.com/hslt/list/LICENCE-66D8-9F96-0C7F0FBCD073"
@@ -133,7 +136,7 @@ class StockService:
                             'market': market
                         }
         except Exception as e:
-            print(f"Error fetching A-Share stocks: {e}")
+            logger.error(f"Error fetching A-Share stocks: {e}")
 
 
     def normalize_code(self, internal_code):
@@ -217,7 +220,7 @@ def get_stock_info_ds_first(internal_code: str) -> dict:
                 service.stock_details[search_code] = {'name': str(name), 'market': str(market)}
             return result
     except Exception as e:
-        print(f"stock_info_ds_first: DataService unavailable for {search_code}, fallback: {e}")
+        logger.error(f"stock_info_ds_first: DataService unavailable for {search_code}, fallback: {e}")
 
     # 2) Fallback to legacy StockService
     return service.get_stock_info(internal_code)

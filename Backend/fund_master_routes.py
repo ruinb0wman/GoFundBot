@@ -12,6 +12,9 @@ DataService-first architecture:
 from flask import Blueprint, jsonify, request
 from fund_master_service import get_fund_master_service
 from services.data_service_client import DataServiceError, get_data_service_client
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 
 # 创建 Blueprint
 fund_master_bp = Blueprint('fund_master', __name__, url_prefix='/api/market')
@@ -57,7 +60,7 @@ def get_flash_news():
                 })
             meta = ds_payload.get('meta', {}) if isinstance(ds_payload.get('meta'), dict) else {}
             sources = sorted({item.get('source', '') for item in news_list if item.get('source')})
-            print(f"market news: DataService success, {len(news_list)} items (page={page}, total={ds_data.get('total', len(news_list))}, sources={sources})")
+            logger.info(f"market news: DataService success, {len(news_list)} items (page={page}, total={ds_data.get('total', len(news_list))}, sources={sources})")
             return jsonify({
                 'success': True,
                 'data': news_list,
@@ -68,7 +71,7 @@ def get_flash_news():
                 'source': meta.get('provider') or 'data_service',
             })
     except DataServiceError as e:
-        print(f"market news: DataService unavailable, fallback to legacy: {e}")
+        logger.error(f"market news: DataService unavailable, fallback to legacy: {e}")
 
     # 2) Fallback to legacy (aggregates 3 sources: Baidu, EastMoney, CLS)
     service = get_fund_master_service()
@@ -117,13 +120,13 @@ def get_sector_constituents(code):
                     'market_value': _safe_float(item.get('marketValue')),
                     'pe': _safe_float(item.get('pe')),
                 })
-            print(f"sector constituents: DataService success, {len(constituents)} items for {code}")
+            logger.info(f"sector constituents: DataService success, {len(constituents)} items for {code}")
             return jsonify({
                 'success': True,
                 'data': constituents,
             })
     except DataServiceError as e:
-        print(f"sector constituents: DataService unavailable, fallback to legacy: {e}")
+        logger.error(f"sector constituents: DataService unavailable, fallback to legacy: {e}")
 
     # 2) Fallback to legacy
     from services.market_data import get_market_data_service as get_mds
@@ -160,14 +163,14 @@ def get_market_index():
                     'market': item.get('market', ''),
                     'raw_change': change_num or 0.0,
                 })
-            print(f"market index: DataService success, {len(indices)} indices")
+            logger.info(f"market index: DataService success, {len(indices)} indices")
             return jsonify({
                 'success': True,
                 'data': indices,
                 'update_time': __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             })
     except DataServiceError as e:
-        print(f"market index: DataService unavailable, fallback to legacy: {e}")
+        logger.error(f"market index: DataService unavailable, fallback to legacy: {e}")
 
     # 2) Fallback to legacy
     service = get_fund_master_service()

@@ -17,6 +17,13 @@ from services.data_service_legacy_mapper import map_data_service_detail_to_legac
 from core.logging import init_logging, get_logger
 from core.cors_config import parse_cors_origins
 from core.validation import validate_body, validate_query
+from core.metrics import (
+    metrics_endpoint, http_requests_total,
+    http_request_duration_seconds, data_service_errors_total,
+)
+from core.version_shim import deprecated_route
+from routes_v1 import register_v1_blueprints
+from flasgger import Swagger
 from schemas.watchlist_schemas import (
     AddWatchlistSchema, BatchDeleteSchema, ReorderSchema,
     MoveFundSchema, CreateGroupSchema,
@@ -27,8 +34,8 @@ from config import get_config, ConfigValidationError
 
 logger = get_logger(__name__)
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, asc, and_, or_, func, cast, Float
-from datetime import datetime, timedelta
+from sqlalchemy import desc, asc, and_, or_, func, cast, Float, text
+from datetime import datetime, timedelta, timezone
 import json
 import math
 import os
@@ -37,6 +44,8 @@ import time
 import threading
 import time
 import re
+import signal
+import atexit
 import requests
 
 app = Flask(__name__, static_folder='static', static_url_path='')
@@ -48,9 +57,50 @@ limiter = Limiter(
 )
 limiter.init_app(app)
 
+Swagger(app, template={
+    'swagger': '2.0',
+    'info': {
+        'title': 'GoFundBot API',
+        'description': '基金数据服务平台 API 文档。\n\n'
+                       '基础路径: `/api/` (旧) / `/api/v1/` (新)',
+        'version': '0.1.0',
+        'contact': {
+            'name': 'GoFundBot',
+        },
+    },
+    'basePath': '/',
+    'schemes': ['http'],
+    'tags': [
+        {'name': 'Fund', 'description': '基金查询与搜索'},
+        {'name': 'System', 'description': '系统管理与监控'},
+    ],
+})
+
 # 注册市场数据 Blueprint
 app.register_blueprint(fund_master_bp)
 app.register_blueprint(data_service_bp)
+# API v1 路由（渐进迁移）
+register_v1_blueprints(app)
+
+# ---------------------------------------------------------------------------
+# Prometheus 请求埋点
+# ---------------------------------------------------------------------------
+
+@app.before_request
+def before_request_metrics():
+    g._request_start_time = time.time()
+
+
+@app.after_request
+def after_request_metrics(response):
+    start = getattr(g, '_request_start_time', None)
+    if start and response.status_code < 400:
+        path = request.path
+        duration = time.time() - start
+        http_request_duration_seconds.labels(method=request.method, path=path).observe(duration)
+        http_requests_total.labels(method=request.method, path=path, status=response.status_code).inc()
+    return response
+
 
 # ---------------------------------------------------------------------------
 # DataService detail helpers (gray-release)
@@ -132,10 +182,10 @@ def _try_data_service_fund_detail(fund_code: str):
         passed, issues = _validate_data_service_fund_quality(mapped)
         return mapped, passed, issues
     except DataServiceError as e:
-        print(f"auto mode: DataService failed for {fund_code}, fallback to legacy: {e}")
+        logger.error(f"auto mode: DataService failed for {fund_code}, fallback to legacy: {e}")
         return None
     except Exception as e:
-        print(f"auto mode: unexpected error for {fund_code}, fallback to legacy: {e}")
+        logger.error(f"auto mode: unexpected error for {fund_code}, fallback to legacy: {e}")
         return None
 
 
@@ -522,10 +572,10 @@ def _fetch_stock_industry_batch(db: Session, codes, force_refresh=False, timeout
                     success_codes.add(record.stock_code)
             failed_codes.extend(code for code in chunk if code not in success_codes)
         except DataServiceError as exc:
-            print(f"stock industry dictionary: DataService unavailable for {len(chunk)} codes: {exc}")
+            logger.error(f"stock industry dictionary: DataService unavailable for {len(chunk)} codes: {exc}")
             failed_codes.extend(chunk)
         except Exception as exc:
-            print(f"stock industry dictionary: unexpected error for {len(chunk)} codes: {exc}")
+            logger.error(f"stock industry dictionary: unexpected error for {len(chunk)} codes: {exc}")
             failed_codes.extend(chunk)
 
     return industry_map, failed_codes
@@ -869,7 +919,7 @@ def _refresh_fund_industry_tag(db: Session, fund_code: str, fetch_holdings_if_mi
             payload = get_data_service_client().get_fund_holdings(fund_code)
             portfolio = _save_portfolio_from_holdings_payload(db, fund_code, payload)
         except Exception as exc:
-            print(f"fund industry tag: holdings fetch failed for {fund_code}: {exc}")
+            logger.error(f"fund industry tag: holdings fetch failed for {fund_code}: {exc}")
 
     basic = db.query(FundBasicInfo).filter(FundBasicInfo.fund_code == fund_code).first()
     if not portfolio:
@@ -1463,10 +1513,10 @@ def search_funds():
                     'TYPE': item.get('type', ''),
                     'PINYIN': item.get('pinyin', ''),
                 })
-            print(f"fund search: DataService success, {len(funds)} results for '{keyword}'")
+            logger.info(f"fund search: DataService success, {len(funds)} results for '{keyword}'")
             return jsonify({"data": funds})
     except DataServiceError as e:
-        print(f"fund search: DataService unavailable, fallback to local cache: {e}")
+        logger.error(f"fund search: DataService unavailable, fallback to local cache: {e}")
 
     # 2) Fallback to local cache
     funds = fund_list_cache.search(keyword, limit=20)
@@ -1488,6 +1538,7 @@ def update_search_database():
         return jsonify(result), 500
 
 @app.route('/api/fund/<fund_code>', methods=['GET'])
+@deprecated_route(alternative='/api/v1/fund/<fund_code>')
 def get_fund_detail(fund_code):
     """
     获取基金详细信息
@@ -1521,7 +1572,7 @@ def get_fund_detail(fund_code):
         try:
             db.commit()
         except Exception as exc:
-            print(f"data_service fund industry commit failed: {exc}")
+            logger.error(f"data_service fund industry commit failed: {exc}")
             db.rollback()
         return jsonify(result)
 
@@ -1537,7 +1588,7 @@ def get_fund_detail(fund_code):
                 try:
                     db.commit()
                 except Exception as exc:
-                    print(f"auto data_service fund industry commit failed: {exc}")
+                    logger.error(f"auto data_service fund industry commit failed: {exc}")
                     db.rollback()
                 ds_result['_data_source'] = {
                     "mode": "auto",
@@ -1549,7 +1600,7 @@ def get_fund_detail(fund_code):
                 return jsonify(ds_result)
             else:
                 # Quality gate failed – fallback to legacy
-                print(f"auto mode: quality gate failed for {fund_code}: {quality_issues}")
+                logger.error(f"auto mode: quality gate failed for {fund_code}: {quality_issues}")
                 auto_fallback = True
         else:
             # DataService request/mapping failed
@@ -1729,7 +1780,7 @@ def get_fund_detail(fund_code):
         try:
             db.commit()
         except Exception as e:
-            print(f"Error saving to database: {e}")
+            logger.error(f"Error saving to database: {e}")
             db.rollback()
 
         # Add debug meta for auto-fallback mode
@@ -1751,7 +1802,7 @@ def get_fund_detail(fund_code):
         try:
             db.commit()
         except Exception as exc:
-            print(f"cached fund industry commit failed: {exc}")
+            logger.error(f"cached fund industry commit failed: {exc}")
             db.rollback()
         return jsonify(cached_data)
 
@@ -1772,7 +1823,7 @@ def get_fund_industry_exposure(fund_code):
     try:
         db.commit()
     except Exception as exc:
-        print(f"industry exposure commit failed: {exc}")
+        logger.error(f"industry exposure commit failed: {exc}")
         db.rollback()
 
     return jsonify({
@@ -2115,7 +2166,7 @@ def add_to_watchlist():
                 finally:
                     estimate_db.close()
             except Exception as estimate_exc:
-                print(f"add watchlist: initial estimate refresh failed for {fund_code}: {estimate_exc}")
+                logger.error(f"add watchlist: initial estimate refresh failed for {fund_code}: {estimate_exc}")
         return jsonify({
             'message': 'Fund added to watchlist',
             'fund_code': fund_code,
@@ -2580,7 +2631,7 @@ def _refresh_fund_detail_estimate_snapshot(db, fund_code, result=None):
     try:
         raw_data = fund_api._fetch_raw_data(fund_code)
     except Exception as exc:
-        print(f"refresh detail snapshot: failed for {fund_code}: {exc}")
+        logger.error(f"refresh detail snapshot: failed for {fund_code}: {exc}")
         return result
 
     if not raw_data:
@@ -2641,7 +2692,7 @@ def _sync_latest_official_nav(db, fund_code, result=None):
             latest_ds['source'] = 'data_service_nav'
             candidates.append(latest_ds)
     except Exception as exc:
-        print(f"sync official nav: DataService unavailable for {fund_code}: {exc}")
+        logger.error(f"sync official nav: DataService unavailable for {fund_code}: {exc}")
 
     latest_trend = _latest_nav_from_fund_trend(db, fund_code)
     if latest_trend:
@@ -2743,7 +2794,7 @@ def _refresh_single_fund_estimate(db, fund_code):
                 result = _upsert_data_service_estimate(db, fund_code, item['data'])
                 break
     except Exception as exc:
-        print(f"refresh single estimate: DataService unavailable for {fund_code}: {exc}")
+        logger.error(f"refresh single estimate: DataService unavailable for {fund_code}: {exc}")
 
     detail_result = _refresh_fund_detail_estimate_snapshot(db, fund_code, result)
     if detail_result:
@@ -2754,7 +2805,7 @@ def _refresh_single_fund_estimate(db, fund_code):
         if result:
             return _sync_latest_official_nav(db, fund_code, result)
     except Exception as exc:
-        print(f"refresh single estimate: fundgz failed for {fund_code}: {exc}")
+        logger.error(f"refresh single estimate: fundgz failed for {fund_code}: {exc}")
 
     latest = _latest_nav_from_fund_trend(db, fund_code)
     if latest:
@@ -2770,7 +2821,7 @@ def _refresh_single_fund_estimate(db, fund_code):
     # 兜底：尝试复用 FundEstimate 中已有的缓存数据（例如之前查看详情页时写入的）
     existing = db.query(FundEstimate).filter(FundEstimate.fund_code == fund_code).first()
     if existing:
-        print(f"refresh single estimate: reusing cached estimate for {fund_code}")
+        logger.warning(f"refresh single estimate: reusing cached estimate for {fund_code}")
         return {
             'fund_code': fund_code,
             'estimate_value': existing.estimate_value,
@@ -2811,13 +2862,10 @@ def refresh_watchlist_estimates():
                 failed_count += 1
         except Exception as e:
             # 单个基金失败不影响其他
-            print(f"刷新 {fund_code} 估值失败: {e}")
+            logger.error(f"刷新 {fund_code} 估值失败: {e}")
             failed_count += 1
 
-    print(
-        "refresh_watchlist_estimates: "
-        f"updated={updated_count}, failed={failed_count}, total={len(fund_codes)}"
-    )
+    logger.info(f"refresh_watchlist_estimates: updated={updated_count}, failed={failed_count}, total={len(fund_codes)}")
 
     try:
         db.commit()
@@ -3125,7 +3173,7 @@ def get_fund_compare_data(fund_code):
         return jsonify(api_data)
         
     except Exception as e:
-        print(f"Error fetching fund compare data: {e}")
+        logger.error(f"Error fetching fund compare data: {e}")
         db.rollback()
         return jsonify({'error': str(e)}), 500
 
@@ -3231,7 +3279,7 @@ def _save_fund_data_to_db(db: Session, fund_code: str, data: dict):
         db.commit()
     except Exception as e:
         db.rollback()
-        print(f"Error saving fund data to db: {e}")
+        logger.error(f"Error saving fund data to db: {e}")
 
 
 # ==================== 基金筛选功能 ====================
@@ -3323,7 +3371,7 @@ def _fetch_screening_snapshot_items(limit=None, db=None, task_id=None):
     total_types = len(SCREENING_SNAPSHOT_TYPES)
     t0 = time.time()
 
-    print(f"[筛查更新] 开始获取批量排行 (共{total_types}类)...", flush=True)
+    logger.info(f"[筛查更新] 开始获取批量排行 (共{total_types}类)...")
 
     for idx, type_code in enumerate(SCREENING_SNAPSHOT_TYPES, 1):
         if max_count and len(items) >= max_count:
@@ -3340,7 +3388,7 @@ def _fetch_screening_snapshot_items(limit=None, db=None, task_id=None):
             payload = client.get_fund_screening_snapshot([type_code], page_size=500, sort='1nzf')
             elapsed = time.time() - t1
         except DataServiceError as e:
-            print(f"[筛查更新] {type_code}: DataService错误({time.time()-t1:.1f}s): {e}", flush=True)
+            logger.error(f"[筛查更新] {type_code}: DataService错误({time.time()-t1:.1f}s): {e}")
             _set_screening_progress(
                 db, task_id,
                 message=f"获取排行 ({idx}/{total_types}): {type_code} 失败, 跳过",
@@ -3348,7 +3396,7 @@ def _fetch_screening_snapshot_items(limit=None, db=None, task_id=None):
             )
             continue
         except Exception as e:
-            print(f"[筛查更新] {type_code}: 未知错误({time.time()-t1:.1f}s): {e}", flush=True)
+            logger.error(f"[筛查更新] {type_code}: 未知错误({time.time()-t1:.1f}s): {e}")
             _set_screening_progress(
                 db, task_id,
                 message=f"获取排行 ({idx}/{total_types}): {type_code} 异常, 跳过",
@@ -3360,13 +3408,13 @@ def _fetch_screening_snapshot_items(limit=None, db=None, task_id=None):
         page_items = data.get('items', []) if isinstance(data, dict) else []
         failed_pages = data.get('failedPages', []) if isinstance(data, dict) else []
         if failed_pages:
-            print(f"[筛查更新] {type_code}: {len(failed_pages)}个失败页: {failed_pages[:3]}", flush=True)
+            logger.error(f"[筛查更新] {type_code}: {len(failed_pages)}个失败页: {failed_pages[:3]}")
 
         remaining = None if max_count is None else max_count - len(items)
         new_items = page_items if remaining is None else page_items[:remaining]
         items.extend(new_items)
 
-        print(f"[筛查更新] {type_code}: +{len(new_items)}只 ({elapsed:.1f}s), 累计{len(items)}只", flush=True)
+        logger.info(f"[筛查更新] {type_code}: +{len(new_items)}只 ({elapsed:.1f}s), 累计{len(items)}只")
 
         _set_screening_progress(
             db, task_id,
@@ -3374,7 +3422,7 @@ def _fetch_screening_snapshot_items(limit=None, db=None, task_id=None):
             current_count=len(items),
         )
 
-    print(f"[筛查更新] 批量排行获取完成: {len(items)}只, 耗时{time.time()-t0:.1f}s", flush=True)
+    logger.info(f"[筛查更新] 批量排行获取完成: {len(items)}只, 耗时{time.time()-t0:.1f}s")
     return items
 
 
@@ -3472,11 +3520,11 @@ def update_single_fund_risk_metrics(fund_code, db):
         payload = get_data_service_client().get_fund_nav_history(fund_code)
         net_worth_trend = _nav_history_to_risk_input(payload)
         if len(net_worth_trend) < 30:
-            print(f"[补充风险] 跳过 {fund_code}: 净值不足({len(net_worth_trend)}条)", flush=True)
+            logger.info(f"[补充风险] 跳过 {fund_code}: 净值不足({len(net_worth_trend)}条)")
             return False
         risk_metrics = calculate_risk_metrics(net_worth_trend)
         if not risk_metrics:
-            print(f"[补充风险] 跳过 {fund_code}: 风险计算失败(可能数据异常或基金太新)", flush=True)
+            logger.error(f"[补充风险] 跳过 {fund_code}: 风险计算失败(可能数据异常或基金太新)")
             return False
         _save_risk_metrics(db, fund_code, risk_metrics)
         _refresh_fund_industry_tag(db, fund_code, fetch_holdings_if_missing=True)
@@ -3484,7 +3532,7 @@ def update_single_fund_risk_metrics(fund_code, db):
         return True
     except Exception as e:
         db.rollback()
-        print(f"[补充风险] 异常 {fund_code}: {e}", flush=True)
+        logger.warning(f"[补充风险] 异常 {fund_code}: {e}")
         return False
 
 
@@ -3529,7 +3577,7 @@ def _select_nav_candidates(db):
                 })
 
     candidates.sort(key=lambda item: item['code'])
-    print(f"[筛查更新] 风险指标候选: {len(candidates)}只 (缺风险或过期>7天)", flush=True)
+    logger.info(f"[筛查更新] 风险指标候选: {len(candidates)}只 (缺风险或过期>7天)")
     return candidates
 
 
@@ -3662,7 +3710,7 @@ def build_stock_industry_dictionary_from_akshare(db, force=False, board_limit=No
         result['hk'] = hk_result
         return result
     except Exception as exc:
-        print(f"akshare sina industry dictionary failed, fallback to eastmoney: {exc}", flush=True)
+        logger.error(f"akshare sina industry dictionary failed, fallback to eastmoney: {exc}")
         board_df = ak.stock_board_industry_name_em()
         result = _build_stock_industry_dictionary_from_em_boards(
             db,
@@ -3714,7 +3762,7 @@ def build_hk_stock_industry_dictionary_from_eastmoney(db, force=False, page_size
                 break
         except Exception as exc:
             failed_pages += 1
-            print(f"eastmoney hk industry dictionary: failed page {page}: {exc}", flush=True)
+            logger.error(f"eastmoney hk industry dictionary: failed page {page}: {exc}")
             break
 
         for row in rows:
@@ -3785,7 +3833,7 @@ def _build_stock_industry_dictionary_from_em_boards(db, ak, board_df, force=Fals
             cons_df = ak.stock_board_industry_cons_em(symbol=board['name'])
         except Exception as exc:
             failed_boards += 1
-            print(f"akshare stock industry dictionary: failed board {board['name']}: {exc}", flush=True)
+            logger.error(f"akshare stock industry dictionary: failed board {board['name']}: {exc}")
             continue
         if cons_df is None or getattr(cons_df, 'empty', True):
             continue
@@ -3858,7 +3906,7 @@ def _build_stock_industry_dictionary_from_sina(db, ak, force=False, board_limit=
             cons_df = ak.stock_sector_detail(sector=board['label'])
         except Exception as exc:
             failed_boards += 1
-            print(f"akshare sina industry dictionary: failed board {board['name']}: {exc}", flush=True)
+            logger.error(f"akshare sina industry dictionary: failed board {board['name']}: {exc}")
             continue
         if cons_df is None or getattr(cons_df, 'empty', True):
             continue
@@ -3943,9 +3991,9 @@ def batch_refresh_fund_industry_tags(
         try:
             full_dictionary_result = build_stock_industry_dictionary_from_akshare(db)
             full_dictionary_ok = True
-            print(f"[stock industry dictionary] akshare full build: {full_dictionary_result}", flush=True)
+            logger.warning(f"[stock industry dictionary] akshare full build: {full_dictionary_result}")
         except Exception as exc:
-            print(f"[stock industry dictionary] akshare full build failed: {exc}", flush=True)
+            logger.error(f"[stock industry dictionary] akshare full build failed: {exc}")
 
     _set_screening_progress(
         db,
@@ -3964,7 +4012,7 @@ def batch_refresh_fund_industry_tags(
             StockIndustry.industry != '',
         ).count(),
     }
-    print(f"[industry dictionary] local lookup: {dictionary_result}", flush=True)
+    logger.warning(f"[industry dictionary] local lookup: {dictionary_result}")
 
     if allow_missing_stock_network and (not build_full_dictionary or full_dictionary_ok):
         portfolio_stock_codes = _collect_stock_codes_from_portfolios(db, codes)
@@ -3995,24 +4043,11 @@ def batch_refresh_fund_industry_tags(
                 timeout=5.0,
             )
             db.commit()
-            print(
-                f"[industry dictionary] missing A-share stocks fetched: "
-                f"{len(fetched_map)}/{len(missing_a_share_codes)} "
-                f"(failed {len(failed_codes)}, skipped non-A-share {skipped_non_a_share})",
-                flush=True,
-            )
+            logger.info(f"[industry dictionary] missing A-share stocks fetched: {len(fetched_map)}/{len(missing_a_share_codes)} (failed {len(failed_codes)}, skipped non-A-share {skipped_non_a_share})")
         elif missing_stock_codes:
-            print(
-                f"[industry dictionary] skipped {skipped_non_a_share} non-A-share/unrecognized holding codes "
-                "for stock industry lookup",
-                flush=True,
-            )
+            logger.info(f"[industry dictionary] skipped {skipped_non_a_share} non-A-share/unrecognized holding codes for stock industry lookup")
     elif allow_missing_stock_network and build_full_dictionary and not full_dictionary_ok:
-        print(
-            "[industry dictionary] skip missing stock network fetch because akshare full build failed; "
-            "using local stock_industry only",
-            flush=True,
-        )
+        logger.warning("[industry dictionary] skip missing stock network fetch because akshare full build failed; using local stock_industry only")
 
     success = 0
     fail = 0
@@ -4050,7 +4085,7 @@ def batch_refresh_fund_industry_tags(
             else:
                 fail += 1
         except Exception as exc:
-            print(f"batch industry tag refresh failed for {code}: {exc}", flush=True)
+            logger.error(f"batch industry tag refresh failed for {code}: {exc}")
             fail += 1
 
         if index % 20 == 0:
@@ -4279,7 +4314,7 @@ def calculate_same_type_rankings(db):
     ).distinct().all()
     
     fund_types = [ft[0] for ft in fund_types]
-    print(f"[同类排名] 发现 {len(fund_types)} 种基金类型")
+    logger.info(f"[同类排名] 发现 {len(fund_types)} 种基金类型")
     
     for fund_type in fund_types:
         # 获取该类型的所有基金（包含业绩数据）
@@ -4291,7 +4326,7 @@ def calculate_same_type_rankings(db):
         if len(funds) < 2:
             continue
         
-        print(f"[同类排名] 处理 {fund_type}: {len(funds)} 只基金")
+        logger.info(f"[同类排名] 处理 {fund_type}: {len(funds)} 只基金")
         
         # 解析业绩数据
         fund_performances = []
@@ -4380,7 +4415,7 @@ def calculate_same_type_rankings(db):
             rank_record.updated_time = datetime.now()
     
     db.commit()
-    print("[同类排名] 同类型排名计算完成")
+    logger.info("[同类排名] 同类型排名计算完成")
 
 
 # 全局变量：批量更新状态
@@ -4418,7 +4453,7 @@ def batch_update_fund_data(
 
     db = SessionLocal()
     t0 = time.time()
-    print(f"[筛查更新] ========== 开始批量更新 ({mode}) ==========", flush=True)
+    logger.info(f"[筛查更新] ========== 开始批量更新 ({mode}) ==========")
     try:
         if not task_id:
             task = _create_data_fetch_task(
@@ -4468,7 +4503,7 @@ def batch_update_fund_data(
             ]
         t_lookup_start = time.time()
         type_lookup = _fund_type_lookup()
-        print(f"[筛查更新] 类型查找表构建: {len(type_lookup)}条 ({time.time()-t_lookup_start:.1f}s)", flush=True)
+        logger.info(f"[筛查更新] 类型查找表构建: {len(type_lookup)}条 ({time.time()-t_lookup_start:.1f}s)")
 
         if fund_types:
             before_filter = len(fund_list)
@@ -4479,13 +4514,13 @@ def batch_update_fund_data(
                     fund_types,
                 )
             ]
-            print(f"[筛查更新] 类型筛选: {before_filter} → {len(fund_list)}只 (筛选条件: {fund_types})", flush=True)
+            logger.info(f"[筛查更新] 类型筛选: {before_filter} → {len(fund_list)}只 (筛选条件: {fund_types})")
 
         success_count = 0
         fail_count = 0
         total_to_save = len(fund_list)
         if update_basic:
-            print(f"[筛查更新] 开始写入基础数据: {total_to_save}只...", flush=True)
+            logger.info(f"[筛查更新] 开始写入基础数据: {total_to_save}只...")
             _set_screening_progress(
                 db,
                 task_id,
@@ -4534,18 +4569,18 @@ def batch_update_fund_data(
                 )
 
                 if index % 500 == 0:
-                    print(f"[筛查更新] 写入进度: {index}/{total_to_save} (成功{success_count}, 失败{fail_count})", flush=True)
+                    logger.info(f"[筛查更新] 写入进度: {index}/{total_to_save} (成功{success_count}, 失败{fail_count})")
 
             db.commit()
-            print(f"[筛查更新] 基础数据写入完成: 成功{success_count}, 失败{fail_count}, 耗时{time.time()-t0:.1f}s", flush=True)
+            logger.info(f"[筛查更新] 基础数据写入完成: 成功{success_count}, 失败{fail_count}, 耗时{time.time()-t0:.1f}s")
         else:
             _set_screening_progress(db, task_id, message='跳过基础数据更新...', target_count=total_to_save, current_count=0)
 
         if not screening_stop_flag and calculate_rankings_task:
-            print(f"[筛查更新] 开始计算同类排名...", flush=True)
+            logger.info(f"[筛查更新] 开始计算同类排名...")
             _set_screening_progress(db, task_id, message='计算同类排名...', current_item='')
             calculate_same_type_rankings(db)
-            print(f"[筛查更新] 同类排名计算完成", flush=True)
+            logger.info(f"[筛查更新] 同类排名计算完成")
 
         if not screening_stop_flag and calculate_risk_task:
             candidates = _select_nav_candidates(db)
@@ -4611,12 +4646,7 @@ def batch_update_fund_data(
                 build_full_dictionary=build_industry_dictionary,
                 allow_missing_stock_network=True,
             )
-            print(
-                f"[screening update] industry tags refreshed: "
-                f"{industry_result['success_count']}/{industry_result['total']} "
-                f"(fail {industry_result['fail_count']})",
-                flush=True,
-            )
+            logger.info(f"[screening update] industry tags refreshed: {industry_result['success_count']}/{industry_result['total']} (fail {industry_result['fail_count']})")
             success_count = industry_result['success_count']
             fail_count = industry_result['fail_count']
             _set_screening_progress(
@@ -4697,10 +4727,10 @@ def batch_fill_risk_metrics(db=None, task_id=None):
         missing_codes = sorted(need_risk_update_codes | missing_industry_codes)
         industry_tag_count = db.query(FundIndustryTag.fund_code).count()
 
-        print(f"[补充风险] 待处理: {len(missing_codes)}只 (缺风险:{len(missing_risk_codes)}, 过期风险:{len(stale_risk_codes)}, 缺行业:{len(missing_industry_codes)}, 总计:{len(all_basic_codes)}, 有风险:{len(risk_codes)}, 行业标签:{industry_tag_count})", flush=True)
+        logger.warning(f"[补充风险] 待处理: {len(missing_codes)}只 (缺风险:{len(missing_risk_codes)}, 过期风险:{len(stale_risk_codes)}, 缺行业:{len(missing_industry_codes)}, 总计:{len(all_basic_codes)}, 有风险:{len(risk_codes)}, 行业标签:{industry_tag_count})")
 
         if not missing_codes:
-            print("[补充风险] 无需补充，所有基金已有风险指标", flush=True)
+            logger.info("[补充风险] 无需补充，所有基金已有风险指标")
             rebuild_industry_performance_stats(db)
             db.commit()
             screening_update_status['running'] = False
@@ -4757,12 +4787,12 @@ def batch_fill_risk_metrics(db=None, task_id=None):
                 success_count=success, fail_count=fail)
 
             if idx % 100 == 0:
-                print(f"[补充风险] 进度: {idx}/{len(missing_codes)} (成功{success}, 失败{fail})", flush=True)
+                logger.info(f"[补充风险] 进度: {idx}/{len(missing_codes)} (成功{success}, 失败{fail})")
 
         rebuild_industry_performance_stats(db)
         db.commit()
 
-        print(f"[补充风险] 完成: 成功{success}, 失败{fail}", flush=True)
+        logger.info(f"[补充风险] 完成: 成功{success}, 失败{fail}")
         _set_screening_progress(db, task_id, status='finished',
             message=f"补充完成。成功{success}, 失败{fail}",
             success_count=success, fail_count=fail)
@@ -4770,7 +4800,7 @@ def batch_fill_risk_metrics(db=None, task_id=None):
         return {'success': True, 'success_count': success, 'fail_count': fail}
 
     except Exception as e:
-        print(f"[补充风险] 失败: {e}", flush=True)
+        logger.error(f"[补充风险] 失败: {e}")
         screening_update_status['running'] = False
         _set_screening_progress(db, task_id, status='failed', message=str(e))
         return {'success': False, 'error': str(e)}
@@ -4793,7 +4823,7 @@ def start_fill_risk():
             task = _create_data_fetch_task(db, 'fill_risk', message='补充风险指标...')
             batch_fill_risk_metrics(db=db, task_id=task.id)
         except Exception as e:
-            print(f"[补充风险] 线程异常: {e}", flush=True)
+            logger.warning(f"[补充风险] 线程异常: {e}")
             screening_update_status['running'] = False
         finally:
             db.close()
@@ -6443,7 +6473,7 @@ def _refresh_etf_tracking_from_akshare(db, limit=500):
         payload = response.json()
         rows = (payload.get('data') or {}).get('diff') or []
     except Exception as direct_exc:
-        print(f"ETF tracking: eastmoney direct unavailable: {direct_exc}", flush=True)
+        logger.error(f"ETF tracking: eastmoney direct unavailable: {direct_exc}")
         try:
             import akshare as ak
             df = ak.fund_etf_spot_em()
@@ -6550,7 +6580,7 @@ def _build_etf_tracking_snapshot(db, limit=80, refresh=False):
         except Exception as exc:
             db.rollback()
             source_error = str(exc)
-            print(f"ETF tracking: akshare unavailable: {exc}", flush=True)
+            logger.error(f"ETF tracking: akshare unavailable: {exc}")
 
     rows = db.query(FundEtfTracking).order_by(
         desc(FundEtfTracking.change_percent)
@@ -6699,7 +6729,7 @@ def _build_research_sector_summary(limit=50):
         data = payload.get('data', {}) if isinstance(payload, dict) else {}
         rows = data.get('items', []) if isinstance(data, dict) else []
     except Exception as exc:
-        print(f"research sector summary: DataService unavailable: {exc}")
+        logger.error(f"research sector summary: DataService unavailable: {exc}")
         try:
             fallback = get_fund_master_service().get_sector_rank(limit=limit)
             fallback_rows = fallback.get('data', []) if isinstance(fallback, dict) else []
@@ -6714,7 +6744,7 @@ def _build_research_sector_summary(limit=50):
                 if isinstance(item, dict)
             ]
         except Exception as fallback_exc:
-            print(f"research sector summary: fallback unavailable: {fallback_exc}")
+            logger.error(f"research sector summary: fallback unavailable: {fallback_exc}")
             rows = []
 
     items = []
@@ -6916,6 +6946,45 @@ preload_services()
 
 from flask import send_from_directory
 
+_START_TIME = datetime.now(timezone.utc)
+
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """后端服务健康检查"""
+    checks = {}
+    try:
+        db = SessionLocal()
+        db.execute(text('SELECT 1'))
+        db.close()
+        checks['database'] = 'ok'
+    except Exception as e:
+        checks['database'] = f'error: {e}'
+
+    try:
+        ds = get_data_service_client().health()
+        if isinstance(ds, dict):
+            checks['data_service'] = ds.get('status', 'unknown')
+        else:
+            checks['data_service'] = 'unknown'
+    except Exception as e:
+        checks['data_service'] = f'error: {str(e)[:200]}'
+
+    all_ok = all(v == 'ok' for v in checks.values())
+    return jsonify({
+        'status': 'ok' if all_ok else 'degraded',
+        'service': 'gofund-backend',
+        'started_at': _START_TIME.isoformat(),
+        'uptime_seconds': (datetime.now(timezone.utc) - _START_TIME).total_seconds(),
+        'checks': checks,
+    }), 200 if all_ok else 503
+
+
+@app.route('/metrics', methods=['GET'])
+def metrics():
+    return metrics_endpoint()
+
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
@@ -6987,6 +7056,33 @@ def _cleanup_stale_tasks_on_startup():
         logger.error("[启动清理] 失败", extra={"error": str(e)})
 
 
+# ---------------------------------------------------------------------------
+# 优雅关闭
+# ---------------------------------------------------------------------------
+
+_shutdown_flag = threading.Event()
+
+
+def _graceful_shutdown():
+    if _shutdown_flag.is_set():
+        return
+    _shutdown_flag.set()
+    logger.info("收到关闭信号，开始优雅退出...")
+    timeout = 10
+    deadline = time.time() + timeout
+    for thread in threading.enumerate():
+        if thread is not threading.main_thread() and thread.is_alive():
+            remaining = deadline - time.time()
+            if remaining > 0:
+                thread.join(timeout=remaining)
+    logger.info("优雅关闭完成")
+
+
+atexit.register(_graceful_shutdown)
+signal.signal(signal.SIGTERM, lambda s, f: sys.exit(0))
+signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
+
+
 if __name__ == '__main__':
     init_logging()
     logger.info("GoFundBot Backend 启动中...")
@@ -6999,4 +7095,7 @@ if __name__ == '__main__':
     _cleanup_stale_tasks_on_startup()
     _auto_ranking_scheduler()
     logger.info("GoFundBot Backend 已就绪")
-    app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)
+    try:
+        app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
+    finally:
+        _graceful_shutdown()

@@ -105,6 +105,8 @@ GoFundBot 是一个基于 Python (Flask) 和 Vue 3 构建的智能基金分析�
 *   **AI/LLM**: LangChain, OpenAI SDK (适配 SiliconFlow/DeepSeek 等模型)
 *   **数据存储**: SQLAlchemy (SQLite)
 *   **网络请求**: Requests, Curl_cffi (处理复杂反爬)
+*   **监控**: Prometheus 客户端 (`/metrics` 端点)
+*   **API 文档**: Swagger/OpenAPI (`/api/docs` 端点)
 
 ### 前端 (Frontend)
 *   **框架**: Vue 3 (Composition API)
@@ -234,6 +236,29 @@ python app.py
 
 后端会自动加载 `Frontend/dist/` 下的前端静态文件，无需单独运行 Vite 开发服务器。
 
+**生产环境端点**
+
+| 端点 | 说明 | 示例 |
+|------|------|------|
+| `GET /health` | 服务健康检查（DB + DataService 连通性） | `curl localhost:5000/health` |
+| `GET /metrics` | Prometheus 指标（请求数、耗时等） | `curl localhost:5000/metrics` |
+| `GET /api/docs` | Swagger UI API 交互文档 | 浏览器访问 `http://localhost:5000/api/docs` |
+| `GET /api/v1/fund/<code>` | 渐进式版本化 API（新） | `curl localhost:5000/api/v1/fund/000001` |
+
+健康检查正常响应：`{"status":"ok","service":"gofund-backend","checks":{"database":"ok","data_service":"ok"}}`。DataService 异常时返回 `503` 且 `"status":"degraded"`。
+
+Swagger UI 支持在线 Try It Out 交互式调试所有已文档化的 API 端点。
+
+**优雅关闭**
+
+服务支持 `SIGTERM` / `SIGINT` 信号触发优雅关闭：
+- 最大等待 10 秒处理进行中的请求
+- 超时后强制退出
+
+```bash
+kill -TERM <pid>   # 优雅关闭
+```
+
 **使用 Gunicorn（Linux / macOS）**
 
 ```bash
@@ -259,14 +284,20 @@ MyBot/
 │   │   ├── errors.py            # 错误类型
 │   │   ├── logging.py           # 结构化 JSON 日志
 │   │   ├── validation.py        # 请求校验装饰器（Pydantic）
-│   │   └── cors_config.py       # CORS 白名单配置
+│   │   ├── cors_config.py       # CORS 白名单配置
+│   │   ├── metrics.py           # Prometheus 指标暴露
+│   │   └── version_shim.py      # API 版本化 @deprecated_route 装饰器
 │   ├── providers/               # 数据源封装
 │   │   ├── eastmoney.py         # 东方财富 API
 │   │   └── tencent.py           # 腾讯财经 API
+│   ├── routes_v1/               # API v1 路由蓝图（渐进迁移）
+│   │   ├── __init__.py          # 统一注册 v1 蓝图
+│   │   └── fund.py              # 基金相关 v1 端点
 │   ├── schemas/                 # Pydantic 校验模型
 │   │   ├── watchlist_schemas.py
 │   │   ├── backtest_schemas.py
-│   │   └── screening_schemas.py
+│   │   ├── screening_schemas.py
+│   │   └── apidoc.py            # Swagger 通用响应模型
 │   ├── services/                # 业务服务层
 │   │   ├── market_data.py       # 市场数据服务
 │   │   └── data_service_client.py # DataService HTTP 客户端

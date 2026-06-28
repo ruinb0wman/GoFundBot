@@ -13,6 +13,9 @@ import json
 import os
 import re
 from datetime import datetime
+from core.logging import get_logger
+
+logger = get_logger(__name__)
 from typing import List, Dict, Any, Optional
 
 # 获取 Backend/Data 文件夹路径
@@ -176,13 +179,13 @@ class FundListCache:
                     data = json.load(f)
                     self.fund_list = data.get('funds', [])
                     self.last_update = data.get('last_update', '')
-                    print(f"[FundListCache] 已加载本地缓存: {len(self.fund_list)} 只基金, 更新时间: {self.last_update}")
+                    logger.info(f"[FundListCache] 已加载本地缓存: {len(self.fund_list)} 只基金, 更新时间: {self.last_update}")
             except Exception as e:
-                print(f"[FundListCache] 加载缓存失败: {e}")
+                logger.error(f"[FundListCache] 加载缓存失败: {e}")
                 self.fund_list = []
                 self.last_update = ""
         else:
-            print("[FundListCache] 本地缓存文件不存在")
+            logger.info("[FundListCache] 本地缓存文件不存在")
     
     def _save_cache(self):
         """保存缓存到本地文件"""
@@ -193,9 +196,9 @@ class FundListCache:
             }
             with open(self.cache_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            print(f"[FundListCache] 缓存已保存: {len(self.fund_list)} 只基金")
+            logger.info(f"[FundListCache] 缓存已保存: {len(self.fund_list)} 只基金")
         except Exception as e:
-            print(f"[FundListCache] 保存缓存失败: {e}")
+            logger.error(f"[FundListCache] 保存缓存失败: {e}")
     
     def _auto_refresh_if_stale(self):
         """如果缓存超过30天，后台线程自动更新"""
@@ -210,10 +213,10 @@ class FundListCache:
                             return  # 不到30天，不更新
                     except ValueError:
                         pass
-                print(f"[FundListCache] 缓存过期(>{30}天)，后台更新中...", flush=True)
+                logger.info(f"[FundListCache] 缓存过期(>{30}天)，后台更新中...")
                 self.update_from_api()
             except Exception as e:
-                print(f"[FundListCache] 自动更新失败: {e}", flush=True)
+                logger.error(f"[FundListCache] 自动更新失败: {e}")
         t = threading.Thread(target=_refresh, daemon=True)
         t.start()
 
@@ -222,7 +225,7 @@ class FundListCache:
         从天天基金API获取全部基金列表并更新本地缓存
         返回更新结果信息
         """
-        print("[FundListCache] 开始从API获取基金列表...")
+        logger.info("[FundListCache] 开始从API获取基金列表...")
         
         try:
             # 天天基金全部基金列表API
@@ -264,7 +267,7 @@ class FundListCache:
             }
             
         except Exception as e:
-            print(f"[FundListCache] 更新失败: {e}")
+            logger.error(f"[FundListCache] 更新失败: {e}")
             return {"success": False, "error": str(e)}
     
     def search(self, keyword: str, limit: int = 20) -> List[Dict[str, Any]]:
@@ -333,13 +336,13 @@ if __name__ == "__main__":
     
     # 更新缓存
     result = cache.update_from_api()
-    print(f"更新结果: {result}")
+    logger.warning(f"更新结果: {result}")
     
     # 测试搜索
-    print("\n搜索 '华夏':")
+    logger.info("\n搜索 '华夏':")
     for fund in cache.search("华夏", limit=5):
-        print(f"  {fund['CODE']} - {fund['NAME']} ({fund['TYPE']})")
+        logger.info(f"  {fund['CODE']} - {fund['NAME']} ({fund['TYPE']})")
     
-    print("\n搜索 '000001':")
+    logger.info("\n搜索 '000001':")
     for fund in cache.search("000001", limit=5):
-        print(f"  {fund['CODE']} - {fund['NAME']} ({fund['TYPE']})")
+        logger.info(f"  {fund['CODE']} - {fund['NAME']} ({fund['TYPE']})")
