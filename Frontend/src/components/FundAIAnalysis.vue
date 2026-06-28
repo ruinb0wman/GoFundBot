@@ -2,13 +2,13 @@
   <div class="fund-ai-analysis card">
     <div class="header">
       <div class="title-area">
-        <span class="icon">🤖</span>
+        <span class="icon"><LucideIcon name="Bot" :size="20" /></span>
         <h3>AI 智能分析</h3>
         <span class="badge" v-if="data">已分析</span>
       </div>
       <div class="header-actions">
         <button v-if="!loading" @click="analyze" class="analyze-btn" :class="{ 'has-data': data }">
-          <span class="btn-icon">{{ data ? '🔄' : '✨' }}</span>
+          <span class="btn-icon"><LucideIcon :name="data ? 'RefreshCw' : 'Sparkles'" :size="16" /></span>
           {{ data ? '重新分析' : '开始分析' }}
         </button>
         <button class="close-btn" @click="$emit('close')" title="关闭">×</button>
@@ -27,7 +27,7 @@
     </div>
 
     <div v-else-if="error" class="error">
-      <span class="error-icon">⚠️</span>
+      <span class="error-icon"><LucideIcon name="TriangleAlert" :size="20" /></span>
       <p>{{ error }}</p>
       <button @click="analyze" class="retry-btn">重试</button>
     </div>
@@ -48,7 +48,7 @@
           <div class="score-label">综合评分</div>
         </div>
         <div class="advice-card" :class="adviceClass">
-          <div class="advice-icon">{{ adviceIcon }}</div>
+          <div class="advice-icon"><LucideIcon :name="adviceIcon" :size="32" /></div>
           <div class="advice-text">{{ data.operation_advice }}</div>
         </div>
       </div>
@@ -61,7 +61,7 @@
       <!-- 仪表盘 -->
       <div class="dashboard-grid">
         <div class="dash-item" v-for="(item, key) in dashboardItems" :key="key">
-          <div class="dash-icon">{{ item.icon }}</div>
+          <div class="dash-icon"><LucideIcon :name="item.icon" :size="18" /></div>
           <div class="dash-content">
             <label>{{ item.label }}</label>
             <span :class="getEvalClass(data.dashboard[key])">{{ data.dashboard[key] }}</span>
@@ -72,7 +72,7 @@
       <!-- 亮点与风险 -->
       <div class="details-grid">
         <div class="detail-col highlights">
-          <h4><span class="col-icon">✅</span> 投资亮点</h4>
+          <h4><span class="col-icon"><LucideIcon name="Check" :size="16" /></span> 投资亮点</h4>
           <ul>
             <li v-for="(item, i) in data.highlights" :key="i">
               <span class="bullet">•</span>{{ item }}
@@ -80,7 +80,7 @@
           </ul>
         </div>
         <div class="detail-col risks">
-          <h4><span class="col-icon">⚠️</span> 风险提示</h4>
+          <h4><span class="col-icon"><LucideIcon name="TriangleAlert" :size="16" /></span> 风险提示</h4>
           <ul>
             <li v-for="(item, i) in data.risk_factors" :key="i">
               <span class="bullet">•</span>{{ item }}
@@ -91,7 +91,7 @@
       
       <!-- 实时情报 -->
       <div class="news-section" v-if="data.news_intel && data.news_intel.length">
-        <h4><span class="col-icon">📰</span> 实时情报</h4>
+        <h4><span class="col-icon"><LucideIcon name="Newspaper" :size="16" /></span> 实时情报</h4>
         <ul>
           <li v-for="(news, i) in data.news_intel" :key="i">{{ news }}</li>
         </ul>
@@ -100,7 +100,7 @@
       <!-- 深度分析报告 -->
       <div class="detailed-report" v-if="data.detailed_report">
         <div class="report-header">
-          <span class="report-icon">📑</span>
+          <span class="report-icon"><LucideIcon name="FileText" :size="20" /></span>
           <h4>深度分析报告</h4>
         </div>
         <div class="markdown-content" v-html="parsedReport"></div>
@@ -108,12 +108,12 @@
 
       <!-- 免责声明 -->
       <div class="disclaimer">
-        💡 以上分析由 AI 生成，仅供参考，不构成投资建议。投资有风险，入市需谨慎。
+        <LucideIcon name="Lightbulb" :size="16" /> 以上分析由 AI 生成，仅供参考，不构成投资建议。投资有风险，入市需谨慎。
       </div>
     </div>
     
     <div v-else class="empty-state">
-      <div class="empty-icon">🔮</div>
+      <div class="empty-icon"><LucideIcon name="Telescope" :size="36" /></div>
       <p class="empty-title">点击上方按钮，获取 AI 对该基金的实时深度分析报告</p>
       <p class="empty-sub">分析内容包括：业绩评价、经理能力、持仓分析、后市展望等</p>
     </div>
@@ -146,10 +146,10 @@ watch(data, (newVal) => {
 
 // 仪表盘配置
 const dashboardItems = {
-  performance_eval: { label: '业绩评价', icon: '📈' },
-  manager_ability: { label: '经理能力', icon: '👨‍💼' },
-  position_analysis: { label: '持仓结构', icon: '📊' },
-  market_outlook: { label: '后市展望', icon: '🔮' }
+  performance_eval: { label: '业绩评价', icon: 'TrendingUp' },
+  manager_ability: { label: '经理能力', icon: 'UserCircle' },
+  position_analysis: { label: '持仓结构', icon: 'BarChart3' },
+  market_outlook: { label: '后市展望', icon: 'Telescope' }
 }
 
 // 评分颜色类
@@ -233,11 +233,11 @@ const adviceClass = computed(() => {
 
 // 建议图标
 const adviceIcon = computed(() => {
-  if (!data.value) return '📊'
-  const advice = data.value.operation_advice
-  if (advice.includes('推荐') || advice.includes('买入')) return '🚀'
-  if (advice.includes('减仓') || advice.includes('卖出')) return '📉'
-  return '⏳'
+    if (!data.value) return 'BarChart3'
+    const advice = data.value.operation_advice
+    if (advice.includes('推荐') || advice.includes('买入')) return 'Rocket'
+    if (advice.includes('减仓') || advice.includes('卖出')) return 'TrendingDown'
+    return 'Hourglass'
 })
 
 // 获取评价类名
@@ -441,7 +441,8 @@ defineExpose({
 }
 
 .advice-icon {
-  font-size: 2em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .advice-text {
@@ -473,7 +474,8 @@ defineExpose({
 }
 
 .report-icon {
-  font-size: 1.4em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .detailed-report h4 {
@@ -545,6 +547,8 @@ defineExpose({
 }
 
 .dash-icon {
+  display: inline-flex;
+  align-items: center;
   font-size: 1.5em;
 }
 
@@ -599,7 +603,8 @@ defineExpose({
 }
 
 .col-icon {
-  font-size: 1.1em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .detail-col ul {
@@ -734,7 +739,8 @@ defineExpose({
 }
 
 .empty-icon {
-  font-size: 3em;
+  display: inline-flex;
+  align-items: center;
   margin-bottom: 16px;
 }
 
@@ -759,7 +765,8 @@ defineExpose({
 }
 
 .error-icon {
-  font-size: 2em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .error p {

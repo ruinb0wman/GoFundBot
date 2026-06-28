@@ -4,13 +4,13 @@
     <!-- 头部 -->
     <div class="news-header-bar">
       <div class="header-left">
-        <h3 class="header-title">📰 7×24 快讯</h3>
+        <h3 class="header-title"><LucideIcon name="Newspaper" :size="18" /> 7×24 快讯</h3>
         <span v-if="!loading && newsList.length" class="count-badge">{{ newsList.length }} 条</span>
       </div>
       <div class="header-right">
         <span v-if="sourcesText" class="sources-tag" :title="sourcesText">{{ sourcesText }}</span>
         <button class="refresh-btn" @click="resetAndFetch" :disabled="loading" title="刷新快讯">
-          <span :class="{ spinning: loading }">🔄</span>
+          <span :class="{ spinning: loading }"><LucideIcon name="RefreshCw" :size="16" /></span>
         </button>
       </div>
     </div>
@@ -26,14 +26,14 @@
 
     <!-- 错误 -->
     <div v-else-if="error && !newsList.length" class="error-state">
-      <span class="error-icon">⚠️</span>
+      <span class="error-icon"><LucideIcon name="TriangleAlert" :size="20" /></span>
       <span class="error-text">{{ error }}</span>
       <button class="retry-btn" @click="resetAndFetch">重试</button>
     </div>
 
     <!-- 空 -->
     <div v-else-if="!newsList.length && !loading" class="empty-state">
-      <span class="empty-icon">📭</span>
+      <span class="empty-icon"><LucideIcon name="MailOpen" :size="28" /></span>
       <span>暂无快讯数据</span>
     </div>
 
@@ -82,7 +82,7 @@
         <div class="news-modal">
           <div class="modal-header">
             <span class="modal-time">{{ modal.news?.publish_time }}</span>
-            <button class="modal-close" @click="closeDetail">✕</button>
+            <button class="modal-close" @click="closeDetail"><LucideIcon name="X" :size="18" /></button>
           </div>
           <div class="modal-body">
             <p class="modal-title">{{ modal.news?.title }}</p>
@@ -362,6 +362,7 @@ export default {
   display: flex; align-items: center; justify-content: center;
   border: none; border-radius: 8px; background: var(--bg-subtle);
   font-size: 14px; cursor: pointer; transition: all 0.2s;
+  color: var(--text-secondary);
 }
 .refresh-btn:hover { background: var(--bg-hover); }
 .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -384,7 +385,7 @@ export default {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; padding: 40px 20px; color: var(--text-tertiary);
 }
-.error-icon, .empty-icon { font-size: 28px; }
+.error-icon, .empty-icon { display: inline-flex; align-items: center; }
 .retry-btn {
   margin-top: 8px; padding: 6px 18px; border: none; border-radius: 8px;
   background: var(--color-primary); color: var(--text-inverse); font-size: 13px; font-weight: 600; cursor: pointer;

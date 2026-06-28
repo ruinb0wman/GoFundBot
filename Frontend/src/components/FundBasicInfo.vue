@@ -13,7 +13,7 @@
             :disabled="watchlistLoading"
             :title="isInWatchlist ? '移除自选' : '添加自选'"
           >
-            <span class="star-icon">{{ isInWatchlist ? '★' : '☆' }}</span>
+            <span class="star-icon"><LucideIcon name="Star" :size="18" :fill="isInWatchlist ? 'currentColor' : 'none'" /></span>
             <span class="btn-text">{{ isInWatchlist ? '已自选' : '自选' }}</span>
           </button>
           <span
@@ -51,7 +51,7 @@
       <!-- AI 分析按钮区域 -->
       <div class="header-middle-group">
         <button class="ai-analysis-btn" @click="$emit('trigger-ai-analysis')">
-          <span class="ai-icon">🤖</span>
+          <span class="ai-icon"><LucideIcon name="Bot" :size="16" /></span>
           <span class="btn-text">AI 智能分析</span>
         </button>
       </div>
@@ -504,7 +504,8 @@ export default {
 }
 
 .star-icon {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
   color: #ffd700;
 }
 
@@ -540,7 +541,8 @@ export default {
 }
 
 .ai-icon {
-  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .header-right {

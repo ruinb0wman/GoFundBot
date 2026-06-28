@@ -2,7 +2,7 @@
 <template>
   <div class="market-dashboard">
     <div class="dashboard-header">
-      <h2>📈 市场实时数据</h2>
+      <h2><LucideIcon name="TrendingUp" :size="22" /> 市场实时数据</h2>
       <div class="tab-switch">
         <button 
           v-for="tab in tabs" 
@@ -11,7 +11,7 @@
           :class="{ active: activeTab === tab.key }"
           @click="activeTab = tab.key"
         >
-          {{ tab.icon }} {{ tab.label }}
+          <LucideIcon :name="tab.icon" :size="16" /> {{ tab.label }}
         </button>
       </div>
     </div>
@@ -72,10 +72,10 @@ export default {
     const activeTab = ref('overview')
     
     const tabs = [
-      { key: 'overview', label: '综合概览', icon: '🌐' },
-      { key: 'sectors', label: '板块排行', icon: '🏭' },
-      { key: 'news', label: '7×24快讯', icon: '📰' },
-      { key: 'gold', label: '贵金属', icon: '🥇' }
+      { key: 'overview', label: '综合概览', icon: 'Globe' },
+      { key: 'sectors', label: '板块排行', icon: 'Factory' },
+      { key: 'news', label: '7×24快讯', icon: 'Newspaper' },
+      { key: 'gold', label: '贵金属', icon: 'Award' }
     ]
     
     return {

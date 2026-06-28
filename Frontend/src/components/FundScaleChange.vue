@@ -1,7 +1,7 @@
 <template>
   <div class="fund-scale-card">
     <div class="card-header">
-      <h3>📈 基金规模变动</h3>
+      <h3><LucideIcon name="TrendingUp" :size="20" /> 基金规模变动</h3>
     </div>
     <div class="card-body">
       <div v-if="hasData" class="scale-content">

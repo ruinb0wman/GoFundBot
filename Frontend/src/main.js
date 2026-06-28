@@ -22,6 +22,9 @@ VXETable.setup({
 const app = createApp(App)
 app.use(VXETable)
 
+import LucideIcon from './components/LucideIcon.vue'
+app.component('LucideIcon', LucideIcon)
+
 // 挂载到DOM
 app.mount('#app')
 

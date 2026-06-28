@@ -1,7 +1,7 @@
 <template>
   <div class="portfolio-card">
     <div class="card-header">
-      <h3>📈 持仓明细</h3>
+      <h3><LucideIcon name="TrendingUp" :size="20" /> 持仓明细</h3>
     </div>
     <div class="card-body">
       <!-- 股票持仓 -->

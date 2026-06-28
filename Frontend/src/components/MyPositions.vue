@@ -1,7 +1,7 @@
 <template>
   <div class="positions-container">
     <div class="positions-header">
-      <h2>💼 我的持仓</h2>
+      <h2><LucideIcon name="Briefcase" :size="22" /> 我的持仓</h2>
       <p>输入基金代码自动补全名称；按中国基金交易规则自动处理购买日净值；持仓按实时估值刷新盈亏。</p>
     </div>
 
@@ -48,7 +48,7 @@
     <p class="tips" v-if="helperText">{{ helperText }}</p>
 
     <div class="operation-panel" v-if="positions.length">
-      <h3>🔁 持仓变更（加仓 / 减仓 / 转换）</h3>
+      <h3><LucideIcon name="Repeat" :size="18" /> 持仓变更（加仓 / 减仓 / 转换）</h3>
       <p class="operation-tip">建议在晚上 21:00 后操作：基金准确净值通常在晚间更新，按金额换算份额更准确。</p>
       <form class="operation-form" @submit.prevent="applyOperation">
         <div class="field">
@@ -126,11 +126,11 @@
 
     <div class="charts" v-if="positions.length">
       <div class="chart-card">
-        <h3>📊 持仓盈亏柱状图（明细）</h3>
+        <h3><LucideIcon name="BarChart3" :size="18" /> 持仓盈亏柱状图（明细）</h3>
         <div ref="pnlBarChartEl" class="chart-el"></div>
       </div>
       <div class="chart-card">
-        <h3>📈 持有收益率走势（从成本起算）</h3>
+        <h3><LucideIcon name="TrendingUp" :size="18" /> 持有收益率走势（从成本起算）</h3>
         <div ref="returnTrendChartEl" class="chart-el"></div>
       </div>
     </div>

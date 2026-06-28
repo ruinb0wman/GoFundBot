@@ -1,7 +1,7 @@
 <template>
   <div class="fund-ranking-card">
     <div class="card-header" :class="{ 'header-expanded': isExpanded }">
-      <h3>🏆 同类排名走势</h3>
+      <h3><LucideIcon name="Trophy" :size="20" /> 同类排名走势</h3>
       <div class="time-ranges">
         <span 
           v-for="range in timeRanges" 

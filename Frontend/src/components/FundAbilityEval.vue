@@ -1,7 +1,7 @@
 <template>
   <div class="ability-card">
     <div class="card-header">
-      <h3>📊 本基金历史表现</h3>
+      <h3><LucideIcon name="BarChart3" :size="20" /> 本基金历史表现</h3>
       <div class="avg-score" v-if="avgScore">
         <span class="score-label">综合</span>
         <span class="score-value" :class="getScoreClass(avgScore)">{{ avgScore }}</span>

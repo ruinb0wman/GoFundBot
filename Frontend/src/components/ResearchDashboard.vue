@@ -236,7 +236,7 @@
         <!-- Toast 通知 -->
         <transition name="toast-fade">
           <div v-if="showToast" class="sector-toast">
-            <span class="toast-icon">✅</span>
+            <span class="toast-icon"><LucideIcon name="Check" :size="16" /></span>
             <span>{{ toastMessage }}</span>
             <button class="toast-close" @click="showToast = false">×</button>
           </div>

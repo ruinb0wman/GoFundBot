@@ -2,7 +2,7 @@
   <div class="fund-comparison" :class="{ 'compact-mode': compact }">
     <div class="comparison-header">
       <h2>
-        <span class="header-icon">📈</span>
+        <span class="header-icon"><LucideIcon name="TrendingUp" :size="20" /></span>
         基金对比
         <span class="count-badge" v-if="selectedFunds.length">{{ selectedFunds.length }}/{{ maxFunds }}</span>
       </h2>
@@ -19,7 +19,7 @@
 
     <!-- 空状态提示 -->
     <div v-if="selectedFunds.length === 0" class="empty-compare-hint">
-      <span class="hint-icon">👆</span>
+      <span class="hint-icon"><LucideIcon name="ArrowBigUp" :size="16" /></span>
       <span>点击自选基金的 <strong>+</strong> 按钮添加对比</span>
     </div>
 
@@ -48,7 +48,7 @@
       <!-- 净值走势图表 -->
       <div class="chart-section">
         <div class="section-header">
-          <h3>📊 净值走势对比</h3>
+          <h3><LucideIcon name="BarChart3" :size="20" /> 净值走势对比</h3>
           <div class="time-ranges">
             <div 
               v-for="range in timeRanges" 
@@ -72,7 +72,7 @@
 
       <!-- 多维度数据对比表格 -->
       <div class="data-table-section">
-        <h3>📋 多维度对比</h3>
+        <h3><LucideIcon name="ClipboardList" :size="20" /> 多维度对比</h3>
         <div class="table-wrapper">
           <table class="comparison-table">
             <thead>
@@ -89,7 +89,7 @@
             <tbody>
               <!-- 收益率指标 -->
               <tr class="section-row">
-                <td colspan="100%" class="section-title">📈 收益率</td>
+                <td colspan="100%" class="section-title"><LucideIcon name="TrendingUp" :size="16" /> 收益率</td>
               </tr>
               <tr>
                 <td class="sticky-col">近3月</td>
@@ -124,7 +124,7 @@
               
               <!-- 基金基本信息 -->
               <tr class="section-row">
-                <td colspan="100%" class="section-title">💼 基金信息</td>
+                <td colspan="100%" class="section-title"><LucideIcon name="Briefcase" :size="16" /> 基金信息</td>
               </tr>
               <tr>
                 <td class="sticky-col">基金规模</td>
@@ -141,7 +141,7 @@
               
               <!-- 风险指标 -->
               <tr class="section-row">
-                <td colspan="100%" class="section-title">⚠️ 风险指标</td>
+                <td colspan="100%" class="section-title"><LucideIcon name="TriangleAlert" :size="16" /> 风险指标</td>
               </tr>
               <tr>
                 <td class="sticky-col">最大回撤(近1年)</td>
@@ -176,7 +176,7 @@
               
               <!-- 评分指标 -->
               <tr class="section-row">
-                <td colspan="100%" class="section-title">⭐ 评分指标</td>
+                <td colspan="100%" class="section-title"><LucideIcon name="Star" :size="16" /> 评分指标</td>
               </tr>
               <tr>
                 <td class="sticky-col">综合评分</td>
@@ -219,7 +219,7 @@
               
               <!-- 基金经理 -->
               <tr class="section-row">
-                <td colspan="100%" class="section-title">👤 基金经理</td>
+                <td colspan="100%" class="section-title"><LucideIcon name="User" :size="16" /> 基金经理</td>
               </tr>
               <tr>
                 <td class="sticky-col">基金经理</td>
@@ -256,7 +256,7 @@
 
     <!-- 单只基金提示 -->
     <div v-else-if="selectedFunds.length === 1" class="single-fund-hint">
-      <p>👈 请再选择至少1只基金进行对比</p>
+      <p><LucideIcon name="ArrowBigLeft" :size="16" /> 请再选择至少1只基金进行对比</p>
     </div>
   </div>
 </template>
@@ -781,7 +781,8 @@ export default {
 }
 
 .empty-compare-hint .hint-icon {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .fund-comparison.compact-mode .empty-compare-hint {
@@ -808,7 +809,7 @@ export default {
   margin: 0;
 }
 
-.header-icon { font-size: 18px; }
+.header-icon { display: inline-flex; align-items: center; }
 
 .count-badge {
   background: var(--color-primary);

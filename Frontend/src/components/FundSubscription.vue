@@ -1,7 +1,7 @@
 <template>
   <div class="subscription-card">
     <div class="card-header">
-      <h3>💰 申购赎回情况</h3>
+      <h3><LucideIcon name="Coins" :size="20" /> 申购赎回情况</h3>
     </div>
     <div class="card-body">
       <div v-if="hasRedemptionData" class="subscription-content">

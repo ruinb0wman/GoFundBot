@@ -5,13 +5,13 @@
       <div class="header-actions">
         <div class="header-left">
           <span class="stat-chip">
-            📦 {{ dbStatus.basic_count || 0 }} 只基金
+            <LucideIcon name="Package" :size="14" /> {{ dbStatus.basic_count || 0 }} 只基金
           </span>
           <span class="stat-chip complete" v-if="dbStatus.risk_metrics_count">
-            ✅ {{ dbStatus.risk_metrics_count }} 只数据完整
+            <LucideIcon name="Check" :size="14" /> {{ dbStatus.risk_metrics_count }} 只数据完整
           </span>
           <span class="update-time-chip" v-if="dbStatus.latest_update">
-            🕐 {{ formatDate(dbStatus.latest_update) }}
+            <LucideIcon name="Clock" :size="14" /> {{ formatDate(dbStatus.latest_update) }}
           </span>
         </div>
         <div class="header-right">
@@ -21,7 +21,7 @@
             :disabled="updateStatus.running"
             title="选择要执行的更新任务"
           >
-            {{ updateStatus.running ? '⏳ 更新中...' : '📥 更新数据' }}
+            <LucideIcon v-if="updateStatus.running" name="Hourglass" :size="14" />{{ updateStatus.running ? ' 更新中...' : '' }}<LucideIcon v-if="!updateStatus.running" name="Download" :size="14" />{{ updateStatus.running ? '' : ' 更新数据' }}
           </button>
         </div>
       </div>
@@ -39,14 +39,14 @@
         </div>
         <div class="confirm-body">
           <div class="confirm-option" @click="resolveIndustryDict(true)">
-            <span class="confirm-option-icon">🔄</span>
+            <span class="confirm-option-icon"><LucideIcon name="RefreshCw" :size="20" /></span>
             <div>
               <strong>确定，重新构建字典</strong>
               <em>先刷新股票行业字典，再重新分配基金所属板块</em>
             </div>
           </div>
           <div class="confirm-option" @click="resolveIndustryDict(false)">
-            <span class="confirm-option-icon">📋</span>
+            <span class="confirm-option-icon"><LucideIcon name="ClipboardList" :size="20" /></span>
             <div>
               <strong>取消，复用现有字典</strong>
               <em>复用现有字典，只重新分配基金所属板块</em>
@@ -115,7 +115,7 @@
           :style="{ width: progressPercent + '%' }"
         ></div>
       </div>
-      <button class="btn-stop-inline" @click="stopUpdate">⏹ 停止</button>
+      <button class="btn-stop-inline" @click="stopUpdate"><LucideIcon name="Square" :size="14" /> 停止</button>
     </div>
 
     <!-- 筛选面板 -->
@@ -125,7 +125,7 @@
         <div class="filter-bar">
           <div class="filter-bar-row">
             <div class="search-wrap" ref="searchWrapRef">
-              <span class="input-icon">🔎</span>
+              <span class="input-icon"><LucideIcon name="Search" :size="16" /></span>
               <input
                 v-model="filters.keyword"
                 type="text"
@@ -150,12 +150,12 @@
             </div>
             <!-- 基金类型下拉 -->
             <div class="type-select-wrap" ref="typeDropdownRef">
-              <span class="input-icon">📁</span>
+              <span class="input-icon"><LucideIcon name="Folder" :size="16" /></span>
               <div class="type-trigger" @click="showTypeDropdown = !showTypeDropdown">
                 <span class="type-trigger-text">
                   {{ filters.fund_types.length ? filters.fund_types.length + ' 种类型' : '基金类型' }}
                 </span>
-                <span class="type-trigger-arrow">▼</span>
+                <span class="type-trigger-arrow"><LucideIcon name="ChevronDown" :size="12" /></span>
               </div>
               <div class="type-dropdown" v-show="showTypeDropdown" @click.stop>
                 <div
@@ -169,9 +169,9 @@
                     @click="toggleCategoryTypes(cat)"
                   >
                     <span class="cat-check">
-                      {{ isCatAllSelected(cat) ? '✓' : isCatPartialSelected(cat) ? '−' : '' }}
+                      <LucideIcon v-if="isCatAllSelected(cat)" name="Check" :size="12" /><LucideIcon v-if="isCatPartialSelected(cat) && !isCatAllSelected(cat)" name="Minus" :size="12" />
                     </span>
-                    <span>{{ cat.icon }} {{ cat.name }}</span>
+                    <span><LucideIcon :name="cat.icon" :size="14" /> {{ cat.name }}</span>
                   </div>
                   <div class="type-cat-items">
                     <label
@@ -193,7 +193,7 @@
                 </div>
               </div>
             </div>
-            <button class="btn-query" @click="search(true)">🔍 查询</button>
+            <button class="btn-query" @click="search(true)"><LucideIcon name="Search" :size="14" /> 查询</button>
             <button class="btn-reset" @click="resetFilters">清空</button>
           </div>
 
@@ -205,7 +205,7 @@
               class="type-tag-selected"
               @click="removeFundType(t)"
             >
-              {{ getShortTypeName(t) }} ✕
+              {{ getShortTypeName(t) }} <LucideIcon name="X" :size="12" />
             </span>
           </div>
 
@@ -258,7 +258,7 @@
               <div class="filter-zone-title">
                 行业 / 市场板块
                 <button class="zone-expand-btn" @click="sectorExpanded = !sectorExpanded">
-                  {{ sectorExpanded ? '收起 ▲' : '展开全部 ▼' }}
+                  {{ sectorExpanded ? '收起' : '展开全部' }} <LucideIcon :name="sectorExpanded ? 'ChevronUp' : 'ChevronDown'" :size="12" />
                 </button>
               </div>
               <div class="filter-zone-tags">
@@ -295,8 +295,8 @@
         <!-- 高级筛选 -->
         <div class="advanced-section-wrapper">
           <div class="advanced-toggle" @click="showAdvanced = !showAdvanced">
-            <span>⚙️ 高级筛选条件</span>
-            <span class="toggle-arrow">{{ showAdvanced ? '▲' : '▼' }}</span>
+            <span><LucideIcon name="Settings" :size="14" /> 高级筛选条件</span>
+            <span class="toggle-arrow"><LucideIcon :name="showAdvanced ? 'ChevronUp' : 'ChevronDown'" :size="14" /></span>
           </div>
           <div class="advanced-section" v-show="showAdvanced">
           <div class="adv-group" v-for="group in advancedFilterGroups" :key="group.title">
@@ -376,12 +376,12 @@
             <span :class="getCalmarClass(row.calmar_ratio_1y)">{{ formatNumber(row.calmar_ratio_1y) }}</span>
           </template>
           <template #pass4433="{ row }">
-            <span v-if="row.pass_4433" class="pass-badge">✓</span>
+            <span v-if="row.pass_4433" class="pass-badge"><LucideIcon name="Check" :size="14" /></span>
             <span v-else class="fail-badge">-</span>
           </template>
           <template #actions="{ row }">
-            <button class="btn-action" @click.stop="addToWatchlist(row)" title="加入自选">★</button>
-            <button class="btn-action" @click.stop="addToCompare(row)" title="加入对比">▦</button>
+            <button class="btn-action" @click.stop="addToWatchlist(row)" title="加入自选"><LucideIcon name="Star" :size="14" /></button>
+            <button class="btn-action" @click.stop="addToCompare(row)" title="加入对比"><LucideIcon name="LayoutGrid" :size="14" /></button>
           </template>
         </vxe-grid>
       </div>
@@ -410,14 +410,14 @@
 
     <!-- 空状态 -->
     <div v-else-if="searched && !loading" class="empty-state">
-      <div class="empty-icon">📭</div>
+      <div class="empty-icon"><LucideIcon name="MailOpen" :size="36" /></div>
       <p>未找到符合条件的基金</p>
       <p class="hint">请尝试调整筛选条件</p>
     </div>
 
     <!-- 初始状态 -->
     <div v-else class="initial-state">
-      <div class="initial-icon">🎯</div>
+      <div class="initial-icon"><LucideIcon name="Target" :size="36" /></div>
       <p>选择筛选策略或设置筛选条件</p>
       <p class="hint">支持4433法则（同类排名）、夏普比率、卡玛比率等多维度筛选</p>
       <p class="hint sub-hint">注：4433法则的排名是在同类型基金中计算的</p>
@@ -671,7 +671,7 @@ export default {
     const fundTypeCategories = [
       {
         name: '偏股型',
-        icon: '📈',
+        icon: 'TrendingUp',
         expanded: true,
         types: [
           { value: '混合型-偏股', label: '偏股混合' },
@@ -684,7 +684,7 @@ export default {
       },
       {
         name: '偏债型',
-        icon: '📊',
+        icon: 'BarChart3',
         expanded: false,
         types: [
           { value: '混合型-偏债', label: '偏债混合' },
@@ -874,27 +874,27 @@ export default {
     const quickTypeCategories = [
       {
         name: '偏股型',
-        icon: '📈',
+        icon: 'TrendingUp',
         patterns: ['混合型-偏股', '混合型-灵活', '混合型-平衡', '股票型', '股票指数', '指数型-股票', '联接基金', '增强指数', '被动指数', '指数-股票']
       },
       {
         name: '偏债型',
-        icon: '📊',
+        icon: 'BarChart3',
         patterns: ['混合型-偏债', '债券型', '债券指数', '指数型-固收', '短债', '中短债', '长债', '纯债', '可转债', '指数-债券']
       },
       {
         name: 'FOF',
-        icon: '🎯',
+        icon: 'Target',
         patterns: ['FOF']
       },
       {
         name: 'QDII',
-        icon: '🌍',
+        icon: 'Globe',
         patterns: ['QDII', '海外指数', '指数型-海外']
       },
       {
         name: '货币/其他',
-        icon: '💰',
+        icon: 'Coins',
         patterns: ['货币', 'REITs', '商品', '指数-其他', '指数型-其他', '其他']
       }
     ]
@@ -1937,7 +1937,8 @@ export default {
 }
 
 .confirm-option-icon {
-  font-size: 22px;
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -2432,7 +2433,8 @@ export default {
 }
 
 .input-icon {
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
   margin-right: 6px;
   flex-shrink: 0;
 }

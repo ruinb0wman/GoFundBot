@@ -2,12 +2,12 @@
   <div class="daily-market-summary">
     <div class="summary-header">
       <div class="header-left">
-        <h3>📅 每日市场行情</h3>
+        <h3><LucideIcon name="Calendar" :size="20" /> 每日市场行情</h3>
         <span class="date">{{ today }}</span>
       </div>
       <div class="header-actions">
         <button v-if="data && !loading" @click="refresh" class="refresh-btn" title="刷新数据">
-          <span class="refresh-icon">🔄</span>
+          <span class="refresh-icon"><LucideIcon name="RefreshCw" :size="16" /></span>
           <span class="refresh-text">刷新</span>
         </button>
       </div>
@@ -31,7 +31,7 @@
           >
             <div class="step-indicator">
               <div class="step-circle">
-                <span v-if="currentStep > step.step" class="check-icon">✓</span>
+                <span v-if="currentStep > step.step" class="check-icon"><LucideIcon name="Check" :size="14" /></span>
                 <span v-else-if="currentStep === step.step" class="loading-spinner"></span>
                 <span v-else class="step-number">{{ step.step }}</span>
               </div>
@@ -55,10 +55,10 @@
     <!-- 错误状态 -->
     <div v-else-if="error" class="error-container">
       <div class="error-card">
-        <div class="error-icon">⚠️</div>
+        <div class="error-icon"><LucideIcon name="TriangleAlert" :size="24" /></div>
         <div class="error-message">{{ error }}</div>
         <button @click="() => fetchData(false)" class="retry-btn">
-          <span>🔄</span> 重新生成
+          <span><LucideIcon name="RefreshCw" :size="14" /></span> 重新生成
         </button>
       </div>
     </div>
@@ -66,20 +66,20 @@
     <!-- 数据展示 -->
     <div v-else-if="data" class="summary-content">
       <div class="market-sentiment" :class="sentimentClass">
-        <span class="sentiment-icon">{{ sentimentIcon }}</span>
+        <span class="sentiment-icon"><LucideIcon :name="sentimentIcon" :size="24" /></span>
         <span class="sentiment-label">市场情绪：</span>
         <span class="sentiment-value">{{ data.market_sentiment }}</span>
       </div>
 
       <div class="summary-text">
-        <div class="summary-icon">💡</div>
+        <div class="summary-icon"><LucideIcon name="Lightbulb" :size="20" /></div>
         <div class="summary-body">{{ data.summary }}</div>
       </div>
 
       <div class="indices-grid">
         <div v-for="(idx, index) in data.indices" :key="index" class="index-card">
           <div class="index-header">
-            <span class="index-icon">📊</span>
+            <span class="index-icon"><LucideIcon name="BarChart3" :size="16" /></span>
             <span class="index-name">{{ idx.name }}</span>
           </div>
           <div class="index-change" :class="getChangeClass(idx.change)">{{ idx.change }}</div>
@@ -89,14 +89,14 @@
 
       <div class="sections">
         <div class="section hot-sectors">
-          <h4><span class="section-icon">🔥</span> 热门板块</h4>
+          <h4><span class="section-icon"><LucideIcon name="Flame" :size="16" /></span> 热门板块</h4>
           <div class="tags">
             <span v-for="(sector, i) in data.hot_sectors" :key="i" class="tag">{{ sector }}</span>
           </div>
         </div>
 
         <div class="section key-news">
-          <h4><span class="section-icon">📰</span> 关键新闻</h4>
+          <h4><span class="section-icon"><LucideIcon name="Newspaper" :size="16" /></span> 关键新闻</h4>
           <ul class="news-list">
             <li v-for="(news, i) in data.key_news" :key="i">
               <span class="news-bullet">•</span>
@@ -106,7 +106,7 @@
         </div>
         
         <div class="section outlook">
-          <h4><span class="section-icon">🔭</span> 后市展望</h4>
+          <h4><span class="section-icon"><LucideIcon name="Telescope" :size="16" /></span> 后市展望</h4>
           <p class="outlook-text">{{ data.outlook }}</p>
         </div>
       </div>
@@ -151,11 +151,11 @@ const sentimentClass = computed(() => {
 })
 
 const sentimentIcon = computed(() => {
-  if (!data.value) return '📈'
-  const s = data.value.market_sentiment || ''
-  if (s.includes('积极') || s.includes('乐观') || s.includes('看多')) return '🚀'
-  if (s.includes('恐慌') || s.includes('悲观') || s.includes('看空')) return '📉'
-  return '📊'
+    if (!data.value) return 'TrendingUp'
+    const s = data.value.market_sentiment || ''
+    if (s.includes('积极') || s.includes('乐观') || s.includes('看多')) return 'Rocket'
+    if (s.includes('恐慌') || s.includes('悲观') || s.includes('看空')) return 'TrendingDown'
+    return 'BarChart3'
 })
 
 const getStepClass = (step) => {
@@ -420,7 +420,8 @@ onUnmounted(() => {
 }
 
 .check-icon {
-  font-size: 1.1em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .loading-spinner {
@@ -503,7 +504,8 @@ onUnmounted(() => {
 }
 
 .error-icon {
-  font-size: 3em;
+  display: inline-flex;
+  align-items: center;
   margin-bottom: 16px;
 }
 
@@ -550,7 +552,8 @@ onUnmounted(() => {
 }
 
 .sentiment-icon {
-  font-size: 1.2em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .sentiment-positive { 
@@ -582,7 +585,8 @@ onUnmounted(() => {
 }
 
 .summary-icon {
-  font-size: 1.5em;
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
 }
 
@@ -622,7 +626,8 @@ onUnmounted(() => {
 }
 
 .index-icon {
-  font-size: 1.2em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .index-name { 
@@ -674,7 +679,8 @@ onUnmounted(() => {
 }
 
 .section-icon {
-  font-size: 1.1em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .tags {

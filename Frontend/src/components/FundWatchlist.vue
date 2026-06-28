@@ -7,7 +7,7 @@
         :class="{ active: compareMode }"
         @click="$emit('toggle-compare')"
       >
-        <span class="toggle-icon">📈</span>
+        <span class="toggle-icon"><LucideIcon name="TrendingUp" :size="20" /></span>
         <span>{{ compareMode ? '退出对比' : '基金对比' }}</span>
         <span v-if="compareFunds.length && compareMode" class="compare-count">{{ compareFunds.length }}</span>
       </button>
@@ -18,7 +18,7 @@
         </div>
       </div>
       <div v-if="compareMode && compareFunds.length === 0" class="compare-hint">
-        👆 点击下方基金的 <strong>+</strong> 按钮添加对比
+        <LucideIcon name="ArrowBigUp" :size="14" /> 点击下方基金的 <strong>+</strong> 按钮添加对比
       </div>
       <div v-if="compareMode && compareFunds.length === 1" class="compare-hint">
         还需选择至少 <strong>1</strong> 只基金才能对比
@@ -28,13 +28,13 @@
     <!-- 头部操作栏 -->
     <div class="watchlist-header">
       <h2>
-        <span class="header-icon">⭐</span>
+        <span class="header-icon"><LucideIcon name="Star" :size="18" /></span>
         我的自选
         <span class="count-badge" v-if="totalCount">{{ totalCount }}</span>
       </h2>
       <div class="header-actions">
         <button class="btn btn-add-group" @click="openAddGroupModal" title="新建分组">
-          +📁
+          <LucideIcon name="FolderPlus" :size="16" />
         </button>
         <button 
           v-if="!editMode && totalCount > 0" 
@@ -61,14 +61,14 @@
           :disabled="isRefreshingEstimates || totalCount === 0" 
           :title="lastEstimateUpdate ? `估值更新于 ${lastEstimateUpdate}` : '刷新估值'"
         >
-          <span :class="{ 'rotating': isRefreshingEstimates }">🔄</span>
+          <span :class="{ 'rotating': isRefreshingEstimates }"><LucideIcon name="RefreshCw" :size="14" /></span>
         </button>
       </div>
     </div>
     
     <!-- 估值更新提示 -->
     <div v-if="lastEstimateUpdate && totalCount > 0" class="estimate-update-hint">
-      <span class="hint-icon">📊</span>
+      <span class="hint-icon"><LucideIcon name="BarChart3" :size="12" /></span>
       <span>估值更新于 {{ lastEstimateUpdate }}</span>
       <span class="hint-auto">（自动刷新）</span>
     </div>
@@ -81,9 +81,9 @@
 
     <!-- 空状态 -->
     <div v-else-if="totalCount === 0" class="empty-state">
-      <div class="empty-icon">📋</div>
+      <div class="empty-icon"><LucideIcon name="ClipboardList" :size="36" /></div>
       <p>暂无自选基金</p>
-      <p class="empty-hint">在基金详情页点击 ⭐ 添加自选</p>
+      <p class="empty-hint">在基金详情页点击 <LucideIcon name="Star" :size="12" /> 添加自选</p>
     </div>
 
     <!-- 分组列表 -->
@@ -91,7 +91,7 @@
       <!-- 未分组的基金 -->
       <div class="fund-group" v-if="ungroupedFunds.length > 0 || groups.length === 0">
         <div class="group-header" @click="toggleGroup(null)">
-          <span class="group-toggle">{{ isGroupExpanded(null) ? '▼' : '▶' }}</span>
+          <span class="group-toggle"><LucideIcon :name="isGroupExpanded(null) ? 'ChevronDown' : 'ChevronRight'" :size="14" /></span>
           <span class="group-name">{{ groups.length > 0 ? '未分组' : '全部基金' }}</span>
           <span class="group-count">{{ ungroupedFunds.length }}</span>
         </div>
@@ -127,12 +127,12 @@
         @drop="onGroupDrop($event, group.id)"
       >
         <div class="group-header" @click="toggleGroup(group.id)">
-          <span class="group-toggle">{{ isGroupExpanded(group.id) ? '▼' : '▶' }}</span>
-          <span class="group-name">📁 {{ group.name }}</span>
+          <span class="group-toggle"><LucideIcon :name="isGroupExpanded(group.id) ? 'ChevronDown' : 'ChevronRight'" :size="14" /></span>
+          <span class="group-name"><LucideIcon name="Folder" :size="14" /> {{ group.name }}</span>
           <span class="group-count">{{ getGroupFunds(group.id).length }}</span>
           <div class="group-actions" v-if="editMode" @click.stop>
-            <button class="btn-icon-sm" @click="openEditGroupModal(group)" title="重命名">✏️</button>
-            <button class="btn-icon-sm btn-del" @click="deleteGroup(group)" title="删除分组">🗑️</button>
+            <button class="btn-icon-sm" @click="openEditGroupModal(group)" title="重命名"><LucideIcon name="Pencil" :size="14" /></button>
+            <button class="btn-icon-sm btn-del" @click="deleteGroup(group)" title="删除分组"><LucideIcon name="Trash2" :size="14" /></button>
           </div>
         </div>
         <div class="group-content" v-show="isGroupExpanded(group.id)">
@@ -681,7 +681,8 @@ export default {
 }
 
 .toggle-icon {
-  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .compare-count {
@@ -740,7 +741,7 @@ export default {
   font-weight: 600;
 }
 
-.header-icon { font-size: 18px; }
+.header-icon { display: inline-flex; align-items: center; }
 
 .count-badge {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
@@ -801,7 +802,7 @@ export default {
   color: var(--color-success);
 }
 
-.hint-icon { font-size: 12px; }
+.hint-icon { display: inline-flex; align-items: center; }
 .hint-auto { color: var(--text-tertiary); }
 
 /* 状态 */
@@ -826,7 +827,7 @@ export default {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.empty-icon { font-size: 36px; margin-bottom: 10px; }
+.empty-icon { display: inline-flex; align-items: center; margin-bottom: 10px; }
 .empty-state p { margin: 0; font-size: 14px;   color: var(--text-secondary); }
 .empty-hint { font-size: 12px !important; color: var(--text-tertiary) !important; margin-top: 6px !important; }
 

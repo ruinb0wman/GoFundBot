@@ -19,14 +19,14 @@
             @click="goBack"
             title="返回上一步"
           >
-            ← 返回
+            <LucideIcon name="ArrowLeft" :size="18" /> 返回
           </button>
           <button
             class="theme-toggle"
             @click="toggleTheme"
             :title="themeTitle"
           >
-            <span class="theme-icon">{{ themeIcon }}</span>
+            <span class="theme-icon"><LucideIcon :name="themeIcon" :size="20" /></span>
           </button>
           <div class="mode-switch">
             <button 
@@ -34,28 +34,28 @@
               :class="{ active: viewMode === 'dashboard' }"
               @click="resetToDashboard"
             >
-              🏠 市场大盘
+              <LucideIcon name="Home" :size="16" /> 市场大盘
             </button>
             <button 
               class="mode-btn" 
               :class="{ active: viewMode === 'screening' }"
               @click="navigateToMode('screening')"
             >
-              🔍 基金筛选
+              <LucideIcon name="Search" :size="16" /> 基金筛选
             </button>
             <button 
               class="mode-btn" 
               :class="{ active: viewMode === 'backtest' }"
               @click="navigateToMode('backtest')"
             >
-              💰 定投回测
+              <LucideIcon name="Coins" :size="16" /> 定投回测
             </button>
             <button 
               class="mode-btn" 
               :class="{ active: viewMode === 'portfolio' }"
               @click="navigateToMode('portfolio')"
             >
-              📊 估值与持仓
+              <LucideIcon name="BarChart3" :size="16" /> 估值与持仓
             </button>
             <button 
               class="mode-btn" 
@@ -156,7 +156,7 @@
             <FundSearch @fund-selected="handleFundSelected" />
             <FundDetail v-if="selectedFundCode" :fundCode="selectedFundCode" @navigate-to-fund="handleFundSelected" />
             <div v-else class="welcome-container">
-              <div class="welcome-icon">🔍</div>
+              <div class="welcome-icon"><LucideIcon name="Search" :size="48" /></div>
               <h3>搜索基金开始分析</h3>
               <p>在上方搜索框输入基金代码或名称</p>
             </div>
@@ -251,9 +251,9 @@ export default {
     }
 
     const themeIcon = computed(() => {
-      if (savedTheme.value === 'dark') return '🌙'
-      if (savedTheme.value === 'auto') return '🖥️'
-      return '☀️'
+      if (savedTheme.value === 'dark') return 'Moon'
+      if (savedTheme.value === 'auto') return 'Monitor'
+      return 'Sun'
     })
 
     const themeTitle = computed(() => {
@@ -713,7 +713,8 @@ export default {
 }
 
 .theme-icon {
-  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
   line-height: 1;
 }
 
@@ -882,7 +883,9 @@ export default {
 }
 
 .welcome-icon {
-  font-size: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 16px;
   background: var(--color-primary-bg);
   width: 80px;

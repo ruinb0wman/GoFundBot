@@ -168,14 +168,14 @@
     
     <!-- 错误状态 -->
     <div v-else-if="error" class="error">
-      <div class="error-icon">⚠️</div>
+      <div class="error-icon"><LucideIcon name="TriangleAlert" :size="32" /></div>
       <p>{{ error }}</p>
       <button @click="retry" class="retry-btn">重试</button>
     </div>
     
     <!-- 空状态 -->
     <div v-else-if="!currentFundCode" class="empty-state">
-      <div class="empty-icon">📊</div>
+      <div class="empty-icon"><LucideIcon name="BarChart3" :size="32" /></div>
       <p>请输入基金代码或从搜索结果中选择基金</p>
     </div>
   </div>
@@ -707,7 +707,8 @@ export default {
 }
 
 .error-icon {
-  font-size: 64px;
+  display: inline-flex;
+  align-items: center;
   margin-bottom: 20px;
 }
 
@@ -748,7 +749,8 @@ export default {
 }
 
 .empty-icon {
-  font-size: 80px;
+  display: inline-flex;
+  align-items: center;
   margin-bottom: 24px;
   opacity: 0.6;
 }

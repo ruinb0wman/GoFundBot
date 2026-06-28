@@ -36,6 +36,17 @@ body {
   background: var(--text-tertiary, #555);
 }
 
+/* Lucide 图标与文字对齐 */
+svg.lucide, .lucide {
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.lucide-icon-fallback {
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
 /* 工具类 */
 .text-center { text-align: center; }
 .text-right { text-align: right; }

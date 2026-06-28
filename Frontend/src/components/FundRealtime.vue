@@ -23,7 +23,7 @@
     <!-- Overview Box -->
     <div class="overview-box">
       <div class="overview-head">
-        <div class="title-with-icon">📊 投资总览<span v-if="activeTab.startsWith('group_')" class="scope-tag">{{ portfolioGroups.find(g => 'group_' + g.id === activeTab)?.name || '' }}</span><span v-else-if="activeTab==='rebalance'" class="scope-tag">再平衡</span><span v-else-if="activeTab==='dividend'" class="scope-tag">红利低波</span></div>
+        <div class="title-with-icon"><LucideIcon name="BarChart3" :size="18" /> 投资总览<span v-if="activeTab.startsWith('group_')" class="scope-tag">{{ portfolioGroups.find(g => 'group_' + g.id === activeTab)?.name || '' }}</span><span v-else-if="activeTab==='rebalance'" class="scope-tag">再平衡</span><span v-else-if="activeTab==='dividend'" class="scope-tag">红利低波</span></div>
         <div class="meta-info">实时数据来自互联网，仅供参考。数据更新时间: {{ nowTime }}</div>
       </div>
       <div class="overview-grid" v-if="hasHoldings">
@@ -58,8 +58,8 @@
     <!-- 挂起交易提示 -->
     <div class="pending-txns-bar" v-if="pendingTxns.length">
       <div class="pending-header" @click="showPending = !showPending">
-        <span>⏳ {{ pendingTxns.length }} 笔交易待结算（等待当日净值公布）</span>
-        <span class="pending-toggle">{{ showPending ? '收起 ▲' : '展开 ▼' }}</span>
+        <span><LucideIcon name="Hourglass" :size="14" /> {{ pendingTxns.length }} 笔交易待结算（等待当日净值公布）</span>
+        <span class="pending-toggle">{{ showPending ? '收起' : '展开' }} <LucideIcon :name="showPending ? 'ChevronUp' : 'ChevronDown'" :size="12" /></span>
       </div>
       <div class="pending-list" v-if="showPending">
         <div class="pending-item" v-for="txn in pendingTxns" :key="txn.id">
@@ -75,7 +75,7 @@
     <!-- Tabs -->
     <div class="content-tabs">
       <div class="ctab" :class="{active: activeTab==='all'}" @click="activeTab='all'">
-        👜 基金持仓
+        <LucideIcon name="Briefcase" :size="16" /> 基金持仓
       </div>
       <div
         v-for="g in portfolioGroups"
@@ -85,14 +85,14 @@
         @click="activeTab = 'group_' + g.id"
         @contextmenu.prevent="openGroupContextMenu($event, g.id)"
       >
-        📁 {{ g.name }}
+        <LucideIcon name="Folder" :size="16" /> {{ g.name }}
       </div>
-      <button class="ctab btn-add-group" @click="openAddGroupModal" title="新建分组">+ 📁</button>
-      <div v-if="hasRebalanceFunds" class="ctab" :class="{active: activeTab==='rebalance'}" @click="activeTab='rebalance'">⚖️ 再平衡管理</div>
+      <button class="ctab btn-add-group" @click="openAddGroupModal" title="新建分组"><LucideIcon name="FolderPlus" :size="16" /></button>
+      <div v-if="hasRebalanceFunds" class="ctab" :class="{active: activeTab==='rebalance'}" @click="activeTab='rebalance'"><LucideIcon name="Scale" :size="16" /> 再平衡管理</div>
       <label v-if="activeTab === 'rebalance'" class="threshold-label" @click.stop>
         ≥<input v-model.number="rebalanceThreshold" type="number" min="1" step="1" class="threshold-input" />%
       </label>
-      <div v-if="hasDividendFunds" class="ctab" :class="{active: activeTab==='dividend'}" @click="activeTab='dividend'">📉 红利低波</div>
+      <div v-if="hasDividendFunds" class="ctab" :class="{active: activeTab==='dividend'}" @click="activeTab='dividend'"><LucideIcon name="TrendingDown" :size="16" /> 红利低波</div>
     </div>
 
     <!-- Context menu for group tabs -->
@@ -102,8 +102,8 @@
       :style="{left: contextMenu.x + 'px', top: contextMenu.y + 'px'}"
       @click.stop
     >
-      <div class="context-menu-item" @click="renameGroupFromMenu">✏️ 重命名</div>
-      <div class="context-menu-item danger" @click="deleteGroupFromMenu">🗑️ 删除分组</div>
+      <div class="context-menu-item" @click="renameGroupFromMenu"><LucideIcon name="Pencil" :size="14" /> 重命名</div>
+      <div class="context-menu-item danger" @click="deleteGroupFromMenu"><LucideIcon name="Trash2" :size="14" /> 删除分组</div>
     </div>
 
     <!-- Card Grid -->
@@ -132,7 +132,7 @@
               :value="fundGroupMap[fund.code] || ''"
               @change="assignFundToGroup(fund.code, $event.target.value || null)"
             >
-              <option value="">📂 未分组</option>
+              <option value=""><LucideIcon name="FolderOpen" :size="14" /> 未分组</option>
               <option v-for="g in portfolioGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
             </select>
           </div>
@@ -142,14 +142,14 @@
             class="c-tab"
             :class="{ active: true }"
           >
-            📈 实时数据
+            <LucideIcon name="TrendingUp" :size="14" /> 实时数据
           </div>
           <div
             class="c-tab"
             @click.stop="openFundDetail(fund)"
             title="打开基金详情页"
           >
-            📊 基金详情
+            <LucideIcon name="BarChart3" :size="14" /> 基金详情
           </div>
         </div>
 
@@ -171,8 +171,8 @@
         <div class="c-holdings-area">
           <div class="c-h-head">
             <span class="c-h-title">
-              👜 持仓信息
-              <button class="c-h-pen" @click.stop="openTradeHistory(fund)">📄 {{ getFundTradeRecords(fund).length }}笔</button>
+              <LucideIcon name="Briefcase" :size="14" /> 持仓信息
+              <button class="c-h-pen" @click.stop="openTradeHistory(fund)"><LucideIcon name="FileText" :size="14" /> {{ getFundTradeRecords(fund).length }}笔</button>
             </span>
             <div class="c-h-actions">
               <button class="btn-sm b-trade" @click.stop="openTradeModal(fund, 'buy')">买卖</button>
@@ -263,7 +263,7 @@
       </div>
     </div>
     <div v-else class="portfolio-empty">
-      <div class="portfolio-empty-icon">📌</div>
+      <div class="portfolio-empty-icon"><LucideIcon name="Pin" :size="24" /></div>
       <div class="portfolio-empty-title">{{ emptyTitle }}</div>
       <div class="portfolio-empty-hint">{{ emptyHint }}</div>
       <button class="btn btn-primary" @click="openAddFundModal">+ 添加基金</button>
@@ -360,14 +360,14 @@
 
           <div class="trade-nav-derived" v-if="getTradeNav() > 0">
             <span>参考净值：¥{{ getTradeNav().toFixed(4) }}</span>
-            <span class="nav-date-hint" v-if="tradeForm.tradeDate === todayDate && !hasExactNavForDate(holdingModal.fund, todayDate)">⚠️ 当日净值未公布，交易将挂起</span>
-            <span class="nav-date-hint confirmed" v-else-if="tradeForm.tradeDate === todayDate && hasExactNavForDate(holdingModal.fund, todayDate)">✓ 当日净值已公布</span>
+            <span class="nav-date-hint" v-if="tradeForm.tradeDate === todayDate && !hasExactNavForDate(holdingModal.fund, todayDate)"><LucideIcon name="TriangleAlert" :size="12" /> 当日净值未公布，交易将挂起</span>
+            <span class="nav-date-hint confirmed" v-else-if="tradeForm.tradeDate === todayDate && hasExactNavForDate(holdingModal.fund, todayDate)"><LucideIcon name="Check" :size="12" /> 当日净值已公布</span>
           </div>
 
           <div class="form-group elegant-input-group">
             <label>{{ tradeForm.type === 'buy' ? '加仓金额' : '减仓份额' }}</label>
             <div class="input-wrapper">
-              <span class="prefix">{{ tradeForm.type === 'buy' ? '¥' : '📦' }}</span>
+              <span class="prefix">{{ tradeForm.type === 'buy' ? '¥' : '' }}<LucideIcon v-if="tradeForm.type === 'sell'" name="Package" :size="16" /></span>
               <input
                 v-model.number="tradeForm.inputValue"
                 type="number"

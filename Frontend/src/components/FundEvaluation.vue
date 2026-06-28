@@ -1,7 +1,7 @@
 <template>
   <div class="evaluation-card">
     <div class="card-header">
-      <h3>📊 基金综合评价</h3>
+      <h3><LucideIcon name="BarChart3" :size="20" /> 基金综合评价</h3>
       <div class="avg-score" v-if="avgScore">
         <span class="score-label">综合评分</span>
         <span class="score-value" :class="getScoreClass(avgScore)">{{ avgScore }}</span>

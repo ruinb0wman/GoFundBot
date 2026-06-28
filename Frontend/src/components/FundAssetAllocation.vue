@@ -1,12 +1,12 @@
 <template>
   <div class="asset-allocation-card">
     <div class="card-header">
-      <h3>📊 资产配置</h3>
+      <h3><LucideIcon name="BarChart3" :size="20" /> 资产配置</h3>
     </div>
     <div class="card-body">
       <div v-if="hasData" class="allocation-content">
         <div class="chart-container">
-          <div v-if="hasLeverage" class="leverage-badge">⚠ 该基金存在杠杆</div>
+          <div v-if="hasLeverage" class="leverage-badge"><LucideIcon name="TriangleAlert" :size="14" /> 该基金存在杠杆</div>
           <div ref="chartEl" class="allocation-chart"></div>
         </div>
         <div class="legend-info">

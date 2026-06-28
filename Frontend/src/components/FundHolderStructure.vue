@@ -1,7 +1,7 @@
 <template>
   <div class="holder-structure-card">
     <div class="card-header">
-      <h3>👥 持有人结构</h3>
+      <h3><LucideIcon name="Users" :size="20" /> 持有人结构</h3>
     </div>
     <div class="card-body">
       <div v-if="hasData" class="holder-content">

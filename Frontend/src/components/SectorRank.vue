@@ -2,14 +2,14 @@
 <template>
   <div class="sector-rank-container">
     <div class="section-header">
-      <h3>🏭 行业板块排行</h3>
+      <h3><LucideIcon name="Factory" :size="20" /> 行业板块排行</h3>
       <input
         v-model.trim="keyword"
         class="search-input header-search"
         placeholder="搜索板块名称或代码..."
       />
       <button class="refresh-btn" @click="fetchSectors" :disabled="loading" title="刷新板块数据">
-        <span :class="{ 'spinning': loading }">🔄</span>
+        <span :class="{ 'spinning': loading }"><LucideIcon name="RefreshCw" :size="16" /></span>
       </button>
       <button
         class="expand-btn"
@@ -17,7 +17,7 @@
         :disabled="!sectors.length"
         title="放大查看板块排行"
       >
-        ⛶
+        <LucideIcon name="Maximize2" :size="16" />
       </button>
     </div>
     <div class="filter-panel">
@@ -111,10 +111,10 @@
     
     <div v-if="updateTime" class="update-time">
       <span v-if="isFromCache" class="data-source-badge stale" title="数据来自本地缓存，非实时行情">
-        📦 本地缓存
+        <LucideIcon name="Package" :size="14" /> 本地缓存
       </span>
       <span v-if="dataDate" class="data-date" title="数据对应的交易日">
-        {{ isStale ? '📅' : '' }} {{ dataDate }}
+        <LucideIcon v-if="isStale" name="Calendar" :size="14" /> {{ dataDate }}
       </span>
       <span class="last-refresh">上次刷新 {{ updateTime.slice(-8) }}</span>
     </div>
@@ -525,6 +525,7 @@ export default {
   border-radius: 8px;
   transition: all 0.2s;
   flex-shrink: 0;
+  color: var(--text-secondary);
 }
 
 .refresh-btn:hover {

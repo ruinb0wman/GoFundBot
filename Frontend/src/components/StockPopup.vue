@@ -8,7 +8,7 @@
 
     <!-- 错误状态 -->
     <div v-else-if="error" class="stock-error">
-      <span class="error-icon">⚠️</span>
+      <span class="error-icon"><LucideIcon name="TriangleAlert" :size="16" /></span>
       <p>{{ error }}</p>
     </div>
 
@@ -615,7 +615,8 @@ export default {
 }
 
 .error-icon {
-  font-size: 40px;
+  display: inline-flex;
+  align-items: center;
   margin-bottom: 12px;
 }
 

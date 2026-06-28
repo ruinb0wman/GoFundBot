@@ -1,7 +1,7 @@
 <template>
   <div class="same-type-container">
     <div class="section-header">
-      <h3>📈 同类型基金涨幅榜</h3>
+      <h3><LucideIcon name="TrendingUp" :size="20" /> 同类型基金涨幅榜</h3>
       <div class="period-tabs">
         <button
           v-for="(period, index) in periods"

@@ -37,7 +37,7 @@
           @click.stop="$emit('add-to-compare', { code: fund.fund_code, name: fund.fund_name })"
           :title="isInCompare(fund.fund_code) ? '已添加到对比' : '添加到对比'"
         >
-          {{ isInCompare(fund.fund_code) ? '✓' : '+' }}
+          <LucideIcon :name="isInCompare(fund.fund_code) ? 'Check' : 'Plus'" :size="14" />
         </button>
       </div>
 
@@ -66,7 +66,7 @@
           @click.stop="$emit('add-to-realtime', fund)" 
           title="添加到实时估值"
         >
-          +
+          <LucideIcon name="Plus" :size="14" />
         </button>
         <button 
           v-else
@@ -74,7 +74,7 @@
           @click.stop="$emit('remove-fund', fund.fund_code)" 
           title="移除"
         >
-          ✕
+          <LucideIcon name="X" :size="14" />
         </button>
       </div>
     </div>
@@ -210,7 +210,6 @@ export default {
   border-radius: 4px;
   background: transparent;
   cursor: pointer;
-  font-size: 11px;
   color: var(--text-tertiary);
   display: flex;
   align-items: center;

@@ -1,7 +1,7 @@
 <template>
   <div class="fund-manager-card">
     <div class="card-header">
-      <h3>👨‍💼 基金经理能力评估</h3>
+      <h3><LucideIcon name="UserCircle" :size="20" /> 基金经理能力评估</h3>
     </div>
     <div class="card-body">
       <div v-if="hasManagers" class="managers-container">
@@ -16,15 +16,15 @@
               <div class="manager-name">
                 {{ manager.name || '未知' }}
                 <span v-if="manager.star_rating" class="star-rating">
-                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= manager.star_rating }">★</span>
+                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= manager.star_rating }"><LucideIcon name="Star" :size="14" :fill="i <= manager.star_rating ? 'currentColor' : 'none'" /></span>
                 </span>
               </div>
               <div class="manager-meta">
                 <span class="meta-item" v-if="manager.work_experience">
-                  <i class="icon">📅</i> 从业 {{ manager.work_experience }}
+                  <i class="icon"><LucideIcon name="Calendar" :size="14" /></i> 从业 {{ manager.work_experience }}
                 </span>
                 <span class="meta-item" v-if="manager.managed_fund_size">
-                  <i class="icon">💰</i> 管理规模 {{ manager.managed_fund_size }}
+                  <i class="icon"><LucideIcon name="Coins" :size="14" /></i> 管理规模 {{ manager.managed_fund_size }}
                 </span>
               </div>
             </div>

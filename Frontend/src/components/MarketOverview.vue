@@ -3,7 +3,7 @@
     <!-- 1. 市场指数实时走势 (置顶 & 折线图) -->
     <div class="market-section" v-if="showSSE30Min">
       <div class="section-header">
-        <h3>📉 市场指数实时走势</h3>
+        <h3><LucideIcon name="TrendingDown" :size="20" /> 市场指数实时走势</h3>
         <div class="tab-group">
           <span 
             v-for="tab in tabs" 
@@ -25,9 +25,9 @@
     <!-- 2. 全球市场指数 (分组展示) -->
     <div class="market-section">
       <div class="section-header">
-        <h3>🌍 全球行情</h3>
+        <h3><LucideIcon name="Globe" :size="20" /> 全球行情</h3>
         <button class="refresh-btn" @click="fetchAll" :disabled="loading">
-          <span :class="{ 'spinning': loading }">🔄</span>
+          <span :class="{ 'spinning': loading }"><LucideIcon name="RefreshCw" :size="16" /></span>
         </button>
       </div>
 
@@ -45,7 +45,7 @@
 
       <!-- 全球指数 -->
       <div class="market-sub-section">
-        <h4 class="sub-title"><span class="flag">🌐</span> 全球指数</h4>
+        <h4 class="sub-title"><span class="flag"><LucideIcon name="Globe" :size="16" /></span> 全球指数</h4>
         <div class="index-grid global-grid" v-if="indices.global.length">
           <div v-for="item in indices.global" :key="item.name" class="index-card" :class="getUpDnClass(item.change_pct)">
             <div class="index-name">{{ item.name }}</div>
@@ -59,7 +59,7 @@
     <!-- 3. 近7日A股成交量 (柱状图) -->
     <div class="market-section">
       <div class="section-header">
-        <h3>📊 近7日A股成交量</h3>
+        <h3><LucideIcon name="BarChart3" :size="20" /> 近7日A股成交量</h3>
       </div>
       <div class="chart-container volume-chart-container">
         <v-chart class="chart" :option="volumeOption" autoresize :theme="echartThemeName" v-if="aVolume.length" />
@@ -70,7 +70,7 @@
     <!-- 4. 实时贵金属 (点击查看历史走势) -->
     <div class="market-section">
       <div class="section-header">
-        <h3>🥇 实时贵金属</h3>
+        <h3><LucideIcon name="Award" :size="20" /> 实时贵金属</h3>
       </div>
       <div class="gold-grid" v-if="goldRealtime.length">
         <div
@@ -87,7 +87,7 @@
         >
           <div class="gold-name">
             {{ item.name }}
-            <span v-if="isGoldItem(item)" class="chart-hint">📈</span>
+            <span v-if="isGoldItem(item)" class="chart-hint"><LucideIcon name="TrendingUp" :size="14" /></span>
           </div>
           <div class="gold-price">{{ item.price }} <span class="unit">{{ item.unit }}</span></div>
           <div class="gold-change">
@@ -103,14 +103,14 @@
       <div v-if="goldModal.visible" class="gold-modal-overlay" @click.self="closeGoldHistory">
         <div class="gold-modal">
           <div class="gold-modal-header">
-            <h3>📈 {{ goldModal.name }} — 近{{ goldDays }}日走势</h3>
+            <h3><LucideIcon name="TrendingUp" :size="20" /> {{ goldModal.name }} — 近{{ goldDays }}日走势</h3>
             <div class="gold-modal-controls">
               <select v-model="goldDays" class="days-select" @change="fetchGoldHistoryForModal">
                 <option :value="7">7天</option>
                 <option :value="10">10天</option>
                 <option :value="30">30天</option>
               </select>
-              <button class="modal-close-btn" @click="closeGoldHistory">✕</button>
+              <button class="modal-close-btn" @click="closeGoldHistory"><LucideIcon name="X" :size="18" /></button>
             </div>
           </div>
           <div class="gold-modal-body">

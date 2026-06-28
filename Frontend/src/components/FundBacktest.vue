@@ -1,7 +1,7 @@
 <template>
   <div class="fund-backtest">
     <div class="backtest-header">
-      <h3>📊 定投回测</h3>
+      <h3><LucideIcon name="BarChart3" :size="20" /> 定投回测</h3>
       <p class="header-desc">模拟历史定投收益，验证投资策略</p>
     </div>
 
@@ -206,7 +206,7 @@
     <div v-if="result" class="backtest-result">
       <!-- 汇总指标 -->
       <div class="summary-section">
-        <h4>📈 回测结果</h4>
+        <h4><LucideIcon name="TrendingUp" :size="18" /> 回测结果</h4>
         <div class="summary-grid">
           <div class="summary-card">
             <div class="card-label">总投入</div>
@@ -253,7 +253,7 @@
 
       <!-- 收益曲线图 -->
       <div class="chart-section">
-        <h4>💹 收益曲线</h4>
+        <h4><LucideIcon name="JapaneseYen" :size="18" /> 收益曲线</h4>
         <div class="chart-tabs">
           <div 
             class="tab-item" 
@@ -276,8 +276,8 @@
       <!-- 详细数据表格（可选展开） -->
       <div class="detail-section">
         <div class="detail-header" @click="showDetail = !showDetail">
-          <h4>📋 详细记录</h4>
-          <span class="toggle-icon">{{ showDetail ? '▼' : '▶' }}</span>
+          <h4><LucideIcon name="ClipboardList" :size="18" /> 详细记录</h4>
+          <span class="toggle-icon"><LucideIcon :name="showDetail ? 'ChevronDown' : 'ChevronRight'" :size="16" /></span>
         </div>
         <div v-if="showDetail" class="detail-table-wrapper">
           <table class="detail-table">
@@ -1166,7 +1166,8 @@ export default {
 }
 
 .toggle-icon {
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
   color: var(--text-tertiary);
 }
 

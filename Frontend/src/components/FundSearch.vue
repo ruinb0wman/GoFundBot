@@ -17,7 +17,7 @@
           :title="dbStatus.has_cache ? `${dbStatus.count}只基金 | 更新: ${formatDate(dbStatus.last_update)}` : '更新基金数据库'"
         >
           <span v-if="updating" class="spinner"></span>
-          <span v-else>🔄</span>
+          <span v-else><LucideIcon name="RefreshCw" :size="16" /></span>
         </button>
       </div>
     </div>
@@ -242,6 +242,7 @@ export default {
   font-size: 16px;
   transition: all 0.3s;
   flex-shrink: 0;
+  color: var(--text-secondary);
 }
 
 .refresh-btn:hover:not(:disabled) {
