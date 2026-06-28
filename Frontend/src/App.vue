@@ -475,18 +475,18 @@ export default {
 }
 
 .header-search .search-btn {
-  background: linear-gradient(135deg, #f9b44e 0%, #da8b17 100%);
+  background: var(--color-primary-hover);
   height: 40px;
   padding: 0 24px;
   color: white;
   font-weight: 600;
   border: none;
-  box-shadow: 0 2px 8px rgba(218, 139, 23, 0.35);
+  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.35);
 }
 
 .header-search .search-btn:hover {
-  background: linear-gradient(135deg, #fcc162 0%, #f9b44e 100%);
-  box-shadow: 0 4px 12px rgba(249, 180, 78, 0.45);
+  background: color-mix(in srgb, var(--color-primary-hover), black 20%);
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.45);
   transform: translateY(-1px);
 }
 

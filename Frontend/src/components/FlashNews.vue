@@ -442,7 +442,7 @@ export default {
   padding: 8px 14px; border-top: 1px solid var(--border-default);
   font-size: 11px; color: var(--text-disabled); flex-shrink: 0;
 }
-.footer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); flex-shrink: 0; }
+.footer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
 
 /* ── 过渡动画 ──────────────────────────────────────── */
 .news-fade-enter-active { transition: all 0.4s ease; }

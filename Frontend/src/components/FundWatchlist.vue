@@ -767,16 +767,16 @@ export default {
 }
 
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-add-group { background: var(--color-success-bg); color: var(--color-success); }
-.btn-add-group:hover { background: var(--color-success-bg); }
+.btn-add-group { background: var(--color-primary-bg); color: var(--color-primary); }
+.btn-add-group:hover { background: var(--color-primary-bg); }
 .btn-edit {   background: var(--bg-subtle); color: var(--color-primary); }
 .btn-edit:hover { background: var(--border-default); }
 .btn-danger { background: var(--color-danger-bg); color: var(--color-danger); }
 .btn-danger:hover:not(:disabled) { background: var(--color-danger-bg); }
 .btn-secondary {   background: var(--bg-subtle); color: var(--text-primary); }
 .btn-secondary:hover { background: var(--border-default); }
-.btn-refresh { background: var(--color-success-bg); color: var(--color-success); padding: 5px 8px; display: inline-flex; align-items: center; justify-content: center; }
-.btn-refresh:hover:not(:disabled) { background: var(--color-success-bg); }
+.btn-refresh { background: var(--color-primary-bg); color: var(--color-primary); padding: 5px 8px; display: inline-flex; align-items: center; justify-content: center; }
+.btn-refresh:hover:not(:disabled) { background: var(--color-primary-bg); }
 .btn-primary {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
   color: var(--text-inverse); }
@@ -795,11 +795,11 @@ export default {
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  background: var(--color-success-bg);
+  background: var(--color-primary-bg);
   border-radius: 6px;
   margin-bottom: 10px;
   font-size: 11px;
-  color: var(--color-success);
+  color: var(--color-primary);
 }
 
 .hint-icon { display: inline-flex; align-items: center; }

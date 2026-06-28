@@ -202,7 +202,7 @@ export default {
 
 .search-btn {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #f9b44e 0%, #da8b17 100%);
+  background: var(--color-primary-hover);
   color: white;
   border: none;
   border-radius: 8px;
@@ -213,8 +213,9 @@ export default {
 }
 
 .search-btn:hover {
+  background: color-mix(in srgb, var(--color-primary-hover), black 20%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(249, 180, 78, 0.45);
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.35);
 }
 
 .refresh-btn {
