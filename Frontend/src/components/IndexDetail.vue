@@ -23,6 +23,9 @@
           <div class="period-tabs">
             <span v-for="p in periods" :key="p.key" :class="{ active: activePeriod === p.key }" @click="switchPeriod(p.key)">{{ p.label }}</span>
           </div>
+          <div class="range-tabs">
+            <span v-for="r in rangeOptions" :key="r.key" :class="{ active: activeRange === r.key }" @click="switchRange(r.key)">{{ r.label }}</span>
+          </div>
         </div>
         <div class="kline-chart">
           <v-chart class="chart" :option="klineOption" autoresize :theme="echartThemeName" v-if="klineData.length" />
@@ -71,6 +74,13 @@ export default {
       { key: 'daily', label: '日K' },
       { key: 'weekly', label: '周K' },
       { key: 'monthly', label: '月K' },
+    ]
+    const activeRange = ref('all')
+    const rangeOptions = [
+      { key: '1y', label: '最近1年' },
+      { key: '3y', label: '最近3年' },
+      { key: '5y', label: '最近5年' },
+      { key: 'all', label: '所有' },
     ]
 
     const { echartThemeName } = useEChartsTheme()
@@ -245,9 +255,23 @@ export default {
       }
     }
 
+    const computeStartDate = (range) => {
+      if (range === 'all') return ''
+      const d = new Date()
+      const years = { '1y': 1, '3y': 3, '5y': 5 }
+      d.setFullYear(d.getFullYear() - (years[range] || 1))
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}${m}${day}`
+    }
+
     const fetchKline = async () => {
       try {
-        const res = await marketAPI.getIndexKline(props.indexCode, { period: activePeriod.value })
+        const params = { period: activePeriod.value }
+        const startDate = computeStartDate(activeRange.value)
+        if (startDate) params.startDate = startDate
+        const res = await marketAPI.getIndexKline(props.indexCode, params)
         if (res.data.success) {
           klineData.value = res.data.data || []
         } else {
@@ -260,6 +284,11 @@ export default {
 
     const switchPeriod = (key) => {
       activePeriod.value = key
+      fetchKline()
+    }
+
+    const switchRange = (key) => {
+      activeRange.value = key
       fetchKline()
     }
 
@@ -277,8 +306,9 @@ export default {
     return {
       loading, error, detail,
       klineData, activePeriod, periods,
+      activeRange, rangeOptions,
       klineOption, echartThemeName,
-      priceDir, switchPeriod
+      priceDir, switchPeriod, switchRange
     }
   }
 }
@@ -353,11 +383,13 @@ export default {
 
 .kline-header {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
-.period-tabs {
+.period-tabs,
+.range-tabs {
   display: flex;
   gap: 4px;
   background: var(--bg-subtle);
@@ -365,7 +397,8 @@ export default {
   border-radius: var(--radius-sm);
 }
 
-.period-tabs span {
+.period-tabs span,
+.range-tabs span {
   padding: 6px 16px;
   border-radius: 4px;
   font-size: 0.9em;
@@ -375,12 +408,19 @@ export default {
   user-select: none;
 }
 
-.period-tabs span:hover {
+.period-tabs span:hover,
+.range-tabs span:hover {
   color: var(--color-primary);
   background: var(--color-primary-bg);
 }
 
 .period-tabs span.active {
+  color: var(--color-primary);
+  font-weight: 600;
+  background: var(--color-primary-bg);
+}
+
+.range-tabs span.active {
   color: var(--color-primary);
   font-weight: 600;
   background: var(--color-primary-bg);
