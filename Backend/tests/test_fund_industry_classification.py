@@ -7,7 +7,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app import _build_portfolio_industry_tag
+from services.industry_classification import _build_portfolio_industry_tag
 
 
 class FundIndustryClassificationTest(unittest.TestCase):

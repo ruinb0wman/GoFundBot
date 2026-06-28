@@ -1,7 +1,8 @@
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from models import Base
 from pathlib import Path
+from flask import g
 from core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -68,6 +69,13 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     # 执行数据库迁移
     migrate_db()
+
+def get_request_db() -> Session:
+    """获取 Flask 请求作用域内的数据库会话（通过 g 缓存，teardown 自动关闭）"""
+    if 'db' not in g:
+        g.db = SessionLocal()
+    return g.db
+
 
 def get_db():
     db = SessionLocal()
