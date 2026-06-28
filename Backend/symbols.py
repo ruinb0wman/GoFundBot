@@ -92,8 +92,17 @@ def to_eastmoney_secid(code: str) -> str:
         300750 → 0.300750
         688981 → 1.688981
         430047 → 0.430047
+        sh000001 → 1.000001
+        sz399001 → 0.399001
     """
     c = _clean(code)
+    # sh/sz/bj 前缀 → 转为 1.xxx / 0.xxx
+    if c.startswith(("SH", "SZ", "BJ")):
+        exchange = c[:2].lower()
+        code_part = c[2:]
+        market = EASTMONEY_SH if exchange == SHANGHAI else EASTMONEY_SZ
+        return f"{market}.{code_part}"
+
     # 纯数字
     if c.isdigit() and len(c) >= 6:
         exchange = get_exchange(c)

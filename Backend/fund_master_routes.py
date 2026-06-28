@@ -9,8 +9,6 @@ DataService-first architecture:
   - Never change the response structure visible to Frontend.
 """
 
-import re
-
 from flask import Blueprint, jsonify, request
 from fund_master_service import get_fund_master_service
 from services.data_service_client import DataServiceError, get_data_service_client
@@ -285,10 +283,9 @@ def get_index_kline(code):
     start_date = request.args.get('startDate', '')
     end_date = request.args.get('endDate', '')
     try:
-        normalized_code = re.sub(r'^(sh|sz|bj|SH|SZ|BJ)|\.(SH|SZ|BJ)$', '', code.strip())
         mds = get_mds()
         result = mds.get_a_stock_kline(
-            normalized_code,
+            code.strip(),
             klt=period,
             fqt=adjust,
             start_date=start_date,

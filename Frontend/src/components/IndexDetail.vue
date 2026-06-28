@@ -75,7 +75,7 @@ export default {
       { key: 'weekly', label: '周K' },
       { key: 'monthly', label: '月K' },
     ]
-    const activeRange = ref('all')
+    const activeRange = ref('1y')
     const rangeOptions = [
       { key: '1y', label: '最近1年' },
       { key: '3y', label: '最近3年' },
@@ -176,7 +176,15 @@ export default {
           }
         ],
         dataZoom: [
-          { type: 'inside', xAxisIndex: [0, 1], start: 50, end: 100 },
+          {
+            type: 'inside',
+            xAxisIndex: [0, 1],
+            start: 50,
+            end: 100,
+            zoomOnMouseWheel: 'ctrl',
+            moveOnMouseWheel: true,
+            moveOnMouseMove: true,
+          },
           { type: 'slider', xAxisIndex: [0, 1], start: 50, end: 100, bottom: 0, height: 20 }
         ],
         series: [
