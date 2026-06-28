@@ -221,7 +221,7 @@ export default {
 
       try {
         // 统一通过后端 API 获取板块数据
-        // 后端内部：East Money → akshare 同花顺 → 文件缓存（自动降级）
+        // 后端降级链：akshare → 内存缓存 → 文件缓存 → 占位数据（自动降级）
         const response = await marketAPI.getSectorRank(props.limit)
         if (response.data.success && response.data.data?.length) {
           applySectorData(response.data.data, {

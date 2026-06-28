@@ -265,11 +265,16 @@ class FundMasterService:
     def _get_sector_rank_akshare(self, limit):
         import os, sys
         if os.environ.get('DISABLE_AKSHARE_FALLBACK') == '1':
+            print("[FundMaster] akshare 被 DISABLE_AKSHARE_FALLBACK 禁用，跳过")
             return []
         try:
             import akshare as ak
             import pandas as pd
-        except Exception:
+        except ImportError as e:
+            print(f"[FundMaster] akshare 导入失败（未安装?）: {e}")
+            return []
+        except Exception as e:
+            print(f"[FundMaster] akshare 导入异常: {e}")
             return []
 
         candidates = []
@@ -277,13 +282,20 @@ class FundMasterService:
             try:
                 fn = getattr(ak, fn_name, None)
                 if not fn:
+                    print(f"[FundMaster] akshare 未找到函数 {fn_name}")
                     continue
                 df = fn()
                 if df is None or df.empty:
+                    print(f"[FundMaster] akshare {fn_name} 返回空数据")
                     continue
                 candidates.append(df)
-            except Exception:
+            except Exception as e:
+                print(f"[FundMaster] akshare {fn_name} 调用失败: {e}")
                 continue
+
+        if not candidates:
+            print("[FundMaster] akshare 所有数据源均无数据")
+            return []
 
         for df in candidates:
             rows = []
@@ -314,6 +326,7 @@ class FundMasterService:
             if self._is_valid_sector_rank(rows):
                 print(f"[FundMaster] akshare 板块数据获取成功，共 {len(rows)} 条（来源: {fn_name}）")
                 return rows[:limit]
+            print(f"[FundMaster] akshare {fn_name} 数据被 _is_valid_sector_rank 否决（可能非交易日）")
         print("[FundMaster] akshare 板块数据获取失败或数据无效")
         return []
     
@@ -572,7 +585,7 @@ class FundMasterService:
         if cached:
             return cached
 
-        # ── 同花顺 (akshare) —— 唯一数据源 ──
+        # ── 降级链: akshare → 过期内存缓存 → 文件缓存 → 占位数据 ──
         akshare_rows = self._get_sector_rank_akshare(limit)
         if akshare_rows:
             data = {
@@ -587,6 +600,32 @@ class FundMasterService:
             self._set_cache(cache_key, data, 'sector_rank')
             self._save_sector_rank_file_cache(data)
             return data
+
+        print(f"[FundMaster] akshare 无数据，尝试过期缓存...")
+        stale = self._get_stale_cache(cache_key)
+        if stale and stale.get("data"):
+            print(f"[FundMaster] 使用过期内存缓存，{len(stale['data'])} 条")
+            return {**stale, "is_stale": True, "source": "stale_cache"}
+
+        print(f"[FundMaster] 过期缓存无数据，尝试文件缓存...")
+        file_cached = self._load_sector_rank_file_cache(limit, data_date, require_full=False)
+        if file_cached:
+            print(f"[FundMaster] 使用文件缓存，{len(file_cached.get('data', []))} 条")
+            return {**file_cached, "is_stale": True, "source": "file_cache"}
+
+        print(f"[FundMaster] 文件缓存无数据，使用占位数据")
+        fallback_rows = self._get_sector_rank_fallback(limit)
+        if fallback_rows:
+            return {
+                "success": True,
+                "data": fallback_rows,
+                "total_count": len(fallback_rows),
+                "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "data_date": data_date,
+                "is_stale": True,
+                "is_partial": True,
+                "source": "fallback"
+            }
 
         return {"success": False, "error": "获取板块数据失败", "data": []}
 
