@@ -380,8 +380,19 @@
             <span v-else class="fail-badge">-</span>
           </template>
           <template #actions="{ row }">
-            <button class="btn-action" @click.stop="addToWatchlist(row)" title="加入自选"><LucideIcon name="Star" :size="14" /></button>
-            <button class="btn-action" @click.stop="addToCompare(row)" title="加入对比"><LucideIcon name="LayoutGrid" :size="14" /></button>
+            <div class="actions">
+              <button
+                class="btn-action"
+                :class="{ watched: isInWatchlist(row.fund_code) }"
+                @click.stop="toggleWatchlist(row)"
+                :title="isInWatchlist(row.fund_code) ? '取消自选' : '加入自选'"
+              >
+                <LucideIcon name="Star" :size="14" />
+              </button>
+              <button class="btn-action" @click.stop="addToCompare(row)" title="加入对比">
+                <LucideIcon name="LayoutGrid" :size="14" />
+              </button>
+            </div>
           </template>
         </vxe-grid>
       </div>
@@ -965,6 +976,21 @@ export default {
     const loading = ref(false)
     const searched = ref(false)
 
+    // 已收藏基金代码集合（用于区分收藏按钮状态）
+    const watchlistCodes = ref(new Set())
+
+    const isInWatchlist = (code) => watchlistCodes.value.has(code)
+
+    const fetchWatchlistCodes = async () => {
+      try {
+        const res = await watchlistAPI.getWatchlist()
+        const items = res.data?.data || res.data?.items || res.data || []
+        watchlistCodes.value = new Set(items.map(f => f.fund_code || f.code).filter(Boolean))
+      } catch (e) {
+        // ignore
+      }
+    }
+
     const gridOptions = reactive({
       border: true,
       stripe: true,
@@ -1305,16 +1331,25 @@ export default {
       emit('view-fund', fund.fund_code)
     }
     
-    // 加入自选
-    const addToWatchlist = async (fund) => {
+    // 切换自选（收藏/取消收藏）
+    const toggleWatchlist = async (fund) => {
+      const code = fund.fund_code
+      const watched = isInWatchlist(code)
       try {
-        await watchlistAPI.addToWatchlist(fund.fund_code, fund.fund_name, fund.fund_type)
-        alert(`已将 ${fund.fund_name} 加入自选`)
+        if (watched) {
+          await watchlistAPI.removeFromWatchlist(code)
+          watchlistCodes.value.delete(code)
+          watchlistCodes.value = new Set(watchlistCodes.value)
+        } else {
+          await watchlistAPI.addToWatchlist(code, fund.fund_name, fund.fund_type)
+          watchlistCodes.value = new Set([...watchlistCodes.value, code])
+        }
       } catch (err) {
         if (err.response?.status === 409) {
-          alert('该基金已在自选列表中')
+          // 已在自选列表中 → 同步本地状态
+          watchlistCodes.value = new Set([...watchlistCodes.value, code])
         } else {
-          alert('加入自选失败')
+          console.error('切换自选失败:', err)
         }
       }
     }
@@ -1390,6 +1425,7 @@ export default {
       await fetchProgress()
       // 再加载完整DB状态（显示基金数量等）
       fetchDbStatus()
+      fetchWatchlistCodes()
       fetchIndustryTags()
 
       // 如果正在更新，开始轮询
@@ -1485,7 +1521,8 @@ export default {
       handleGridSort,
       handleGridCellClick,
       viewFundDetail,
-      addToWatchlist,
+      toggleWatchlist,
+      isInWatchlist,
       addToCompare,
       formatPercent,
       formatNumber,
@@ -2237,21 +2274,37 @@ export default {
 
 .actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-action {
-  padding: 4px 8px;
-  background: var(--bg-primary);
-  border: none;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  color: var(--text-tertiary);
+  transition: all 0.15s;
 }
 
 .btn-action:hover {
-  background: var(--bg-subtle);
-  transform: scale(1.1);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.btn-action.watched {
+  color: var(--color-warning);
+}
+
+.btn-action.watched:hover {
+  color: var(--color-warning);
 }
 
 /* 分页 */

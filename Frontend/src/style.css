@@ -84,90 +84,67 @@ svg.lucide, .lucide {
   }
 }
 
-/* ── VXETable dark mode overrides ── */
-[data-theme="dark"] .vxe-table {
-  color: var(--text-primary);
+/* ── VXETable dark mode overrides (CSS variable approach) ── */
+[data-theme="dark"] {
+  --vxe-ui-layout-background-color: var(--bg-card);
+  --vxe-ui-table-border-color: var(--border-default);
+  --vxe-ui-table-header-background-color: var(--bg-subtle);
+  --vxe-ui-table-footer-background-color: var(--bg-subtle);
+  --vxe-ui-table-row-striped-background-color: var(--bg-subtle);
+  --vxe-ui-table-row-hover-background-color: var(--bg-hover);
+  --vxe-ui-table-row-hover-striped-background-color: var(--bg-hover);
+  --vxe-ui-table-row-current-background-color: var(--color-primary-bg);
+  --vxe-ui-table-column-current-background-color: var(--color-primary-bg);
+  --vxe-ui-table-row-checkbox-checked-background-color: var(--color-primary-bg);
+  --vxe-ui-table-row-radio-checked-background-color: var(--color-primary-bg);
+  --vxe-ui-table-column-hover-background-color: var(--bg-hover);
+  --vxe-ui-table-resizable-line-color: var(--border-subtle);
+  --vxe-ui-table-cell-placeholder-color: var(--text-disabled);
+  --vxe-ui-table-validate-error-cell-background-color: rgba(244, 63, 94, 0.08);
+  --vxe-ui-table-fixed-left-scrolling-box-shadow: 8px 0px 10px -5px rgba(0,0,0,0.45);
+  --vxe-ui-table-fixed-right-scrolling-box-shadow: -8px 0px 10px -5px rgba(0,0,0,0.45);
+  --vxe-ui-font-color: var(--text-primary);
+  --vxe-ui-font-lighten-color: var(--text-tertiary);
+  --vxe-ui-input-border-color: var(--border-default);
+  --vxe-ui-input-placeholder-color: var(--text-disabled);
+  --vxe-ui-toolbar-custom-active-background-color: var(--bg-hover);
+  --vxe-ui-loading-background-color: var(--bg-overlay);
+  --vxe-ui-table-tree-node-line-color: var(--border-default);
 }
 
-[data-theme="dark"] .vxe-table--render-default,
-[data-theme="dark"] .vxe-table--body-wrapper,
-[data-theme="dark"] .vxe-table--footer-wrapper {
-  background-color: var(--bg-card);
+/* Fixed column cells — vxe-table writes inline background-color, need !important */
+[data-theme="dark"] .vxe-body--column.col--fixed-left,
+[data-theme="dark"] .vxe-body--column.col--fixed-right,
+[data-theme="dark"] .vxe-body--column.fixed--left,
+[data-theme="dark"] .vxe-body--column.fixed--right {
+  background-color: var(--bg-card) !important;
 }
 
-[data-theme="dark"] .vxe-header--row {
-  background-color: var(--bg-subtle);
+[data-theme="dark"] .vxe-body--column.col--fixed-left.col--stripe,
+[data-theme="dark"] .vxe-body--column.col--fixed-right.col--stripe,
+[data-theme="dark"] .vxe-body--column.fixed--left.row--stripe,
+[data-theme="dark"] .vxe-body--column.fixed--right.row--stripe {
+  background-color: var(--bg-subtle) !important;
 }
 
-[data-theme="dark"] .vxe-header--row th {
-  background-color: var(--bg-subtle);
-  color: var(--text-secondary);
-  border-bottom-color: var(--border-default);
+[data-theme="dark"] .vxe-body--column.col--fixed-left.row--hover,
+[data-theme="dark"] .vxe-body--column.col--fixed-right.row--hover,
+[data-theme="dark"] .vxe-body--column.fixed--left.row--hover,
+[data-theme="dark"] .vxe-body--column.fixed--right.row--hover {
+  background-color: var(--bg-hover) !important;
 }
 
-[data-theme="dark"] .vxe-body--row {
-  background-color: var(--bg-card);
+/* Fixed header columns */
+[data-theme="dark"] .vxe-header--column.col--fixed-left,
+[data-theme="dark"] .vxe-header--column.col--fixed-right,
+[data-theme="dark"] .vxe-header--column.fixed--left,
+[data-theme="dark"] .vxe-header--column.fixed--right {
+  background-color: var(--bg-subtle) !important;
 }
 
-[data-theme="dark"] .vxe-body--row td {
-  border-bottom-color: var(--border-subtle);
-  color: var(--text-primary);
-}
-
-[data-theme="dark"] .vxe-body--row.row--stripe {
-  background-color: var(--bg-subtle);
-}
-
-[data-theme="dark"] .vxe-body--row.row--hover {
-  background-color: var(--bg-hover);
-}
-
-[data-theme="dark"] .vxe-table--border-line {
-  border-color: var(--border-default);
-}
-
-[data-theme="dark"] .vxe-input--inner {
-  background-color: var(--bg-card);
-  color: var(--text-primary);
-  border-color: var(--border-default);
-}
-
-[data-theme="dark"] .vxe-input--inner:focus {
-  border-color: var(--border-strong);
-}
-
-[data-theme="dark"] .vxe-modal--box {
-  background-color: var(--bg-elevated);
-  color: var(--text-primary);
-}
-
-[data-theme="dark"] .vxe-modal--header {
-  background-color: var(--bg-subtle);
-  border-bottom-color: var(--border-default);
-  color: var(--text-primary);
-}
-
-[data-theme="dark"] .vxe-modal--footer {
-  border-top-color: var(--border-default);
-}
-
-[data-theme="dark"] .vxe-pager--wrapper {
-  background-color: var(--bg-card);
-  border-top-color: var(--border-default);
-}
-
-[data-theme="dark"] .vxe-pager--num-btn {
-  color: var(--text-secondary);
-  background-color: var(--bg-card);
-  border-color: var(--border-default);
-}
-
+/* Pager button active — vxe uses hardcoded primary color, var(--color-primary) is better */
 [data-theme="dark"] .vxe-pager--num-btn.active--btn {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
   color: #fff;
-}
-
-[data-theme="dark"] .vxe-empty--wrapper .vxe-empty--message {
-  color: var(--text-tertiary);
 }

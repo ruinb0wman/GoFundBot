@@ -7,14 +7,11 @@ import App from './App.vue'
 // 全局样式
 import './style.css'
 
-// VXETable 主题配置
+// VXETable 主题配置（背景/边框色由 style.css CSS 变量接管）
 VXETable.setup({
   table: {
     borderColor: 'var(--border-default)',
     headerBackgroundColor: 'var(--bg-subtle)',
-    hoverBackgroundColor: 'var(--bg-hover)',
-    stripeBackgroundColor: 'var(--bg-subtle)',
-    rowHoverBackgroundColor: 'var(--bg-hover)',
   }
 })
 
