@@ -701,7 +701,7 @@ export default {
 }
 
 .compare-tag {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
   color: var(--text-inverse);
   padding: 4px 10px;
   border-radius: 15px;

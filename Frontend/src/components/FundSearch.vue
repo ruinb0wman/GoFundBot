@@ -209,12 +209,12 @@ export default {
 .search-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.1);
+  box-shadow: 0 0 0 3px var(--color-primary-bg);
 }
 
 .search-btn {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #ff9f43 0%, #f39c12 100%);
+  background: linear-gradient(135deg, #f9b44e 0%, #da8b17 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -226,7 +226,7 @@ export default {
 
 .search-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+  box-shadow: 0 4px 12px rgba(249, 180, 78, 0.45);
 }
 
 .refresh-btn {
