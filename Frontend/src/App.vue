@@ -44,7 +44,7 @@
               :class="{ active: route.name === 'research' }"
               @click="router.push({ name: 'research' })"
             >
-              投研看板
+              <LucideIcon name="TrendingUp" :size="16" /> 投研看板
             </button>
           </div>
           <button
