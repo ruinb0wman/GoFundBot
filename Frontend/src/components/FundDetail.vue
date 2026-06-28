@@ -579,7 +579,6 @@ export default {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 16px;
-  background: var(--bg-hover);
   min-height: 100vh;
 }
 

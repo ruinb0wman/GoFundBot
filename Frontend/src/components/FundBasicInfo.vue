@@ -413,6 +413,10 @@ export default {
   color: var(--text-inverse);
 }
 
+[data-theme="dark"] .fund-basic-info {
+  color: #ffffff;
+}
+
 .info-header {
   display: flex;
   justify-content: space-between;
