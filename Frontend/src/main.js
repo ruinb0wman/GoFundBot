@@ -18,18 +18,23 @@ VXETable.setup({
   }
 })
 
+import router from './router/index.js'
+
 // 创建Vue应用
 const app = createApp(App)
 app.use(VXETable)
+app.use(router)
 
 import LucideIcon from './components/LucideIcon.vue'
 app.component('LucideIcon', LucideIcon)
 
-// 挂载到DOM
-app.mount('#app')
+// 等待路由初始导航完成后再挂载
+router.isReady().then(() => {
+  app.mount('#app')
 
-// 移除加载状态
-const loadingElement = document.getElementById('loading')
-if (loadingElement) {
-  loadingElement.style.display = 'none'
-}
+  // 移除加载状态
+  const loadingElement = document.getElementById('loading')
+  if (loadingElement) {
+    loadingElement.style.display = 'none'
+  }
+})

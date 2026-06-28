@@ -1,4 +1,3 @@
-<!-- src/App.vue -->
 <template>
   <div id="app">
     <header class="app-header">
@@ -7,11 +6,9 @@
           <h1>GoFundBot</h1>
           <p>智能基金分析 · 实时市场追踪</p>
         </div>
-        <!-- 顶部搜索框 -->
         <div class="header-search">
           <FundSearch @fund-selected="handleHeaderSearch" :compact="true" />
         </div>
-        <!-- 模式切换 -->
         <div class="header-right">
           <button
             v-if="canGoBack"
@@ -29,38 +26,38 @@
             <span class="theme-icon"><LucideIcon :name="themeIcon" :size="20" /></span>
           </button>
           <div class="mode-switch">
-            <button 
-              class="mode-btn" 
-              :class="{ active: viewMode === 'dashboard' }"
+            <button
+              class="mode-btn"
+              :class="{ active: route.name === 'dashboard' }"
               @click="resetToDashboard"
             >
               <LucideIcon name="Home" :size="16" /> 市场大盘
             </button>
-            <button 
-              class="mode-btn" 
-              :class="{ active: viewMode === 'screening' }"
-              @click="navigateToMode('screening')"
+            <button
+              class="mode-btn"
+              :class="{ active: route.name === 'screening' }"
+              @click="router.push({ name: 'screening' })"
             >
               <LucideIcon name="Search" :size="16" /> 基金筛选
             </button>
-            <button 
-              class="mode-btn" 
-              :class="{ active: viewMode === 'backtest' }"
-              @click="navigateToMode('backtest')"
+            <button
+              class="mode-btn"
+              :class="{ active: route.name === 'backtest' || route.name === 'backtest-fund' }"
+              @click="router.push({ name: 'backtest' })"
             >
               <LucideIcon name="Coins" :size="16" /> 定投回测
             </button>
-            <button 
-              class="mode-btn" 
-              :class="{ active: viewMode === 'portfolio' }"
-              @click="navigateToMode('portfolio')"
+            <button
+              class="mode-btn"
+              :class="{ active: route.name === 'portfolio' }"
+              @click="router.push({ name: 'portfolio' })"
             >
               <LucideIcon name="BarChart3" :size="16" /> 估值与持仓
             </button>
-            <button 
-              class="mode-btn" 
-              :class="{ active: viewMode === 'research' }"
-              @click="navigateToMode('research')"
+            <button
+              class="mode-btn"
+              :class="{ active: route.name === 'research' }"
+              @click="router.push({ name: 'research' })"
             >
               投研看板
             </button>
@@ -68,14 +65,12 @@
         </div>
       </div>
     </header>
-    
+
     <main class="app-main">
-      <!-- 市场大盘模式 -->
-      <div v-if="viewMode === 'dashboard'" class="dashboard-layout" :class="{ 'full-content': showFullContent }">
-        <!-- 左侧：自选列表 -->
+      <div v-if="route.meta.rightbar" class="dashboard-layout" :class="{ 'full-content': showFullContent }">
         <aside class="dashboard-sidebar">
-          <FundWatchlist 
-            @view-fund="handleDashboardFundView" 
+          <FundWatchlist
+            @view-fund="handleNavigate"
             @add-to-compare="handleAddToCompare"
             :compareMode="compareMode"
             :compareFunds="compareFunds"
@@ -83,88 +78,44 @@
             @toggle-compare="toggleCompareMode"
           />
         </aside>
-        
-        <!-- 中间：核心内容 -->
+
         <div class="dashboard-main">
-          <!-- 基金对比页面（选中多只基金时显示） -->
-          <FundComparison 
-            v-if="compareMode && compareFunds.length >= 2" 
+          <FundComparison
+            v-if="compareMode && compareFunds.length >= 2"
             :compareFunds="compareFunds"
             @remove-fund="handleRemoveFromCompare"
             @clear-funds="handleClearCompare"
           />
-          <!-- 基金详情（选中时显示） -->
-          <FundDetail v-else-if="selectedFundCode && !compareMode" :fundCode="selectedFundCode" @navigate-to-fund="handleFundSelected" />
-          <!-- 市场指数 + 金价 -->
-          <MarketOverview 
-            v-else
-            :showGoldHistory="true" 
-            :showSSE30Min="true"
-          />
+          <router-view v-else v-slot="{ Component }">
+            <component
+              :is="Component"
+              @navigate-to-fund="handleNavigate"
+              @view-fund="handleNavigate"
+              @view-detail="handleNavigate"
+            />
+          </router-view>
         </div>
-        
-        <!-- 右侧：快讯 + 板块（显示详情/对比时隐藏） -->
-        <aside class="dashboard-right" v-if="!showFullContent">
+
+        <aside v-if="!showFullContent" class="dashboard-right">
           <FlashNews :count="30" :refreshInterval="30000" />
           <SectorRank :limit="90" />
         </aside>
       </div>
 
-      <!-- 其他模式 -->
       <div v-else class="main-layout">
-        <!-- 左侧：自选列表 (筛选和估值持仓看板模式不显示) -->
-        <aside class="sidebar-left" v-if="viewMode !== 'screening' && viewMode !== 'portfolio' && viewMode !== 'research'">
-          <FundWatchlist 
-            @view-fund="handleFundSelected" 
-            @add-to-compare="handleAddToCompare"
-            :compareMode="compareMode"
-            :compareFunds="compareFunds"
-            :showCompareToggle="true"
-            @toggle-compare="toggleCompareMode"
-          />
-        </aside>
-        
-        <!-- 右侧：根据模式显示不同内容 -->
-        <div class="content-area" :class="{ 'full-width': viewMode === 'screening' || viewMode === 'portfolio' || viewMode === 'research' }">
-          <!-- 筛选模式 -->
-          <template v-if="viewMode === 'screening'">
-            <FundScreening 
-              @view-fund="handleScreeningFundView"
-              @add-to-compare="handleAddToCompare"
+        <div class="content-area full-width">
+          <router-view v-slot="{ Component }">
+            <component
+              :is="Component"
+              @navigate-to-fund="handleNavigate"
+              @view-fund="handleNavigate"
+              @view-detail="handleNavigate"
             />
-          </template>
-
-          <!-- 估值与持仓一体化看板 -->
-          <template v-else-if="viewMode === 'portfolio'">
-            <FundRealtime @view-detail="handleRealtimeFundView" />
-          </template>
-
-          <!-- 投研看板 -->
-          <template v-else-if="viewMode === 'research'">
-            <ResearchDashboard @view-fund="handleResearchFundView" />
-          </template>
-          
-          <!-- 回测模式 -->
-          <template v-else-if="viewMode === 'backtest'">
-            <FundBacktest 
-              :fundCode="selectedFundCode"
-            />
-          </template>
-
-          <!-- 详情模式 -->
-          <template v-else>
-            <FundSearch @fund-selected="handleFundSelected" />
-            <FundDetail v-if="selectedFundCode" :fundCode="selectedFundCode" @navigate-to-fund="handleFundSelected" />
-            <div v-else class="welcome-container">
-              <div class="welcome-icon"><LucideIcon name="Search" :size="48" /></div>
-              <h3>搜索基金开始分析</h3>
-              <p>在上方搜索框输入基金代码或名称</p>
-            </div>
-          </template>
+          </router-view>
         </div>
       </div>
     </main>
-    
+
     <footer class="app-footer">
       <p>数据来源：天天基金 / 东方财富 / 百度股市通 | 更新时间：{{ currentTime }}</p>
     </footer>
@@ -173,81 +124,41 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from './composables/useTheme'
 import FundSearch from './components/FundSearch.vue'
-import FundDetail from './components/FundDetail.vue'
 import FundWatchlist from './components/FundWatchlist.vue'
 import FundComparison from './components/FundComparison.vue'
-import FundScreening from './components/FundScreening.vue'
-import FundBacktest from './components/FundBacktest.vue'
-import FundRealtime from './components/FundRealtime.vue'
-import ResearchDashboard from './components/ResearchDashboard.vue'
-import MarketOverview from './components/MarketOverview.vue'
 import FlashNews from './components/FlashNews.vue'
 import SectorRank from './components/SectorRank.vue'
+import LucideIcon from './components/LucideIcon.vue'
 
 export default {
   name: 'App',
   components: {
     FundSearch,
-    FundDetail,
     FundWatchlist,
     FundComparison,
-    FundScreening,
-    FundBacktest,
-    FundRealtime,
-    ResearchDashboard,
-    MarketOverview,
     FlashNews,
-    SectorRank
+    SectorRank,
+    LucideIcon
   },
   setup() {
     const { theme: appTheme, savedTheme, toggleTheme } = useTheme()
-    const selectedFundCode = ref('')
     const currentTime = ref('')
-    const viewMode = ref('dashboard') // 默认显示市场大盘
-    const compareFunds = ref([]) // 用于对比的基金列表
-    const compareMode = ref(false) // 是否处于对比模式
-    const navStack = ref([])
-    
-    // 是否显示全宽内容（详情页或对比页时隐藏右侧栏）
-    const showFullContent = computed(() => {
-      return (compareMode.value && compareFunds.value.length >= 2) || 
-             (selectedFundCode.value && !compareMode.value)
-    })
+    const route = useRoute()
+    const router = useRouter()
+    const compareFunds = ref([])
+    const compareMode = ref(false)
 
-    const canGoBack = computed(() => navStack.value.length > 0)
+    const showFullContent = computed(() =>
+      !!route.params.code || (compareMode.value && compareFunds.value.length >= 2)
+    )
 
-    const snapshotState = () => ({
-      selectedFundCode: selectedFundCode.value,
-      viewMode: viewMode.value,
-      compareMode: compareMode.value,
-      compareFunds: compareFunds.value.map(fund => ({ ...fund }))
-    })
-
-    const sameState = (a, b) => JSON.stringify(a) === JSON.stringify(b)
-
-    const pushCurrentState = () => {
-      const current = snapshotState()
-      const last = navStack.value[navStack.value.length - 1]
-      if (!last || !sameState(last, current)) {
-        navStack.value.push(current)
-        if (navStack.value.length > 30) navStack.value.shift()
-      }
-    }
-
-    const restoreState = (state) => {
-      selectedFundCode.value = state.selectedFundCode || ''
-      viewMode.value = state.viewMode || 'dashboard'
-      compareMode.value = !!state.compareMode
-      compareFunds.value = Array.isArray(state.compareFunds)
-        ? state.compareFunds.map(fund => ({ ...fund }))
-        : []
-    }
+    const canGoBack = computed(() => window.history.length > 1)
 
     const goBack = () => {
-      const previous = navStack.value.pop()
-      if (previous) restoreState(previous)
+      router.back()
     }
 
     const themeIcon = computed(() => {
@@ -269,77 +180,37 @@ export default {
       return fundOrCode || ''
     }
 
-    const navigateToMode = (mode) => {
-      if (viewMode.value === mode && !selectedFundCode.value && !compareMode.value) return
-      pushCurrentState()
-      viewMode.value = mode
+    const handleNavigate = (fundOrCode) => {
+      if (compareMode.value) return
+      const code = normalizeFundCode(fundOrCode)
+      if (code) router.push({ name: 'fund-detail', params: { code } })
+    }
+
+    const handleHeaderSearch = (fundOrCode) => {
+      compareMode.value = false
+      const code = normalizeFundCode(fundOrCode)
+      if (code) router.push({ name: 'fund-detail', params: { code } })
+    }
+
+    const resetToDashboard = () => {
       compareMode.value = false
       compareFunds.value = []
+      router.push({ name: 'dashboard' })
     }
-    
-    const handleFundSelected = (fundOrCode) => {
-      if (compareMode.value) return // 对比模式下不切换基金
-      const nextCode = normalizeFundCode(fundOrCode)
-      if (nextCode && nextCode !== selectedFundCode.value) pushCurrentState()
-      selectedFundCode.value = nextCode
-    }
-    
-    // 顶部搜索框选中基金
-    const handleHeaderSearch = (fundOrCode) => {
-      pushCurrentState()
-      compareMode.value = false // 退出对比模式
-      viewMode.value = 'dashboard' // 切换到市场大盘
-      selectedFundCode.value = normalizeFundCode(fundOrCode)
-    }
-    
-    // 从仪表盘/自选点击基金
-    const handleDashboardFundView = (fundOrCode) => {
-      if (compareMode.value) return // 对比模式下不切换
-      handleFundSelected(fundOrCode)
-    }
-    
-    // 切换对比模式
+
     const toggleCompareMode = () => {
-      pushCurrentState()
       compareMode.value = !compareMode.value
       if (!compareMode.value) {
-        // 退出对比模式时清空对比列表
         compareFunds.value = []
       }
     }
-    
-    // 从筛选页面查看基金详情
-    const handleScreeningFundView = (fundCode) => {
-      pushCurrentState()
-      selectedFundCode.value = fundCode
-      viewMode.value = 'dashboard'
-    }
 
-    // 从估值卡片点击后跳转到基金详情（大盘页布局）
-    const handleRealtimeFundView = (fundOrCode) => {
-      pushCurrentState()
-      compareMode.value = false
-      viewMode.value = 'dashboard'
-      selectedFundCode.value = normalizeFundCode(fundOrCode)
-    }
-
-    const handleResearchFundView = (fundOrCode) => {
-      pushCurrentState()
-      compareMode.value = false
-      viewMode.value = 'dashboard'
-      selectedFundCode.value = normalizeFundCode(fundOrCode)
-    }
-    
-    // 添加基金到对比列表
     const handleAddToCompare = (fund) => {
-      // 最多5只基金
       if (compareFunds.value.length >= 5) {
         alert('最多只能对比5只基金')
         return
       }
-      // 检查是否已存在
       if (compareFunds.value.some(f => f.code === fund.code)) {
-        // 如果已存在则移除
         compareFunds.value = compareFunds.value.filter(f => f.code !== fund.code)
         return
       }
@@ -348,67 +219,44 @@ export default {
         name: fund.name
       })
     }
-    
-    // 从对比列表移除基金
+
     const handleRemoveFromCompare = (fundCode) => {
       compareFunds.value = compareFunds.value.filter(f => f.code !== fundCode)
     }
-    
-    // 清空对比列表
+
     const handleClearCompare = () => {
       compareFunds.value = []
     }
-    
-    // 重置到市场大盘（点击菜单栏"市场大盘"时）
-    const resetToDashboard = () => {
-      if (viewMode.value !== 'dashboard' || selectedFundCode.value || compareMode.value) {
-        pushCurrentState()
-      }
-      viewMode.value = 'dashboard'
-      selectedFundCode.value = ''
-      // 如果处于对比模式，也退出
-      if (compareMode.value) {
-        compareMode.value = false
-        compareFunds.value = []
-      }
-    }
 
-    // 更新时间
     const updateTime = () => {
       const now = new Date()
       currentTime.value = now.toLocaleString('zh-CN')
     }
-    
+
     onMounted(() => {
       updateTime()
-      // 每分钟更新时间
       setInterval(updateTime, 60000)
     })
-    
+
     return {
-      selectedFundCode,
       currentTime,
-      viewMode,
+      route,
+      router,
       compareFunds,
       compareMode,
+      showFullContent,
       canGoBack,
+      goBack,
       themeIcon,
       themeTitle,
       toggleTheme,
-      handleFundSelected,
+      handleNavigate,
       handleHeaderSearch,
-      handleDashboardFundView,
-      handleScreeningFundView,
-      handleRealtimeFundView,
-      handleResearchFundView,
+      resetToDashboard,
+      toggleCompareMode,
       handleAddToCompare,
       handleRemoveFromCompare,
-      handleClearCompare,
-      toggleCompareMode,
-      showFullContent,
-      resetToDashboard,
-      goBack,
-      navigateToMode
+      handleClearCompare
     }
   }
 }
@@ -600,7 +448,6 @@ export default {
   font-size: 0.85rem;
 }
 
-/* 顶部搜索框 */
 .header-search {
   flex: 1;
   max-width: 600px;
@@ -783,7 +630,7 @@ export default {
   padding: 20px;
 }
 
-/* ==================== 仪表盘布局 ==================== */
+/* ==================== 仪表盘三栏布局 ==================== */
 .dashboard-layout {
   display: grid;
   grid-template-columns: 380px 1fr 380px;
@@ -863,7 +710,7 @@ export default {
   flex-shrink: 0;
 }
 
-/* ==================== 原有布局 ==================== */
+/* ==================== 默认布局 ==================== */
 .main-layout {
   display: flex;
   gap: 20px;
@@ -893,43 +740,6 @@ export default {
   overflow: hidden;
 }
 
-/* ==================== 欢迎页面 ==================== */
-.welcome-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 40px;
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  margin-top: 20px;
-  box-shadow: var(--shadow-md);
-  text-align: center;
-}
-
-.welcome-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-  background: var(--color-primary-bg);
-  width: 80px;
-  height: 80px;
-  line-height: 80px;
-  border-radius: 50%;
-}
-
-.welcome-container h3 {
-  font-size: 1.4rem;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.welcome-container p {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-}
-
 /* ==================== 页脚 ==================== */
 .app-footer {
   background: var(--bg-card);
@@ -952,11 +762,11 @@ export default {
  .dashboard-layout {
     grid-template-columns: 340px 1fr 340px;
   }
-  
+
  .sidebar-left {
     width: 360px;
   }
-  
+
  .header-search {
     max-width: 350px;
   }
@@ -966,15 +776,15 @@ export default {
  .dashboard-layout {
     grid-template-columns: 1fr 340px;
   }
-  
+
  .dashboard-sidebar {
     display: none;
   }
-  
+
  .sidebar-left {
     width: 320px;
   }
-  
+
  .header-search {
     max-width: 280px;
     margin: 0 15px;
@@ -985,25 +795,25 @@ export default {
  .main-layout {
     flex-direction: column;
   }
-  
+
  .sidebar-left {
     width: 100%;
   }
-  
+
  .dashboard-layout {
     grid-template-columns: 1fr;
   }
-  
+
  .dashboard-right {
     position: static;
     max-height: none;
   }
-  
+
  .mode-switch {
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
  .header-search {
     order: 3;
     width: 100%;
@@ -1016,25 +826,25 @@ export default {
  .app-header {
     padding: 10px 16px;
   }
-  
+
  .header-content {
     flex-direction: column;
     gap: 12px;
   }
-  
+
  .header-left {
     text-align: center;
   }
-  
+
  .mode-btn {
     padding: 6px 10px;
     font-size: 12px;
   }
-  
+
  .app-main {
     padding: 12px;
   }
-  
+
   .header-search .db-status {
     display: none;
   }
