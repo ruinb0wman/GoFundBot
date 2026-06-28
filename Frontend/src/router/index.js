@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import DashboardView from '../views/DashboardView.vue'
 import FundDetailView from '../views/FundDetailView.vue'
+import IndexDetailView from '../views/IndexDetailView.vue'
 import ScreeningView from '../views/ScreeningView.vue'
 import BacktestView from '../views/BacktestView.vue'
 import PortfolioView from '../views/PortfolioView.vue'
@@ -17,6 +18,12 @@ const routes = [
     path: '/fund/:code',
     name: 'fund-detail',
     component: FundDetailView,
+    meta: { rightbar: true }
+  },
+  {
+    path: '/index/:code',
+    name: 'index-detail',
+    component: IndexDetailView,
     meta: { rightbar: true }
   },
   {

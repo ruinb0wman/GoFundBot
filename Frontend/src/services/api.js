@@ -298,6 +298,16 @@ export const marketAPI = {
   // 获取个股历史K线数据
   getStockKline(code, params = {}) {
     return api.get(`/stock/${code}/kline`, { params })
+  },
+
+  // 获取单个指数详情
+  getIndexDetail(code) {
+    return api.get(`/market/index/${code}/detail`)
+  },
+
+  // 获取指数历史K线数据
+  getIndexKline(code, params = {}) {
+    return api.get(`/market/index/${code}/kline`, { params })
   }
 }
 

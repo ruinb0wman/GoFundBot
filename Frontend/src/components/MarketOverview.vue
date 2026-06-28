@@ -35,7 +35,7 @@
       <div class="market-sub-section">
         <h4 class="sub-title"><span class="flag">🇨🇳</span> 中国市场 <span class="sub-desc">A股 / 港股</span></h4>
         <div class="index-grid china-grid" v-if="indices.china.length">
-          <div v-for="item in indices.china" :key="item.name" class="index-card" :class="getUpDnClass(item.change_pct)">
+          <div v-for="item in indices.china" :key="item.name" class="index-card clickable" :class="getUpDnClass(item.change_pct)" @click="navigateToIndex(item)" :title="item.code ? '点击查看详情' : ''">
             <div class="index-name">{{ item.name }}</div>
             <div class="index-price">{{ item.price }}</div>
             <div class="index-change">{{ item.change_pct }}</div>
@@ -47,7 +47,7 @@
       <div class="market-sub-section">
         <h4 class="sub-title"><span class="flag"><LucideIcon name="Globe" :size="16" /></span> 全球指数</h4>
         <div class="index-grid global-grid" v-if="indices.global.length">
-          <div v-for="item in indices.global" :key="item.name" class="index-card" :class="getUpDnClass(item.change_pct)">
+          <div v-for="item in indices.global" :key="item.name" class="index-card clickable" :class="getUpDnClass(item.change_pct)" @click="navigateToIndex(item)" :title="item.code ? '点击查看详情' : ''">
             <div class="index-name">{{ item.name }}</div>
             <div class="index-price">{{ item.price }}</div>
             <div class="index-change">{{ item.change_pct }}</div>
@@ -125,6 +125,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { marketAPI } from '../services/api'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { use } from "echarts/core"
@@ -145,6 +146,7 @@ export default {
     refreshInterval: { type: Number, default: 60000 }
   },
   setup(props) {
+    const router = useRouter()
     const loading = ref(false)
     const marketIndex = ref([])
     const goldRealtime = ref([])
@@ -454,6 +456,12 @@ export default {
       if (isNaN(val) || val === 0) return ''
       return pct.startsWith('-') ? 'down' : 'up'
     }
+
+    const navigateToIndex = (item) => {
+      if (item && item.code) {
+        router.push({ name: 'index-detail', params: { code: item.code } })
+      }
+    }
     
     const formatDate = (dateStr) => {
       if (!dateStr) return ''
@@ -478,7 +486,7 @@ export default {
       goldRealtime, goldModal, goldDays, goldModalHistory, goldChartOption,
       openGoldHistory, closeGoldHistory, isGoldItem, fetchGoldHistoryForModal,
       aVolume, updateTime,
-      formatDate, getChangeClass, getUpDnClass,
+      formatDate, getChangeClass, getUpDnClass, navigateToIndex,
       volumeOption,
       tabs, activeTab, activeTabName, hasCurrentData, currentChartOption,
       echartThemeName
@@ -593,6 +601,8 @@ export default {
   border: 1px solid var(--border-subtle);
   transition: transform 0.2s;
 }
+
+.index-card.clickable { cursor: pointer; }
 
 .index-card:hover {
   transform: translateY(-2px);

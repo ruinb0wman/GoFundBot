@@ -30,7 +30,7 @@ AKSHARE_AVAILABLE = False
 def _ensure_akshare():
     global AKSHARE_AVAILABLE, ak, pd
     import os as _os, sys as _sys
-    if os.environ.get('DISABLE_AKSHARE_FALLBACK') == '1':
+    if _os.environ.get('DISABLE_AKSHARE_FALLBACK') == '1':
         return False
     if AKSHARE_AVAILABLE:
         return True

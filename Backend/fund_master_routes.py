@@ -9,6 +9,8 @@ DataService-first architecture:
   - Never change the response structure visible to Frontend.
 """
 
+import re
+
 from flask import Blueprint, jsonify, request
 from fund_master_service import get_fund_master_service
 from services.data_service_client import DataServiceError, get_data_service_client
@@ -153,6 +155,7 @@ def get_market_index():
                 change_num = _safe_float(item.get('changePercent'))
                 price_num = _safe_float(item.get('price'))
                 indices.append({
+                    'code': item.get('code', ''),
                     'name': item.get('name', ''),
                     'price': f"{price_num:.2f}" if price_num is not None else '-',
                     'change_pct': f"{'+' if (change_num or 0) >= 0 else ''}{change_num:.2f}%" if change_num is not None else '0.00%',
@@ -171,6 +174,131 @@ def get_market_index():
     # 2) Fallback to legacy
     service = get_fund_master_service()
     return jsonify(service.get_market_index())
+
+
+@fund_master_bp.route('/index/<code>/detail', methods=['GET'])
+def get_index_detail(code):
+    """
+    获取单个市场指数详情（含完整 OHLCV 数据）
+    GET /api/market/index/<code>/detail
+
+    直连 hq.sinajs.cn 查单指数（与大盘概览页同源），
+    避免 akshare 的 vip.stock.finance.sina.com.cn（部分网络不可达）。
+    """
+    import requests as _req
+
+    url = f"https://hq.sinajs.cn/list={code}"
+    headers = {
+        "Referer": "https://finance.sina.com.cn/",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    }
+    try:
+        resp = _req.get(url, headers=headers, timeout=10)
+        resp.encoding = 'gbk'
+        text = resp.text
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'请求新浪数据失败: {str(e)}'}), 502
+
+    marker = f'var hq_str_{code}="'
+    start = text.find(marker)
+    if start < 0:
+        return jsonify({'success': False, 'error': f'未找到指数 {code}'}), 404
+
+    start += len(marker)
+    end = text.find('";', start)
+    parts = text[start:end].split(',')
+
+    if len(parts) < 6:
+        return jsonify({'success': False, 'error': '数据格式异常'}), 500
+
+    code_lower = code.lower()
+
+    if code_lower.startswith(('sh', 'sz')):
+        name = parts[0] if parts[0] else code
+        price = _safe_float(parts[3])
+        prev_close = _safe_float(parts[2])
+        high = _safe_float(parts[4])
+        low = _safe_float(parts[5])
+        open_ = _safe_float(parts[1])
+        change_amt = price - prev_close
+        change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0.0
+        amplitude = ((high - low) / prev_close * 100) if prev_close else 0.0
+        volume = _safe_float(parts[8]) if len(parts) > 8 else 0
+        amount = _safe_float(parts[9]) if len(parts) > 9 else 0
+        market = 'A股'
+    elif code_lower.startswith('hk'):
+        name = parts[0] if parts[0] else code
+        price = _safe_float(parts[6] if len(parts) > 6 else parts[3])
+        change_pct = _safe_float(parts[8] if len(parts) > 8 else 0)
+        prev_close = 0; high = 0; low = 0; open_ = 0
+        change_amt = 0; amplitude = 0; volume = 0; amount = 0
+        market = '港股'
+    elif code_lower.startswith('gb_'):
+        name = parts[0] if parts[0] else code
+        price = _safe_float(parts[1] if len(parts) > 1 else 0)
+        change_pct = _safe_float(parts[2] if len(parts) > 2 else 0)
+        prev_close = 0; high = 0; low = 0; open_ = 0
+        change_amt = 0; amplitude = 0; volume = 0; amount = 0
+        market = '美股'
+    elif code_lower.startswith('b_'):
+        name = parts[0] if parts[0] else code
+        price = _safe_float(parts[1] if len(parts) > 1 else 0)
+        change_pct = _safe_float(parts[3] if len(parts) > 3 else 0)
+        prev_close = 0; high = 0; low = 0; open_ = 0
+        change_amt = 0; amplitude = 0; volume = 0; amount = 0
+        market = '全球'
+    else:
+        return jsonify({'success': False, 'error': f'不支持的指数代码: {code}'}), 400
+
+    return jsonify({'success': True, 'data': {
+        'code': code,
+        'name': name,
+        'price': price,
+        'change_pct': round(change_pct, 2),
+        'change_amt': round(change_amt, 2),
+        'open': open_,
+        'high': high,
+        'low': low,
+        'prev_close': prev_close,
+        'volume': volume,
+        'amount': amount,
+        'amplitude': round(amplitude, 2),
+        'market': market,
+    }})
+
+
+@fund_master_bp.route('/index/<code>/kline', methods=['GET'])
+def get_index_kline(code):
+    """
+    获取市场指数历史 K 线数据
+    GET /api/market/index/<code>/kline
+
+    Query params:
+        - period: daily / weekly / monthly（默认 daily）
+        - adjust: qfq（前复权）/ hfq（后复权）/ none（默认 qfq）
+        - startDate: 起始日期 YYYYMMDD（可选）
+        - endDate: 结束日期 YYYYMMDD（可选）
+    """
+    from services.market_data import get_market_data_service as get_mds
+    period = request.args.get('period', 'daily')
+    adjust = request.args.get('adjust', 'qfq')
+    start_date = request.args.get('startDate', '')
+    end_date = request.args.get('endDate', '')
+    try:
+        normalized_code = re.sub(r'^(sh|sz|bj|SH|SZ|BJ)|\.(SH|SZ|BJ)$', '', code.strip())
+        mds = get_mds()
+        result = mds.get_a_stock_kline(
+            normalized_code,
+            klt=period,
+            fqt=adjust,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if not result.get('success'):
+            return jsonify(result), 404
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @fund_master_bp.route('/gold/realtime', methods=['GET'])
