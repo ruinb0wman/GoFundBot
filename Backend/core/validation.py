@@ -16,7 +16,7 @@ def validate_body(schema: Type[BaseModel]):
                 return jsonify({
                     "code": "VALIDATION_ERROR",
                     "message": "请求参数校验失败",
-                    "detail": e.errors(include_input=False),
+                    "detail": e.errors(include_input=False, mode='json'),
                 }), 422
             return f(*args, **kwargs)
         return wrapper
@@ -34,7 +34,7 @@ def validate_query(schema: Type[BaseModel]):
                 return jsonify({
                     "code": "VALIDATION_ERROR",
                     "message": "查询参数校验失败",
-                    "detail": e.errors(include_input=False),
+                    "detail": e.errors(include_input=False, mode='json'),
                 }), 422
             return f(*args, **kwargs)
         return wrapper
