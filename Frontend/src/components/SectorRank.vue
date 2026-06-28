@@ -3,12 +3,6 @@
   <div class="sector-rank-container">
     <div class="section-header">
       <h3><LucideIcon name="Factory" :size="20" /> 行业板块排行</h3>
-      <SearchBar
-        v-model.trim="keyword"
-        placeholder="搜索板块名称或代码..."
-        compact
-        size="sm"
-      />
       <button class="refresh-btn" @click="fetchSectors" :disabled="loading" title="刷新板块数据">
         <span :class="{ 'spinning': loading }"><LucideIcon name="RefreshCw" :size="16" /></span>
       </button>
@@ -22,26 +16,6 @@
       </button>
     </div>
     <div class="filter-panel">
-      <div class="filter-row">
-        <select v-model="sortBy" class="sort-select">
-          <option value="change_desc">涨跌幅 ↓</option>
-          <option value="change_asc">涨跌幅 ↑</option>
-          <option value="inflow_desc">主力净流入 ↓</option>
-          <option value="inflow_asc">主力净流入 ↑</option>
-          <option value="name">按名称</option>
-        </select>
-        <select v-model="changeFilter" class="sort-select">
-          <option value="all">全部涨跌</option>
-          <option value="up">上涨</option>
-          <option value="down">下跌</option>
-          <option value="flat">平盘</option>
-        </select>
-        <select v-model="flowFilter" class="sort-select">
-          <option value="all">全部资金</option>
-          <option value="inflow">主力流入</option>
-          <option value="outflow">主力流出</option>
-        </select>
-      </div>
       <div class="market-stats" v-if="sectors.length">
         <span class="stat-chip total">{{ isFromCache ? '缓存数据' : '实时数据' }} {{ sectors.length }}</span>
         <span class="stat-chip up">上涨 {{ upCount }}</span>
@@ -134,6 +108,41 @@
               </p>
             </div>
             <button class="modal-close" @click="closeSectorModal">×</button>
+          </div>
+
+          <div class="modal-filters">
+            <SearchBar
+              v-model.trim="keyword"
+              placeholder="搜索板块名称或代码..."
+              compact
+              size="sm"
+            />
+            <div class="filter-row">
+              <select v-model="sortBy" class="sort-select">
+                <option value="change_desc">涨跌幅 ↓</option>
+                <option value="change_asc">涨跌幅 ↑</option>
+                <option value="inflow_desc">主力净流入 ↓</option>
+                <option value="inflow_asc">主力净流入 ↑</option>
+                <option value="name">按名称</option>
+              </select>
+              <select v-model="changeFilter" class="sort-select">
+                <option value="all">全部涨跌</option>
+                <option value="up">上涨</option>
+                <option value="down">下跌</option>
+                <option value="flat">平盘</option>
+              </select>
+              <select v-model="flowFilter" class="sort-select">
+                <option value="all">全部资金</option>
+                <option value="inflow">主力流入</option>
+                <option value="outflow">主力流出</option>
+              </select>
+            </div>
+            <div class="market-stats" v-if="sectors.length">
+              <span class="stat-chip total">{{ isFromCache ? '缓存数据' : '实时数据' }} {{ sectors.length }}</span>
+              <span class="stat-chip up">上涨 {{ upCount }}</span>
+              <span class="stat-chip flat">平盘 {{ flatCount }}</span>
+              <span class="stat-chip down">下跌 {{ downCount }}</span>
+            </div>
           </div>
 
           <div class="modal-overview overview-bar" v-if="sectors.length">
@@ -405,7 +414,6 @@ export default {
 
 .section-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
@@ -495,6 +503,7 @@ export default {
   justify-content: center;
   width: 34px;
   height: 34px;
+  margin-left: auto;
   background: var(--bg-subtle);
   border: 1px solid var(--border-default);
   cursor: pointer;
@@ -979,6 +988,13 @@ export default {
   color: var(--color-success);
 }
 
+.modal-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0;
+}
+
 @media (max-width: 1280px) {
   .section-header {
     gap: 8px;
@@ -1006,10 +1022,6 @@ export default {
 
   .section-header {
     align-items: center;
-  }
-
-  .header-search {
-    max-width: none;
   }
 
   .filter-row {
