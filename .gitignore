@@ -12,3 +12,5 @@ Backend/static/
 Backend/Data
 .agents/
 .claude/
+.codegraph/
+.coverage
