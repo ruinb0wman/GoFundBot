@@ -2,8 +2,8 @@
   <div class="watchlist-container">
     <!-- 对比模式切换按钮 -->
     <div v-if="showCompareToggle" class="compare-toggle-bar">
-      <button 
-        class="btn-compare-toggle" 
+      <button
+        class="btn-compare-toggle"
         :class="{ active: compareMode }"
         @click="$emit('toggle-compare')"
       >
@@ -24,7 +24,7 @@
         还需选择至少 <strong>1</strong> 只基金才能对比
       </div>
     </div>
-    
+
     <!-- 头部操作栏 -->
     <div class="watchlist-header">
       <h2>
@@ -36,16 +36,16 @@
         <button class="btn btn-add-group" @click="openAddGroupModal" title="新建分组">
           <LucideIcon name="FolderPlus" :size="16" />
         </button>
-        <button 
-          v-if="!editMode && totalCount > 0" 
-          class="btn btn-edit" 
+        <button
+          v-if="!editMode && totalCount > 0"
+          class="btn btn-edit"
           @click="enterEditMode"
         >
           编辑
         </button>
         <template v-if="editMode">
-          <button 
-            class="btn btn-danger" 
+          <button
+            class="btn btn-danger"
             :disabled="selectedFunds.length === 0"
             @click="batchDelete"
           >
@@ -55,17 +55,17 @@
             完成
           </button>
         </template>
-        <button 
-          class="btn btn-refresh" 
-          @click="refreshEstimates" 
-          :disabled="isRefreshingEstimates || totalCount === 0" 
+        <button
+          class="btn btn-refresh"
+          @click="refreshEstimates"
+          :disabled="isRefreshingEstimates || totalCount === 0"
           :title="lastEstimateUpdate ? `估值更新于 ${lastEstimateUpdate}` : '刷新估值'"
         >
           <span :class="{ 'rotating': isRefreshingEstimates }"><LucideIcon name="RefreshCw" :size="14" /></span>
         </button>
       </div>
     </div>
-    
+
     <!-- 估值更新提示 -->
     <div v-if="lastEstimateUpdate && totalCount > 0" class="estimate-update-hint">
       <span class="hint-icon"><LucideIcon name="BarChart3" :size="12" /></span>
@@ -74,9 +74,8 @@
     </div>
 
     <!-- 加载状态 -->
-    <div v-if="loading && totalCount === 0" class="loading-state">
-      <div class="spinner"></div>
-      <p>加载中...</p>
+    <div v-if="loading && totalCount === 0" class="skeleton-loading">
+      <SkeletonCard v-for="n in 4" :key="n" :lines="2" :height="80" />
     </div>
 
     <!-- 空状态 -->
@@ -119,9 +118,9 @@
       </div>
 
       <!-- 各分组 -->
-      <div 
-        v-for="group in groups" 
-        :key="group.id" 
+      <div
+        v-for="group in groups"
+        :key="group.id"
         class="fund-group"
         @dragover.prevent="onGroupDragOver($event, group.id)"
         @drop="onGroupDrop($event, group.id)"
@@ -166,9 +165,9 @@
     <div v-if="showGroupModal" class="modal-overlay" @click.self="closeGroupModal">
       <div class="modal-box">
         <h3>{{ editingGroup ? '重命名分组' : '新建分组' }}</h3>
-        <input 
-          v-model="groupName" 
-          type="text" 
+        <input
+          v-model="groupName"
+          type="text"
           placeholder="请输入分组名称"
           class="modal-input"
           @keyup.enter="saveGroup"
@@ -188,11 +187,13 @@
 <script>
 import { ref, computed, onMounted, onUnmounted, nextTick, toRef } from 'vue'
 import { watchlistAPI } from '../services/api'
+import { useWatchlistStore } from '../stores/watchlistStore'
 import FundListItems from './FundListItems.vue'
+import SkeletonCard from './SkeletonCard.vue'
 
 export default {
   name: 'FundWatchlist',
-  components: { FundListItems },
+  components: { FundListItems, SkeletonCard },
   props: {
     compareMode: { type: Boolean, default: false },
     compareFunds: { type: Array, default: () => [] },
@@ -210,13 +211,13 @@ export default {
     const dragOverIndex = ref(null)
     const expandedGroups = ref([null])
     const isInitialLoad = ref(true)
-    
+
     // 分组弹窗
     const showGroupModal = ref(false)
     const editingGroup = ref(null)
     const groupName = ref('')
     const groupNameInput = ref(null)
-    
+
     // 估值刷新相关
     const estimateRefreshTimer = ref(null)
     const lastEstimateUpdate = ref(null)
@@ -236,32 +237,31 @@ export default {
 
     // 计算属性
     const totalCount = computed(() => watchlist.value.length)
-    
-    const ungroupedFunds = computed(() => 
+
+    const ungroupedFunds = computed(() =>
       watchlist.value.filter(f => !f.group_id)
     )
-    
+
     const getGroupFunds = (groupId) => {
       return watchlist.value.filter(f => f.group_id === groupId)
     }
-    
+
     const isGroupExpanded = (groupId) => {
       return expandedGroups.value.includes(groupId)
     }
 
-    // 加载数据
+    const watchlistStore = useWatchlistStore()
+
     const loadWatchlist = async () => {
       loading.value = true
       try {
-        const response = await watchlistAPI.getWatchlist()
-        watchlist.value = response.data.data || []
-        groups.value = response.data.groups || []
-        // 仅首次加载时展开所有分组，后续刷新保持用户的折叠状态
+        await watchlistStore.fetch(true)
+        watchlist.value = watchlistStore.funds
+        groups.value = watchlistStore.groups
         if (isInitialLoad.value) {
           expandedGroups.value = [null, ...groups.value.map(g => g.id)]
           isInitialLoad.value = false
         } else {
-          // 移除已删除分组的展开状态，添加新分组到展开列表
           const validGroupIds = new Set([null, ...groups.value.map(g => g.id)])
           expandedGroups.value = expandedGroups.value.filter(id => validGroupIds.has(id))
         }
@@ -273,46 +273,15 @@ export default {
     }
 
     const refreshWatchlist = () => loadWatchlist()
-    
-    // 刷新估值数据（只更新估值，不重新加载整个列表）
+
     const refreshEstimates = async () => {
       if (isRefreshingEstimates.value || watchlist.value.length === 0) return
 
       isRefreshingEstimates.value = true
       try {
-        const response = await watchlistAPI.refreshEstimates()
-        // 先重新加载整个列表（后端 refresh-estimates 已提交最新估值到数据库）
-        await loadWatchlist()
-        // 再用 refresh-estimates 的直接返回值补充可能遗漏的字段
-        if (response.data && response.data.data) {
-          const estimateMap = {}
-          response.data.data.forEach(item => {
-            estimateMap[item.fund_code] = item
-          })
-
-          watchlist.value.forEach(fund => {
-            const newEstimate = estimateMap[fund.fund_code]
-            if (newEstimate) {
-              // 只在数据库返回缺失时用直接返回值补全
-              if (!fund.estimate_value && newEstimate.estimate_value) {
-                fund.estimate_value = newEstimate.estimate_value
-              }
-              if (!fund.estimate_change && newEstimate.estimate_change) {
-                fund.estimate_change = newEstimate.estimate_change
-              }
-              if (!fund.estimate_time && newEstimate.estimate_time) {
-                fund.estimate_time = newEstimate.estimate_time
-              }
-              if (!fund.net_worth && newEstimate.net_worth) {
-                fund.net_worth = newEstimate.net_worth
-                fund.net_worth_date = newEstimate.net_worth_date
-              } else if (newEstimate.net_worth_date && fund.net_worth_date && _compareDateStr(newEstimate.net_worth_date) > _compareDateStr(fund.net_worth_date)) {
-                fund.net_worth = newEstimate.net_worth
-                fund.net_worth_date = newEstimate.net_worth_date
-              }
-            }
-          })
-        }
+        await watchlistStore.refreshEstimates()
+        watchlist.value = watchlistStore.funds
+        groups.value = watchlistStore.groups
         lastEstimateUpdate.value = new Date().toLocaleTimeString()
       } catch (error) {
         console.error('刷新估值失败:', error)
@@ -320,12 +289,12 @@ export default {
         isRefreshingEstimates.value = false
       }
     }
-    
+
     // 启动估值自动刷新定时器
     const startEstimateRefreshTimer = () => {
       // 先立即刷新一次
       refreshEstimates()
-      
+
       // 设置定时刷新
       estimateRefreshTimer.value = setInterval(() => {
         // 只在交易时间内刷新（9:30-15:00，周一至周五）
@@ -334,17 +303,17 @@ export default {
         const hour = now.getHours()
         const minute = now.getMinutes()
         const timeInMinutes = hour * 60 + minute
-        
+
         // 周一到周五，9:30-15:00
         const isTradeDay = day >= 1 && day <= 5
         const isTradeTime = timeInMinutes >= 9 * 60 + 30 && timeInMinutes <= 15 * 60
-        
+
         if (isTradeDay && isTradeTime) {
           refreshEstimates()
         }
       }, ESTIMATE_REFRESH_INTERVAL)
     }
-    
+
     // 停止估值刷新定时器
     const stopEstimateRefreshTimer = () => {
       if (estimateRefreshTimer.value) {
@@ -434,7 +403,7 @@ export default {
         const fromGroupId = draggingIndex.value.groupId
         const toGroupId = dragOverIndex.value.groupId
         const fromFunds = fromGroupId === null ? ungroupedFunds.value : getGroupFunds(fromGroupId)
-        
+
         // 防御性检查：确保源列表存在
         if (!fromFunds) {
           draggingIndex.value = null
@@ -455,7 +424,7 @@ export default {
           // 确保索引在有效范围内
           if (draggingIndex.value.index >= 0 && draggingIndex.value.index < funds.length) {
             const [moved] = funds.splice(draggingIndex.value.index, 1)
-            
+
             // 确保移动的对象存在
             if (moved) {
               funds.splice(dragOverIndex.value.index, 0, moved)
@@ -480,7 +449,7 @@ export default {
           }
         }
       }
-      
+
       draggingIndex.value = null
       dragOverIndex.value = null
     }
@@ -493,20 +462,20 @@ export default {
     const onDrop = (event, groupId) => {
       event.preventDefault()
     }
-    
+
     // 拖拽到分组区域
     const onGroupDragOver = (event, groupId) => {
       event.preventDefault()
     }
-    
+
     const onGroupDrop = async (event, groupId) => {
       event.preventDefault()
       if (draggingIndex.value && draggingIndex.value.groupId !== groupId) {
-        const fromFunds = draggingIndex.value.groupId === null 
-          ? ungroupedFunds.value 
+        const fromFunds = draggingIndex.value.groupId === null
+          ? ungroupedFunds.value
           : getGroupFunds(draggingIndex.value.groupId)
         const fund = fromFunds[draggingIndex.value.index]
-        
+
         try {
           await watchlistAPI.moveFundToGroup(fund.fund_code, groupId)
           loadWatchlist()
@@ -525,14 +494,14 @@ export default {
       showGroupModal.value = true
       nextTick(() => groupNameInput.value?.focus())
     }
-    
+
     const openEditGroupModal = (group) => {
       editingGroup.value = group
       groupName.value = group.name
       showGroupModal.value = true
       nextTick(() => groupNameInput.value?.focus())
     }
-    
+
     const closeGroupModal = () => {
       showGroupModal.value = false
       editingGroup.value = null

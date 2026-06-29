@@ -5,9 +5,9 @@
     </div>
     <div class="card-body">
       <div v-if="hasManagers" class="managers-container">
-        <div 
-          v-for="(manager, index) in managers" 
-          :key="manager.id || index" 
+        <div
+          v-for="(manager, index) in managers"
+          :key="manager.id || index"
           class="manager-item"
         >
           <!-- 经理基本信息 -->
@@ -72,197 +72,172 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 
-export default {
-  name: 'FundManagerInfo',
-  props: {
-    fundManagers: {
-      type: Array,
-      default: () => []
-    }
-  },
-  setup(props) {
-    const cssColor = (name, fallback = '') => {
-      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-    }
-    const { echartThemeName } = useEChartsTheme()
-    const chartRefs = ref({})
-    const chartInstances = {}
+const props = withDefaults(defineProps<{ managers?: any[] }>(), { managers: () => [] })
 
-    const managers = computed(() => props.fundManagers || [])
-    const hasManagers = computed(() => managers.value.length > 0)
+const cssColor = (name: string, fallback = '') => {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+}
+const { echartThemeName } = useEChartsTheme()
+const chartRefs = ref<Record<number, HTMLElement>>({})
+const chartInstances: Record<number, echarts.ECharts> = {}
 
-    const setChartRef = (el, index) => {
-      if (el) {
-        chartRefs.value[index] = el
-      }
-    }
+const managers = computed(() => (props.managers as any[]) || [])
+const hasManagers = computed(() => managers.value.length > 0)
 
-    const hasAbilityData = (manager) => {
-      const ability = manager.ability_assessment
-      return ability && ability.categories?.length > 0 && ability.scores?.length > 0
-    }
-
-    const hasPerformanceData = (manager) => {
-      const perf = manager.performance
-      // 检查 series 和 categories 是否存在
-      if (!perf || !perf.categories?.length) return false
-      // series 可能是数组，且里面的 data 也是数组
-      if (perf.series?.length > 0 && perf.series[0]?.data?.length > 0) return true
-      return false
-    }
-
-    // 获取业绩数据项
-    const getPerformanceItems = (manager) => {
-      const perf = manager.performance
-      if (!perf || !perf.categories?.length) return []
-      
-      const categories = perf.categories
-      const series = perf.series
-      
-      // series[0].data 是一个对象数组 [{y: value, name: null, color: xxx}]
-      if (series?.length > 0 && series[0]?.data?.length > 0) {
-        const dataArr = series[0].data
-        return categories.map((cat, idx) => {
-          const item = dataArr[idx]
-          // item 可能是对象 {y: value} 或直接是数值
-          const value = typeof item === 'object' ? (item?.y ?? item?.value ?? null) : item
-          return {
-            name: cat,
-            value: value
-          }
-        })
-      }
-      
-      return []
-    }
-
-    const handleImageError = (e) => {
-      e.target.style.display = 'none'
-    }
-
-    const getValueClass = (val) => {
-      if (val === null || val === undefined || val === '--') return ''
-      const num = parseFloat(val)
-      return num > 0 ? 'positive' : num < 0 ? 'negative' : ''
-    }
-
-    const formatPercent = (val) => {
-      if (val === null || val === undefined || val === '--') return '--'
-      const num = parseFloat(val)
-      if (isNaN(num)) return '--'
-      return (num > 0 ? '+' : '') + num.toFixed(2) + '%'
-    }
-
-    const initRadarChart = (index) => {
-      const el = chartRefs.value[index]
-      const manager = managers.value[index]
-      
-      if (!el || !hasAbilityData(manager)) return
-
-      if (chartInstances[index]) {
-        chartInstances[index].dispose()
-      }
-
-      chartInstances[index] = echarts.init(el, echartThemeName.value)
-
-      const ability = manager.ability_assessment
-      const indicators = ability.categories.map((cat, i) => ({
-        name: cat,
-        max: 100
-      }))
-
-      const option = {
-        tooltip: {
-          trigger: 'item'
-        },
-        radar: {
-          indicator: indicators,
-          shape: 'polygon',
-          splitNumber: 4,
-          radius: '60%',
-          center: ['50%', '50%'],
-          axisName: {
-            color: cssColor('--chart-axis-label', '#666'),
-            fontSize: 11,
-            padding: [3, 5]
-          },
-          splitLine: {
-            lineStyle: {
-              color: [cssColor('--chart-grid', '#e5e5e5')]
-            }
-          },
-          splitArea: {
-            areaStyle: {
-              color: [cssColor('--color-primary-bg', '#eef4ff'), cssColor('--color-primary-bg', '#eef4ff')]
-            }
-          }
-        },
-        series: [{
-          type: 'radar',
-          data: [{
-            value: ability.scores,
-            name: '能力评估',
-            areaStyle: {
-              color: cssColor('--color-primary-bg', 'rgba(22, 119, 255, 0.3)')
-            },
-            lineStyle: {
-              color: cssColor('--color-primary', '#1677ff'),
-              width: 2
-            },
-            itemStyle: {
-              color: cssColor('--color-primary', '#1677ff')
-            }
-          }]
-        }]
-      }
-
-      chartInstances[index].setOption(option)
-    }
-
-    const initAllCharts = () => {
-      managers.value.forEach((_, index) => {
-        nextTick(() => {
-          initRadarChart(index)
-        })
-      })
-    }
-
-    onMounted(() => {
-      nextTick(() => {
-        initAllCharts()
-      })
-    })
-
-    watch(() => props.fundManagers, () => {
-      nextTick(() => {
-        initAllCharts()
-      })
-    }, { deep: true })
-
-    watch(echartThemeName, () => {
-      Object.values(chartInstances).forEach(c => c.dispose())
-      nextTick(() => {
-        initAllCharts()
-      })
-    })
-
-    return {
-      managers,
-      hasManagers,
-      setChartRef,
-      hasAbilityData,
-      hasPerformanceData,
-      getPerformanceItems,
-      getValueClass,
-      formatPercent
-    }
+const setChartRef = (el: any, index: any) => {
+  if (el) {
+    chartRefs.value[index] = el
   }
 }
+
+const hasAbilityData = (manager: any) => {
+  const ability = manager.ability_assessment
+  return ability && ability.categories?.length > 0 && ability.scores?.length > 0
+}
+
+const hasPerformanceData = (manager: any) => {
+  const perf = manager.performance
+  if (!perf || !perf.categories?.length) return false
+  if (perf.series?.length > 0 && perf.series[0]?.data?.length > 0) return true
+  return false
+}
+
+const getPerformanceItems = (manager: any) => {
+  const perf = manager.performance
+  if (!perf || !perf.categories?.length) return []
+
+  const categories = perf.categories
+  const series = perf.series
+
+  if (series?.length > 0 && series[0]?.data?.length > 0) {
+    const dataArr = series[0].data
+    return categories.map((cat: string, idx: number) => {
+      const item = dataArr[idx]
+      const value = typeof item === 'object' ? (item?.y ?? item?.value ?? null) : item
+      return {
+        name: cat,
+        value: value
+      }
+    })
+  }
+
+  return []
+}
+
+const handleImageError = (e: Event) => {
+  (e.target as HTMLElement).style.display = 'none'
+}
+
+const getValueClass = (val: any) => {
+  if (val === null || val === undefined || val === '--') return ''
+  const num = parseFloat(val)
+  return num > 0 ? 'positive' : num < 0 ? 'negative' : ''
+}
+
+const formatPercent = (val: any) => {
+  if (val === null || val === undefined || val === '--') return '--'
+  const num = parseFloat(val)
+  if (isNaN(num)) return '--'
+  return (num > 0 ? '+' : '') + num.toFixed(2) + '%'
+}
+
+const initRadarChart = (index: number) => {
+  const el = chartRefs.value[index]
+  const manager = managers.value[index]
+
+  if (!el || !hasAbilityData(manager)) return
+
+  if (chartInstances[index]) {
+    chartInstances[index].dispose()
+  }
+
+  chartInstances[index] = echarts.init(el, echartThemeName.value)
+
+  const ability = manager.ability_assessment
+  const indicators = ability.categories.map((cat: string, i: number) => ({
+    name: cat,
+    max: 100
+  }))
+
+  const option = {
+    tooltip: {
+      trigger: 'item'
+    },
+    radar: {
+      indicator: indicators,
+      shape: 'polygon',
+      splitNumber: 4,
+      radius: '60%',
+      center: ['50%', '50%'],
+      axisName: {
+        color: cssColor('--chart-axis-label', '#666'),
+        fontSize: 11,
+        padding: [3, 5]
+      },
+      splitLine: {
+        lineStyle: {
+          color: [cssColor('--chart-grid', '#e5e5e5')]
+        }
+      },
+      splitArea: {
+        areaStyle: {
+          color: [cssColor('--color-primary-bg', '#eef4ff'), cssColor('--color-primary-bg', '#eef4ff')]
+        }
+      }
+    },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: ability.scores,
+        name: '能力评估',
+        areaStyle: {
+          color: cssColor('--color-primary-bg', 'rgba(22, 119, 255, 0.3)')
+        },
+        lineStyle: {
+          color: cssColor('--color-primary', '#1677ff'),
+          width: 2
+        },
+        itemStyle: {
+          color: cssColor('--color-primary', '#1677ff')
+        }
+      }]
+    }]
+  }
+
+  chartInstances[index].setOption(option)
+}
+
+const initAllCharts = () => {
+  managers.value.forEach((_: any, index: number) => {
+    nextTick(() => {
+      initRadarChart(index)
+    })
+  })
+}
+
+onMounted(() => {
+  nextTick(() => {
+    initAllCharts()
+  })
+})
+
+watch(() => props.managers, () => {
+  nextTick(() => {
+    initAllCharts()
+  })
+}, { deep: true })
+
+watch(echartThemeName, () => {
+  Object.values(chartInstances).forEach(c => c.dispose())
+  nextTick(() => {
+    initAllCharts()
+  })
+})
 </script>
 
 <style scoped>

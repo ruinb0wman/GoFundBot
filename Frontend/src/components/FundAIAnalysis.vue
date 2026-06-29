@@ -88,7 +88,7 @@
           </ul>
         </div>
       </div>
-      
+
       <!-- 实时情报 -->
       <div class="news-section" v-if="data.news_intel && data.news_intel.length">
         <h4><span class="col-icon"><LucideIcon name="Newspaper" :size="16" /></span> 实时情报</h4>
@@ -111,7 +111,7 @@
         <LucideIcon name="Lightbulb" :size="16" /> 以上分析由 AI 生成，仅供参考，不构成投资建议。投资有风险，入市需谨慎。
       </div>
     </div>
-    
+
     <div v-else class="empty-state">
       <div class="empty-icon"><LucideIcon name="Telescope" :size="36" /></div>
       <p class="empty-title">点击上方按钮，获取 AI 对该基金的实时深度分析报告</p>
@@ -185,11 +185,11 @@ const parsedReport = computed(() => {
   const lines = data.value.detailed_report.split('\n')
   let html = ''
   let inList = false
-  
+
   lines.forEach(line => {
     line = line.trim()
     if (!line) return
-    
+
     // Header 3
     if (line.startsWith('### ')) {
       if (inList) { html += '</ul>'; inList = false; }
@@ -216,9 +216,9 @@ const parsedReport = computed(() => {
       html += `<p>${content}</p>`
     }
   })
-  
+
   if (inList) html += '</ul>'
-  
+
   return html
 })
 
@@ -792,11 +792,11 @@ defineExpose({
   .dashboard-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .details-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .score-section {
     flex-direction: column;
   }

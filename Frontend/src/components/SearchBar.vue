@@ -32,39 +32,58 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'SearchBar',
-  props: {
-    modelValue: { type: String, default: '' },
-    placeholder: { type: String, default: '基金代码/名称' },
-    showIcon: { type: Boolean, default: true },
-    clearable: { type: Boolean, default: false },
-    compact: { type: Boolean, default: false },
-    size: { type: String, default: 'md', validator: v => ['sm', 'md', 'lg'].includes(v) },
-    autofocus: { type: Boolean, default: false },
-    iconSize: { type: Number, default: 16 },
-  },
-  emits: ['update:modelValue', 'search', 'focus', 'blur'],
-  methods: {
-    onInput(e) {
-      this.$emit('update:modelValue', e.target.value)
-    },
-    onEnter() {
-      this.$emit('search')
-    },
-    onClear() {
-      this.$emit('update:modelValue', '')
-      this.$refs.inputRef?.focus()
-    },
-  },
-  expose: ['focus'],
-  mounted() {
-    if (this.autofocus) {
-      this.$refs.inputRef?.focus()
-    }
-  },
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+
+const props = withDefaults(defineProps<{
+  modelValue?: string
+  placeholder?: string
+  showIcon?: boolean
+  clearable?: boolean
+  compact?: boolean
+  size?: string
+  autofocus?: boolean
+  iconSize?: number
+}>(), {
+  modelValue: '',
+  placeholder: '基金代码/名称',
+  showIcon: true,
+  clearable: false,
+  compact: false,
+  size: 'md',
+  autofocus: false,
+  iconSize: 16,
+})
+
+const inputRef = ref<HTMLInputElement | null>(null)
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+  search: []
+  focus: [event: FocusEvent]
+  blur: [event: FocusEvent]
+}>()
+
+function onInput(e: Event) {
+  const target = e.target as HTMLInputElement
+  emit('update:modelValue', target.value)
 }
+
+function onEnter() {
+  emit('search')
+}
+
+function onClear() {
+  emit('update:modelValue', '')
+  inputRef.value?.focus()
+}
+
+onMounted(() => {
+  if (props.autofocus) {
+    inputRef.value?.focus()
+  }
+})
+
+defineExpose({ focus: () => inputRef.value?.focus() })
 </script>
 
 <style scoped>

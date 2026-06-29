@@ -5,9 +5,9 @@
       <div class="section-header">
         <h3><LucideIcon name="TrendingDown" :size="20" /> 市场指数近一月走势</h3>
         <div class="tab-group">
-          <span 
-            v-for="tab in tabs" 
-            :key="tab.key" 
+          <span
+            v-for="tab in tabs"
+            :key="tab.key"
             :class="{ active: activeTab === tab.key }"
             @click="activeTab = tab.key"
           >
@@ -66,7 +66,7 @@
         <div v-else class="empty-state">暂无成交量数据</div>
       </div>
     </div>
-    
+
     <!-- 4. 实时贵金属 (点击查看历史走势) -->
     <div class="market-section">
       <div class="section-header">
@@ -262,7 +262,7 @@ export default {
         console.error('获取黄金历史失败:', e)
       }
     }
-    
+
     // 指数日K数据（近一月收盘价）
     const indicesIntraday = ref({ sh: [], sz: [], hs300: [] })
     const activeTab = ref('sh')
@@ -279,7 +279,7 @@ export default {
       if (!data || !data.length) return ''
       return data[data.length - 1].date || ''
     })
-    
+
     // 指数分组
     const indices = computed(() => {
       const all = marketIndex.value
@@ -296,7 +296,7 @@ export default {
       echartThemeName.value; // track theme changes
       const data = indicesIntraday.value[activeTab.value]
       if (!data || !data.length) return {}
-      
+
       const dates = data.map(i => {
         const d = String(i.date || '')
         const match = d.match(/(\d{4})[-/]?(\d{1,2})[-/]?(\d{1,2})/)
@@ -310,7 +310,7 @@ export default {
 
       return {
         grid: { top: 10, right: 20, bottom: 20, left: 55, containLabel: false },
-        tooltip: { 
+        tooltip: {
           trigger: 'axis',
           formatter: (params) => {
             const p = params[0]
@@ -325,15 +325,15 @@ export default {
             `
           }
         },
-        xAxis: { 
-          type: 'category', 
+        xAxis: {
+          type: 'category',
           data: dates,
           axisLine: { lineStyle: { color: cssVar('--border-default', '#e5e7eb') } },
           axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 },
           axisTick: { show: false }
         },
-        yAxis: { 
-          type: 'value', 
+        yAxis: {
+          type: 'value',
           scale: true,
           splitLine: { lineStyle: { type: 'dashed', color: cssVar('--border-subtle', '#f0f0f0') } },
           axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 }
@@ -363,15 +363,15 @@ export default {
     const volumeOption = computed(() => {
       echartThemeName.value; // track theme changes
       if (!aVolume.value.length) return {}
-      
+
       const dates = aVolume.value.map(i => formatDate(i.date))
       const values = aVolume.value.map(i => parseFloat(i.total.replace('亿', '')))
-      
+
       const barColor = cssVar('--color-primary', '#1677ff')
 
       return {
         grid: { top: 30, right: 10, bottom: 20, left: 10, containLabel: true },
-        tooltip: { 
+        tooltip: {
           trigger: 'axis',
           formatter: (params) => {
             const idx = params[0].dataIndex
@@ -385,13 +385,13 @@ export default {
             `
           }
         },
-        xAxis: { 
-          type: 'category', 
+        xAxis: {
+          type: 'category',
           data: dates,
           axisLine: { lineStyle: { color: cssVar('--border-default', '#e5e7eb') } },
           axisTick: { show: false }
         },
-        yAxis: { 
+        yAxis: {
           type: 'value',
           splitLine: { lineStyle: { type: 'dashed', color: cssVar('--border-subtle', '#f0f0f0') } }
         },
@@ -470,7 +470,7 @@ export default {
         loading.value = false
       }
     }
-    
+
     const getChangeClass = (change) => {
       if (!change) return ''
       return String(change).startsWith('-') ? 'down' : 'up'
@@ -488,7 +488,7 @@ export default {
         router.push({ name: 'index-detail', params: { code: item.code } })
       }
     }
-    
+
     const formatDate = (dateStr) => {
       if (!dateStr) return ''
       const parts = dateStr.split('-')

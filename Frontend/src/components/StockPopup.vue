@@ -158,418 +158,367 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { marketAPI } from '../services/api'
 
-export default {
-  name: 'StockPopup',
-  props: {
-    stockData: {
-      type: Object,
-      default: null
-    },
-    loading: {
-      type: Boolean,
-      default: false
-    },
-    error: {
-      type: String,
-      default: ''
-    }
-  },
-  setup(props) {
-    const { echartThemeName } = useEChartsTheme()
-    const cssColor = (name, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-    const hexToRgba = (hex, a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})` }
+const props = defineProps({
+  stockData: { type: Object, default: null },
+  loading: { type: Boolean, default: false },
+  error: { type: String, default: '' }
+})
 
-    // ── K 线图表状态 ──────────────────────────────────────────
-    const klineChartEl = ref(null)
-    const klineData = ref([])
-    const klineLoading = ref(false)
-    const klineError = ref('')
-    const klineSelectedRange = ref('1y')
-    let klineChartInstance = null
+const { echartThemeName } = useEChartsTheme()
+const cssColor = (name: string, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+const hexToRgba = (hex: string, a: number) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})` }
 
-    const klinePeriods = [
-      { label: '近1月', value: '1m' },
-      { label: '近3月', value: '3m' },
-      { label: '近6月', value: '6m' },
-      { label: '近1年', value: '1y' },
-      { label: '全部', value: 'all' }
-    ]
+// K 线图表状态
+const klineChartEl = ref<HTMLElement | null>(null)
+const klineData = ref<any[]>([])
+const klineLoading = ref(false)
+const klineError = ref('')
+const klineSelectedRange = ref('1y')
+let klineChartInstance: echarts.ECharts | null = null
 
-    // 按时间范围过滤 K 线数据
-    const filteredKlineData = computed(() => {
-      if (!klineData.value || klineData.value.length === 0) return []
+const klinePeriods = [
+  { label: '近1月', value: '1m' },
+  { label: '近3月', value: '3m' },
+  { label: '近6月', value: '6m' },
+  { label: '近1年', value: '1y' },
+  { label: '全部', value: 'all' }
+]
 
-      if (klineSelectedRange.value === 'all') {
-        return [...klineData.value].sort((a, b) => a.timestamp - b.timestamp)
-      }
+const filteredKlineData = computed(() => {
+  if (!klineData.value || klineData.value.length === 0) return []
 
-      const now = new Date()
-      let cutoff = new Date()
-      const rangeMap = { '1m': -1, '3m': -3, '6m': -6, '1y': -12 }
-      const months = rangeMap[klineSelectedRange.value] || -12
-      cutoff.setMonth(now.getMonth() + months)
-
-      const cutoffTs = cutoff.getTime()
-      return klineData.value
-        .filter(item => item.timestamp >= cutoffTs)
-        .sort((a, b) => a.timestamp - b.timestamp)
-    })
-
-    // 区间汇总指标
-    const klineSummary = computed(() => {
-      const data = filteredKlineData.value
-      if (data.length === 0) return null
-
-      const closes = data.map(d => d.close).filter(v => v != null)
-      if (closes.length === 0) return null
-
-      const startPrice = closes[0]
-      const endPrice = closes[closes.length - 1]
-      const changePercent = startPrice !== 0 ? ((endPrice - startPrice) / startPrice) * 100 : 0
-      const high = Math.max(...closes)
-      const low = Math.min(...closes)
-
-      return { startPrice, endPrice, changePercent, high, low }
-    })
-
-    // 获取 K 线数据
-    const fetchKlineData = async (code) => {
-      if (!code) return
-      klineLoading.value = true
-      klineError.value = ''
-      klineData.value = []
-
-      try {
-        const response = await marketAPI.getStockKline(code, {
-          period: 'daily',
-          adjust: 'qfq',
-          endDate: new Date().toISOString().slice(0, 10).replace(/-/g, '')
-        })
-        if (response.data?.success && Array.isArray(response.data?.data)) {
-          klineData.value = response.data.data.map(item => ({
-            ...item,
-            timestamp: parseKlineDate(item.date),
-            open: parseFloat(item.open) || null,
-            close: parseFloat(item.close) || null,
-            high: parseFloat(item.high) || null,
-            low: parseFloat(item.low) || null,
-            volume: parseFloat(item.volume) || null,
-            amount: parseFloat(item.amount) || null,
-            changePercent: parseFloat(item.changePercent) || null
-          }))
-        } else {
-          klineError.value = response.data?.error || '获取走势数据失败'
-        }
-      } catch (err) {
-        console.error('获取K线数据失败:', err)
-        klineError.value = err.response?.data?.error || '网络请求失败，请稍后重试'
-      } finally {
-        klineLoading.value = false
-      }
-    }
-
-    // 解析 K 线日期字符串为时间戳
-    const parseKlineDate = (dateStr) => {
-      if (!dateStr) return 0
-      const s = String(dateStr)
-      // 格式: YYYYMMDD 或 YYYY-MM-DD
-      if (s.includes('-')) {
-        return new Date(s).getTime()
-      }
-      if (s.length === 8) {
-        const y = s.slice(0, 4)
-        const m = s.slice(4, 6)
-        const d = s.slice(6, 8)
-        return new Date(`${y}-${m}-${d}`).getTime()
-      }
-      return new Date(s).getTime()
-    }
-
-    // 设置 K 线时间范围
-    const setKlineRange = (range) => {
-      klineSelectedRange.value = range
-      nextTick(() => renderKlineChart())
-    }
-
-    // 判断整体涨跌趋势（用于图表颜色）
-    const getTrendColor = (data) => {
-      const dangerColor = cssColor('--color-danger', '#ff4d4f')
-      const successColor = cssColor('--color-success', '#52c41a')
-      const primaryColor = cssColor('--color-primary', '#1677ff')
-      if (data.length < 2) return { line: primaryColor, area: [hexToRgba(primaryColor, 0.2), hexToRgba(primaryColor, 0.0)] }
-      const firstClose = data[0].close
-      const lastClose = data[data.length - 1].close
-      const isUp = lastClose >= firstClose
-      return {
-        line: isUp ? dangerColor : successColor,
-        area: isUp
-          ? [hexToRgba(dangerColor, 0.2), hexToRgba(dangerColor, 0.0)]
-          : [hexToRgba(successColor, 0.2), hexToRgba(successColor, 0.0)]
-      }
-    }
-
-    // 渲染 ECharts K 线图
-    const renderKlineChart = () => {
-      const data = filteredKlineData.value
-      if (!klineChartEl.value || data.length === 0) {
-        if (klineChartInstance) {
-          klineChartInstance.dispose()
-          klineChartInstance = null
-        }
-        return
-      }
-
-      if (!klineChartInstance) {
-        klineChartInstance = echarts.init(klineChartEl.value, echartThemeName.value)
-      }
-
-      const colors = getTrendColor(data)
-
-      // 准备收盘价序列
-      const closeSeries = data.map(item => [item.timestamp, item.close])
-
-      // 准备 OHLC 数据用于 tooltip
-      const ohlcMap = {}
-      data.forEach(item => {
-        ohlcMap[item.timestamp] = item
-      })
-
-      const gridColor = cssColor('--chart-grid', '#e5e7eb')
-      const axisLabelColor = cssColor('--chart-axis-label', '#6b7280')
-      const dangerColor = cssColor('--color-danger', '#ff4d4f')
-      const successColor = cssColor('--color-success', '#52c41a')
-      const option = {
-        grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '8%',
-          top: '8%',
-          containLabel: true
-        },
-        tooltip: {
-          trigger: 'axis',
-          formatter: function (params) {
-            if (!params || params.length === 0) return ''
-            const ts = params[0].value[0]
-            const item = ohlcMap[ts]
-            if (!item) return ''
-
-            const date = new Date(ts)
-            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-
-            const changeColor = (item.changePercent || 0) >= 0 ? dangerColor : successColor
-            const changeSign = (item.changePercent || 0) >= 0 ? '+' : ''
-
-            return `
-              <div style="font-weight:600;margin-bottom:6px">${dateStr}</div>
-              <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:12px">
-                <span style="color:${axisLabelColor}">收盘：</span><span style="font-weight:600">${item.close?.toFixed(2) || '--'}</span>
-                <span style="color:${axisLabelColor}">开盘：</span><span>${item.open?.toFixed(2) || '--'}</span>
-                <span style="color:${axisLabelColor}">最高：</span><span style="color:${dangerColor}">${item.high?.toFixed(2) || '--'}</span>
-                <span style="color:${axisLabelColor}">最低：</span><span style="color:${successColor}">${item.low?.toFixed(2) || '--'}</span>
-                <span style="color:${axisLabelColor}">涨跌幅：</span><span style="color:${changeColor}">${changeSign}${(item.changePercent || 0).toFixed(2)}%</span>
-                <span style="color:${axisLabelColor}">成交量：</span><span>${formatKlineVolume(item.volume)}</span>
-              </div>
-            `
-          }
-        },
-        xAxis: {
-          type: 'time',
-          boundaryGap: false,
-          axisLine: { lineStyle: { color: gridColor } },
-          axisTick: { show: false },
-          axisLabel: {
-            color: axisLabelColor,
-            fontSize: 10,
-            formatter: function (value) {
-              const d = new Date(value)
-              const m = d.getMonth() + 1
-              const day = d.getDate()
-              return `${m}/${day}`
-            }
-          },
-          splitLine: { show: false }
-        },
-        yAxis: {
-          type: 'value',
-          scale: true,
-          splitLine: { lineStyle: { color: gridColor, type: 'dashed' } },
-          axisLabel: {
-            color: axisLabelColor,
-            fontSize: 10,
-            formatter: '{value}'
-          }
-        },
-        series: [
-          {
-            name: '收盘价',
-            type: 'line',
-            data: closeSeries,
-            smooth: true,
-            symbol: 'none',
-            lineStyle: { width: 2, color: colors.line },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: colors.area[0] },
-                { offset: 1, color: colors.area[1] }
-              ])
-            },
-            markLine: {
-              silent: true,
-              symbol: 'none',
-              lineStyle: { type: 'dashed', color: axisLabelColor, width: 1 },
-              data: data.length > 0 ? [{
-                yAxis: data[0].close,
-                label: { formatter: '{c}', fontSize: 10, color: axisLabelColor }
-              }] : []
-            }
-          }
-        ]
-      }
-
-      klineChartInstance.setOption(option, true)
-    }
-
-    // 格式化 K 线成交量
-    const formatKlineVolume = (vol) => {
-      if (vol == null || isNaN(vol)) return '--'
-      if (vol >= 10000) return (vol / 10000).toFixed(1) + ' 万手'
-      return vol.toFixed(0) + ' 手'
-    }
-
-    // 监听 stockData 变化，自动获取 K 线
-    watch(() => props.stockData, (newData) => {
-      if (newData && newData.code) {
-        fetchKlineData(newData.code)
-      }
-    }, { immediate: false })
-
-    // 窗口大小变化时重绘
-    const handleResize = () => {
-      if (klineChartInstance) {
-        klineChartInstance.resize()
-      }
-    }
-
-    watch(echartThemeName, () => {
-      if (klineChartInstance) {
-        klineChartInstance.dispose()
-        klineChartInstance = null
-      }
-      nextTick(() => renderKlineChart())
-    })
-
-    onMounted(() => {
-      window.addEventListener('resize', handleResize)
-    })
-
-    onUnmounted(() => {
-      window.removeEventListener('resize', handleResize)
-      if (klineChartInstance) {
-        klineChartInstance.dispose()
-        klineChartInstance = null
-      }
-    })
-
-    // 监听过滤后的数据变化重绘
-    watch(filteredKlineData, () => {
-      nextTick(() => renderKlineChart())
-    }, { immediate: false })
-
-    // ── 原有的行情展示逻辑 ───────────────────────────────────
-    const changeClass = computed(() => {
-      if (!props.stockData) return ''
-      const change = parseFloat(props.stockData.changePercent) || 0
-      if (change > 0) return 'up'
-      if (change < 0) return 'down'
-      return ''
-    })
-
-    const exchangeLabel = computed(() => {
-      const ex = props.stockData?.exchange
-      if (!ex) return ''
-      const map = { sh: '沪市', sz: '深市', bj: '北交所' }
-      return map[ex] || ex.toUpperCase()
-    })
-
-    const formatPrice = (val) => {
-      const num = parseFloat(val)
-      if (isNaN(num) || num === 0) return '--'
-      return num.toFixed(2)
-    }
-
-    const formatChange = (val) => {
-      const num = parseFloat(val)
-      if (isNaN(num)) return '--'
-      const prefix = num > 0 ? '+' : ''
-      return prefix + num.toFixed(2)
-    }
-
-    const formatPercent = (val) => {
-      const num = parseFloat(val)
-      if (isNaN(num) || num === 0) return '--'
-      const prefix = num > 0 ? '+' : ''
-      return prefix + num.toFixed(2) + '%'
-    }
-
-    const formatVolume = (val) => {
-      const num = parseFloat(val)
-      if (isNaN(num) || num === 0) return '--'
-      if (num >= 10000) return (num / 10000).toFixed(2) + ' 万手'
-      return num.toFixed(0) + ' 手'
-    }
-
-    const formatAmount = (val) => {
-      const num = parseFloat(val)
-      if (isNaN(num) || num === 0) return '--'
-      if (num >= 100000000) return (num / 100000000).toFixed(2) + ' 亿'
-      if (num >= 10000) return (num / 10000).toFixed(2) + ' 万'
-      return num.toFixed(2)
-    }
-
-    const formatPE = (val) => {
-      const num = parseFloat(val)
-      if (isNaN(num) || num === 0) return '--'
-      return num.toFixed(2)
-    }
-
-    const formatMarketCap = (val) => {
-      const num = parseFloat(val)
-      if (isNaN(num) || num === 0) return '--'
-      if (num >= 100000000) return (num / 100000000).toFixed(2) + ' 亿'
-      if (num >= 10000) return (num / 10000).toFixed(2) + ' 万'
-      return num.toFixed(2)
-    }
-
-    return {
-      // 行情
-      changeClass,
-      exchangeLabel,
-      formatPrice,
-      formatChange,
-      formatPercent,
-      formatVolume,
-      formatAmount,
-      formatPE,
-      formatMarketCap,
-      // K线图表
-      klineChartEl,
-      klineData,
-      klineLoading,
-      klineError,
-      klineSelectedRange,
-      klinePeriods,
-      filteredKlineData,
-      klineSummary,
-      setKlineRange
-    }
+  if (klineSelectedRange.value === 'all') {
+    return [...klineData.value].sort((a: any, b: any) => a.timestamp - b.timestamp)
   }
+
+  const now = new Date()
+  let cutoff = new Date()
+  const rangeMap: Record<string, number> = { '1m': -1, '3m': -3, '6m': -6, '1y': -12 }
+  const months = rangeMap[klineSelectedRange.value] || -12
+  cutoff.setMonth(now.getMonth() + months)
+
+  const cutoffTs = cutoff.getTime()
+  return klineData.value
+    .filter((item: any) => item.timestamp >= cutoffTs)
+    .sort((a: any, b: any) => a.timestamp - b.timestamp)
+})
+
+const klineSummary = computed(() => {
+  const data = filteredKlineData.value
+  if (data.length === 0) return null
+
+  const closes = data.map((d: any) => d.close).filter((v: any) => v != null)
+  if (closes.length === 0) return null
+
+  const startPrice = closes[0]
+  const endPrice = closes[closes.length - 1]
+  const changePercent = startPrice !== 0 ? ((endPrice - startPrice) / startPrice) * 100 : 0
+  const high = Math.max(...closes)
+  const low = Math.min(...closes)
+
+  return { startPrice, endPrice, changePercent, high, low }
+})
+
+const fetchKlineData = async (code: string) => {
+  if (!code) return
+  klineLoading.value = true
+  klineError.value = ''
+  klineData.value = []
+
+  try {
+    const response = await marketAPI.getStockKline(code, {
+      period: 'daily',
+      adjust: 'qfq',
+      endDate: new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    })
+    if (response.data?.success && Array.isArray(response.data?.data)) {
+      klineData.value = response.data.data.map((item: any) => ({
+        ...item,
+        timestamp: parseKlineDate(item.date),
+        open: parseFloat(item.open) || null,
+        close: parseFloat(item.close) || null,
+        high: parseFloat(item.high) || null,
+        low: parseFloat(item.low) || null,
+        volume: parseFloat(item.volume) || null,
+        amount: parseFloat(item.amount) || null,
+        changePercent: parseFloat(item.changePercent) || null
+      }))
+    } else {
+      klineError.value = response.data?.error || '获取走势数据失败'
+    }
+  } catch (err: any) {
+    console.error('获取K线数据失败:', err)
+    klineError.value = err.response?.data?.error || '网络请求失败，请稍后重试'
+  } finally {
+    klineLoading.value = false
+  }
+}
+
+const parseKlineDate = (dateStr: string) => {
+  if (!dateStr) return 0
+  const s = String(dateStr)
+  if (s.includes('-')) {
+    return new Date(s).getTime()
+  }
+  if (s.length === 8) {
+    const y = s.slice(0, 4)
+    const m = s.slice(4, 6)
+    const d = s.slice(6, 8)
+    return new Date(`${y}-${m}-${d}`).getTime()
+  }
+  return new Date(s).getTime()
+}
+
+const setKlineRange = (range: string) => {
+  klineSelectedRange.value = range
+  nextTick(() => renderKlineChart())
+}
+
+const getTrendColor = (data: any[]) => {
+  const dangerColor = cssColor('--color-danger', '#ff4d4f')
+  const successColor = cssColor('--color-success', '#52c41a')
+  const primaryColor = cssColor('--color-primary', '#1677ff')
+  if (data.length < 2) return { line: primaryColor, area: [hexToRgba(primaryColor, 0.2), hexToRgba(primaryColor, 0.0)] }
+  const firstClose = data[0].close
+  const lastClose = data[data.length - 1].close
+  const isUp = lastClose >= firstClose
+  return {
+    line: isUp ? dangerColor : successColor,
+    area: isUp
+      ? [hexToRgba(dangerColor, 0.2), hexToRgba(dangerColor, 0.0)]
+      : [hexToRgba(successColor, 0.2), hexToRgba(successColor, 0.0)]
+  }
+}
+
+const renderKlineChart = () => {
+  const data = filteredKlineData.value
+  if (!klineChartEl.value || data.length === 0) {
+    if (klineChartInstance) {
+      klineChartInstance.dispose()
+      klineChartInstance = null
+    }
+    return
+  }
+
+  if (!klineChartInstance) {
+    klineChartInstance = echarts.init(klineChartEl.value, echartThemeName.value)
+  }
+
+  const colors = getTrendColor(data)
+
+  const closeSeries = data.map((item: any) => [item.timestamp, item.close])
+
+  const ohlcMap: Record<number, any> = {}
+  data.forEach((item: any) => {
+    ohlcMap[item.timestamp] = item
+  })
+
+  const gridColor = cssColor('--chart-grid', '#e5e7eb')
+  const axisLabelColor = cssColor('--chart-axis-label', '#6b7280')
+  const dangerColor = cssColor('--color-danger', '#ff4d4f')
+  const successColor = cssColor('--color-success', '#52c41a')
+  const option = {
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '8%',
+      top: '8%',
+      containLabel: true
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: function (params: any) {
+        if (!params || params.length === 0) return ''
+        const ts = params[0].value[0]
+        const item = ohlcMap[ts]
+        if (!item) return ''
+
+        const date = new Date(ts)
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+
+        const changeColor = (item.changePercent || 0) >= 0 ? dangerColor : successColor
+        const changeSign = (item.changePercent || 0) >= 0 ? '+' : ''
+
+        return `
+          <div style="font-weight:600;margin-bottom:6px">${dateStr}</div>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:12px">
+            <span style="color:${axisLabelColor}">收盘：</span><span style="font-weight:600">${item.close?.toFixed(2) || '--'}</span>
+            <span style="color:${axisLabelColor}">开盘：</span><span>${item.open?.toFixed(2) || '--'}</span>
+            <span style="color:${axisLabelColor}">最高：</span><span style="color:${dangerColor}">${item.high?.toFixed(2) || '--'}</span>
+            <span style="color:${axisLabelColor}">最低：</span><span style="color:${successColor}">${item.low?.toFixed(2) || '--'}</span>
+            <span style="color:${axisLabelColor}">涨跌幅：</span><span style="color:${changeColor}">${changeSign}${(item.changePercent || 0).toFixed(2)}%</span>
+            <span style="color:${axisLabelColor}">成交量：</span><span>${formatKlineVolume(item.volume)}</span>
+          </div>
+        `
+      }
+    },
+    xAxis: {
+      type: 'time',
+      boundaryGap: false,
+      axisLine: { lineStyle: { color: gridColor } },
+      axisTick: { show: false },
+      axisLabel: {
+        color: axisLabelColor,
+        fontSize: 10,
+        formatter: function (value: any) {
+          const d = new Date(value)
+          const m = d.getMonth() + 1
+          const day = d.getDate()
+          return `${m}/${day}`
+        }
+      },
+      splitLine: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      splitLine: { lineStyle: { color: gridColor, type: 'dashed' } },
+      axisLabel: {
+        color: axisLabelColor,
+        fontSize: 10,
+        formatter: '{value}'
+      }
+    },
+    series: [
+      {
+        name: '收盘价',
+        type: 'line',
+        data: closeSeries,
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { width: 2, color: colors.line },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: colors.area[0] },
+            { offset: 1, color: colors.area[1] }
+          ])
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { type: 'dashed', color: axisLabelColor, width: 1 },
+          data: data.length > 0 ? [{
+            yAxis: data[0].close,
+            label: { formatter: '{c}', fontSize: 10, color: axisLabelColor }
+          }] : []
+        }
+      }
+    ]
+  }
+
+  klineChartInstance.setOption(option, true)
+}
+
+const formatKlineVolume = (vol: any) => {
+  if (vol == null || isNaN(vol)) return '--'
+  if (vol >= 10000) return (vol / 10000).toFixed(1) + ' 万手'
+  return vol.toFixed(0) + ' 手'
+}
+
+watch(() => props.stockData, (newData: any) => {
+  if (newData && newData.code) {
+    fetchKlineData(newData.code)
+  }
+}, { immediate: false })
+
+const handleResize = () => {
+  if (klineChartInstance) {
+    klineChartInstance.resize()
+  }
+}
+
+watch(echartThemeName, () => {
+  if (klineChartInstance) {
+    klineChartInstance.dispose()
+    klineChartInstance = null
+  }
+  nextTick(() => renderKlineChart())
+})
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (klineChartInstance) {
+    klineChartInstance.dispose()
+    klineChartInstance = null
+  }
+})
+
+watch(filteredKlineData, () => {
+  nextTick(() => renderKlineChart())
+}, { immediate: false })
+
+const changeClass = computed(() => {
+  if (!props.stockData) return ''
+  const change = parseFloat(props.stockData.changePercent) || 0
+  if (change > 0) return 'up'
+  if (change < 0) return 'down'
+  return ''
+})
+
+const exchangeLabel = computed(() => {
+  const ex = props.stockData?.exchange
+  if (!ex) return ''
+  const map: Record<string, string> = { sh: '沪市', sz: '深市', bj: '北交所' }
+  return map[ex] || ex.toUpperCase()
+})
+
+const formatPrice = (val: any) => {
+  const num = parseFloat(val)
+  if (isNaN(num) || num === 0) return '--'
+  return num.toFixed(2)
+}
+
+const formatChange = (val: any) => {
+  const num = parseFloat(val)
+  if (isNaN(num)) return '--'
+  const prefix = num > 0 ? '+' : ''
+  return prefix + num.toFixed(2)
+}
+
+const formatPercent = (val: any) => {
+  const num = parseFloat(val)
+  if (isNaN(num) || num === 0) return '--'
+  const prefix = num > 0 ? '+' : ''
+  return prefix + num.toFixed(2) + '%'
+}
+
+const formatVolume = (val: any) => {
+  const num = parseFloat(val)
+  if (isNaN(num) || num === 0) return '--'
+  if (num >= 10000) return (num / 10000).toFixed(2) + ' 万手'
+  return num.toFixed(0) + ' 手'
+}
+
+const formatAmount = (val: any) => {
+  const num = parseFloat(val)
+  if (isNaN(num) || num === 0) return '--'
+  if (num >= 100000000) return (num / 100000000).toFixed(2) + ' 亿'
+  if (num >= 10000) return (num / 10000).toFixed(2) + ' 万'
+  return num.toFixed(2)
+}
+
+const formatPE = (val: any) => {
+  const num = parseFloat(val)
+  if (isNaN(num) || num === 0) return '--'
+  return num.toFixed(2)
+}
+
+const formatMarketCap = (val: any) => {
+  const num = parseFloat(val)
+  if (isNaN(num) || num === 0) return '--'
+  if (num >= 100000000) return (num / 100000000).toFixed(2) + ' 亿'
+  if (num >= 10000) return (num / 10000).toFixed(2) + ' 万'
+  return num.toFixed(2)
 }
 </script>
 
@@ -580,7 +529,6 @@ export default {
   flex-direction: column;
 }
 
-/* 加载状态 */
 .stock-loading {
   display: flex;
   flex-direction: column;
@@ -604,7 +552,6 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-/* 错误 */
 .stock-error {
   display: flex;
   flex-direction: column;
@@ -620,14 +567,12 @@ export default {
   margin-bottom: 12px;
 }
 
-/* 内容 */
 .stock-content {
   padding: 20px 24px;
   overflow-y: auto;
   flex: 1;
 }
 
-/* 头部 */
 .stock-header {
   margin-bottom: 16px;
   padding-bottom: 16px;
@@ -660,7 +605,6 @@ export default {
   border-radius: 4px;
 }
 
-/* 价格区域 */
 .stock-price-section {
   text-align: center;
   padding: 16px 0;
@@ -709,7 +653,6 @@ export default {
   color: var(--text-tertiary);
 }
 
-/* 详情网格 */
 .stock-detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -748,7 +691,6 @@ export default {
   color: var(--color-success);
 }
 
-/* 分区 */
 .stock-section {
   margin-top: 20px;
 }
@@ -762,7 +704,6 @@ export default {
   border-bottom: 2px solid var(--color-primary);
 }
 
-/* 空状态 */
 .stock-empty {
   display: flex;
   align-items: center;
@@ -771,7 +712,6 @@ export default {
   color: var(--text-tertiary);
 }
 
-/* ── 走势图区块 ─────────────────────────────────── */
 .chart-section {
   margin-top: 24px;
 }

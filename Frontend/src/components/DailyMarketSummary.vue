@@ -20,12 +20,12 @@
           <div class="pulse-dot"></div>
           <span>正在生成今日市场分析</span>
         </div>
-        
+
         <!-- 步骤列表 -->
         <div class="steps-container">
-          <div 
-            v-for="step in steps" 
-            :key="step.step" 
+          <div
+            v-for="step in steps"
+            :key="step.step"
             class="step-item"
             :class="getStepClass(step.step)"
           >
@@ -104,7 +104,7 @@
             </li>
           </ul>
         </div>
-        
+
         <div class="section outlook">
           <h4><span class="section-icon"><LucideIcon name="Telescope" :size="16" /></span> 后市展望</h4>
           <p class="outlook-text">{{ data.outlook }}</p>
@@ -185,10 +185,10 @@ const fetchData = async (forceRefresh = false) => {
     error.value = null
   }
   loading.value = true
-  
+
   try {
     const response = await fundAPI.getDailyMarket(forceRefresh)
-    
+
     // 如果返回 200 成功，且不是 loading
     if (response.status === 200 && !response.data.loading) {
       stopPolling()
@@ -201,7 +201,7 @@ const fetchData = async (forceRefresh = false) => {
     if (response.status === 202 || response.data.loading) {
       currentStep.value = response.data.current_step || 1
       stepMessage.value = response.data.step_message || '正在生成...'
-      
+
       pollCount++
       if (pollCount < MAX_POLL_COUNT) {
         // 使用动态间隔：前10次快一些，后面慢一些以减少服务器压力
@@ -222,7 +222,7 @@ const fetchData = async (forceRefresh = false) => {
       loading.value = false
       return
     }
-    
+
   } catch (err) {
     // 处理 Axios 错误响应
     const status = err.response?.status
@@ -556,19 +556,19 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.sentiment-positive { 
+.sentiment-positive {
   background: var(--color-success-bg);
   color: var(--color-success);
   border: 1px solid var(--color-success-border);
 }
 
-.sentiment-negative { 
+.sentiment-negative {
   background: var(--color-danger-bg);
   color: var(--color-danger);
   border: 1px solid var(--color-danger-border);
 }
 
-.sentiment-neutral { 
+.sentiment-neutral {
   background: var(--color-primary-bg);
   color: var(--color-primary);
   border: 1px solid var(--color-primary-border);
@@ -630,13 +630,13 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.index-name { 
+.index-name {
   font-weight: 600;
   font-size: 1.1em;
   color: var(--text-primary);
 }
 
-.index-change { 
+.index-change {
   font-weight: 700;
   font-size: 1.3em;
   margin-bottom: 12px;
@@ -651,7 +651,7 @@ onUnmounted(() => {
   color: var(--color-success);
 }
 
-.index-analysis { 
+.index-analysis {
   font-size: 0.9em;
   color: var(--text-secondary);
   line-height: 1.5;
@@ -732,16 +732,16 @@ onUnmounted(() => {
     gap: 16px;
     text-align: center;
   }
-  
+
   .header-left {
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .indices-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .sections {
     grid-template-columns: 1fr;
   }

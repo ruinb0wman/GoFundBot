@@ -37,61 +37,54 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 
-export default {
-  name: 'FundHolderStructure',
-  props: {
-    holderStructure: {
-      type: Object,
-      default: () => ({})
-    }
-  },
-  setup(props) {
-    const cssColor = (name, fallback = '') => {
-      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-    }
-    const { echartThemeName } = useEChartsTheme()
-    const chartEl = ref(null)
-    let chartInstance = null
+const props = withDefaults(defineProps<{
+  holderStructure?: Record<string, any>
+}>(), {
+  holderStructure: () => ({}),
+})
 
-    const categories = computed(() => props.holderStructure?.categories || [])
-    const series = computed(() => props.holderStructure?.series || [])
-    const hasData = computed(() => categories.value.length > 0 && series.value.length > 0)
+const cssColor = (name: string, fallback = ''): string => {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+}
+const { echartThemeName } = useEChartsTheme()
+const chartEl = ref<HTMLElement | null>(null)
+let chartInstance: echarts.ECharts | null = null
 
-    const getColor = (name) => {
-      const colors = {
-        '机构持有比例': cssColor('--chart-1', '#1677ff'),
-        '个人持有比例': cssColor('--chart-4', '#ee6666'),
-        '内部持有比例': cssColor('--chart-2', '#52c41a'),
-        '机构持有': cssColor('--chart-1', '#1677ff'),
-        '个人持有': cssColor('--chart-4', '#ee6666'),
-        '内部持有': cssColor('--chart-2', '#52c41a')
-      }
-      return colors[name] || cssColor('--chart-1', '#1677ff')
-    }
+const categories = computed(() => (props.holderStructure?.categories || []) as string[])
+const series = computed(() => (props.holderStructure?.series || []) as Array<{ name: string; data: number[] }>)
+const hasData = computed(() => categories.value.length > 0 && series.value.length > 0)
 
-    const formatLegendName = (name) => {
-      if (!name) return ''
-      return name.replace(/比例/g, '')
-    }
+function getColor(name: string): string {
+  const colors: Record<string, string> = {
+    '机构持有比例': cssColor('--chart-1', '#1677ff'),
+    '个人持有比例': cssColor('--chart-4', '#ee6666'),
+    '内部持有比例': cssColor('--chart-2', '#52c41a'),
+    '机构持有': cssColor('--chart-1', '#1677ff'),
+    '个人持有': cssColor('--chart-4', '#ee6666'),
+    '内部持有': cssColor('--chart-2', '#52c41a'),
+  }
+  return colors[name] || cssColor('--chart-1', '#1677ff')
+}
 
-    const formatValue = (value) => {
-      if (value === null || value === undefined) return '--'
-      return value.toFixed(2) + '%'
-    }
+function formatLegendName(name: string): string {
+  if (!name) return ''
+  return name.replace(/比例/g, '')
+}
 
-    const initChart = () => {
-      if (!chartEl.value || !hasData.value) return
+function formatValue(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '--'
+  return value.toFixed(2) + '%'
+}
 
-      if (chartInstance) {
-        chartInstance.dispose()
-      }
-
-      chartInstance = echarts.init(chartEl.value, echartThemeName.value)
+function initChart(): void {
+  if (!chartEl.value || !hasData.value) return
+  if (chartInstance) chartInstance.dispose()
+  chartInstance = echarts.init(chartEl.value, echartThemeName.value)
 
       // 准备堆叠柱状图数据
       const seriesData = series.value.map(serie => ({
@@ -106,7 +99,7 @@ export default {
         label: {
           show: true,
           position: 'inside',
-          formatter: (params) => params.value > 10 ? params.value.toFixed(1) + '%' : ''
+          formatter: (params: any) => params.value > 10 ? params.value.toFixed(1) + '%' : ''
         }
       }))
 
@@ -116,9 +109,9 @@ export default {
           axisPointer: {
             type: 'shadow'
           },
-          formatter: (params) => {
+          formatter: (params: any[]) => {
             let result = `<div style="font-weight: bold; margin-bottom: 8px;">${params[0].axisValue}</div>`
-            params.forEach(param => {
+            params.forEach((param: any) => {
               result += `<div style="margin: 4px 0;">
                 <span style="display:inline-block;margin-right:5px;border-radius:50%;width:10px;height:10px;background-color:${param.color};"></span>
                 ${param.seriesName}: <strong>${param.value?.toFixed(2) || '--'}%</strong>
@@ -176,18 +169,6 @@ export default {
         initChart()
       })
     })
-
-    return {
-      chartEl,
-      categories,
-      series,
-      hasData,
-      getColor,
-      formatLegendName,
-      formatValue
-    }
-  }
-}
 </script>
 
 <style scoped>
@@ -288,7 +269,7 @@ export default {
   .holder-chart {
     height: 250px;
   }
-  
+
   .holder-table th,
   .holder-table td {
     padding: 8px 12px;

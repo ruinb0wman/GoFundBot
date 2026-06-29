@@ -436,24 +436,23 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { screeningAPI, watchlistAPI, fundAPI } from '../services/api'
+import { useWatchlistStore } from '../stores/watchlistStore'
 
-export default {
-  name: 'FundScreening',
-  emits: ['view-fund', 'add-to-compare'],
-  
-  setup(props, { emit }) {
+defineOptions({ name: 'FundScreening' })
+
+const emit = defineEmits(['view-fund', 'add-to-compare'])
     // 数据库状态
-    const dbStatus = ref({
+    const dbStatus: any = ref({
       basic_count: 0,
       latest_update: null,
       type_counts: {}
     })
-    
+
     // 更新状态
-    const updateStatus = ref({
+    const updateStatus: any = ref({
       running: false,
       progress: 0,
       total: 0,
@@ -462,8 +461,8 @@ export default {
       fail_count: 0,
       message: ''
     })
-    
-    const selectedFundTypes = ref([])
+
+    const selectedFundTypes: any = ref([])
     const showUpdateDialog = ref(false)
     const updateTasks = reactive({
       basic: true,
@@ -488,7 +487,7 @@ export default {
         showIndustryDictDialog.value = true
       })
     }
-    
+
     // 高级筛选 — 直观的数值范围
     const showAdvanced = ref(false)
     const showTypeDropdown = ref(false)
@@ -496,7 +495,7 @@ export default {
     const searchWrapRef = ref(null)
 
     // 搜索自动补全
-    const searchSuggestions = ref([])
+    const searchSuggestions: any = ref([])
     const showSearchDropdown = ref(false)
     let searchDebounce = null
 
@@ -718,7 +717,7 @@ export default {
         ]
       }
     ]
-    
+
     // 控制分类展开状态
     // 兼容 fundTypeOptions (用于更新弹窗复选框)
     const fundTypeOptions = computed(() => {
@@ -728,20 +727,20 @@ export default {
       })
       return allTypes
     })
-    
+
     // 排序
     const sortBy = ref('return_1y')
     const sortOrder = ref('desc')
-    
+
     // 快速类型筛选（后端筛选）
     const quickTypeFilter = ref('')
-    const availableTypes = ref([])  // 从后端获取可选类型
+    const availableTypes: any = ref([])  // 从后端获取可选类型
     const activeQuickDropdown = ref(null)  // 当前打开的下拉菜单
     // 标签分组：基金大类 + 行业/市场板块
-    const fundTypeGroups = ref([])   // {name, tags, count}[]
-    const sectorGroups = ref([])     // {name, tags, count}[]
-    const ungroupedTags = ref([])    // 未归类的二级标签
-    const expandedGroups = ref(new Set())
+    const fundTypeGroups: any = ref([])   // {name, tags, count}[]
+    const sectorGroups: any = ref([])     // {name, tags, count}[]
+    const ungroupedTags: any = ref([])    // 未归类的二级标签
+    const expandedGroups: any = ref(new Set())
     const sectorExpanded = ref(true)  // 行业板块是否展开全部
     const screeningGridRef = ref(null)
 
@@ -880,7 +879,7 @@ export default {
       if (sectorExpanded.value) return displaySectorGroups.value
       return displaySectorGroups.value.slice(0, 8)
     })
-    
+
     // 快速筛选的多级分类配置
     const quickTypeCategories = [
       {
@@ -909,7 +908,7 @@ export default {
         patterns: ['货币', 'REITs', '商品', '指数-其他', '指数型-其他', '其他']
       }
     ]
-    
+
     // 辅助函数：确定类型的归属分类（按顺序优先匹配，避免重复）
     const getTypeCategoryName = (type) => {
       for (const cat of quickTypeCategories) {
@@ -928,17 +927,17 @@ export default {
         activeQuickDropdown.value = categoryName
       }
     }
-    
+
     // 打开下拉菜单 (不再使用)
     const openQuickDropdown = (categoryName) => {
       // no-op
     }
-    
+
     // 关闭下拉菜单
     const closeQuickDropdown = () => {
       activeQuickDropdown.value = null
     }
-    
+
     // 获取分类下的所有子类型（从模式生成，不依赖当前页结果）
     const getFilteredCategoryTypes = (category) => {
       return (category.patterns || []).map(p => ({
@@ -947,45 +946,45 @@ export default {
         available: availableTypes.value.some(t => t.includes(p))
       }))
     }
-    
+
     // 检查分类下是否有当前选中的类型
     const isCategoryTypeActive = (category) => {
       if (!quickTypeFilter.value) return false
       // 如果当前选中的类型属于该分类
       return getTypeCategoryName(quickTypeFilter.value) === category.name
     }
-    
+
     // 检查分类下是否有可用类型
     const hasCategoryActiveType = (category) => {
       return getFilteredCategoryTypes(category).length > 0
     }
-    
+
     // 获取未分类的类型
     const uncategorizedTypes = computed(() => {
       return availableTypes.value.filter(type => getTypeCategoryName(type) === null)
     })
-    
+
     // 分页
     const currentPage = ref(1)
     const pageSize = ref(20)
     const totalCount = ref(0)  // 后端返回的总数
     const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value))
-    
+
     // 结果
-    const results = ref([])
+    const results: any = ref([])
     const loading = ref(false)
     const searched = ref(false)
 
     // 已收藏基金代码集合（用于区分收藏按钮状态）
-    const watchlistCodes = ref(new Set())
+    const watchlistCodes: any = ref(new Set())
 
     const isInWatchlist = (code) => watchlistCodes.value.has(code)
 
     const fetchWatchlistCodes = async () => {
       try {
-        const res = await watchlistAPI.getWatchlist()
-        const items = res.data?.data || res.data?.items || res.data || []
-        watchlistCodes.value = new Set(items.map(f => f.fund_code || f.code).filter(Boolean))
+        const watchlistStore = useWatchlistStore()
+        await watchlistStore.fetch()
+        watchlistCodes.value = new Set(watchlistStore.funds.map(f => f.fund_code).filter(Boolean))
       } catch (e) {
         // ignore
       }
@@ -1032,7 +1031,7 @@ export default {
         { title: '操作', width: 110, fixed: 'right', slots: { default: 'actions' } }
       ]
     })
-    
+
     // 排序配置（plain reactive，不用 computed，避免与 grid 内部排序状态冲突）
     const sortConfig = reactive({
       remote: true,
@@ -1054,10 +1053,10 @@ export default {
     const isProgressIndeterminate = computed(() => {
       return !updateStatus.value.total || updateStatus.value.total === 0
     })
-    
+
     // 状态轮询定时器
     let statusPollTimer = null
-    
+
     // 获取数据库状态
     const fetchDbStatus = async () => {
       try {
@@ -1071,7 +1070,7 @@ export default {
         console.error('获取状态失败:', err)
       }
     }
-    
+
     const openUpdateDialog = () => {
       showUpdateDialog.value = true
     }
@@ -1135,7 +1134,7 @@ export default {
         console.error('停止更新失败:', err)
       }
     }
-    
+
     // 开始轮询状态
     // 快速获取更新进度（仅内存端点，极快，不会被DB写入阻塞）
     const fetchProgress = async () => {
@@ -1162,7 +1161,7 @@ export default {
         fetchProgress()
       }, 1500)
     }
-    
+
     // 停止轮询
     const stopStatusPoll = () => {
       if (statusPollTimer) {
@@ -1170,7 +1169,7 @@ export default {
         statusPollTimer = null
       }
     }
-    
+
     // 将 advFilters 转为后端需要的扁平 filter 字段
     const buildFilterParams = () => {
       const params = {}
@@ -1267,7 +1266,7 @@ export default {
         loading.value = false
       }
     }
-    
+
     // 快速类型筛选（触发后端重新查询）
     const setQuickTypeFilter = (type) => {
       quickTypeFilter.value = type
@@ -1275,7 +1274,7 @@ export default {
       currentPage.value = 1  // 重置到第一页
       search()  // 重新查询后端
     }
-    
+
     // 获取简短类型名称
     const getShortTypeName = (type) => {
       if (!type) return '未知'
@@ -1299,7 +1298,7 @@ export default {
       }
       return shortNames[type] || type.replace('型-', '-').replace('型', '')
     }
-    
+
     // 换页
     const changePage = (page) => {
       currentPage.value = page
@@ -1325,12 +1324,12 @@ export default {
       if (column?.title === '操作') return
       viewFundDetail(row)
     }
-    
+
     // 查看基金详情
     const viewFundDetail = (fund) => {
       emit('view-fund', fund.fund_code)
     }
-    
+
     // 切换自选（收藏/取消收藏）
     const toggleWatchlist = async (fund) => {
       const code = fund.fund_code
@@ -1353,7 +1352,7 @@ export default {
         }
       }
     }
-    
+
     // 加入对比
     const addToCompare = (fund) => {
       emit('add-to-compare', {
@@ -1361,7 +1360,7 @@ export default {
         name: fund.fund_name
       })
     }
-    
+
     // 格式化函数
     const formatPercent = (value, isNegative = false) => {
       if (value === null || value === undefined) return '--'
@@ -1377,24 +1376,24 @@ export default {
       if (value === null || value === undefined) return '--'
       return value.toFixed(2)
     }
-    
+
     const formatDate = (dateStr) => {
       if (!dateStr) return '--'
       const date = new Date(dateStr)
       return date.toLocaleString('zh-CN')
     }
-    
+
     const truncateName = (name) => {
       if (!name) return '--'
       return name.length > 12 ? name.slice(0, 12) + '...' : name
     }
-    
+
     // 样式判断函数
     const getReturnClass = (value) => {
       if (value === null || value === undefined) return ''
       return value > 0 ? 'positive' : value < 0 ? 'negative' : ''
     }
-    
+
     const getSharpeClass = (value) => {
       if (value === null || value === undefined) return ''
       if (value >= 1.5) return 'excellent'
@@ -1402,7 +1401,7 @@ export default {
       if (value >= 0.5) return 'normal'
       return 'poor'
     }
-    
+
     const getCalmarClass = (value) => {
       if (value === null || value === undefined) return ''
       if (value >= 2) return 'excellent'
@@ -1410,7 +1409,7 @@ export default {
       if (value >= 0.5) return 'normal'
       return 'poor'
     }
-    
+
     const getStyleClass = (style) => {
       if (!style) return ''
       if (style.includes('股票')) return 'style-stock'
@@ -1418,7 +1417,7 @@ export default {
       if (style.includes('均衡')) return 'style-balanced'
       return 'style-mixed'
     }
-    
+
     // 生命周期
     onMounted(async () => {
       // 先用快速端点检查是否有运行中的任务
@@ -1445,103 +1444,6 @@ export default {
       document.removeEventListener('click', handleTypeDropdownClick)
       document.removeEventListener('click', handleSearchClickOutside)
     })
-    
-    return {
-      // 状态
-      dbStatus,
-      updateStatus,
-      selectedFundTypes,
-      showUpdateDialog,
-      updateTasks,
-      hasSelectedUpdateTask,
-      showIndustryDictDialog,
-      resolveIndustryDict,
-      askIndustryDictionary,
-      filters,
-      fundTypeGroups,
-      displayFundTypeGroups,
-      sectorGroups,
-      ungroupedTags,
-      expandedGroups,
-      sectorExpanded,
-      displaySectorGroups,
-      visibleSectorGroups,
-      toggleGroup,
-      handlePrimaryIndustryClick,
-      isGroupActive,
-      screeningGridRef,
-      gridOptions,
-      sortConfig,
-      fundTypeCategories,
-      sortBy,
-      sortOrder,
-      currentPage,
-      totalCount,
-      totalPages,
-      results,
-      loading,
-      searched,
-      progressPercent,
-      isProgressIndeterminate,
-      quickTypeFilter,
-      availableTypes,
-      activeQuickDropdown,
-      quickTypeCategories,
-      uncategorizedTypes,
-      // 高级筛选
-      showAdvanced,
-      advFilters,
-      advancedFilterGroups,
-      onTypeSelectChange,
-      searchSuggestions,
-      showSearchDropdown,
-      searchWrapRef,
-      onSearchFocus,
-      selectSearchSuggestion,
-      removeFundType,
-      showTypeDropdown,
-      typeDropdownRef,
-      toggleSingleType,
-      toggleCategoryTypes,
-      toggleIndustryTag,
-      clearIndustryTags,
-      isCatAllSelected,
-      isCatPartialSelected,
-
-      // 方法
-      fetchDbStatus,
-      openUpdateDialog,
-      closeUpdateDialog,
-      startUpdate,
-      stopUpdate,
-      resetFilters,
-      search,
-      changePage,
-      onPageSizeChange,
-      handleGridSort,
-      handleGridCellClick,
-      viewFundDetail,
-      toggleWatchlist,
-      isInWatchlist,
-      addToCompare,
-      formatPercent,
-      formatNumber,
-      formatDate,
-      truncateName,
-      getReturnClass,
-      getSharpeClass,
-      getCalmarClass,
-      getStyleClass,
-      setQuickTypeFilter,
-      getShortTypeName,
-      closeQuickDropdown,
-      toggleQuickDropdown,
-      getFilteredCategoryTypes,
-      isCategoryTypeActive,
-      hasCategoryActiveType
-    }
-  }
-}
 
 </script>
 

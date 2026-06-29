@@ -2,11 +2,10 @@
   <FundScreening @view-fund="$emit('view-fund', $event)" />
 </template>
 
-<script>
+<script setup lang="ts">
 import FundScreening from '../components/FundScreening.vue'
 
-export default {
-  components: { FundScreening },
-  emits: ['view-fund']
-}
+defineEmits<{
+  'view-fund': [code: string]
+}>()
 </script>

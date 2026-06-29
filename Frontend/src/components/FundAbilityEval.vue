@@ -11,9 +11,9 @@
       <div v-if="hasEvalData" class="eval-content">
         <div ref="radarChartEl" class="radar-chart"></div>
         <div class="eval-details">
-          <div 
-            v-for="(item, index) in evalItems" 
-            :key="index" 
+          <div
+            v-for="(item, index) in evalItems"
+            :key="index"
             class="eval-item"
           >
             <div class="eval-item-header">
@@ -33,156 +33,138 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 
-export default {
-  name: 'FundAbilityEval',
-  props: {
-    performanceEvaluation: {
-      type: Object,
-      default: () => ({})
-    }
-  },
-  setup(props) {
-    const radarChartEl = ref(null)
-    let radarChart = null
+const props = withDefaults(defineProps<{ performanceEvaluation?: Record<string, any> }>(), { performanceEvaluation: () => ({}) })
 
-    const { echartThemeName } = useEChartsTheme()
+const radarChartEl = ref<HTMLElement | null>(null)
+let radarChart: echarts.ECharts | null = null
 
-    const cssColor = (name, fallback = '') => {
-      const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-      return val || fallback
-    }
-    const hexToRgba = (hex, alpha) => {
-      const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16)
-      return `rgba(${r},${g},${b},${alpha})`
-    }
+const { echartThemeName } = useEChartsTheme()
 
-    const hasEvalData = computed(() => {
-      const data = props.performanceEvaluation?.data
-      return data && Array.isArray(data) && data.some(v => v !== null)
-    })
-
-    const avgScore = computed(() => props.performanceEvaluation?.avr || null)
-
-    const evalItems = computed(() => {
-      const categories = props.performanceEvaluation?.categories || []
-      const data = props.performanceEvaluation?.data || []
-      
-      return categories.map((name, index) => ({
-        name,
-        score: data[index] ?? 0
-      }))
-    })
-
-    const getScoreClass = (score) => {
-      if (score >= 80) return 'excellent'
-      if (score >= 60) return 'good'
-      if (score >= 40) return 'normal'
-      return 'poor'
-    }
-
-    const getBarColor = (score) => {
-      if (score >= 80) return cssColor('--color-success', '#52c41a')
-      if (score >= 60) return cssColor('--color-primary', '#1890ff')
-      if (score >= 40) return cssColor('--color-warning', '#faad14')
-      return cssColor('--color-danger', '#ff4d4f')
-    }
-
-    const initRadarChart = () => {
-      if (!radarChartEl.value || !hasEvalData.value) return
-
-      if (radarChart) radarChart.dispose()
-      radarChart = echarts.init(radarChartEl.value, echartThemeName.value)
-
-      const categories = props.performanceEvaluation?.categories || []
-      const data = props.performanceEvaluation?.data || []
-
-      const option = {
-        tooltip: {
-          trigger: 'item'
-        },
-          radar: {
-            indicator: categories.map(name => ({
-              name,
-              max: 100
-            })),
-            radius: '70%',
-            axisName: {
-              color: cssColor('--chart-axis-label', '#666'),
-              fontSize: 10
-            },
-            splitArea: {
-              areaStyle: {
-                color: [hexToRgba(cssColor('--color-primary', '#1677ff'), 0.05), hexToRgba(cssColor('--color-primary', '#1677ff'), 0.1)]
-              }
-            },
-            axisLine: {
-              lineStyle: {
-                color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.3)
-              }
-            },
-            splitLine: {
-              lineStyle: {
-                color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.3)
-              }
-            }
-          },
-          series: [{
-            type: 'radar',
-            data: [{
-              value: data,
-              name: '能力评分',
-              areaStyle: {
-                color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.3)
-              },
-              lineStyle: {
-                color: cssColor('--color-primary', '#1677ff'),
-                width: 2
-              },
-              itemStyle: {
-                color: cssColor('--color-primary', '#1677ff')
-              }
-            }]
-          }]
-      }
-
-      radarChart.setOption(option)
-    }
-
-    onMounted(() => {
-      nextTick(() => {
-        initRadarChart()
-      })
-    })
-
-    watch(() => props.performanceEvaluation, () => {
-      nextTick(() => {
-        initRadarChart()
-      })
-    }, { deep: true })
-
-    watch(echartThemeName, () => {
-      if (radarChart) {
-        radarChart.dispose()
-        radarChart = null
-        nextTick(() => initRadarChart())
-      }
-    })
-
-    return {
-      radarChartEl,
-      hasEvalData,
-      avgScore,
-      evalItems,
-      getScoreClass,
-      getBarColor
-    }
-  }
+const cssColor = (name: string, fallback = '') => {
+  const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return val || fallback
 }
+const hexToRgba = (hex: string, alpha: number) => {
+  const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+const hasEvalData = computed(() => {
+  const data = props.performanceEvaluation?.data
+  return data && Array.isArray(data) && data.some((v: any) => v !== null)
+})
+
+const avgScore = computed(() => props.performanceEvaluation?.avr || null)
+
+const evalItems = computed(() => {
+  const categories = props.performanceEvaluation?.categories || []
+  const data = props.performanceEvaluation?.data || []
+
+  return categories.map((name: string, index: number) => ({
+    name,
+    score: data[index] ?? 0
+  }))
+})
+
+const getScoreClass = (score: number) => {
+  if (score >= 80) return 'excellent'
+  if (score >= 60) return 'good'
+  if (score >= 40) return 'normal'
+  return 'poor'
+}
+
+const getBarColor = (score: number) => {
+  if (score >= 80) return cssColor('--color-success', '#52c41a')
+  if (score >= 60) return cssColor('--color-primary', '#1890ff')
+  if (score >= 40) return cssColor('--color-warning', '#faad14')
+  return cssColor('--color-danger', '#ff4d4f')
+}
+
+const initRadarChart = () => {
+  if (!radarChartEl.value || !hasEvalData.value) return
+
+  if (radarChart) radarChart.dispose()
+  radarChart = echarts.init(radarChartEl.value, echartThemeName.value)
+
+  const categories = props.performanceEvaluation?.categories || []
+  const data = props.performanceEvaluation?.data || []
+
+  const option = {
+    tooltip: {
+      trigger: 'item'
+    },
+    radar: {
+      indicator: categories.map((name: string) => ({
+        name,
+        max: 100
+      })),
+      radius: '70%',
+      axisName: {
+        color: cssColor('--chart-axis-label', '#666'),
+        fontSize: 10
+      },
+      splitArea: {
+        areaStyle: {
+          color: [hexToRgba(cssColor('--color-primary', '#1677ff'), 0.05), hexToRgba(cssColor('--color-primary', '#1677ff'), 0.1)]
+        }
+      },
+      axisLine: {
+        lineStyle: {
+          color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.3)
+        }
+      },
+      splitLine: {
+        lineStyle: {
+          color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.3)
+        }
+      }
+    },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: data,
+        name: '能力评分',
+        areaStyle: {
+          color: hexToRgba(cssColor('--color-primary', '#1677ff'), 0.3)
+        },
+        lineStyle: {
+          color: cssColor('--color-primary', '#1677ff'),
+          width: 2
+        },
+        itemStyle: {
+          color: cssColor('--color-primary', '#1677ff')
+        }
+      }]
+    }]
+  }
+
+  radarChart.setOption(option)
+}
+
+onMounted(() => {
+  nextTick(() => {
+    initRadarChart()
+  })
+})
+
+watch(() => props.performanceEvaluation, () => {
+  nextTick(() => {
+    initRadarChart()
+  })
+}, { deep: true })
+
+watch(echartThemeName, () => {
+  if (radarChart) {
+    radarChart.dispose()
+    radarChart = null
+    nextTick(() => initRadarChart())
+  }
+})
 </script>
 
 <style scoped>

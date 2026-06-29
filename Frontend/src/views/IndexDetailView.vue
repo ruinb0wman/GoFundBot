@@ -2,17 +2,11 @@
   <IndexDetail :indexCode="indexCode" />
 </template>
 
-<script>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import IndexDetail from '../components/IndexDetail.vue'
 
-export default {
-  components: { IndexDetail },
-  setup() {
-    const route = useRoute()
-    const indexCode = computed(() => route.params.code || '')
-    return { indexCode }
-  }
-}
+const route = useRoute()
+const indexCode = computed(() => String(route.params.code || ''))
 </script>

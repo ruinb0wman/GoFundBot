@@ -118,214 +118,192 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { marketAPI } from '../services/api'
 
-export default {
-  name: 'FlashNews',
-  props: {
-    count: { type: Number, default: 30 },
-    autoRefresh: { type: Boolean, default: true },
-    refreshInterval: { type: Number, default: 30000 },
-  },
-  setup(props) {
-    const MAX_LEN = 35
-    const PAGE_SIZE = 50 // Items per page fetch
-    const DISPLAY_BATCH = 30 // Items to reveal per scroll
+const props = withDefaults(defineProps<{ count?: number; autoRefresh?: boolean; refreshInterval?: number }>(), { count: 30, autoRefresh: true, refreshInterval: 30000 })
 
-    const newsList = ref([])
-    const loading = ref(false)
-    const loadingMore = ref(false)
-    const error = ref(null)
-    const updateTime = ref('')
-    const currentPage = ref(1)
-    const hasMore = ref(true)
-    const displayCount = ref(DISPLAY_BATCH)
-    const prevKeys = new Set()
-    const modal = reactive({ visible: false, news: null })
-    const listRef = ref(null)
-    const containerRef = ref(null)
-    let refreshTimer = null
+const MAX_LEN = 35
+const PAGE_SIZE = 50
+const DISPLAY_BATCH = 30
 
-    const displayedNews = computed(() => {
-      return newsList.value.slice(0, displayCount.value)
-    })
+const newsList = ref<any[]>([])
+const loading = ref(false)
+const loadingMore = ref(false)
+const error = ref<string | null>(null)
+const updateTime = ref('')
+const currentPage = ref(1)
+const hasMore = ref(true)
+const displayCount = ref(DISPLAY_BATCH)
+const prevKeys = new Set()
+const modal = reactive({ visible: false, news: null as any })
+const listRef = ref<HTMLElement | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
+let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-    const sourcesText = computed(() => {
-      const sources = new Set()
-      newsList.value.forEach(n => { if (n.source) sources.add(n.source) })
-      return [...sources].join(' + ') || ''
-    })
+const displayedNews = computed(() => {
+  return newsList.value.slice(0, displayCount.value)
+})
 
-    const truncate = (text) => {
-      if (!text) return ''
-      return text.length > MAX_LEN ? text.slice(0, MAX_LEN) + '…' : text
-    }
+const sourcesText = computed(() => {
+  const sources = new Set()
+  newsList.value.forEach((n: any) => { if (n.source) sources.add(n.source) })
+  return [...sources].join(' + ') || ''
+})
 
-    const openDetail = (news) => {
-      modal.news = news
-      modal.visible = true
-      document.body.style.overflow = 'hidden'
-    }
-
-    const closeDetail = () => {
-      modal.visible = false
-      modal.news = null
-      document.body.style.overflow = ''
-    }
-
-    const mergeNews = (incoming) => {
-      const existingKeys = new Set(newsList.value.map(n => n._key))
-      const newItems = []
-      incoming.forEach(n => {
-        const key = n.publish_time + n.title?.slice(0, 20)
-        if (!existingKeys.has(key)) {
-          newItems.push({
-            ...n,
-            _key: key,
-            _isNew: prevKeys.size > 0 && !prevKeys.has(key),
-          })
-          existingKeys.add(key)
-        }
-      })
-      if (newItems.length) {
-        newsList.value = [...newsList.value, ...newItems]
-      }
-    }
-
-    const fetchNews = async (page = 1, append = false) => {
-      if (page === 1) {
-        loading.value = true
-      } else {
-        loadingMore.value = true
-      }
-      error.value = null
-      try {
-        const response = await marketAPI.getFlashNews(PAGE_SIZE, page)
-        if (response.data.success) {
-          const incoming = response.data.data || []
-
-          if (page === 1) {
-            // First page: replace entirely and track new items
-            const currentKeys = new Set(incoming.map(n => n.publish_time + n.title?.slice(0, 20)))
-            const enriched = incoming.map(n => ({
-              ...n,
-              _key: n.publish_time + n.title?.slice(0, 20),
-              _isNew: prevKeys.size > 0 && !prevKeys.has(n.publish_time + n.title?.slice(0, 20)),
-            }))
-            prevKeys.clear()
-            currentKeys.forEach(k => prevKeys.add(k))
-            newsList.value = enriched
-            displayCount.value = DISPLAY_BATCH
-            currentPage.value = 1
-          } else if (append) {
-            mergeNews(incoming)
-          }
-
-          hasMore.value = response.data.hasMore ?? (incoming.length >= PAGE_SIZE)
-          updateTime.value = response.data.update_time || ''
-
-          // Clear new-item animation after 2s
-          nextTick(() => {
-            setTimeout(() => { newsList.value.forEach(n => (n._isNew = false)) }, 2000)
-          })
-        } else if (page === 1) {
-          error.value = response.data.error || '获取快讯失败'
-        }
-      } catch (e) {
-        if (page === 1) {
-          error.value = '网络异常，请稍后重试'
-        }
-      } finally {
-        loading.value = false
-        loadingMore.value = false
-      }
-    }
-
-    const loadMore = async () => {
-      if (loadingMore.value || !hasMore.value) return
-
-      // First try revealing more from already-fetched data
-      if (displayCount.value < newsList.value.length) {
-        displayCount.value = Math.min(displayCount.value + DISPLAY_BATCH, newsList.value.length)
-        return
-      }
-
-      // Need to fetch next page
-      const nextPage = currentPage.value + 1
-      await fetchNews(nextPage, true)
-      currentPage.value = nextPage
-      // Reveal the new items
-      displayCount.value = Math.min(displayCount.value + DISPLAY_BATCH, newsList.value.length)
-    }
-
-    const resetAndFetch = () => {
-      displayCount.value = DISPLAY_BATCH
-      currentPage.value = 1
-      hasMore.value = true
-      fetchNews(1, false)
-    }
-
-    const onScroll = () => {
-      const el = listRef.value
-      if (!el) return
-      // Load more when within 80px of the bottom
-      if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
-        loadMore()
-      }
-    }
-
-    const formatRelativeTime = (timeStr) => {
-      if (!timeStr) return ''
-      try {
-        const ts = new Date(timeStr.replace(' ', 'T')).getTime()
-        if (isNaN(ts)) return timeStr.slice(5, 16)
-        const diff = Math.max(0, Date.now() - ts)
-        const mins = Math.floor(diff / 60000)
-        if (mins < 1) return '刚刚'
-        if (mins < 60) return `${mins}分钟前`
-        const hours = Math.floor(mins / 60)
-        if (hours < 24) return `${hours}小时前`
-        if (hours < 48) return '昨天'
-        return timeStr.slice(5, 16)
-      } catch { return timeStr.slice(5, 16) }
-    }
-
-    const formatUpdateTime = (timeStr) => {
-      if (!timeStr) return ''
-      const normalized = String(timeStr).replace(' ', 'T')
-      const date = new Date(normalized)
-      if (!Number.isNaN(date.getTime())) {
-        return date.toLocaleTimeString('zh-CN', {
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })
-      }
-      const match = String(timeStr).match(/(\d{2}:\d{2}:\d{2})/)
-      return match ? match[1] : String(timeStr)
-    }
-
-    onMounted(() => {
-      fetchNews(1, false)
-      if (props.autoRefresh) refreshTimer = setInterval(() => fetchNews(1, false), props.refreshInterval)
-    })
-    onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
-
-    return {
-      newsList, displayedNews, loading, loadingMore, error, updateTime, modal,
-      hasMore, sourcesText, listRef, containerRef,
-      truncate, openDetail, closeDetail, fetchNews, loadMore, resetAndFetch,
-      onScroll, formatRelativeTime, formatUpdateTime,
-    }
-  },
+const truncate = (text: string) => {
+  if (!text) return ''
+  return text.length > MAX_LEN ? text.slice(0, MAX_LEN) + '…' : text
 }
+
+const openDetail = (news: any) => {
+  modal.news = news
+  modal.visible = true
+  document.body.style.overflow = 'hidden'
+}
+
+const closeDetail = () => {
+  modal.visible = false
+  modal.news = null
+  document.body.style.overflow = ''
+}
+
+const mergeNews = (incoming: any[]) => {
+  const existingKeys = new Set(newsList.value.map((n: any) => n._key))
+  const newItems: any[] = []
+  incoming.forEach((n: any) => {
+    const key = n.publish_time + n.title?.slice(0, 20)
+    if (!existingKeys.has(key)) {
+      newItems.push({
+        ...n,
+        _key: key,
+        _isNew: prevKeys.size > 0 && !prevKeys.has(key),
+      })
+      existingKeys.add(key)
+    }
+  })
+  if (newItems.length) {
+    newsList.value = [...newsList.value, ...newItems]
+  }
+}
+
+const fetchNews = async (page = 1, append = false) => {
+  if (page === 1) {
+    loading.value = true
+  } else {
+    loadingMore.value = true
+  }
+  error.value = null
+  try {
+    const response = await marketAPI.getFlashNews(PAGE_SIZE, page)
+    if (response.data.success) {
+      const incoming = response.data.data || []
+
+      if (page === 1) {
+        const currentKeys = new Set(incoming.map((n: any) => n.publish_time + n.title?.slice(0, 20)))
+        const enriched = incoming.map((n: any) => ({
+          ...n,
+          _key: n.publish_time + n.title?.slice(0, 20),
+          _isNew: prevKeys.size > 0 && !prevKeys.has(n.publish_time + n.title?.slice(0, 20)),
+        }))
+        prevKeys.clear()
+        currentKeys.forEach((k) => prevKeys.add(k))
+        newsList.value = enriched
+        displayCount.value = DISPLAY_BATCH
+        currentPage.value = 1
+      } else if (append) {
+        mergeNews(incoming)
+      }
+
+      hasMore.value = response.data.hasMore ?? (incoming.length >= PAGE_SIZE)
+      updateTime.value = response.data.update_time || ''
+
+      nextTick(() => {
+        setTimeout(() => { newsList.value.forEach((n: any) => (n._isNew = false)) }, 2000)
+      })
+    } else if (page === 1) {
+      error.value = response.data.error || '获取快讯失败'
+    }
+  } catch (e) {
+    if (page === 1) {
+      error.value = '网络异常，请稍后重试'
+    }
+  } finally {
+    loading.value = false
+    loadingMore.value = false
+  }
+}
+
+const loadMore = async () => {
+  if (loadingMore.value || !hasMore.value) return
+
+  if (displayCount.value < newsList.value.length) {
+    displayCount.value = Math.min(displayCount.value + DISPLAY_BATCH, newsList.value.length)
+    return
+  }
+
+  const nextPage = currentPage.value + 1
+  await fetchNews(nextPage, true)
+  currentPage.value = nextPage
+  displayCount.value = Math.min(displayCount.value + DISPLAY_BATCH, newsList.value.length)
+}
+
+const resetAndFetch = () => {
+  displayCount.value = DISPLAY_BATCH
+  currentPage.value = 1
+  hasMore.value = true
+  fetchNews(1, false)
+}
+
+const onScroll = () => {
+  const el = listRef.value
+  if (!el) return
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+    loadMore()
+  }
+}
+
+const formatRelativeTime = (timeStr: string) => {
+  if (!timeStr) return ''
+  try {
+    const ts = new Date(timeStr.replace(' ', 'T')).getTime()
+    if (isNaN(ts)) return timeStr.slice(5, 16)
+    const diff = Math.max(0, Date.now() - ts)
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return '刚刚'
+    if (mins < 60) return `${mins}分钟前`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}小时前`
+    if (hours < 48) return '昨天'
+    return timeStr.slice(5, 16)
+  } catch { return timeStr.slice(5, 16) }
+}
+
+const formatUpdateTime = (timeStr: string) => {
+  if (!timeStr) return ''
+  const normalized = String(timeStr).replace(' ', 'T')
+  const date = new Date(normalized)
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleTimeString('zh-CN', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  }
+  const match = String(timeStr).match(/(\d{2}:\d{2}:\d{2})/)
+  return match ? match[1] : String(timeStr)
+}
+
+onMounted(() => {
+  fetchNews(1, false)
+  if (props.autoRefresh) refreshTimer = setInterval(() => fetchNews(1, false), props.refreshInterval)
+})
+onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
 </script>
 
 <style scoped>
-/* ── 容器 ──────────────────────────────────────────── */
 .flash-news-container {
   background: var(--bg-card);
   border-radius: 12px;
@@ -369,7 +347,6 @@ export default {
 .spinning { display: inline-block; animation: spin 0.8s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-/* ── 骨架屏 ────────────────────────────────────────── */
 .skeleton-list { padding: 10px 14px; }
 .skeleton-item { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
 .skeleton-line { height: 10px; border-radius: 5px; margin-bottom: 6px;
@@ -380,7 +357,6 @@ export default {
 .skeleton-title.short { width: 60%; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-/* ── 状态 ──────────────────────────────────────────── */
 .error-state, .empty-state {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; padding: 40px 20px; color: var(--text-tertiary);
@@ -392,7 +368,6 @@ export default {
 }
 .retry-btn:hover { background: var(--color-primary-hover); }
 
-/* ── 列表 ──────────────────────────────────────────── */
 .news-list { flex: 1; overflow-y: auto; padding: 2px 0; }
 .news-list::-webkit-scrollbar { width: 4px; }
 .news-list::-webkit-scrollbar-track { background: transparent; }
@@ -424,7 +399,6 @@ export default {
 .item-title { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text-primary); }
 .news-item:hover .item-title { color: var(--color-primary); }
 
-/* ── 加载更多 ──────────────────────────────────────── */
 .loading-more {
   text-align: center; padding: 14px; font-size: 12px; color: var(--text-tertiary);
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -436,7 +410,6 @@ export default {
 }
 @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-/* ── 底部 ──────────────────────────────────────────── */
 .news-footer {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 14px; border-top: 1px solid var(--border-default);
@@ -444,13 +417,11 @@ export default {
 }
 .footer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
 
-/* ── 过渡动画 ──────────────────────────────────────── */
 .news-fade-enter-active { transition: all 0.4s ease; }
 .news-fade-leave-active { transition: all 0.25s ease; }
 .news-fade-enter-from { opacity: 0; transform: translateY(-8px); }
 .news-fade-leave-to { opacity: 0; transform: translateX(20px); }
 
-/* ── 弹窗 ──────────────────────────────────────────── */
 .news-modal-overlay {
   position: fixed; inset: 0; z-index: 9999;
   background: var(--bg-overlay);
@@ -502,7 +473,6 @@ export default {
 .chip-up { background: var(--color-danger-bg); } .chip-up .chip-ratio { color: var(--color-danger); }
 .chip-down { background: var(--color-success-bg); } .chip-down .chip-ratio { color: var(--color-success); }
 
-/* ── 响应式 ────────────────────────────────────────── */
 @media (max-width: 768px) {
   .news-item { padding: 8px 12px; }
   .item-title { font-size: 12px; }

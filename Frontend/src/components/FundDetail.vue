@@ -1,26 +1,26 @@
 <template>
   <div class="fund-detail">
     <!-- 基金基础信息组件 -->
-    <FundBasicInfo 
-      :fundCode="currentFundCode" 
-      :fundData="fundDetail" 
-      :riskMetrics="riskMetrics" 
+    <FundBasicInfo
+      :fundCode="currentFundCode"
+      :fundData="fundDetail"
+      :riskMetrics="riskMetrics"
       @trigger-ai-analysis="handleStartAIAnalysis"
     />
 
     <!-- AI 智能分析区域 -->
     <div v-show="showAIAnalysis" class="ai-analysis-section">
-      <FundAIAnalysis 
+      <FundAIAnalysis
         ref="fundAIAnalysisRef"
-        :fundCode="currentFundCode" 
+        :fundCode="currentFundCode"
         @close="showAIAnalysis = false"
         @analysis-complete="handleAnalysisComplete"
       />
     </div>
-    
+
     <!-- 主要内容区域 - Dashboard 布局 -->
     <div v-if="fundDetail" class="dashboard">
-      
+
       <!-- 左侧主区域 -->
       <div class="main-area">
         <!-- 净值走势图 -->
@@ -31,7 +31,7 @@
             :grandTotal="fundDetail.total_return_trend"
           />
         </div>
-        
+
         <!-- 中间两列区域 -->
         <div class="grid-2">
           <div class="card card-md clickable" @click="openModal('ranking')">
@@ -95,7 +95,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 放大模态框 -->
     <div v-if="modalVisible" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
@@ -161,18 +161,21 @@
     </div>
 
     <!-- 加载状态 -->
-    <div v-else-if="loading" class="loading">
-      <div class="loading-spinner"></div>
-      <p>正在加载基金详情...</p>
+    <div v-else-if="loading" class="skeleton-loading">
+      <SkeletonCard :lines="4" :height="160" title />
+      <SkeletonChart :height="300" />
+      <div class="skeleton-grid">
+        <SkeletonCard v-for="n in 3" :key="n" :lines="2" :height="100" />
+      </div>
     </div>
-    
+
     <!-- 错误状态 -->
     <div v-else-if="error" class="error">
       <div class="error-icon"><LucideIcon name="TriangleAlert" :size="32" /></div>
       <p>{{ error }}</p>
       <button @click="retry" class="retry-btn">重试</button>
     </div>
-    
+
     <!-- 空状态 -->
     <div v-else-if="!currentFundCode" class="empty-state">
       <div class="empty-icon"><LucideIcon name="BarChart3" :size="32" /></div>
@@ -181,7 +184,7 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import FundBasicInfo from './FundBasicInfo.vue'
 import FundChart from './FundChart.vue'
@@ -196,382 +199,329 @@ import FundSubscription from './FundSubscription.vue'
 import FundSameType from './FundSameType.vue'
 import FundAIAnalysis from './FundAIAnalysis.vue'
 import StockPopup from './StockPopup.vue'
+import SkeletonCard from './SkeletonCard.vue'
+import SkeletonChart from './SkeletonChart.vue'
 import { fundAPI, marketAPI } from '../services/api'
+import { useFundStore } from '../stores/fundStore'
 
-export default {
-  name: 'FundDetail',
-  emits: ['navigate-to-fund'],
-  components: {
-    FundBasicInfo,
-    FundChart,
-    FundRankingTrend,
-    FundAssetAllocation,
-    FundScaleChange,
-    FundManagerInfo,
-    FundHolderStructure,
-    FundPortfolio,
-    FundAbilityEval,
-    FundSubscription,
-    FundSameType,
-    FundAIAnalysis,
-    StockPopup
-  },
-  props: {
-    fundCode: {
-      type: String,
-      default: ''
+const props = defineProps({
+  fundCode: {
+    type: String,
+    default: ''
+  }
+})
+
+const emit = defineEmits(['navigate-to-fund'])
+
+const currentFundCode = ref(props.fundCode)
+const fundDetail: any = ref(null)
+const loading = ref(false)
+const error = ref('')
+const modalVisible = ref(false)
+const modalType = ref('')
+const fundAIAnalysisRef: any = ref(null)
+const showAIAnalysis = ref(false)
+const aiAnalysisData: any = ref(null)
+
+// 个股详情弹窗状态
+const stockModalVisible = ref(false)
+const stockQuoteLoading = ref(false)
+const stockQuoteData: any = ref(null)
+const stockQuoteError = ref('')
+
+// 点击持仓股票
+const handleStockClick = async (stock: any) => {
+  if (!stock || !stock.code) return
+  stockQuoteLoading.value = true
+  stockQuoteError.value = ''
+  stockQuoteData.value = null
+  stockModalVisible.value = true
+  document.body.style.overflow = 'hidden'
+
+  try {
+    const response = await marketAPI.getStockQuote(stock.code)
+    if (response.data?.success && response.data?.data) {
+      stockQuoteData.value = response.data.data
+    } else {
+      stockQuoteError.value = response.data?.error || '获取行情数据失败'
     }
-  },
-  setup(props, { emit }) {
-    const currentFundCode = ref(props.fundCode)
-    const fundDetail = ref(null)
-    const loading = ref(false)
-    const error = ref('')
-    const modalVisible = ref(false)
-    const modalType = ref('')
-    const fundAIAnalysisRef = ref(null)
-    const showAIAnalysis = ref(false)
-    const aiAnalysisData = ref(null)
-
-    // 个股详情弹窗状态
-    const stockModalVisible = ref(false)
-    const stockQuoteLoading = ref(false)
-    const stockQuoteData = ref(null)
-    const stockQuoteError = ref('')
-
-    // 点击持仓股票
-    const handleStockClick = async (stock) => {
-      if (!stock || !stock.code) return
-      stockQuoteLoading.value = true
-      stockQuoteError.value = ''
-      stockQuoteData.value = null
-      stockModalVisible.value = true
-      document.body.style.overflow = 'hidden'
-
-      try {
-        const response = await marketAPI.getStockQuote(stock.code)
-        if (response.data?.success && response.data?.data) {
-          stockQuoteData.value = response.data.data
-        } else {
-          stockQuoteError.value = response.data?.error || '获取行情数据失败'
-        }
-      } catch (err) {
-        console.error('获取个股行情失败:', err)
-        stockQuoteError.value = err.response?.data?.error || '网络请求失败，请稍后重试'
-      } finally {
-        stockQuoteLoading.value = false
-      }
-    }
-
-    // 关闭个股弹窗
-    const closeStockModal = () => {
-      stockModalVisible.value = false
-      stockQuoteData.value = null
-      stockQuoteLoading.value = false
-      stockQuoteError.value = ''
-      document.body.style.overflow = ''
-    }
-
-    // 处理同类型基金点击 - 跳转到该基金详情
-    const handleSameTypeFundSelect = (fundCode) => {
-      if (!fundCode) return
-      // 关闭模态框（如果打开的话）
-      closeModal()
-      // 通知父组件导航到新基金
-      emit('navigate-to-fund', fundCode)
-    }
-
-    // 处理开启AI分析
-    const handleStartAIAnalysis = () => {
-      showAIAnalysis.value = true
-      // 等待DOM更新后调用分析方法
-      setTimeout(() => {
-        if (fundAIAnalysisRef.value) {
-          fundAIAnalysisRef.value.analyze()
-        }
-      }, 0)
-    }
-
-    // 处理AI分析完成
-    const handleAnalysisComplete = (data) => {
-      aiAnalysisData.value = data
-    }
-
-    // 计算风险指标
-    const riskMetrics = computed(() => {
-      if (!fundDetail.value?.net_worth_trend) return null
-
-      try {
-        const sortedData = [...fundDetail.value.net_worth_trend].sort((a, b) => new Date(a.date) - new Date(b.date))
-        
-        // 转换为净值数组
-        const values = sortedData.map(item => parseFloat(item.net_worth)).filter(v => !isNaN(v))
-        const dates = sortedData.map(item => item.date)
-        
-        if (values.length < 30) return null
-        
-        const now = new Date()
-        
-        // 获取指定时间段的数据
-        const getDataForPeriod = (months) => {
-          const cutoffDate = new Date(now)
-          cutoffDate.setMonth(cutoffDate.getMonth() - months)
-          const cutoffStr = cutoffDate.toISOString().split('T')[0]
-          
-          const periodValues = []
-          for (let i = 0; i < dates.length; i++) {
-            if (dates[i] >= cutoffStr) {
-              periodValues.push(values[i])
-            }
-          }
-          return periodValues
-        }
-        
-        // 计算最大回撤
-        const calcMaxDrawdown = (periodValues) => {
-          if (periodValues.length < 2) return null
-          
-          let peak = periodValues[0]
-          let maxDrawdown = 0
-          
-          for (const value of periodValues) {
-            if (value > peak) peak = value
-            const drawdown = (peak - value) / peak * 100
-            if (drawdown > maxDrawdown) maxDrawdown = drawdown
-          }
-          
-          return maxDrawdown.toFixed(2)
-        }
-        
-        // 计算日收益率
-        const calcDailyReturns = (periodValues) => {
-          if (periodValues.length < 2) return []
-          const returns = []
-          for (let i = 1; i < periodValues.length; i++) {
-            if (periodValues[i-1] !== 0) {
-              returns.push((periodValues[i] - periodValues[i-1]) / periodValues[i-1])
-            }
-          }
-          return returns
-        }
-        
-        // 计算年化收益率
-        const calcAnnualReturn = (periodValues, tradingDays) => {
-          if (periodValues.length < 2 || periodValues[0] === 0 || tradingDays <= 0) return null
-          const totalReturn = (periodValues[periodValues.length - 1] - periodValues[0]) / periodValues[0]
-          const annualReturn = (Math.pow(1 + totalReturn, 252 / tradingDays) - 1) * 100
-          return annualReturn.toFixed(2)
-        }
-        
-        // 计算年化波动率
-        const calcVolatility = (dailyReturns) => {
-          if (dailyReturns.length < 10) return null
-          const mean = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length
-          const variance = dailyReturns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / dailyReturns.length
-          const dailyVol = Math.sqrt(variance)
-          const annualVol = dailyVol * Math.sqrt(252) * 100
-          return annualVol.toFixed(2)
-        }
-        
-        // 计算夏普比率（无风险利率2%）
-        const calcSharpeRatio = (annualReturn, volatility) => {
-          if (!annualReturn || !volatility || parseFloat(volatility) === 0) return null
-          const sharpe = (parseFloat(annualReturn) - 2.0) / parseFloat(volatility)
-          return sharpe.toFixed(2)
-        }
-        
-        // 计算近1年指标
-        const values1y = getDataForPeriod(12)
-        const dailyReturns1y = calcDailyReturns(values1y)
-        const annualReturn1y = calcAnnualReturn(values1y, values1y.length)
-        const volatility1y = calcVolatility(dailyReturns1y)
-        const sharpe1y = calcSharpeRatio(annualReturn1y, volatility1y)
-        const maxDrawdown1y = calcMaxDrawdown(values1y)
-        
-        // 计算近3年指标
-        const values3y = getDataForPeriod(36)
-        const dailyReturns3y = calcDailyReturns(values3y)
-        const annualReturn3y = calcAnnualReturn(values3y, values3y.length)
-        const volatility3y = calcVolatility(dailyReturns3y)
-        const sharpe3y = calcSharpeRatio(annualReturn3y, volatility3y)
-        const maxDrawdown3y = calcMaxDrawdown(values3y)
-        
-        return {
-          sharpe_ratio_1y: sharpe1y,
-          sharpe_ratio_3y: sharpe3y,
-          max_drawdown_1y: maxDrawdown1y,
-          max_drawdown_3y: maxDrawdown3y,
-          volatility_1y: volatility1y,
-          volatility_3y: volatility3y,
-          annual_return_1y: annualReturn1y,
-          annual_return_3y: annualReturn3y
-        }
-      } catch (e) {
-        console.error('计算风险指标错误:', e)
-        return null
-      }
-    })
-
-    // 打开模态框
-    const openModal = (type) => {
-      modalType.value = type
-      modalVisible.value = true
-      document.body.style.overflow = 'hidden'
-    }
-
-    // 关闭模态框
-    const closeModal = () => {
-      modalVisible.value = false
-      modalType.value = ''
-      document.body.style.overflow = ''
-    }
-
-    // 处理净值走势数据格式
-    const processedNetWorthTrend = computed(() => {
-      if (!fundDetail.value?.net_worth_trend) return []
-
-      try {
-        // 处理不同的数据格式
-        const trend = fundDetail.value.net_worth_trend
-        if (Array.isArray(trend) && trend.length > 0) {
-          // 新格式: [{date: '2024-01-01', net_worth: 1.23}]
-          if (trend[0].date && trend[0].net_worth !== undefined) {
-            return trend
-              .map(item => {
-                const ts = new Date(item.date).getTime()
-                if (isNaN(ts)) return null  // skip invalid dates
-                const val = parseFloat(item.net_worth)
-                if (isNaN(val)) return null  // skip invalid values
-                return { x: ts, y: val }
-              })
-              .filter(item => item !== null)
-          }
-          // 旧格式1: [{x: timestamp, y: value}]
-          if (trend[0].x && trend[0].y !== undefined) {
-            return trend
-              .filter(item => typeof item.x === 'number' && !isNaN(item.x) && !isNaN(parseFloat(item.y)))
-              .map(item => ({
-                x: item.x,
-                y: parseFloat(item.y) || 0
-              }))
-          }
-          // 旧格式2: [timestamp, value]
-          else if (Array.isArray(trend[0]) && trend[0].length >= 2) {
-            return trend
-              .filter(item => !isNaN(item[0]) && !isNaN(parseFloat(item[1])))
-              .map(item => ({
-                x: item[0],
-                y: parseFloat(item[1]) || 0
-              }))
-          }
-        }
-        return []
-      } catch (e) {
-        console.error('处理净值走势数据错误:', e)
-        return []
-      }
-    })
-
-    // 处理累计净值走势数据
-    const processedAcWorthTrend = computed(() => {
-      if (!fundDetail.value?.accumulated_net_worth) return []
-
-      try {
-        const trend = fundDetail.value.accumulated_net_worth
-        if (Array.isArray(trend) && trend.length > 0) {
-          // 新格式: [{date: '2024-01-01', position_percentage: 1.23}]
-          if (trend[0].date !== undefined) {
-            return trend
-              .filter(item => {
-                const ts = new Date(item.date).getTime()
-                return !isNaN(ts) && !isNaN(parseFloat(item.position_percentage))
-              })
-              .map(item => [
-                new Date(item.date).getTime(),
-                parseFloat(item.position_percentage) || 0
-              ])
-          }
-          // 旧格式: [[timestamp, value]]
-          return trend
-            .filter(item => Array.isArray(item) && item.length >= 2 && !isNaN(item[0]) && !isNaN(parseFloat(item[1])))
-            .map(item => [item[0], parseFloat(item[1]) || 0])
-        }
-        return []
-      } catch (e) {
-        console.error('处理累计净值数据错误:', e)
-        return []
-      }
-    })
-
-    // 获取基金详情
-    const fetchFundDetail = async (fundCode) => {
-      if (!fundCode) {
-        fundDetail.value = null
-        return
-      }
-
-      loading.value = true
-      error.value = ''
-      try {
-        const response = await fundAPI.getFundDetail(fundCode)
-        fundDetail.value = response.data
-        console.log('基金详情数据:', response.data)
-      } catch (err) {
-        console.error('获取基金详情失败:', err)
-        error.value = err.response?.data?.error || '获取基金详情失败，请检查基金代码是否正确'
-        fundDetail.value = null
-      } finally {
-        loading.value = false
-      }
-    }
-
-    // 重试函数
-    const retry = () => {
-      if (currentFundCode.value) {
-        fetchFundDetail(currentFundCode.value)
-      }
-    }
-
-    // 监听基金代码变化
-    watch(() => props.fundCode, (newCode) => {
-      currentFundCode.value = newCode
-      if (newCode) {
-        fetchFundDetail(newCode)
-      } else {
-        fundDetail.value = null
-        loading.value = false
-        error.value = ''
-      }
-    }, { immediate: true })
-
-    return {
-      currentFundCode,
-      fundDetail,
-      loading,
-      error,
-      processedNetWorthTrend,
-      processedAcWorthTrend,
-      riskMetrics,
-      retry,
-      modalVisible,
-      modalType,
-      openModal,
-      closeModal,
-      fundAIAnalysisRef,
-      showAIAnalysis,
-      handleStartAIAnalysis,
-      aiAnalysisData,
-      handleAnalysisComplete,
-      stockModalVisible,
-      stockQuoteLoading,
-      stockQuoteData,
-      stockQuoteError,
-      handleStockClick,
-      closeStockModal,
-      handleSameTypeFundSelect
-    }
+  } catch (err: any) {
+    console.error('获取个股行情失败:', err)
+    stockQuoteError.value = err.response?.data?.error || '网络请求失败，请稍后重试'
+  } finally {
+    stockQuoteLoading.value = false
   }
 }
+
+// 关闭个股弹窗
+const closeStockModal = () => {
+  stockModalVisible.value = false
+  stockQuoteData.value = null
+  stockQuoteLoading.value = false
+  stockQuoteError.value = ''
+  document.body.style.overflow = ''
+}
+
+// 处理同类型基金点击 - 跳转到该基金详情
+const handleSameTypeFundSelect = (fundCode: string) => {
+  if (!fundCode) return
+  closeModal()
+  emit('navigate-to-fund', fundCode)
+}
+
+// 处理开启AI分析
+const handleStartAIAnalysis = () => {
+  showAIAnalysis.value = true
+  setTimeout(() => {
+    if (fundAIAnalysisRef.value) {
+      fundAIAnalysisRef.value.analyze()
+    }
+  }, 0)
+}
+
+// 处理AI分析完成
+const handleAnalysisComplete = (data: any) => {
+  aiAnalysisData.value = data
+}
+
+// 计算风险指标
+const riskMetrics = computed(() => {
+  if (!fundDetail.value?.net_worth_trend) return null
+
+  try {
+    const sortedData = [...fundDetail.value.net_worth_trend].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+    // 转换为净值数组
+    const values = sortedData.map((item: any) => parseFloat(item.net_worth)).filter((v: any) => !isNaN(v))
+    const dates = sortedData.map((item: any) => item.date)
+
+    if (values.length < 30) return null
+
+    const now = new Date()
+
+    // 获取指定时间段的数据
+    const getDataForPeriod = (months: number) => {
+      const cutoffDate = new Date(now)
+      cutoffDate.setMonth(cutoffDate.getMonth() - months)
+      const cutoffStr = cutoffDate.toISOString().split('T')[0]
+
+      const periodValues = []
+      for (let i = 0; i < dates.length; i++) {
+        if (dates[i] >= cutoffStr) {
+          periodValues.push(values[i])
+        }
+      }
+      return periodValues
+    }
+
+    // 计算最大回撤
+    const calcMaxDrawdown = (periodValues: number[]) => {
+      if (periodValues.length < 2) return null
+
+      let peak = periodValues[0]
+      let maxDrawdown = 0
+
+      for (const value of periodValues) {
+        if (value > peak) peak = value
+        const drawdown = (peak - value) / peak * 100
+        if (drawdown > maxDrawdown) maxDrawdown = drawdown
+      }
+
+      return maxDrawdown.toFixed(2)
+    }
+
+    // 计算日收益率
+    const calcDailyReturns = (periodValues: number[]) => {
+      if (periodValues.length < 2) return []
+      const returns = []
+      for (let i = 1; i < periodValues.length; i++) {
+        if (periodValues[i-1] !== 0) {
+          returns.push((periodValues[i] - periodValues[i-1]) / periodValues[i-1])
+        }
+      }
+      return returns
+    }
+
+    // 计算年化收益率
+    const calcAnnualReturn = (periodValues: number[], tradingDays: number) => {
+      if (periodValues.length < 2 || periodValues[0] === 0 || tradingDays <= 0) return null
+      const totalReturn = (periodValues[periodValues.length - 1] - periodValues[0]) / periodValues[0]
+      const annualReturn = (Math.pow(1 + totalReturn, 252 / tradingDays) - 1) * 100
+      return annualReturn.toFixed(2)
+    }
+
+    // 计算年化波动率
+    const calcVolatility = (dailyReturns: number[]) => {
+      if (dailyReturns.length < 10) return null
+      const mean = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length
+      const variance = dailyReturns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / dailyReturns.length
+      const dailyVol = Math.sqrt(variance)
+      const annualVol = dailyVol * Math.sqrt(252) * 100
+      return annualVol.toFixed(2)
+    }
+
+    // 计算夏普比率（无风险利率2%）
+    const calcSharpeRatio = (annualReturn: any, volatility: any) => {
+      if (!annualReturn || !volatility || parseFloat(volatility) === 0) return null
+      const sharpe = (parseFloat(annualReturn) - 2.0) / parseFloat(volatility)
+      return sharpe.toFixed(2)
+    }
+
+    // 计算近1年指标
+    const values1y = getDataForPeriod(12)
+    const dailyReturns1y = calcDailyReturns(values1y)
+    const annualReturn1y = calcAnnualReturn(values1y, values1y.length)
+    const volatility1y = calcVolatility(dailyReturns1y)
+    const sharpe1y = calcSharpeRatio(annualReturn1y, volatility1y)
+    const maxDrawdown1y = calcMaxDrawdown(values1y)
+
+    // 计算近3年指标
+    const values3y = getDataForPeriod(36)
+    const dailyReturns3y = calcDailyReturns(values3y)
+    const annualReturn3y = calcAnnualReturn(values3y, values3y.length)
+    const volatility3y = calcVolatility(dailyReturns3y)
+    const sharpe3y = calcSharpeRatio(annualReturn3y, volatility3y)
+    const maxDrawdown3y = calcMaxDrawdown(values3y)
+
+    return {
+      sharpe_ratio_1y: sharpe1y,
+      sharpe_ratio_3y: sharpe3y,
+      max_drawdown_1y: maxDrawdown1y,
+      max_drawdown_3y: maxDrawdown3y,
+      volatility_1y: volatility1y,
+      volatility_3y: volatility3y,
+      annual_return_1y: annualReturn1y,
+      annual_return_3y: annualReturn3y
+    }
+  } catch (e) {
+    console.error('计算风险指标错误:', e)
+    return null
+  }
+})
+
+// 打开模态框
+const openModal = (type: string) => {
+  modalType.value = type
+  modalVisible.value = true
+  document.body.style.overflow = 'hidden'
+}
+
+// 关闭模态框
+const closeModal = () => {
+  modalVisible.value = false
+  modalType.value = ''
+  document.body.style.overflow = ''
+}
+
+// 处理净值走势数据格式
+const processedNetWorthTrend = computed(() => {
+  if (!fundDetail.value?.net_worth_trend) return []
+
+  try {
+    const trend = fundDetail.value.net_worth_trend
+    if (Array.isArray(trend) && trend.length > 0) {
+      if (trend[0].date && trend[0].net_worth !== undefined) {
+        return trend
+          .map((item: any) => {
+            const ts = new Date(item.date).getTime()
+            if (isNaN(ts)) return null
+            const val = parseFloat(item.net_worth)
+            if (isNaN(val)) return null
+            return { x: ts, y: val }
+          })
+          .filter(item => item !== null)
+      }
+      if (trend[0].x && trend[0].y !== undefined) {
+        return trend
+          .filter((item: any) => typeof item.x === 'number' && !isNaN(item.x) && !isNaN(parseFloat(item.y)))
+          .map((item: any) => ({
+            x: item.x,
+            y: parseFloat(item.y) || 0
+          }))
+      }
+      else if (Array.isArray(trend[0]) && trend[0].length >= 2) {
+        return trend
+          .filter((item: any) => !isNaN(item[0]) && !isNaN(parseFloat(item[1])))
+          .map((item: any) => ({
+            x: item[0],
+            y: parseFloat(item[1]) || 0
+          }))
+      }
+    }
+    return []
+  } catch (e) {
+    console.error('处理净值走势数据错误:', e)
+    return []
+  }
+})
+
+// 处理累计净值走势数据
+const processedAcWorthTrend = computed(() => {
+  if (!fundDetail.value?.accumulated_net_worth) return []
+
+  try {
+    const trend = fundDetail.value.accumulated_net_worth
+    if (Array.isArray(trend) && trend.length > 0) {
+      if (trend[0].date !== undefined) {
+        return trend
+          .filter((item: any) => {
+            const ts = new Date(item.date).getTime()
+            return !isNaN(ts) && !isNaN(parseFloat(item.position_percentage))
+          })
+          .map((item: any) => [
+            new Date(item.date).getTime(),
+            parseFloat(item.position_percentage) || 0
+          ])
+      }
+      return trend
+        .filter((item: any) => Array.isArray(item) && item.length >= 2 && !isNaN(item[0]) && !isNaN(parseFloat(item[1])))
+        .map((item: any) => [item[0], parseFloat(item[1]) || 0])
+    }
+    return []
+  } catch (e) {
+    console.error('处理累计净值数据错误:', e)
+    return []
+  }
+})
+
+const fundStore = useFundStore()
+
+const fetchFundDetail = async (fundCode: string) => {
+  if (!fundCode) {
+    fundDetail.value = null
+    return
+  }
+
+  loading.value = true
+  error.value = ''
+  try {
+    const data = await fundStore.fetchFund(fundCode)
+    fundDetail.value = data
+  } catch (err: any) {
+    console.error('获取基金详情失败:', err)
+    error.value = err.response?.data?.error || '获取基金详情失败，请检查基金代码是否正确'
+    fundDetail.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+const retry = () => {
+  if (currentFundCode.value) {
+    fetchFundDetail(currentFundCode.value)
+  }
+}
+
+watch(() => props.fundCode, (newCode) => {
+  currentFundCode.value = newCode
+  if (newCode) {
+    fetchFundDetail(newCode)
+  } else {
+    fundDetail.value = null
+    loading.value = false
+    error.value = ''
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -669,6 +619,17 @@ export default {
 }
 
 /* 加载状态 */
+.skeleton-loading {
+  padding: 20px;
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
 .loading {
   text-align: center;
   padding: 60px 20px;
@@ -770,11 +731,11 @@ export default {
   .dashboard {
     grid-template-columns: 1fr;
   }
-  
+
   .sidebar {
     flex-direction: row;
   }
-  
+
   .card-sidebar {
     flex: 1;
     max-height: 400px;
@@ -785,16 +746,16 @@ export default {
   .grid-2 {
     grid-template-columns: 1fr;
   }
-  
+
   .card-md {
     height: auto;
     min-height: 320px;
   }
-  
+
   .sidebar {
     flex-direction: column;
   }
-  
+
   .card-sidebar {
     max-height: none;
   }
@@ -804,16 +765,16 @@ export default {
   .fund-detail {
     padding: 0 8px;
   }
-  
+
   .dashboard {
     gap: 12px;
     padding: 12px 0;
   }
-  
+
   .main-area, .sidebar {
     gap: 12px;
   }
-  
+
   .grid-2 {
     gap: 12px;
   }

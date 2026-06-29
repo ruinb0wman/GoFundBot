@@ -15,9 +15,9 @@
           <div class="eval-grid">
             <div ref="radarChartEl" class="radar-chart"></div>
             <div class="eval-details">
-              <div 
-                v-for="(item, index) in evalItems" 
-                :key="index" 
+              <div
+                v-for="(item, index) in evalItems"
+                :key="index"
                 class="eval-item"
               >
                 <div class="eval-item-header">
@@ -68,286 +68,261 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 
-export default {
-  name: 'FundEvaluation',
-  props: {
-    performanceEvaluation: {
-      type: Object,
-      default: () => ({})
-    },
-    subscriptionRedemption: {
-      type: Object,
-      default: () => ({})
-    }
-  },
-  setup(props) {
-    const cssColor = (name, fallback = '') => {
-      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-    }
-    const { echartThemeName } = useEChartsTheme()
-    const radarChartEl = ref(null)
-    const redemptionChartEl = ref(null)
-    let radarChart = null
-    let redemptionChart = null
+const props = withDefaults(defineProps<{ fundEvaluation?: Record<string, any>; performanceEvaluation?: Record<string, any>; subscriptionRedemption?: Record<string, any> }>(), { fundEvaluation: () => ({}), performanceEvaluation: () => ({}), subscriptionRedemption: () => ({}) })
 
-    const hasEvalData = computed(() => {
-      const data = props.performanceEvaluation?.data
-      return data && Array.isArray(data) && data.some(v => v !== null)
-    })
-
-    const hasRedemptionData = computed(() => {
-      const series = props.subscriptionRedemption?.series
-      return series && Array.isArray(series) && series.length > 0
-    })
-
-    const avgScore = computed(() => props.performanceEvaluation?.avr || null)
-
-    const evalItems = computed(() => {
-      const categories = props.performanceEvaluation?.categories || []
-      const data = props.performanceEvaluation?.data || []
-      const dsc = props.performanceEvaluation?.dsc || []
-      
-      return categories.map((name, index) => ({
-        name,
-        score: data[index] ?? 0,
-        desc: dsc[index] || ''
-      }))
-    })
-
-    const redemptionTableData = computed(() => {
-      const categories = props.subscriptionRedemption?.categories || []
-      const series = props.subscriptionRedemption?.series || []
-      
-      const buyData = series.find(s => s.name === '期间申购')?.data || []
-      const sellData = series.find(s => s.name === '期间赎回')?.data || []
-      const totalData = series.find(s => s.name === '总份额')?.data || []
-      
-      return categories.map((date, index) => {
-        const buy = buyData[index] ?? 0
-        const sell = sellData[index] ?? 0
-        return {
-          date,
-          buy: buy.toFixed(2),
-          sell: sell.toFixed(2),
-          netBuy: (buy - sell).toFixed(2),
-          total: (totalData[index] ?? 0).toFixed(2)
-        }
-      })
-    })
-
-    const getScoreClass = (score) => {
-      if (score >= 80) return 'excellent'
-      if (score >= 60) return 'good'
-      if (score >= 40) return 'normal'
-      return 'poor'
-    }
-
-    const getBarColor = (score) => {
-      if (score >= 80) return 'linear-gradient(90deg, var(--color-success) 0%, var(--color-success) 100%)'
-      if (score >= 60) return 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary) 100%)'
-      if (score >= 40) return 'linear-gradient(90deg, var(--color-warning) 0%, var(--color-warning) 100%)'
-      return 'linear-gradient(90deg, var(--color-danger) 0%, var(--color-danger) 100%)'
-    }
-
-    const initRadarChart = () => {
-      if (!radarChartEl.value || !hasEvalData.value) return
-
-      if (radarChart) radarChart.dispose()
-      radarChart = echarts.init(radarChartEl.value, echartThemeName.value)
-
-      const categories = props.performanceEvaluation?.categories || []
-      const data = props.performanceEvaluation?.data || []
-
-      const option = {
-        tooltip: {
-          trigger: 'item'
-        },
-        radar: {
-          indicator: categories.map(name => ({
-            name,
-            max: 100
-          })),
-          radius: '65%',
-          axisName: {
-            color: cssColor('--chart-axis-label', '#666'),
-            fontSize: 11
-          },
-          splitArea: {
-            areaStyle: {
-              color: [cssColor('--color-primary-bg', '#eef4ff'), cssColor('--color-primary-bg', '#eef4ff')]
-            }
-          },
-          axisLine: {
-            lineStyle: {
-              color: cssColor('--chart-grid', 'rgba(22, 119, 255, 0.3)')
-            }
-          },
-          splitLine: {
-            lineStyle: {
-              color: cssColor('--border-subtle', 'rgba(22, 119, 255, 0.3)')
-            }
-          }
-        },
-        series: [{
-          type: 'radar',
-          data: [{
-            value: data,
-            name: '能力评分',
-            areaStyle: {
-              color: cssColor('--color-primary-bg', 'rgba(22, 119, 255, 0.3)')
-            },
-            lineStyle: {
-              color: cssColor('--color-primary', '#1677ff'),
-              width: 2
-            },
-            itemStyle: {
-              color: cssColor('--color-primary', '#1677ff')
-            }
-          }]
-        }]
-      }
-
-      radarChart.setOption(option)
-    }
-
-    const initRedemptionChart = () => {
-      if (!redemptionChartEl.value || !hasRedemptionData.value) return
-
-      if (redemptionChart) redemptionChart.dispose()
-      redemptionChart = echarts.init(redemptionChartEl.value, echartThemeName.value)
-
-      const categories = props.subscriptionRedemption?.categories || []
-      const series = props.subscriptionRedemption?.series || []
-
-      const buyData = series.find(s => s.name === '期间申购')?.data || []
-      const sellData = series.find(s => s.name === '期间赎回')?.data || []
-      const totalData = series.find(s => s.name === '总份额')?.data || []
-
-      const option = {
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: {
-            type: 'shadow'
-          }
-        },
-        legend: {
-          data: ['期间申购', '期间赎回', '总份额'],
-          bottom: 0,
-          textStyle: {
-            fontSize: 11
-          }
-        },
-        grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '15%',
-          top: '10%',
-          containLabel: true
-        },
-        xAxis: {
-          type: 'category',
-          data: categories,
-          axisLabel: {
-            fontSize: 10,
-            rotate: 30
-          }
-        },
-        yAxis: [
-          {
-            type: 'value',
-            name: '申购/赎回(亿)',
-            position: 'left',
-            axisLabel: {
-              fontSize: 10
-            }
-          },
-          {
-            type: 'value',
-            name: '总份额(亿)',
-            position: 'right',
-            axisLabel: {
-              fontSize: 10
-            }
-          }
-        ],
-        series: [
-          {
-            name: '期间申购',
-            type: 'bar',
-            data: buyData,
-            itemStyle: {
-              color: cssColor('--color-success', '#52c41a')
-            },
-            barWidth: '25%'
-          },
-          {
-            name: '期间赎回',
-            type: 'bar',
-            data: sellData,
-            itemStyle: {
-              color: cssColor('--color-danger', '#ff4d4f')
-            },
-            barWidth: '25%'
-          },
-          {
-            name: '总份额',
-            type: 'line',
-            yAxisIndex: 1,
-            data: totalData,
-            itemStyle: {
-              color: cssColor('--color-primary', '#1890ff')
-            },
-            lineStyle: {
-              width: 2
-            },
-            symbol: 'circle',
-            symbolSize: 6
-          }
-        ]
-      }
-
-      redemptionChart.setOption(option)
-    }
-
-    onMounted(() => {
-      nextTick(() => {
-        initRadarChart()
-        initRedemptionChart()
-      })
-    })
-
-    watch([() => props.performanceEvaluation, () => props.subscriptionRedemption], () => {
-      nextTick(() => {
-        initRadarChart()
-        initRedemptionChart()
-      })
-    }, { deep: true })
-
-    watch(echartThemeName, () => {
-      nextTick(() => {
-        initRadarChart()
-        initRedemptionChart()
-      })
-    })
-
-    return {
-      radarChartEl,
-      redemptionChartEl,
-      hasEvalData,
-      hasRedemptionData,
-      avgScore,
-      evalItems,
-      redemptionTableData,
-      getScoreClass,
-      getBarColor
-    }
-  }
+const cssColor = (name: string, fallback = '') => {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
 }
+const { echartThemeName } = useEChartsTheme()
+const radarChartEl = ref<HTMLElement | null>(null)
+const redemptionChartEl = ref<HTMLElement | null>(null)
+let radarChart: echarts.ECharts | null = null
+let redemptionChart: echarts.ECharts | null = null
+
+const hasEvalData = computed(() => {
+  const data = props.performanceEvaluation?.data
+  return data && Array.isArray(data) && data.some((v: any) => v !== null)
+})
+
+const hasRedemptionData = computed(() => {
+  const series = props.subscriptionRedemption?.series
+  return series && Array.isArray(series) && series.length > 0
+})
+
+const avgScore = computed(() => props.performanceEvaluation?.avr || null)
+
+const evalItems = computed(() => {
+  const categories = props.performanceEvaluation?.categories || []
+  const data = props.performanceEvaluation?.data || []
+  const dsc = props.performanceEvaluation?.dsc || []
+
+  return categories.map((name: string, index: number) => ({
+    name,
+    score: data[index] ?? 0,
+    desc: dsc[index] || ''
+  }))
+})
+
+const redemptionTableData = computed(() => {
+  const categories = props.subscriptionRedemption?.categories || []
+  const series = props.subscriptionRedemption?.series || []
+
+  const buyData = series.find((s: any) => s.name === '期间申购')?.data || []
+  const sellData = series.find((s: any) => s.name === '期间赎回')?.data || []
+  const totalData = series.find((s: any) => s.name === '总份额')?.data || []
+
+  return categories.map((date: string, index: number) => {
+    const buy = buyData[index] ?? 0
+    const sell = sellData[index] ?? 0
+    return {
+      date,
+      buy: buy.toFixed(2),
+      sell: sell.toFixed(2),
+      netBuy: (buy - sell).toFixed(2),
+      total: (totalData[index] ?? 0).toFixed(2)
+    }
+  })
+})
+
+const getScoreClass = (score: number) => {
+  if (score >= 80) return 'excellent'
+  if (score >= 60) return 'good'
+  if (score >= 40) return 'normal'
+  return 'poor'
+}
+
+const getBarColor = (score: number) => {
+  if (score >= 80) return 'linear-gradient(90deg, var(--color-success) 0%, var(--color-success) 100%)'
+  if (score >= 60) return 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary) 100%)'
+  if (score >= 40) return 'linear-gradient(90deg, var(--color-warning) 0%, var(--color-warning) 100%)'
+  return 'linear-gradient(90deg, var(--color-danger) 0%, var(--color-danger) 100%)'
+}
+
+const initRadarChart = () => {
+  if (!radarChartEl.value || !hasEvalData.value) return
+
+  if (radarChart) radarChart.dispose()
+  radarChart = echarts.init(radarChartEl.value, echartThemeName.value)
+
+  const categories = props.performanceEvaluation?.categories || []
+  const data = props.performanceEvaluation?.data || []
+
+  const option = {
+    tooltip: {
+      trigger: 'item'
+    },
+    radar: {
+      indicator: categories.map((name: string) => ({
+        name,
+        max: 100
+      })),
+      radius: '65%',
+      axisName: {
+        color: cssColor('--chart-axis-label', '#666'),
+        fontSize: 11
+      },
+      splitArea: {
+        areaStyle: {
+          color: [cssColor('--color-primary-bg', '#eef4ff'), cssColor('--color-primary-bg', '#eef4ff')]
+        }
+      },
+      axisLine: {
+        lineStyle: {
+          color: cssColor('--chart-grid', 'rgba(22, 119, 255, 0.3)')
+        }
+      },
+      splitLine: {
+        lineStyle: {
+          color: cssColor('--border-subtle', 'rgba(22, 119, 255, 0.3)')
+        }
+      }
+    },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: data,
+        name: '能力评分',
+        areaStyle: {
+          color: cssColor('--color-primary-bg', 'rgba(22, 119, 255, 0.3)')
+        },
+        lineStyle: {
+          color: cssColor('--color-primary', '#1677ff'),
+          width: 2
+        },
+        itemStyle: {
+          color: cssColor('--color-primary', '#1677ff')
+        }
+      }]
+    }]
+  }
+
+  radarChart.setOption(option)
+}
+
+const initRedemptionChart = () => {
+  if (!redemptionChartEl.value || !hasRedemptionData.value) return
+
+  if (redemptionChart) redemptionChart.dispose()
+  redemptionChart = echarts.init(redemptionChartEl.value, echartThemeName.value)
+
+  const categories = props.subscriptionRedemption?.categories || []
+  const series = props.subscriptionRedemption?.series || []
+
+  const buyData = series.find((s: any) => s.name === '期间申购')?.data || []
+  const sellData = series.find((s: any) => s.name === '期间赎回')?.data || []
+  const totalData = series.find((s: any) => s.name === '总份额')?.data || []
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    legend: {
+      data: ['期间申购', '期间赎回', '总份额'],
+      bottom: 0,
+      textStyle: {
+        fontSize: 11
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '15%',
+      top: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisLabel: {
+        fontSize: 10,
+        rotate: 30
+      }
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: '申购/赎回(亿)',
+        position: 'left',
+        axisLabel: {
+          fontSize: 10
+        }
+      },
+      {
+        type: 'value',
+        name: '总份额(亿)',
+        position: 'right',
+        axisLabel: {
+          fontSize: 10
+        }
+      }
+    ],
+    series: [
+      {
+        name: '期间申购',
+        type: 'bar',
+        data: buyData,
+        itemStyle: {
+          color: cssColor('--color-success', '#52c41a')
+        },
+        barWidth: '25%'
+      },
+      {
+        name: '期间赎回',
+        type: 'bar',
+        data: sellData,
+        itemStyle: {
+          color: cssColor('--color-danger', '#ff4d4f')
+        },
+        barWidth: '25%'
+      },
+      {
+        name: '总份额',
+        type: 'line',
+        yAxisIndex: 1,
+        data: totalData,
+        itemStyle: {
+          color: cssColor('--color-primary', '#1890ff')
+        },
+        lineStyle: {
+          width: 2
+        },
+        symbol: 'circle',
+        symbolSize: 6
+      }
+    ]
+  }
+
+  redemptionChart.setOption(option)
+}
+
+onMounted(() => {
+  nextTick(() => {
+    initRadarChart()
+    initRedemptionChart()
+  })
+})
+
+watch([() => props.performanceEvaluation, () => props.subscriptionRedemption], () => {
+  nextTick(() => {
+    initRadarChart()
+    initRedemptionChart()
+  })
+}, { deep: true })
+
+watch(echartThemeName, () => {
+  nextTick(() => {
+    initRadarChart()
+    initRedemptionChart()
+  })
+})
 </script>
 
 <style scoped>
@@ -531,7 +506,7 @@ export default {
   .eval-section .eval-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .radar-chart {
     width: 100%;
     height: 200px;

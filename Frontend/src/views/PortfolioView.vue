@@ -2,11 +2,10 @@
   <FundRealtime @view-detail="$emit('view-detail', $event)" />
 </template>
 
-<script>
+<script setup lang="ts">
 import FundRealtime from '../components/FundRealtime.vue'
 
-export default {
-  components: { FundRealtime },
-  emits: ['view-detail']
-}
+defineEmits<{
+  'view-detail': [code: string]
+}>()
 </script>

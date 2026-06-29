@@ -2,11 +2,10 @@
   <ResearchDashboard @view-fund="$emit('view-fund', $event)" />
 </template>
 
-<script>
+<script setup lang="ts">
 import ResearchDashboard from '../components/ResearchDashboard.vue'
 
-export default {
-  components: { ResearchDashboard },
-  emits: ['view-fund']
-}
+defineEmits<{
+  'view-fund': [code: string]
+}>()
 </script>

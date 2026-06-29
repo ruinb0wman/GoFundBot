@@ -1,20 +1,22 @@
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 
 const THEME_KEY = 'gofund-theme'
-const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+const mediaQuery: MediaQueryList = window.matchMedia('(prefers-color-scheme: dark)')
 
-const savedTheme = ref(localStorage.getItem(THEME_KEY) || 'auto')
+type ThemeMode = 'light' | 'dark' | 'auto'
 
-function computeTheme(preference) {
+const savedTheme: Ref<ThemeMode> = ref((localStorage.getItem(THEME_KEY) as ThemeMode) || 'auto')
+
+function computeTheme(preference: ThemeMode): 'light' | 'dark' {
   if (preference === 'auto') {
     return mediaQuery.matches ? 'dark' : 'light'
   }
   return preference
 }
 
-const theme = ref(computeTheme(savedTheme.value))
+const theme: Ref<'light' | 'dark'> = ref(computeTheme(savedTheme.value))
 
-function applyTheme(value) {
+function applyTheme(value: 'light' | 'dark'): void {
   if (value === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark')
   } else {
@@ -24,8 +26,8 @@ function applyTheme(value) {
 
 applyTheme(theme.value)
 
-function toggleTheme() {
-  const modes = ['light', 'dark', 'auto']
+function toggleTheme(): void {
+  const modes: ThemeMode[] = ['light', 'dark', 'auto']
   const idx = modes.indexOf(savedTheme.value)
   savedTheme.value = modes[(idx + 1) % 3]
   localStorage.setItem(THEME_KEY, savedTheme.value)
@@ -40,6 +42,6 @@ mediaQuery.addEventListener('change', () => {
   }
 })
 
-export function useTheme() {
+export function useTheme(): { theme: Ref<'light' | 'dark'>; savedTheme: Ref<ThemeMode>; toggleTheme: () => void } {
   return { theme, savedTheme, toggleTheme }
 }

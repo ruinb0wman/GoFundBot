@@ -2,10 +2,6 @@
   <MarketOverview :showGoldHistory="true" :showSSE30Min="true" />
 </template>
 
-<script>
+<script setup lang="ts">
 import MarketOverview from '../components/MarketOverview.vue'
-
-export default {
-  components: { MarketOverview }
-}
 </script>

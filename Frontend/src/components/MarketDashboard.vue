@@ -1,11 +1,10 @@
-<!-- 市场数据仪表盘 - 整合所有市场相关组件 -->
 <template>
   <div class="market-dashboard">
     <div class="dashboard-header">
       <h2><LucideIcon name="TrendingUp" :size="22" /> 市场实时数据</h2>
       <div class="tab-switch">
-        <button 
-          v-for="tab in tabs" 
+        <button
+          v-for="tab in tabs"
           :key="tab.key"
           class="tab-btn"
           :class="{ active: activeTab === tab.key }"
@@ -15,14 +14,14 @@
         </button>
       </div>
     </div>
-    
+
     <div class="dashboard-content">
       <!-- 综合概览 Tab -->
       <div v-show="activeTab === 'overview'" class="tab-content">
         <div class="overview-grid">
           <div class="grid-main">
-            <MarketOverview 
-              :showGoldHistory="false" 
+            <MarketOverview
+              :showGoldHistory="false"
               :showSSE30Min="true"
             />
           </div>
@@ -31,22 +30,22 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 板块排行 Tab -->
       <div v-show="activeTab === 'sectors'" class="tab-content">
         <SectorRank :limit="500" />
       </div>
-      
+
       <!-- 快讯 Tab - 无限滚动，不设上限 -->
       <div v-show="activeTab === 'news'" class="tab-content">
         <FlashNews :count="50" :refreshInterval="60000" />
       </div>
-      
+
       <!-- 贵金属 Tab -->
       <div v-show="activeTab === 'gold'" class="tab-content">
         <div class="gold-section-full">
-          <MarketOverview 
-            :showGoldHistory="true" 
+          <MarketOverview
+            :showGoldHistory="true"
             :showSSE30Min="false"
           />
         </div>
@@ -55,35 +54,20 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref } from 'vue'
 import MarketOverview from './MarketOverview.vue'
 import FlashNews from './FlashNews.vue'
 import SectorRank from './SectorRank.vue'
 
-export default {
-  name: 'MarketDashboard',
-  components: {
-    MarketOverview,
-    FlashNews,
-    SectorRank
-  },
-  setup() {
-    const activeTab = ref('overview')
-    
-    const tabs = [
-      { key: 'overview', label: '综合概览', icon: 'Globe' },
-      { key: 'sectors', label: '板块排行', icon: 'Factory' },
-      { key: 'news', label: '7×24快讯', icon: 'Newspaper' },
-      { key: 'gold', label: '贵金属', icon: 'Award' }
-    ]
-    
-    return {
-      activeTab,
-      tabs
-    }
-  }
-}
+const activeTab = ref('overview')
+
+const tabs = [
+  { key: 'overview', label: '综合概览', icon: 'Globe' },
+  { key: 'sectors', label: '板块排行', icon: 'Factory' },
+  { key: 'news', label: '7×24快讯', icon: 'Newspaper' },
+  { key: 'gold', label: '贵金属', icon: 'Award' }
+]
 </script>
 
 <style scoped>
@@ -184,11 +168,11 @@ export default {
   .overview-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .grid-side {
     order: -1;
   }
-  
+
   .tab-switch {
     flex-wrap: wrap;
   }
@@ -201,22 +185,22 @@ export default {
     align-items: flex-start;
     padding: 12px 16px;
   }
-  
+
   .dashboard-header h2 {
     font-size: 18px;
   }
-  
+
   .tab-switch {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .tab-btn {
     padding: 8px 12px;
     font-size: 13px;
   }
-  
+
   .dashboard-content {
     padding: 12px;
   }

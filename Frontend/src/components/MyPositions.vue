@@ -184,7 +184,9 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
+import { useDebouncedWatch } from '../composables/useDebouncedWatch'
 import { fundAPI } from '../services/api'
+import { useFundStore } from '../stores/fundStore'
 
 const STORAGE_KEY = 'gofundbot_positions'
 const today = new Date().toISOString().split('T')[0]
@@ -484,8 +486,9 @@ const loadTrendByCode = async code => {
 
 const fetchRealtimeQuote = async code => {
   const fundCode = normalizeFundCode(code)
-  const response = await fundAPI.getFundDetail(fundCode)
-  const realtime = response?.data?.realtime_estimate || {}
+  const fundStore = useFundStore()
+  const data = await fundStore.fetchFund(fundCode)
+  const realtime = data?.realtime_estimate || {}
   const estimate = Number(realtime.estimate_value)
   const official = Number(realtime.net_worth)
   const estimateDate = normalizeDate(realtime.estimate_time)
@@ -808,7 +811,7 @@ const formatNumber = (value, digit = 2) => Number(value || 0).toFixed(digit)
 const formatSigned = value => `${value >= 0 ? '+' : ''}${formatNumber(value, 2)}`
 
 watch(positions, save, { deep: true })
-watch([quoteMap, historyMap], () => renderCharts(), { deep: true })
+useDebouncedWatch([quoteMap, historyMap], () => renderCharts(), 300, { deep: true })
 
 watch(echartThemeName, () => {
   if (pnlBarChart) { pnlBarChart.dispose(); pnlBarChart = null }

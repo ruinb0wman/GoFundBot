@@ -268,7 +268,7 @@
       <div class="portfolio-empty-hint">{{ emptyHint }}</div>
       <button class="btn btn-primary" @click="openAddFundModal">+ 添加基金</button>
     </div>
-    
+
 <!-- Modals retained -->
     <div v-if="addFundModalOpen" class="modal-overlay" @click.self="closeAddFundModal">
       <div class="modal-box add-fund-modal">
@@ -496,23 +496,23 @@
     </div>
   </div>
 </template>
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { fundAPI } from '../services/api'
+import { useFundStore } from '../stores/fundStore'
 
-export default {
-  name: 'FundRealtime',
-  emits: ['view-detail'],
-  setup(props, { emit }) {
+defineOptions({ name: 'FundRealtime' })
+
+const emit = defineEmits(['view-detail'])
     // ==================== 状态 ====================
-    const funds = ref([])
-    const holdings = ref({})  // { code: { share, cost } }
-    const collapsedCodes = ref(new Set())
+    const funds: any = ref([])
+    const holdings: any = ref({})  // { code: { share, cost } }
+    const collapsedCodes: any = ref(new Set())
     const refreshing = ref(false)
     const refreshMs = ref(180000)
     const searchTerm = ref('')
-    const searchResults = ref([])
-    const selectedFunds = ref([])
+    const searchResults: any = ref([])
+    const selectedFunds: any = ref([])
     const showDropdown = ref(false)
     const addFundModalOpen = ref(false)
     const username = ref('guest')
@@ -521,32 +521,32 @@ export default {
     const activeTab = ref('all')
     const dropdownRef = ref(null)
     const searchPanelRef = ref(null)
-    const searchTimeoutRef = ref(null)
-    const refreshTimer = ref(null)
-    const timeTimer = ref(null)
+    const searchTimeoutRef: any = ref(null)
+    const refreshTimer: any = ref(null)
+    const timeTimer: any = ref(null)
     const searchLoading = ref(false)
     const todayDate = ref(new Date().toISOString().slice(0, 10))
 
     // 持仓弹窗
-    const holdingModal = ref({ open: false, fund: null })
+    const holdingModal: any = ref({ open: false, fund: null })
     const tradeForm = ref({ type: 'buy', inputValue: '', tradeDate: todayDate.value })
-    const pendingTxns = ref([])   // 挂起交易列表
-    const tradeRecords = ref([])
-    const tradeHistoryModal = ref({ open: false, fund: null })
+    const pendingTxns: any = ref([])   // 挂起交易列表
+    const tradeRecords: any = ref([])
+    const tradeHistoryModal: any = ref({ open: false, fund: null })
     const showPending = ref(false)
 
     // 拖拽排序
     const dragIndex = ref(null)
     const dragOverIndex = ref(null)
-    const fundOrder = ref([])
+    const fundOrder: any = ref([])
 
     // 持仓分组
-    const portfolioGroups = ref([])
-    const fundGroupMap = ref({})
+    const portfolioGroups: any = ref([])
+    const fundGroupMap: any = ref({})
     const showGroupModal = ref(false)
     const editingGroup = ref(null)
     const groupName = ref('')
-    const contextMenu = ref({ show: false, x: 0, y: 0, groupId: null })
+    const contextMenu: any = ref({ show: false, x: 0, y: 0, groupId: null })
 
     // 再平衡阈值（百分比）
     const rebalanceThreshold = ref(8)
@@ -1320,8 +1320,9 @@ export default {
         return mapFundDetailToRealtime(freshRes?.data || {}, code)
       } catch (e) {
         try {
-          const res = await fundAPI.getFundDetail(code)
-          return mapFundDetailToRealtime(res?.data || {}, code)
+          const fundStore = useFundStore()
+          const data = await fundStore.fetchFund(code)
+          return mapFundDetailToRealtime(data || {}, code)
         } catch {
           const cachedRes = await fundAPI.getFundCompareData(code)
           return mapFundDetailToRealtime(cachedRes?.data || {}, code)
@@ -1333,12 +1334,12 @@ export default {
     const addFundToRealtime = async (fundInfo) => {
       const code = fundInfo.fund_code || fundInfo.code || fundInfo.CODE
       if (!code) return
-      
+
       // 已存在检查
       if (funds.value.some(f => f.code === String(code))) {
-         return 
+         return
       }
-      
+
       refreshing.value = true
       try {
         const data = await fetchFundData(String(code))
@@ -1402,7 +1403,7 @@ export default {
 
       if (selectedFunds.value.length === 0) return
       refreshing.value = true
-      
+
       try {
         const newFunds = []
         for (const f of selectedFunds.value) {
@@ -1414,7 +1415,7 @@ export default {
             console.error(`添加基金 ${f.CODE} 失败`, e)
           }
         }
-        
+
         if (newFunds.length > 0) {
           const updated = [...funds.value, ...newFunds]
           funds.value = updated
@@ -1423,7 +1424,7 @@ export default {
           fundOrder.value = [...fundOrder.value, ...newCodes]
           localStorage.setItem('realtime_fund_order', JSON.stringify(fundOrder.value))
         }
-        
+
         selectedFunds.value = []
         searchTerm.value = ''
         searchResults.value = []
@@ -1440,7 +1441,7 @@ export default {
     const refreshAll = async () => {
       if (refreshing.value || funds.value.length === 0) return
       refreshing.value = true
-      
+
       try {
         ensureProfitNavDates(funds.value)
         const updated = []
@@ -1453,7 +1454,7 @@ export default {
             updated.push(fund) // 保留旧数据
           }
         }
-        
+
         funds.value = updated
         localStorage.setItem('realtime_funds', JSON.stringify(updated))
         settleOfficialNavProfits(updated)
@@ -1674,7 +1675,7 @@ export default {
     const clearHolding = () => {
       const fund = holdingModal.value.fund
       if (!fund) return
-      
+
       const newHoldings = { ...holdings.value }
       delete newHoldings[fund.code]
       holdings.value = newHoldings
@@ -1956,17 +1957,17 @@ export default {
           funds.value = savedFunds
           refreshAll()
         }
-        
+
         const savedHoldings = JSON.parse(localStorage.getItem('realtime_holdings') || '{}')
         if (savedHoldings && typeof savedHoldings === 'object') {
           holdings.value = savedHoldings
         }
-        
+
         const savedMs = parseInt(localStorage.getItem('realtime_refresh_ms') || '180000', 10)
         if (Number.isFinite(savedMs) && savedMs >= 5000) {
           refreshMs.value = savedMs
         }
-        
+
         const savedCollapsed = JSON.parse(localStorage.getItem('realtime_collapsed') || '[]')
         if (Array.isArray(savedCollapsed)) {
           collapsedCodes.value = new Set(savedCollapsed)
@@ -1976,7 +1977,7 @@ export default {
         if (Array.isArray(savedPending)) {
           pendingTxns.value = savedPending
         }
-        
+
         const savedTradeRecords = JSON.parse(localStorage.getItem('realtime_trade_records') || '[]')
         if (Array.isArray(savedTradeRecords)) {
           tradeRecords.value = savedTradeRecords
@@ -2042,132 +2043,8 @@ export default {
       localStorage.setItem('realtime_rebalance_threshold', String(val))
     })
 
-    return {
-      funds,
-      holdings,
-      collapsedCodes,
-      refreshing,
-      refreshMs,
-      searchTerm,
-      searchResults,
-      selectedFunds,
-      addFundModalOpen,
-      username,
-      nowTime,
-      sortBy,
-      activeTab,
-      displayFunds,
-      emptyTitle,
-      emptyHint,
-      addFundToRealtime,
-      showDropdown,
-      dropdownRef,
-      searchPanelRef,
-      searchLoading,
-      todayDate,
-      holdingModal,
-      tradeForm,
-      isTradingTime,
-      sortedFunds,
-      hasHoldings,
-      totalAsset,
-      totalCost,
-      totalPreviousAsset,
-      totalProfitToday,
-      totalProfitTotal,
-      totalReturnRate,
-      todayReturnRate,
-      profitTodayClass,
-      profitTotalClass,
-      getChangeClass,
-      formatGsz,
-      formatChange,
-      getHoldingAmount,
-      getHoldingCostAmount,
-      getHoldingEstimatedAmount,
-      getHoldingProfitToday,
-      getHoldingProfitTotal,
-      getHoldingReturnRate,
-      getHoldingProfitTodayClass,
-      getHoldingProfitTotalClass,
-      getFundTradeRecords,
-      getTradeStatusText,
-      formatMoney,
-      formatShare,
-      getPriceStatusLabel,
-      toggleCollapse,
-      isSelected,
-      toggleSelectFund,
-      openAddFundModal,
-      closeAddFundModal,
-      selectFundForAdd,
-      getFundNavByDate,
-      getFundSparklinePoints,
-      getFundSparklinePoints3m,
-      getFundMiniChart3m,
-      getTrendColorClass3m,
-      getSparklinePath,
-      getSparklineFill,
-      openFundDetail,
-      hasFreshEstimate,
-      confirmAddFund,
-      batchAddFunds,
-      refreshAll,
-      removeFund,
-      openHoldingModal,
-      openTradeModal,
-      openTradeHistory,
-      closeTradeHistory,
-      tradeHistoryModal,
-      openEditModal,
-      closeEditModal,
-      saveEdit,
-      showEditModal,
-      editForm,
-      closeHoldingModal,
-      clearHolding,
-      saveRefreshMs,
-      exportData,
-      importData,
-      calculateShare,
-      getTradeNav,
-      getTradeResultShares,
-      saveTrade,
-      pendingTxns,
-      showPending,
-      hasExactNavForDate,
-      canSubmitTrade,
-      submitButtonText,
-      cancelPendingTxn,
-      settlePendingTxnsIfReady,
-      hasRebalanceFunds,
-      hasDividendFunds,
-      rebalanceThreshold,
-      dragIndex,
-      dragOverIndex,
-      fundOrder,
-      onDragStart,
-      onDragOver,
-      onDragEnd,
-      portfolioGroups,
-      fundGroupMap,
-      showGroupModal,
-      editingGroup,
-      groupName,
-      contextMenu,
-      openAddGroupModal,
-      openEditGroupModal,
-      closeGroupModal,
-      saveGroup,
-      deleteGroup,
-      assignFundToGroup,
-      openGroupContextMenu,
-      closeContextMenu,
-      renameGroupFromMenu,
-      deleteGroupFromMenu
-    }
-  }
-}
+
+
 </script>
 <style scoped>
 .realtime-container {

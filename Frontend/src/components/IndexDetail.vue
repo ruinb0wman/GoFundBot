@@ -46,7 +46,7 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { marketAPI } from '../services/api'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
@@ -58,268 +58,253 @@ import VChart from "vue-echarts"
 
 use([CanvasRenderer, CandlestickChart, BarChart, GridComponent, TooltipComponent, DataZoomComponent])
 
-export default {
-  name: 'IndexDetail',
-  components: { VChart },
-  props: {
-    indexCode: { type: String, required: true }
-  },
-  setup(props) {
-    const loading = ref(true)
-    const error = ref('')
-    const detail = ref(null)
-    const klineData = ref([])
-    const activePeriod = ref('daily')
-    const periods = [
-      { key: 'daily', label: '日K' },
-      { key: 'weekly', label: '周K' },
-      { key: 'monthly', label: '月K' },
-    ]
-    const activeRange = ref('1y')
-    const rangeOptions = [
-      { key: '1y', label: '最近1年' },
-      { key: '3y', label: '最近3年' },
-      { key: '5y', label: '最近5年' },
-      { key: 'all', label: '所有' },
-    ]
+const props = defineProps<{ indexCode: string }>()
 
-    const { echartThemeName } = useEChartsTheme()
+const loading = ref(true)
+const error = ref('')
+const detail = ref<any>(null)
+const klineData = ref<any[]>([])
+const activePeriod = ref('daily')
+const periods = [
+  { key: 'daily', label: '日K' },
+  { key: 'weekly', label: '周K' },
+  { key: 'monthly', label: '月K' },
+]
+const activeRange = ref('1y')
+const rangeOptions = [
+  { key: '1y', label: '最近1年' },
+  { key: '3y', label: '最近3年' },
+  { key: '5y', label: '最近5年' },
+  { key: 'all', label: '所有' },
+]
 
-    const priceDir = computed(() => {
-      if (!detail.value) return ''
-      const pct = detail.value.change_pct
-      if (pct > 0) return 'up'
-      if (pct < 0) return 'down'
-      return ''
-    })
+const { echartThemeName } = useEChartsTheme()
 
-    const cssVar = (name, fallback = '') =>
-      getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+const priceDir = computed(() => {
+  if (!detail.value) return ''
+  const pct = detail.value.change_pct
+  if (pct > 0) return 'up'
+  if (pct < 0) return 'down'
+  return ''
+})
 
-    const hexToRgba = (hex, alpha) => {
-      const clean = hex.replace('#', '')
-      const r = parseInt(clean.slice(0, 2), 16)
-      const g = parseInt(clean.slice(2, 4), 16)
-      const b = parseInt(clean.slice(4, 6), 16)
-      return `rgba(${r},${g},${b},${alpha})`
-    }
+const cssVar = (name: string, fallback = '') =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
 
-    const klineOption = computed(() => {
-      echartThemeName.value
-      const data = klineData.value
-      if (!data.length) return {}
+const hexToRgba = (hex: string, alpha: number) => {
+  const clean = hex.replace('#', '')
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
 
-      const dates = data.map(i => (i.date || i.time || '').slice(5))
-      const ohlc = data.map(i => [i.open, i.close, i.low, i.high])
-      const volumes = data.map(i => parseFloat(i.volume || 0))
-      const ma5 = calcMA(5, data)
-      const ma20 = calcMA(20, data)
+const klineOption = computed(() => {
+  echartThemeName.value
+  const data = klineData.value
+  if (!data.length) return {}
 
-      const upColor = cssVar('--color-danger', '#ff4d4f')
-      const downColor = cssVar('--color-success', '#52c41a')
+  const dates = data.map((i: any) => (i.date || i.time || '').slice(5))
+  const ohlc = data.map((i: any) => [i.open, i.close, i.low, i.high])
+  const volumes = data.map((i: any) => parseFloat(i.volume || 0))
+  const ma5 = calcMA(5, data)
+  const ma20 = calcMA(20, data)
 
-      return {
-        grid: [
-          { left: 50, right: 20, top: 10, bottom: 80, height: '55%' },
-          { left: 50, right: 20, top: '72%', bottom: 10, height: '20%' }
-        ],
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'cross' },
-          borderWidth: 1,
-          formatter: (params) => {
-            const idx = params[0].dataIndex
-            const d = data[idx]
-            const isUp = d.close >= d.open
-            const color = isUp ? upColor : downColor
-            return `
-              <div style="margin-bottom:4px;font-weight:bold">${d.date || d.time}</div>
-              <div>开盘: <b>${d.open}</b></div>
-              <div>收盘: <b style="color:${color}">${d.close}</b></div>
-              <div>最高: <b>${d.high}</b></div>
-              <div>最低: <b>${d.low}</b></div>
-              <div>成交量: ${d.volume || 0}</div>
-            `
-          }
+  const upColor = cssVar('--color-danger', '#ff4d4f')
+  const downColor = cssVar('--color-success', '#52c41a')
+
+  return {
+    grid: [
+      { left: 50, right: 20, top: 10, bottom: 80, height: '55%' },
+      { left: 50, right: 20, top: '72%', bottom: 10, height: '20%' }
+    ],
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      borderWidth: 1,
+      formatter: (params: any) => {
+        const idx = params[0].dataIndex
+        const d = data[idx]
+        const isUp = d.close >= d.open
+        const color = isUp ? upColor : downColor
+        return `
+          <div style="margin-bottom:4px;font-weight:bold">${d.date || d.time}</div>
+          <div>开盘: <b>${d.open}</b></div>
+          <div>收盘: <b style="color:${color}">${d.close}</b></div>
+          <div>最高: <b>${d.high}</b></div>
+          <div>最低: <b>${d.low}</b></div>
+          <div>成交量: ${d.volume || 0}</div>
+        `
+      }
+    },
+    xAxis: [
+      {
+        type: 'category',
+        data: dates,
+        gridIndex: 0,
+        axisLabel: { show: false },
+        axisLine: { show: false },
+        axisTick: { show: false }
+      },
+      {
+        type: 'category',
+        data: dates,
+        gridIndex: 1,
+        axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 },
+        axisLine: { lineStyle: { color: cssVar('--border-default', '#e5e7eb') } },
+        axisTick: { show: false }
+      }
+    ],
+    yAxis: [
+      {
+        type: 'value',
+        scale: true,
+        gridIndex: 0,
+        splitLine: { lineStyle: { type: 'dashed', color: cssVar('--border-subtle', '#f0f0f0') } },
+        axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 }
+      },
+      {
+        type: 'value',
+        gridIndex: 1,
+        splitLine: { show: false },
+        axisLabel: { show: false }
+      }
+    ],
+    dataZoom: [
+      {
+        type: 'inside',
+        xAxisIndex: [0, 1],
+        start: 50,
+        end: 100,
+        zoomOnMouseWheel: 'ctrl',
+        moveOnMouseWheel: true,
+        moveOnMouseMove: true,
+      },
+      { type: 'slider', xAxisIndex: [0, 1], start: 50, end: 100, bottom: 0, height: 20 }
+    ],
+    series: [
+      {
+        name: 'K线',
+        type: 'candlestick',
+        data: ohlc,
+        itemStyle: {
+          color: upColor,
+          color0: downColor,
+          borderColor: upColor,
+          borderColor0: downColor
         },
-        xAxis: [
-          {
-            type: 'category',
-            data: dates,
-            gridIndex: 0,
-            axisLabel: { show: false },
-            axisLine: { show: false },
-            axisTick: { show: false }
-          },
-          {
-            type: 'category',
-            data: dates,
-            gridIndex: 1,
-            axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 },
-            axisLine: { lineStyle: { color: cssVar('--border-default', '#e5e7eb') } },
-            axisTick: { show: false }
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      },
+      {
+        name: 'MA5',
+        type: 'line',
+        data: ma5,
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { width: 1, color: '#f59e0b' },
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      },
+      {
+        name: 'MA20',
+        type: 'line',
+        data: ma20,
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { width: 1, color: '#8b5cf6' },
+        xAxisIndex: 0,
+        yAxisIndex: 0
+      },
+      {
+        name: '成交量',
+        type: 'bar',
+        data: volumes.map((v: number, i: number) => ({
+          value: v,
+          itemStyle: {
+            color: data[i].close >= data[i].open ? hexToRgba(upColor, 0.5) : hexToRgba(downColor, 0.5)
           }
-        ],
-        yAxis: [
-          {
-            type: 'value',
-            scale: true,
-            gridIndex: 0,
-            splitLine: { lineStyle: { type: 'dashed', color: cssVar('--border-subtle', '#f0f0f0') } },
-            axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 }
-          },
-          {
-            type: 'value',
-            gridIndex: 1,
-            splitLine: { show: false },
-            axisLabel: { show: false }
-          }
-        ],
-        dataZoom: [
-          {
-            type: 'inside',
-            xAxisIndex: [0, 1],
-            start: 50,
-            end: 100,
-            zoomOnMouseWheel: 'ctrl',
-            moveOnMouseWheel: true,
-            moveOnMouseMove: true,
-          },
-          { type: 'slider', xAxisIndex: [0, 1], start: 50, end: 100, bottom: 0, height: 20 }
-        ],
-        series: [
-          {
-            name: 'K线',
-            type: 'candlestick',
-            data: ohlc,
-            itemStyle: {
-              color: upColor,
-              color0: downColor,
-              borderColor: upColor,
-              borderColor0: downColor
-            },
-            xAxisIndex: 0,
-            yAxisIndex: 0
-          },
-          {
-            name: 'MA5',
-            type: 'line',
-            data: ma5,
-            smooth: true,
-            symbol: 'none',
-            lineStyle: { width: 1, color: '#f59e0b' },
-            xAxisIndex: 0,
-            yAxisIndex: 0
-          },
-          {
-            name: 'MA20',
-            type: 'line',
-            data: ma20,
-            smooth: true,
-            symbol: 'none',
-            lineStyle: { width: 1, color: '#8b5cf6' },
-            xAxisIndex: 0,
-            yAxisIndex: 0
-          },
-          {
-            name: '成交量',
-            type: 'bar',
-            data: volumes.map((v, i) => ({
-              value: v,
-              itemStyle: {
-                color: data[i].close >= data[i].open ? hexToRgba(upColor, 0.5) : hexToRgba(downColor, 0.5)
-              }
-            })),
-            xAxisIndex: 1,
-            yAxisIndex: 1
-          }
-        ]
+        })),
+        xAxisIndex: 1,
+        yAxisIndex: 1
       }
-    })
+    ]
+  }
+})
 
-    const calcMA = (days, data) => {
-      const result = []
-      for (let i = 0; i < data.length; i++) {
-        if (i < days - 1) { result.push('-'); continue }
-        let sum = 0
-        for (let j = i - days + 1; j <= i; j++) {
-          sum += parseFloat(data[j].close || data[j].close)
-        }
-        result.push(+(sum / days).toFixed(2))
-      }
-      return result
+const calcMA = (days: number, data: any[]) => {
+  const result: any[] = []
+  for (let i = 0; i < data.length; i++) {
+    if (i < days - 1) { result.push('-'); continue }
+    let sum = 0
+    for (let j = i - days + 1; j <= i; j++) {
+      sum += parseFloat(data[j].close || data[j].close)
     }
+    result.push(+(sum / days).toFixed(2))
+  }
+  return result
+}
 
-    const fetchDetail = async () => {
-      try {
-        const res = await marketAPI.getIndexDetail(props.indexCode)
-        if (res.data.success) {
-          detail.value = res.data.data
-        } else {
-          error.value = res.data.error || '获取指数详情失败'
-        }
-      } catch (e) {
-        error.value = '获取指数详情失败: ' + (e.response?.data?.error || e.message)
-      }
+const fetchDetail = async () => {
+  try {
+    const res = await marketAPI.getIndexDetail(props.indexCode)
+    if (res.data.success) {
+      detail.value = res.data.data
+    } else {
+      error.value = res.data.error || '获取指数详情失败'
     }
-
-    const computeStartDate = (range) => {
-      if (range === 'all') return ''
-      const d = new Date()
-      const years = { '1y': 1, '3y': 3, '5y': 5 }
-      d.setFullYear(d.getFullYear() - (years[range] || 1))
-      const y = d.getFullYear()
-      const m = String(d.getMonth() + 1).padStart(2, '0')
-      const day = String(d.getDate()).padStart(2, '0')
-      return `${y}${m}${day}`
-    }
-
-    const fetchKline = async () => {
-      try {
-        const params = { period: activePeriod.value }
-        const startDate = computeStartDate(activeRange.value)
-        if (startDate) params.startDate = startDate
-        const res = await marketAPI.getIndexKline(props.indexCode, params)
-        if (res.data.success) {
-          klineData.value = res.data.data || []
-        } else {
-          klineData.value = []
-        }
-      } catch (e) {
-        klineData.value = []
-      }
-    }
-
-    const switchPeriod = (key) => {
-      activePeriod.value = key
-      fetchKline()
-    }
-
-    const switchRange = (key) => {
-      activeRange.value = key
-      fetchKline()
-    }
-
-    const loadAll = async () => {
-      loading.value = true
-      error.value = ''
-      await Promise.all([fetchDetail(), fetchKline()])
-      loading.value = false
-    }
-
-    watch(() => props.indexCode, () => { loadAll() })
-
-    onMounted(() => { loadAll() })
-
-    return {
-      loading, error, detail,
-      klineData, activePeriod, periods,
-      activeRange, rangeOptions,
-      klineOption, echartThemeName,
-      priceDir, switchPeriod, switchRange
-    }
+  } catch (e: any) {
+    error.value = '获取指数详情失败: ' + (e.response?.data?.error || e.message)
   }
 }
+
+const computeStartDate = (range: string) => {
+  if (range === 'all') return ''
+  const d = new Date()
+  const years: Record<string, number> = { '1y': 1, '3y': 3, '5y': 5 }
+  d.setFullYear(d.getFullYear() - (years[range] || 1))
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}${m}${day}`
+}
+
+const fetchKline = async () => {
+  try {
+    const params: Record<string, any> = { period: activePeriod.value }
+    const startDate = computeStartDate(activeRange.value)
+    if (startDate) params.startDate = startDate
+    const res = await marketAPI.getIndexKline(props.indexCode, params)
+    if (res.data.success) {
+      klineData.value = res.data.data || []
+    } else {
+      klineData.value = []
+    }
+  } catch (e) {
+    klineData.value = []
+  }
+}
+
+const switchPeriod = (key: string) => {
+  activePeriod.value = key
+  fetchKline()
+}
+
+const switchRange = (key: string) => {
+  activeRange.value = key
+  fetchKline()
+}
+
+const loadAll = async () => {
+  loading.value = true
+  error.value = ''
+  await Promise.all([fetchDetail(), fetchKline()])
+  loading.value = false
+}
+
+watch(() => props.indexCode, () => { loadAll() })
+
+onMounted(() => { loadAll() })
 </script>
 
 <style scoped>

@@ -23,17 +23,17 @@
         <span class="stat-chip down">下跌 {{ downCount }}</span>
       </div>
     </div>
-    
+
     <div v-if="loading && !sectors.length" class="loading-state">
       <span class="loading-spinner"></span>
       <span>加载中...</span>
     </div>
-    
+
     <div v-else-if="error" class="error-state">
       <span>{{ error }}</span>
       <button @click="fetchSectors">重试</button>
     </div>
-    
+
     <div v-else class="sector-content">
       <!-- 涨跌分布概览 -->
       <div class="overview-bar" v-if="sectors.length">
@@ -47,14 +47,14 @@
           <span v-if="downCount">{{ downCount }}</span>
         </div>
       </div>
-      
+
       <!-- 板块列表 -->
       <div class="sector-list">
-        <div 
-          v-for="(sector, index) in displayedSectors" 
+        <div
+          v-for="(sector, index) in displayedSectors"
           :key="sector.name"
           class="sector-item"
-          :class="{ 
+          :class="{
             'up': sector.raw_change > 0,
             'down': sector.raw_change < 0
           }"
@@ -73,7 +73,7 @@
           </div>
         </div>
       </div>
-      
+
       <div v-if="!displayedSectors.length" class="empty-filter">没有匹配的板块</div>
 
       <div v-if="filteredSectors.length > pageSize" class="pagination">
@@ -83,7 +83,7 @@
         <button class="page-btn" @click="currentPage += 1" :disabled="currentPage === totalPages">下一页</button>
       </div>
     </div>
-    
+
     <div v-if="updateTime" class="update-time">
       <span v-if="isFromCache" class="data-source-badge stale" title="数据来自本地缓存，非实时行情">
         <LucideIcon name="Package" :size="14" /> 本地缓存
@@ -186,222 +186,167 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { marketAPI } from '../services/api'
 
-export default {
-  name: 'SectorRank',
-  props: {
-    limit: {
-      type: Number,
-      default: 90
-    },
-    autoRefresh: {
-      type: Boolean,
-      default: true
-    },
-    refreshInterval: {
-      type: Number,
-      default: 300000 // 5分钟
-    }
-  },
-  setup(props) {
-    const sectors = ref([])
-    const loading = ref(false)
-    const error = ref(null)
-    const updateTime = ref('')
-    const dataDate = ref('')
-    const isStale = ref(false)
-    const isPartial = ref(false)
-    const dataSource = ref('')
-    const keyword = ref('')
-    const sortBy = ref('change_desc')
-    const changeFilter = ref('all')
-    const flowFilter = ref('all')
-    const modalVisible = ref(false)
-    const selectedSector = ref(null)
-    const pageSize = 20
-    const currentPage = ref(1)
-    let refreshTimer = null
-    
-    const fetchSectors = async () => {
-      loading.value = true
-      error.value = null
+const props = withDefaults(defineProps<{ limit?: number; autoRefresh?: boolean; refreshInterval?: number }>(), { limit: 90, autoRefresh: true, refreshInterval: 300000 })
 
-      try {
-        // 统一通过后端 API 获取板块数据
-        // 后端降级链：akshare → 内存缓存 → 文件缓存 → 占位数据（自动降级）
-        const response = await marketAPI.getSectorRank(props.limit)
-        if (response.data.success && response.data.data?.length) {
-          applySectorData(response.data.data, {
-            update_time: response.data.update_time,
-            data_date: response.data.data_date || '',
-            is_stale: !!response.data.is_stale,
-            is_partial: !!response.data.is_partial,
-            source: response.data.source || 'backend'
-          })
-          return
-        }
+const sectors = ref<any[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
+const updateTime = ref('')
+const dataDate = ref('')
+const isStale = ref(false)
+const isPartial = ref(false)
+const dataSource = ref('')
+const keyword = ref('')
+const sortBy = ref('change_desc')
+const changeFilter = ref('all')
+const flowFilter = ref('all')
+const modalVisible = ref(false)
+const selectedSector = ref<any>(null)
+const pageSize = 20
+const currentPage = ref(1)
+let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-        // 后端返回失败但可能有部分数据
-        if (response.data.data?.length) {
-          applySectorData(response.data.data, {
-            update_time: response.data.update_time || '',
-            data_date: response.data.data_date || '',
-            is_stale: !!response.data.is_stale,
-            is_partial: true,
-            source: 'backend_partial'
-          })
-          return
-        }
+const fetchSectors = async () => {
+  loading.value = true
+  error.value = null
 
-        clearSectorData()
-        error.value = response.data.error || '外部行情源暂不可用，暂无可展示的板块排行'
-      } catch (e) {
-        clearSectorData()
-        error.value = '外部行情源连接失败，请稍后重试'
-        console.error('获取板块排行失败:', e)
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const applySectorData = (rows, meta = {}) => {
-      sectors.value = rows
-      updateTime.value = meta.update_time || ''
-      dataDate.value = meta.data_date || ''
-      isStale.value = !!meta.is_stale
-      isPartial.value = !!meta.is_partial
-      dataSource.value = meta.source || ''
-      currentPage.value = 1
-    }
-
-    const clearSectorData = () => {
-      sectors.value = []
-      updateTime.value = ''
-      dataDate.value = ''
-      isStale.value = false
-      isPartial.value = false
-      dataSource.value = ''
-      currentPage.value = 1
-    }
-
-    const isFromCache = computed(() => {
-      return dataSource.value === 'file_cache' || dataSource.value === 'stale_cache'
-    })
-    
-    const filteredSectors = computed(() => {
-      const q = keyword.value.trim().toLowerCase()
-      // 1) 筛选
-      let result = sectors.value.filter(sector => {
-        if (q && !String(sector.name || '').toLowerCase().includes(q)) return false
-        if (changeFilter.value === 'up' && !(sector.raw_change > 0)) return false
-        if (changeFilter.value === 'down' && !(sector.raw_change < 0)) return false
-        if (changeFilter.value === 'flat' && sector.raw_change !== 0) return false
-        if (flowFilter.value === 'inflow' && !(sector.raw_main_inflow > 0)) return false
-        if (flowFilter.value === 'outflow' && !(sector.raw_main_inflow < 0)) return false
-        return true
+  try {
+    const response = await marketAPI.getSectorRank(props.limit)
+    if (response.data.success && response.data.data?.length) {
+      applySectorData(response.data.data, {
+        update_time: response.data.update_time,
+        data_date: response.data.data_date || '',
+        is_stale: !!response.data.is_stale,
+        is_partial: !!response.data.is_partial,
+        source: response.data.source || 'backend'
       })
-      // 2) 排序
-      const sortFn = {
-        change_desc: (a, b) => b.raw_change - a.raw_change,
-        change_asc:  (a, b) => a.raw_change - b.raw_change,
-        inflow_desc: (a, b) => b.raw_main_inflow - a.raw_main_inflow,
-        inflow_asc:  (a, b) => a.raw_main_inflow - b.raw_main_inflow,
-        name: (a, b) => String(a.name).localeCompare(String(b.name), 'zh'),
-      }
-      const fn = sortFn[sortBy.value] || sortFn.change_desc
-      return result.sort(fn)
-    })
-
-    const totalPages = computed(() => Math.max(1, Math.ceil(filteredSectors.value.length / pageSize)))
-    const pageStart = computed(() => (currentPage.value - 1) * pageSize)
-    const displayedSectors = computed(() => {
-      return filteredSectors.value.slice(pageStart.value, pageStart.value + pageSize)
-    })
-    
-    // 涨跌分布统计
-    const upCount = computed(() => sectors.value.filter(s => s.raw_change > 0).length)
-    const downCount = computed(() => sectors.value.filter(s => s.raw_change < 0).length)
-    const flatCount = computed(() => sectors.value.filter(s => s.raw_change === 0).length)
-    const total = computed(() => sectors.value.length || 1)
-    
-    const upPercent = computed(() => (upCount.value / total.value) * 100)
-    const downPercent = computed(() => (downCount.value / total.value) * 100)
-    const flatPercent = computed(() => (flatCount.value / total.value) * 100)
-    
-    const getFlowClass = (flow) => {
-      if (!flow) return ''
-      if (flow.startsWith('-')) return 'outflow'
-      return 'inflow'
+      return
     }
 
-    const openSectorModal = (sector = null) => {
-      selectedSector.value = sector
-      modalVisible.value = true
+    if (response.data.data?.length) {
+      applySectorData(response.data.data, {
+        update_time: response.data.update_time || '',
+        data_date: response.data.data_date || '',
+        is_stale: !!response.data.is_stale,
+        is_partial: true,
+        source: 'backend_partial'
+      })
+      return
     }
 
-    const closeSectorModal = () => {
-      modalVisible.value = false
-      selectedSector.value = null
-    }
-
-    watch([keyword, sortBy, changeFilter, flowFilter], () => {
-      currentPage.value = 1
-    })
-
-    watch(totalPages, (pages) => {
-      if (currentPage.value > pages) currentPage.value = pages
-    })
-    
-    onMounted(() => {
-      fetchSectors()
-      if (props.autoRefresh) {
-        refreshTimer = setInterval(fetchSectors, props.refreshInterval)
-      }
-    })
-    
-    onUnmounted(() => {
-      if (refreshTimer) {
-        clearInterval(refreshTimer)
-      }
-    })
-    
-    return {
-      sectors,
-      loading,
-      error,
-      updateTime,
-      dataDate,
-      isStale,
-      isPartial,
-      isFromCache,
-      keyword,
-      sortBy,
-      changeFilter,
-      flowFilter,
-      modalVisible,
-      selectedSector,
-      pageSize,
-      currentPage,
-      totalPages,
-      pageStart,
-      filteredSectors,
-      displayedSectors,
-      upCount,
-      downCount,
-      flatCount,
-      upPercent,
-      downPercent,
-      flatPercent,
-      fetchSectors,
-      getFlowClass,
-      openSectorModal,
-      closeSectorModal
-    }
+    clearSectorData()
+    error.value = response.data.error || '外部行情源暂不可用，暂无可展示的板块排行'
+  } catch (e) {
+    clearSectorData()
+    error.value = '外部行情源连接失败，请稍后重试'
+    console.error('获取板块排行失败:', e)
+  } finally {
+    loading.value = false
   }
 }
+
+const applySectorData = (rows: any[], meta: any = {}) => {
+  sectors.value = rows
+  updateTime.value = meta.update_time || ''
+  dataDate.value = meta.data_date || ''
+  isStale.value = !!meta.is_stale
+  isPartial.value = !!meta.is_partial
+  dataSource.value = meta.source || ''
+  currentPage.value = 1
+}
+
+const clearSectorData = () => {
+  sectors.value = []
+  updateTime.value = ''
+  dataDate.value = ''
+  isStale.value = false
+  isPartial.value = false
+  dataSource.value = ''
+  currentPage.value = 1
+}
+
+const isFromCache = computed(() => {
+  return dataSource.value === 'file_cache' || dataSource.value === 'stale_cache'
+})
+
+const filteredSectors = computed(() => {
+  const q = keyword.value.trim().toLowerCase()
+  let result = sectors.value.filter((sector: any) => {
+    if (q && !String(sector.name || '').toLowerCase().includes(q)) return false
+    if (changeFilter.value === 'up' && !(sector.raw_change > 0)) return false
+    if (changeFilter.value === 'down' && !(sector.raw_change < 0)) return false
+    if (changeFilter.value === 'flat' && sector.raw_change !== 0) return false
+    if (flowFilter.value === 'inflow' && !(sector.raw_main_inflow > 0)) return false
+    if (flowFilter.value === 'outflow' && !(sector.raw_main_inflow < 0)) return false
+    return true
+  })
+
+  const sortFn: Record<string, (a: any, b: any) => number> = {
+    change_desc: (a, b) => b.raw_change - a.raw_change,
+    change_asc:  (a, b) => a.raw_change - b.raw_change,
+    inflow_desc: (a, b) => b.raw_main_inflow - a.raw_main_inflow,
+    inflow_asc:  (a, b) => a.raw_main_inflow - b.raw_main_inflow,
+    name: (a, b) => String(a.name).localeCompare(String(b.name), 'zh'),
+  }
+  const fn = sortFn[sortBy.value] || sortFn.change_desc
+  return result.sort(fn)
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredSectors.value.length / pageSize)))
+const pageStart = computed(() => (currentPage.value - 1) * pageSize)
+const displayedSectors = computed(() => {
+  return filteredSectors.value.slice(pageStart.value, pageStart.value + pageSize)
+})
+
+const upCount = computed(() => sectors.value.filter((s: any) => s.raw_change > 0).length)
+const downCount = computed(() => sectors.value.filter((s: any) => s.raw_change < 0).length)
+const flatCount = computed(() => sectors.value.filter((s: any) => s.raw_change === 0).length)
+const total = computed(() => sectors.value.length || 1)
+
+const upPercent = computed(() => (upCount.value / total.value) * 100)
+const downPercent = computed(() => (downCount.value / total.value) * 100)
+const flatPercent = computed(() => (flatCount.value / total.value) * 100)
+
+const getFlowClass = (flow: string) => {
+  if (!flow) return ''
+  if (flow.startsWith('-')) return 'outflow'
+  return 'inflow'
+}
+
+const openSectorModal = (sector: any = null) => {
+  selectedSector.value = sector
+  modalVisible.value = true
+}
+
+const closeSectorModal = () => {
+  modalVisible.value = false
+  selectedSector.value = null
+}
+
+watch([keyword, sortBy, changeFilter, flowFilter], () => {
+  currentPage.value = 1
+})
+
+watch(totalPages, (pages: number) => {
+  if (currentPage.value > pages) currentPage.value = pages
+})
+
+onMounted(() => {
+  fetchSectors()
+  if (props.autoRefresh) {
+    refreshTimer = setInterval(fetchSectors, props.refreshInterval)
+  }
+})
+
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
+})
 </script>
 
 <style scoped>
@@ -562,7 +507,6 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-/* 涨跌分布概览 */
 .overview-bar {
   display: flex;
   height: 28px;
@@ -594,7 +538,6 @@ export default {
   background: var(--color-success);
 }
 
-/* 板块列表 */
 .sector-list {
   display: flex;
   flex-direction: column;
@@ -761,7 +704,6 @@ export default {
   font-weight: 600;
 }
 
-/* 状态 */
 .loading-state,
 .error-state {
   display: flex;
