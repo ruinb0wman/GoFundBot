@@ -18,12 +18,116 @@ const DEFAULT_REFERER = 'https://quote.eastmoney.com/';
 export class EastMoneyMarketProvider implements MarketProvider {
   readonly name = 'eastmoney';
 
-  quotes(_symbols: string[]): Promise<MarketQuoteDto[]> {
-    return Promise.reject(new AppError('PROVIDER_UNAVAILABLE', 'EastMoney quotes is not implemented yet', 501));
+  async quotes(symbols: string[]): Promise<MarketQuoteDto[]> {
+    const secids = symbols
+      .map((sym) => {
+        const m = sym.match(/^(sh|sz|bj)(\d{5,6})$/i);
+        if (!m) return null;
+        const prefix = m[1].toLowerCase() === 'sh' ? '1.' : '0.';
+        return prefix + m[2];
+      })
+      .filter((id): id is string => id !== null);
+
+    if (secids.length === 0) return [];
+
+    const url = 'https://push2.eastmoney.com/api/qt/ulist.np/get';
+    const params = new URLSearchParams({
+      fltt: '2',
+      invt: '2',
+      fields: 'f2,f3,f4,f5,f6,f12,f14,f15,f16,f17,f18',
+      secids: secids.join(','),
+      _: String(Date.now()),
+    });
+
+    const respData = await fetchJson(`${url}?${params.toString()}`);
+    const dataNode = (respData.data ?? respData) as Record<string, unknown>;
+    const diff = (dataNode.diff ?? []) as Record<string, unknown>[];
+    const diffArr: Record<string, unknown>[] = Array.isArray(diff) ? diff : Object.values(diff);
+
+    const symbolToSecid = new Map<string, string>();
+    for (let i = 0; i < symbols.length; i++) {
+      symbolToSecid.set(secids[i], symbols[i]);
+    }
+
+    return diffArr.map((item) => {
+      const secid = toString(item.f12 ?? '');
+      const originalSymbol = symbolToSecid.get(secid) || secid;
+      return {
+        symbol: originalSymbol,
+        code: originalSymbol.replace(/^(sh|sz|bj)/, ''),
+        name: toString(item.f14 ?? item.name),
+        price: toNum(item.f2) ?? 0,
+        change: toNum(item.f4) ?? 0,
+        changePercent: toNum(item.f3) ?? 0,
+        volume: toNum(item.f5) ?? 0,
+        amount: toNum(item.f6) ?? 0,
+        market: originalSymbol.startsWith('sh') ? '上海' : '深圳',
+        assetType: 'index',
+        source: 'eastmoney.quotes',
+      };
+    });
   }
 
-  kline(_symbol: string, _options: KlineOptions): Promise<KlineDto[]> {
-    return Promise.reject(new AppError('PROVIDER_UNAVAILABLE', 'EastMoney kline is not implemented yet', 501));
+  async kline(symbol: string, options: KlineOptions): Promise<KlineDto[]> {
+    const m = symbol.match(/^(sh|sz|bj)(\d{5,6})$/i);
+    if (!m) return [];
+    const prefix = m[1].toLowerCase() === 'sh' ? '1.' : '0.';
+    const secid = prefix + m[2];
+    const cleanCode = m[2];
+
+    const kltMap: Record<string, string> = { daily: '101', weekly: '102', monthly: '103' };
+    const klt = kltMap[options.period] || '101';
+
+    const fqtMap: Record<string, string> = { qfq: '1', hfq: '2', '': '0', none: '0' };
+    const fqt = fqtMap[options.adjust] || '0';
+
+    const params = new URLSearchParams({
+      secid,
+      klt,
+      fqt,
+      fields1: 'f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11',
+      fields2: 'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61',
+      _: String(Date.now()),
+    });
+
+    if (options.startDate) params.set('beg', options.startDate.replaceAll('-', ''));
+    if (options.endDate) params.set('end', options.endDate.replaceAll('-', ''));
+
+    const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get';
+    const respData = await fetchJson(`${url}?${params.toString()}`);
+    const dataNode = (respData.data ?? respData) as Record<string, unknown>;
+    const klines = dataNode.klines as string[] | undefined;
+    if (!Array.isArray(klines)) return [];
+
+    return klines.map((line: string) => {
+      const parts = line.split(',');
+      const date = parts[0] || '';
+      const timestamp = date ? new Date(date).getTime() : null;
+      const open = toNum(parts[1]);
+      const close = toNum(parts[2]);
+      const high = toNum(parts[3]);
+      const low = toNum(parts[4]);
+      const volume = toNum(parts[5]);
+      const amount = toNum(parts[6]);
+      const change = toNum(parts[7]);
+      const changePercent = toNum(parts[8]);
+      const turnoverRate = toNum(parts[9]);
+
+      return {
+        code: cleanCode,
+        date,
+        timestamp,
+        open,
+        close,
+        high,
+        low,
+        volume,
+        amount,
+        change,
+        changePercent,
+        turnoverRate,
+      };
+    });
   }
 
   async sectors(): Promise<SectorListDto> {

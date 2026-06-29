@@ -1,5 +1,6 @@
 import type {
   FundAssetAllocationDto,
+  FundDividendDto,
   FundDividendListDto,
   FundEstimateDto,
   FundBasicDto,
@@ -14,6 +15,7 @@ import type {
   FundPerformanceEvaluationDto,
   FundPositionTrendItemDto,
   FundRankHistoryDto,
+  FundRankPointDto,
   FundScaleFluctuationDto,
   FundScreeningSnapshotDto,
   FundScreeningSnapshotItemDto,
@@ -23,7 +25,7 @@ import type {
 } from '../../types/fund.js';
 import { AppError } from '../../core/errors.js';
 import type { FundNavHistoryOptions, FundProvider, FundScreeningSnapshotOptions } from '../types.js';
-import { fetchText, parseJsonpObject, parseJsJson, parseJsString, extractJsAssignment } from './eastmoneyRequest.js';
+import { fetchText, fetchJson, parseJsonpObject, parseJsJson, parseJsString, extractJsAssignment } from './eastmoneyRequest.js';
 
 interface EastMoneyNavPoint {
   x?: number;
@@ -226,12 +228,78 @@ export class EastMoneyFundProvider implements FundProvider {
     };
   }
 
-  rankHistory(_code: string): Promise<FundRankHistoryDto> {
-    return Promise.reject(new AppError('PROVIDER_UNAVAILABLE', 'EastMoney rankHistory is not implemented yet', 501));
+  async rankHistory(code: string): Promise<FundRankHistoryDto> {
+    const script = await this.fetchFundDetailScript(code);
+    const name = safeParseJsString(script, 'fS_name');
+    const parsedCode = safeParseJsString(script, 'fS_code') || code;
+
+    // Data_rateInSimilarType = [[timestamp, rankPosition], ...]
+    const rankTypeData = safeParseJsJson<number[][]>(script, 'Data_rateInSimilarType', []);
+    // Data_rateInSimilarPersent = [[timestamp, percentile], ...]
+    const rankPctData = safeParseJsJson<number[][]>(script, 'Data_rateInSimilarPersent', []);
+
+    const rankByTs = new Map<number, number>();
+    for (const entry of rankTypeData) {
+      if (Array.isArray(entry) && entry.length >= 2) {
+        rankByTs.set(entry[0], entry[1]);
+      }
+    }
+
+    const pctByTs = new Map<number, number>();
+    for (const entry of rankPctData) {
+      if (Array.isArray(entry) && entry.length >= 2) {
+        pctByTs.set(entry[0], entry[1]);
+      }
+    }
+
+    const allTimestamps = new Set([...rankByTs.keys(), ...pctByTs.keys()]);
+    const items: FundRankPointDto[] = [];
+    for (const ts of allTimestamps) {
+      const rank = rankByTs.get(ts) ?? null;
+      const percentile = pctByTs.get(ts) ?? null;
+      items.push({
+        date: ts ? formatChinaDate(ts) : '',
+        timestamp: ts ?? null,
+        rank: rank,
+        total: null,
+        percentile: percentile,
+      });
+    }
+    items.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+
+    return { code: parsedCode, name, items };
   }
 
-  dividends(_code: string): Promise<FundDividendListDto> {
-    return Promise.reject(new AppError('PROVIDER_UNAVAILABLE', 'EastMoney dividends is not implemented yet', 501));
+  async dividends(code: string): Promise<FundDividendListDto> {
+    const url = `https://api.fund.eastmoney.com/f10/FHSP?fundCode=${code}&pageIndex=1&pageSize=50`;
+    let respData: Record<string, unknown>;
+    try {
+      respData = await fetchJson(url, 15000);
+    } catch {
+      return { items: [], totalPages: 0, pageSize: 0, currentPage: 0 };
+    }
+
+    const data = respData.Data;
+    const rawItems: Record<string, unknown>[] = Array.isArray(data) ? data : [];
+    const expansion = respData.Expansion as Record<string, unknown> | undefined;
+    const totalPages = toNumberValue(expansion?.TotalPages ?? respData.TotalPages);
+    const pageSize = toNumberValue(expansion?.PageSize ?? respData.PageSize);
+    const pageIndex = toNumberValue(expansion?.PageIndex ?? respData.PageIndex);
+
+    const items: FundDividendDto[] = rawItems.map((item) => {
+      const rawDate = toNullableString(item.EQUITYRECORD_DATE);
+      return {
+        code: toNullableString(item.FCODE) || code,
+        name: '',
+        equityRecordDate: rawDate ? rawDate.split('T')[0] : null,
+        exDividendDate: rawDate ? rawDate.split('T')[0] : null,
+        dividendPerShare: toNullableNumber(item.FHSP),
+        payDate: toNullableString(item.PAY_DATE)?.split('T')[0] ?? null,
+        dividendType: toNullableString(item.DIVIDENDTYPE_AB) ?? toNullableString(item.DIVIDENDTYPE),
+      };
+    });
+
+    return { items, totalPages, pageSize, currentPage: pageIndex };
   }
 
   // -----------------------------------------------------------------------

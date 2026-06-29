@@ -1,7 +1,6 @@
 import json
 import re
-import math
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 def _json_dumps(data):
@@ -18,8 +17,8 @@ def _json_loads(data, default):
 
 
 def _normalize_fund_code(code):
-    code = str(code or '').strip()
-    return code.zfill(6) if re.match(r'^\d{1,6}$', code) else code
+    code = str(code or "").strip()
+    return code.zfill(6) if re.match(r"^\d{1,6}$", code) else code
 
 
 def _value_to_string(value):
@@ -30,23 +29,19 @@ def _value_to_string(value):
 
 def _normalize_date(value):
     if not value:
-        return ''
+        return ""
     text = str(value).strip()
-    match = re.search(r'(\d{4})[-/](\d{1,2})[-/](\d{1,2})', text)
+    match = re.search(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", text)
     if match:
-        return '{}-{:02d}-{:02d}'.format(
-            match.group(1),
-            int(match.group(2)),
-            int(match.group(3)),
-        )
+        return f"{match.group(1)}-{int(match.group(2)):02d}-{int(match.group(3)):02d}"
     return text
 
 
 def _extract_date_text(value):
     if not value:
-        return ''
-    match = re.search(r'\d{4}[-/]\d{1,2}[-/]\d{1,2}', str(value))
-    return match.group(0).replace('/', '-') if match else ''
+        return ""
+    match = re.search(r"\d{4}[-/]\d{1,2}[-/]\d{1,2}", str(value))
+    return match.group(0).replace("/", "-") if match else ""
 
 
 def _estimate_is_after_nav(estimate_time, nav_date):
@@ -60,22 +55,23 @@ def _trend_daily_return(rows):
         return None
 
     normalized = [
-        row for row in rows
-        if isinstance(row, dict) and row.get('date') is not None and row.get('net_worth') is not None
+        row
+        for row in rows
+        if isinstance(row, dict) and row.get("date") is not None and row.get("net_worth") is not None
     ]
     if not normalized:
         return None
 
-    normalized.sort(key=lambda item: _normalize_date(item.get('date')))
+    normalized.sort(key=lambda item: _normalize_date(item.get("date")))
     latest = normalized[-1]
-    daily_return = _first_present(latest, ('dailyReturn', 'equityReturn', 'growth_rate'))
+    daily_return = _first_present(latest, ("dailyReturn", "equityReturn", "growth_rate"))
     if daily_return is not None:
         return daily_return
 
     if len(normalized) >= 2:
         try:
-            prev_nav = float(normalized[-2].get('net_worth'))
-            curr_nav = float(latest.get('net_worth'))
+            prev_nav = float(normalized[-2].get("net_worth"))
+            curr_nav = float(latest.get("net_worth"))
             if prev_nav:
                 return round((curr_nav - prev_nav) / prev_nav * 100, 4)
         except Exception:
@@ -91,10 +87,10 @@ def _first_present(mapping, keys):
 
 
 def _to_float(value):
-    if value is None or value == '' or value == '--':
+    if value is None or value == "" or value == "--":
         return None
     try:
-        text = str(value).replace('%', '').replace(',', '').strip()
+        text = str(value).replace("%", "").replace(",", "").strip()
         return float(text)
     except (TypeError, ValueError):
         return None
@@ -139,12 +135,12 @@ def _stats_numbers(values):
             nums.append(num)
     nums.sort()
     if not nums:
-        return {'avg': None, 'median': None, 'positive_rate': None, 'count': 0}
+        return {"avg": None, "median": None, "positive_rate": None, "count": 0}
     mid = len(nums) // 2
     median = nums[mid] if len(nums) % 2 else (nums[mid - 1] + nums[mid]) / 2
     return {
-        'avg': round(sum(nums) / len(nums), 2),
-        'median': round(median, 2),
-        'positive_rate': round(sum(1 for num in nums if num > 0) / len(nums) * 100, 2),
-        'count': len(nums),
+        "avg": round(sum(nums) / len(nums), 2),
+        "median": round(median, 2),
+        "positive_rate": round(sum(1 for num in nums if num > 0) / len(nums) * 100, 2),
+        "count": len(nums),
     }

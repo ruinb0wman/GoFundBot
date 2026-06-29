@@ -1,4 +1,3 @@
-from typing import Optional
 from pydantic import BaseModel, field_validator
 
 
@@ -6,8 +5,8 @@ class AddWatchlistSchema(BaseModel):
     fund_code: str
     fund_name: str = ""
     fund_type: str = ""
-    group_id: Optional[int] = None
-    estimate: Optional[dict] = None
+    group_id: int | None = None
+    estimate: dict | None = None
 
     @field_validator("fund_code")
     @classmethod
@@ -46,7 +45,7 @@ class ReorderSchema(BaseModel):
 
 class MoveFundSchema(BaseModel):
     fund_code: str
-    group_id: Optional[int] = None
+    group_id: int | None = None
 
     @field_validator("fund_code")
     @classmethod

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 腾讯财经 Provider
 
@@ -14,7 +13,7 @@ Provider 只负责：
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from core.request import get_json, get_text
 from symbols import to_exchange_code
@@ -38,7 +37,7 @@ TENCENT_REFERER = "https://gu.qq.com/"
 # 注意：腾讯字段索引可能随版本变化，这里是经验值
 
 
-def get_realtime_quotes(codes: List[str]) -> List[Dict[str, Any]]:
+def get_realtime_quotes(codes: list[str]) -> list[dict[str, Any]]:
     """
     批量获取 A 股实时行情
 
@@ -65,7 +64,7 @@ def get_realtime_quotes(codes: List[str]) -> List[Dict[str, Any]]:
     return _parse_qt_text(text)
 
 
-def get_realtime_quote(code: str) -> Optional[Dict[str, Any]]:
+def get_realtime_quote(code: str) -> dict[str, Any] | None:
     """获取单只股票实时行情"""
     results = get_realtime_quotes([code])
     return results[0] if results else None
@@ -101,7 +100,7 @@ def get_kline(
     start_date: str = "",
     end_date: str = "",
     count: int = 640,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     获取 A 股历史 K 线（腾讯财经）
 
@@ -145,7 +144,7 @@ def get_kline(
         # 尝试不带复权的键名
         klines_raw = stock_data.get(tc_period, [])
 
-    result: List[Dict[str, Any]] = []
+    result: list[dict[str, Any]] = []
     prev_close = None
 
     for item in klines_raw:
@@ -187,9 +186,9 @@ def get_kline(
     return result
 
 
-def _parse_qt_text(text: str) -> List[Dict[str, Any]]:
+def _parse_qt_text(text: str) -> list[dict[str, Any]]:
     """解析腾讯财经返回的 GBK 文本"""
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     # 腾讯返回格式: v_sh600519="1~贵州茅台~600519~..."
     # 也兼容旧格式: var hq_str_sh600519="..."
@@ -209,13 +208,13 @@ def _parse_qt_text(text: str) -> List[Dict[str, Any]]:
                 "price": _float(parts[3]),
                 "prevClose": _float(parts[4]),
                 "open": _float(parts[5]),
-                "volume": _float(parts[6]),         # 成交量（手）
+                "volume": _float(parts[6]),  # 成交量（手）
                 "high": _float(parts[33]),
                 "low": _float(parts[34]),
                 "change": _float(parts[31]),
                 "changePercent": _float(parts[32]),
                 "turnoverRate": _float(parts[38]),
-                "amount": _float(parts[37]),         # 成交额（万）
+                "amount": _float(parts[37]),  # 成交额（万）
                 "amplitude": _float(parts[43]) if len(parts) > 43 else 0.0,
                 "pe": _float(parts[39]) if len(parts) > 39 else 0.0,
                 "marketCap": _float(parts[45]) if len(parts) > 45 else 0.0,

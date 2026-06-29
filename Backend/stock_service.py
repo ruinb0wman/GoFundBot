@@ -4,14 +4,17 @@
 # Do not add new third-party data source calls here.
 # Target replacement: DataService stockService.reference / EastMoneyStockProvider.
 
-import requests
 import json
+import os
 import threading
 import time
-import os
+
+import requests
+
 from core.logging import get_logger
 
 logger = get_logger(__name__)
+
 
 class StockService:
     _instance = None
@@ -21,19 +24,17 @@ class StockService:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super(StockService, cls).__new__(cls)
+                    cls._instance = super().__new__(cls)
                     cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
         if self._initialized:
             return
-        self.stock_details = {} # Map code -> {name, market}
+        self.stock_details = {}  # Map code -> {name, market}
         self.last_update = 0
         self.cache_ttl = 24 * 3600 * 10  # 10 days
-        self.cache_file = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "Data", "stock_list_cache.json")
-        )
+        self.cache_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "Data", "stock_list_cache.json"))
         self._load_data()
         self._initialized = True
 
@@ -49,7 +50,7 @@ class StockService:
             return False
 
         try:
-            with open(self.cache_file, "r", encoding="utf-8") as f:
+            with open(self.cache_file, encoding="utf-8") as f:
                 data = json.load(f)
             self.last_update = data.get("last_update", 0)
             self.stock_details = data.get("stock_details", {})
@@ -67,10 +68,7 @@ class StockService:
         try:
             os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
             with open(self.cache_file, "w", encoding="utf-8") as f:
-                json.dump({
-                    "last_update": self.last_update,
-                    "stock_details": self.stock_details
-                }, f, ensure_ascii=False)
+                json.dump({"last_update": self.last_update, "stock_details": self.stock_details}, f, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Error saving stock cache: {e}")
 
@@ -93,14 +91,11 @@ class StockService:
                 data = response.json()
                 for item in data:
                     # dm format: "00001.HK"
-                    full_code = str(item.get('dm', ''))
-                    name = item.get('mc', '')
+                    full_code = str(item.get("dm", ""))
+                    name = item.get("mc", "")
                     if full_code and name:
-                        code = full_code.split('.')[0]
-                        self.stock_details[code] = {
-                            'name': name,
-                            'market': '港交所'
-                        }
+                        code = full_code.split(".")[0]
+                        self.stock_details[code] = {"name": name, "market": "港交所"}
         except Exception as e:
             logger.error(f"Error fetching HK stocks: {e}")
 
@@ -112,32 +107,30 @@ class StockService:
                 data = response.json()
                 for item in data:
                     # dm format: "000001.SZ"
-                    full_code = str(item.get('dm', ''))
-                    name = item.get('mc', '')
-                    jys = item.get('jys', '')
-                    
-                    market = 'A股'
-                    if jys == 'SZ':
-                        market = '深交所'
-                    elif jys == 'SH' or full_code.endswith('.SH'):
-                        market = '上交所'
-                    # Fallback based on code prefix if JYS not clear
-                    elif full_code.startswith('6') or full_code.startswith('9'):
-                        market = '上交所'
-                    elif full_code.startswith('0') or full_code.startswith('3'):
-                        market = '深交所'
-                    elif full_code.startswith('4') or full_code.startswith('8'):
-                        market = '北交所'
+                    full_code = str(item.get("dm", ""))
+                    name = item.get("mc", "")
+                    jys = item.get("jys", "")
+
+                    market = "A股"
+                    if jys == "SZ":
+                        market = "深交所"
+                    elif (
+                        jys == "SH"
+                        or full_code.endswith(".SH")
+                        or full_code.startswith("6")
+                        or full_code.startswith("9")
+                    ):
+                        market = "上交所"
+                    elif full_code.startswith("0") or full_code.startswith("3"):
+                        market = "深交所"
+                    elif full_code.startswith("4") or full_code.startswith("8"):
+                        market = "北交所"
 
                     if full_code and name:
-                        code = full_code.split('.')[0]
-                        self.stock_details[code] = {
-                            'name': name,
-                            'market': market
-                        }
+                        code = full_code.split(".")[0]
+                        self.stock_details[code] = {"name": name, "market": market}
         except Exception as e:
             logger.error(f"Error fetching A-Share stocks: {e}")
-
 
     def normalize_code(self, internal_code):
         """
@@ -173,7 +166,7 @@ class StockService:
         Convert internal code to name. (Backward compatibility)
         """
         info = self.get_stock_info(internal_code)
-        return info.get('name', str(internal_code)) if info else str(internal_code)
+        return info.get("name", str(internal_code)) if info else str(internal_code)
 
     def get_stock_info(self, internal_code):
         """
@@ -184,12 +177,13 @@ class StockService:
         if search_code in self.stock_details:
             return self.stock_details[search_code]
 
-        return {'name': search_code, 'market': '--'}
+        return {"name": search_code, "market": "--"}
 
 
 # ---------------------------------------------------------------------------
 # DataService-first stock reference adapter
 # ---------------------------------------------------------------------------
+
 
 def get_stock_info_ds_first(internal_code: str) -> dict:
     """
@@ -203,21 +197,22 @@ def get_stock_info_ds_first(internal_code: str) -> dict:
     # 1) Try DataServiceClient
     try:
         from services.data_service_client import get_data_service_client
+
         ds_payload = get_data_service_client().get_stock_reference(search_code)
-        ds_data = ds_payload.get('data', {}) if isinstance(ds_payload, dict) else {}
+        ds_data = ds_payload.get("data", {}) if isinstance(ds_payload, dict) else {}
 
         if ds_data and isinstance(ds_data, dict):
-            name = ds_data.get('name') or search_code
-            market = ds_data.get('market') or '--'
-            symbol = ds_data.get('symbol') or search_code
+            name = ds_data.get("name") or search_code
+            market = ds_data.get("market") or "--"
+            symbol = ds_data.get("symbol") or search_code
             result = {
-                'name': str(name),
-                'market': str(market),
-                'code': str(symbol),
+                "name": str(name),
+                "market": str(market),
+                "code": str(symbol),
             }
             # Also update local cache so subsequent lookups are fast
             if name and name != search_code:
-                service.stock_details[search_code] = {'name': str(name), 'market': str(market)}
+                service.stock_details[search_code] = {"name": str(name), "market": str(market)}
             return result
     except Exception as e:
         logger.error(f"stock_info_ds_first: DataService unavailable for {search_code}, fallback: {e}")

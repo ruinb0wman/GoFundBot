@@ -164,7 +164,7 @@ export async function getFundNavHistory(
 
 export async function getFundRankHistory(code: string): Promise<ServiceResult<FundRankHistoryDto>> {
   const fundCode = assertFundCode(code);
-  const chain = new ProviderChain<FundProvider>([stockSdkFundProvider]);
+  const chain = new ProviderChain<FundProvider>([stockSdkFundProvider, eastMoneyFundProvider]);
   const result = await cacheThrough(`fund:rank-history:${fundCode}`, ttl.fundRankHistory, () =>
     chain.run('fund.rankHistory', (provider) => provider.rankHistory(fundCode))
   );
@@ -177,7 +177,7 @@ const DIVIDENDS_TIMEOUT_MS = 15000; // 15s – stock-sdk dividends can be slow
 export async function getFundDividends(code: string): Promise<ServiceResult<FundDividendListDto>> {
   const fundCode = assertFundCode(code);
   try {
-    const chain = new ProviderChain<FundProvider>([stockSdkFundProvider]);
+    const chain = new ProviderChain<FundProvider>([stockSdkFundProvider, eastMoneyFundProvider]);
     const result = await cacheThrough(`fund:dividends:${fundCode}`, ttl.fundDividends, () =>
       withTimeout(
         chain.run('fund.dividends', (provider) => provider.dividends(fundCode)),

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 股票 / 板块代码统一转换
 
@@ -17,7 +16,6 @@
 后续如需完整支持港股/美股/基金/期货，在此模块扩展。
 """
 
-from typing import Optional
 
 # ── 交易所常量 ────────────────────────────────────────────────
 
@@ -39,7 +37,8 @@ def _clean(code: str) -> str:
 
 # ── 交易所判定 ────────────────────────────────────────────────
 
-def get_exchange(code: str) -> Optional[str]:
+
+def get_exchange(code: str) -> str | None:
     """根据纯数字代码判定交易所"""
     c = _clean(code)
     if not c.isdigit() or len(c) < 6:
@@ -54,6 +53,7 @@ def get_exchange(code: str) -> Optional[str]:
 
 
 # ── sz/sh/bj 格式 ─────────────────────────────────────────────
+
 
 def to_exchange_code(code: str) -> str:
     """
@@ -81,6 +81,7 @@ def to_exchange_code(code: str) -> str:
 
 
 # ── 东方财富 1./0. 格式 ────────────────────────────────────────
+
 
 def to_eastmoney_secid(code: str) -> str:
     """
@@ -132,6 +133,7 @@ def to_board_secid(board_code: str) -> str:
 
 
 # ── 批量转换 ──────────────────────────────────────────────────
+
 
 def batch_to_exchange_codes(codes: list[str]) -> list[str]:
     """批量转换为交易所前缀格式"""

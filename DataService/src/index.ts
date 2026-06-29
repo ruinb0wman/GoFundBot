@@ -3,6 +3,25 @@ import { createServer, type Server } from 'node:http';
 import { createApp } from './app.js';
 import { logger } from './core/logger.js';
 
+function validateEnv(): void {
+  const issues: string[] = [];
+
+  if (process.env.NODE_ENV === 'production') {
+    const cors = process.env.CORS_ORIGINS?.trim();
+    if (!cors || cors === '*') {
+      issues.push('CORS_ORIGINS 未设置或为 * — 生产环境应限制来源');
+    }
+  }
+
+  if (issues.length > 0) {
+    for (const msg of issues) {
+      logger.warn('配置问题', { issue: msg });
+    }
+  }
+}
+
+validateEnv();
+
 const port = Number(process.env.PORT ?? 3100);
 
 const app = createApp();

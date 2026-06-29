@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 东方财富 Provider
 
@@ -17,10 +16,10 @@ Provider 不操作 UI 状态，不直接处理缓存。
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import urlencode
 
-from core.request import get_json, get_text, DEFAULT_TIMEOUT, DEFAULT_MAX_RETRIES
+from core.request import DEFAULT_MAX_RETRIES, DEFAULT_TIMEOUT, get_json
 from symbols import to_board_secid, to_eastmoney_secid
 
 logger = logging.getLogger(__name__)
@@ -37,6 +36,7 @@ KLINE_UT = "7eea3edcaed734bea9cbfc24409ed989"
 # 行业板块列表
 # ═══════════════════════════════════════════════════════════════
 
+
 def get_industry_boards(
     *,
     page: int = 1,
@@ -44,10 +44,10 @@ def get_industry_boards(
     sort_field: str = "f3",
     sort_order: int = 1,
     fs_filter: str = "m:90 t:2 f:!50",
-    fields: Optional[str] = None,
+    fields: str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
     max_retries: int = DEFAULT_MAX_RETRIES,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     获取东方财富行业板块列表
 
@@ -68,10 +68,7 @@ def get_industry_boards(
           mainNetInflowPercent}, ...]
     """
     if fields is None:
-        fields = (
-            "f12,f14,f2,f3,f4,f5,f6,f7,f8,f9,f23,"
-            "f62,f104,f105,f128,f136,f184"
-        )
+        fields = "f12,f14,f2,f3,f4,f5,f6,f7,f8,f9,f23,f62,f104,f105,f128,f136,f184"
 
     params = {
         "pn": str(page),
@@ -87,11 +84,7 @@ def get_industry_boards(
     }
 
     url = f"https://17.push2.eastmoney.com/api/qt/clist/get?{urlencode(params, safe=':+,!')}"
-    payload = get_json(
-        url, referer=EM_REFERER,
-        timeout=timeout, max_retries=max_retries,
-        impersonate="auto"
-    )
+    payload = get_json(url, referer=EM_REFERER, timeout=timeout, max_retries=max_retries, impersonate="auto")
 
     data = payload.get("data") or {}
     diff = data.get("diff") or []
@@ -106,7 +99,7 @@ def get_industry_boards(
     return [_map_board_item(item) for item in diff if str(item.get("f12", "")).startswith("BK")]
 
 
-def _map_board_item(item: Dict[str, Any]) -> Dict[str, Any]:
+def _map_board_item(item: dict[str, Any]) -> dict[str, Any]:
     """将原始 f 字段映射为语义化字段"""
     return {
         "code": item.get("f12", ""),
@@ -133,7 +126,8 @@ def _map_board_item(item: Dict[str, Any]) -> Dict[str, Any]:
 # 行业板块实时行情
 # ═══════════════════════════════════════════════════════════════
 
-def get_industry_spot(board_code: str) -> Dict[str, Any]:
+
+def get_industry_spot(board_code: str) -> dict[str, Any]:
     """
     获取行业板块实时行情
 
@@ -170,8 +164,8 @@ def get_industry_spot(board_code: str) -> Dict[str, Any]:
         "high": _float(data, "f44") / 100,
         "low": _float(data, "f45") / 100,
         "open": _float(data, "f46") / 100,
-        "volume": _float(data, "f47"),        # 不除 100
-        "amount": _float(data, "f48"),         # 不除 100
+        "volume": _float(data, "f47"),  # 不除 100
+        "amount": _float(data, "f48"),  # 不除 100
         "changePercent": _float(data, "f170") / 100,
         "amplitude": _float(data, "f171") / 100,
         "turnoverRate": _float(data, "f168") / 100,
@@ -183,12 +177,13 @@ def get_industry_spot(board_code: str) -> Dict[str, Any]:
 # 行业板块成份股
 # ═══════════════════════════════════════════════════════════════
 
+
 def get_industry_constituents(
     board_code: str,
     *,
     page: int = 1,
     page_size: int = 500,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     获取行业板块成份股
 
@@ -223,7 +218,7 @@ def get_industry_constituents(
     return [_map_constituent_item(item) for item in diff]
 
 
-def _map_constituent_item(item: Dict[str, Any]) -> Dict[str, Any]:
+def _map_constituent_item(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "code": item.get("f12", ""),
         "name": item.get("f14", ""),
@@ -255,8 +250,8 @@ KLT_MAP = {
 
 FQT_MAP = {
     "none": "0",
-    "qfq": "1",   # 前复权
-    "hfq": "2",   # 后复权
+    "qfq": "1",  # 前复权
+    "hfq": "2",  # 后复权
 }
 
 
@@ -267,7 +262,7 @@ def get_a_stock_kline(
     fqt: str = "qfq",
     start_date: str = "",
     end_date: str = "",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     获取 A 股历史 K 线
 
@@ -305,24 +300,26 @@ def get_a_stock_kline(
     data = payload.get("data") or {}
     klines_raw = data.get("klines") or []
 
-    result: List[Dict[str, Any]] = []
+    result: list[dict[str, Any]] = []
     for line in klines_raw:
         parts = line.split(",")
         if len(parts) < 11:
             continue
-        result.append({
-            "date": parts[0],
-            "open": _float_str(parts[1]),
-            "close": _float_str(parts[2]),
-            "high": _float_str(parts[3]),
-            "low": _float_str(parts[4]),
-            "volume": _float_str(parts[5]),
-            "amount": _float_str(parts[6]),
-            "amplitude": _float_str(parts[7]),
-            "changePercent": _float_str(parts[8]),
-            "change": _float_str(parts[9]),
-            "turnoverRate": _float_str(parts[10]),
-        })
+        result.append(
+            {
+                "date": parts[0],
+                "open": _float_str(parts[1]),
+                "close": _float_str(parts[2]),
+                "high": _float_str(parts[3]),
+                "low": _float_str(parts[4]),
+                "volume": _float_str(parts[5]),
+                "amount": _float_str(parts[6]),
+                "amplitude": _float_str(parts[7]),
+                "changePercent": _float_str(parts[8]),
+                "change": _float_str(parts[9]),
+                "turnoverRate": _float_str(parts[10]),
+            }
+        )
 
     return result
 
@@ -331,7 +328,8 @@ def get_a_stock_kline(
 # 市场指数（批量）
 # ═══════════════════════════════════════════════════════════════
 
-def get_market_indices(secids: List[str]) -> List[Dict[str, Any]]:
+
+def get_market_indices(secids: list[str]) -> list[dict[str, Any]]:
     """
     获取市场指数实时行情（批量）
 
@@ -370,7 +368,8 @@ def get_market_indices(secids: List[str]) -> List[Dict[str, Any]]:
 # 内部工具
 # ═══════════════════════════════════════════════════════════════
 
-def _float(obj: Dict[str, Any], key: str, default: float = 0.0) -> float:
+
+def _float(obj: dict[str, Any], key: str, default: float = 0.0) -> float:
     try:
         v = obj.get(key)
         if v is None or v == "-" or v == "":
@@ -380,7 +379,7 @@ def _float(obj: Dict[str, Any], key: str, default: float = 0.0) -> float:
         return default
 
 
-def _int(obj: Dict[str, Any], key: str, default: int = 0) -> int:
+def _int(obj: dict[str, Any], key: str, default: int = 0) -> int:
     try:
         v = obj.get(key)
         if v is None or v == "-" or v == "":

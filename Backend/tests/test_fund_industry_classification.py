@@ -2,7 +2,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
@@ -12,26 +11,32 @@ from services.industry_classification import _build_portfolio_industry_tag
 
 class FundIndustryClassificationTest(unittest.TestCase):
     def test_etf_feeder_uses_name_topic_without_holdings(self):
-        tag = _build_portfolio_industry_tag({
-            "fund_name": "华夏中证半导体ETF联接A",
-            "fund_type": "指数型",
-        })
+        tag = _build_portfolio_industry_tag(
+            {
+                "fund_name": "华夏中证半导体ETF联接A",
+                "fund_type": "指数型",
+            }
+        )
         self.assertEqual(tag["name"], "半导体")
         self.assertEqual(tag["basis"], "index_topic")
 
     def test_broad_index_uses_name_without_holdings(self):
-        tag = _build_portfolio_industry_tag({
-            "fund_name": "易方达沪深300指数增强A",
-            "fund_type": "指数型",
-        })
+        tag = _build_portfolio_industry_tag(
+            {
+                "fund_name": "易方达沪深300指数增强A",
+                "fund_type": "指数型",
+            }
+        )
         self.assertEqual(tag["name"], "宽基指数")
         self.assertEqual(tag["basis"], "broad_index_name")
 
     def test_qdii_nasdaq_uses_market_topic_without_holdings(self):
-        tag = _build_portfolio_industry_tag({
-            "fund_name": "广发纳斯达克100指数QDII",
-            "fund_type": "QDII",
-        })
+        tag = _build_portfolio_industry_tag(
+            {
+                "fund_name": "广发纳斯达克100指数QDII",
+                "fund_type": "QDII",
+            }
+        )
         self.assertEqual(tag["name"], "美股科技")
         self.assertEqual(tag["basis"], "market_region")
 
@@ -71,6 +76,51 @@ class FundIndustryClassificationTest(unittest.TestCase):
         tag = _build_portfolio_industry_tag({"stock_codes_new": holdings})
         self.assertEqual(tag["name"], "混合型")
         self.assertEqual(tag["basis"], "mixed")
+
+    def test_none_input_returns_none(self):
+        self.assertIsNone(_build_portfolio_industry_tag(None))
+        self.assertIsNone(_build_portfolio_industry_tag("not a dict"))
+
+    def test_empty_input_uses_fallback(self):
+        tag = _build_portfolio_industry_tag({})
+        self.assertEqual(tag["basis"], "mixed")
+
+    def test_nasdaq_qdii_with_us_holdings(self):
+        holdings = [
+            {"code": "QQQ", "name": "Invesco QQQ Trust", "industry": "美股"},
+        ]
+        tag = _build_portfolio_industry_tag(
+            {
+                "fund_name": "广发纳斯达克100指数QDII",
+                "fund_type": "QDII",
+                "stock_codes_new": holdings,
+            }
+        )
+        self.assertEqual(tag["name"], "美股科技")
+
+    def test_japan_qdii_topic(self):
+        tag = _build_portfolio_industry_tag(
+            {
+                "fund_name": "华安日经225ETF联接",
+                "fund_type": "QDII",
+            }
+        )
+        self.assertEqual(tag["basis"], "market_region")
+
+    def test_etf_feeder_with_spread_holdings_uses_fallback(self):
+        holdings = [
+            {"code": "000001", "name": "A", "industry": "医药"},
+            {"code": "000002", "name": "B", "industry": "消费"},
+        ]
+        tag = _build_portfolio_industry_tag(
+            {
+                "fund_name": "华夏中证半导体ETF联接A",
+                "fund_type": "指数型",
+                "stock_codes_new": holdings,
+            }
+        )
+        self.assertIsNotNone(tag)
+        self.assertIn(tag["basis"], ("holding_weight", "mixed", "index_topic"))
 
 
 if __name__ == "__main__":

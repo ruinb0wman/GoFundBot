@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 DataService → Legacy /api/fund/<code> response mapper.
 
@@ -11,7 +10,7 @@ When a field cannot be mapped the mapper sets it to None, an empty list,
 or a ``missing`` marker — it never fabricates data.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def map_data_service_detail_to_legacy(data_service_payload: dict) -> dict:
@@ -25,9 +24,9 @@ def map_data_service_detail_to_legacy(data_service_payload: dict) -> dict:
         return _empty_legacy()
 
     ds_data = data_service_payload.get("data", {}) if isinstance(data_service_payload, dict) else {}
-    sections: Dict[str, Any] = ds_data.get("sections", {}) if isinstance(ds_data, dict) else {}
+    sections: dict[str, Any] = ds_data.get("sections", {}) if isinstance(ds_data, dict) else {}
 
-    legacy: Dict[str, Any] = {}
+    legacy: dict[str, Any] = {}
 
     # -- basic_info --
     legacy["basic_info"] = _map_basic_info(sections.get("basic", {}))
@@ -58,9 +57,7 @@ def map_data_service_detail_to_legacy(data_service_payload: dict) -> dict:
     legacy["performance"] = _map_performance(sections.get("performance", {}))
 
     # -- subscription_redemption --
-    legacy["subscription_redemption"] = _map_subscription_redemption(
-        sections.get("subscriptionRedemption", {})
-    )
+    legacy["subscription_redemption"] = _map_subscription_redemption(sections.get("subscriptionRedemption", {}))
 
     # -- holder_structure --
     legacy["holder_structure"] = _map_holder_structure(sections.get("holderStructure", {}))
@@ -91,6 +88,7 @@ def map_data_service_detail_to_legacy(data_service_payload: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Section mappers
 # ---------------------------------------------------------------------------
+
 
 def _section_data(section: dict):
     """Extract .data from a detail section dict. Returns None if section is not a dict.
@@ -145,16 +143,20 @@ def _map_nav_history(section: dict) -> dict:
     for item in items:
         if not isinstance(item, dict):
             continue
-        net_worth_trend.append({
-            "date": item.get("date"),
-            "net_worth": _safe_float(item.get("nav")),
-            "equity_return": _safe_float(item.get("dailyReturn")),
-            "dividend": None,
-        })
-        accumulated_net_worth.append({
-            "date": item.get("date"),
-            "position_percentage": _safe_float(item.get("accNav")),
-        })
+        net_worth_trend.append(
+            {
+                "date": item.get("date"),
+                "net_worth": _safe_float(item.get("nav")),
+                "equity_return": _safe_float(item.get("dailyReturn")),
+                "dividend": None,
+            }
+        )
+        accumulated_net_worth.append(
+            {
+                "date": item.get("date"),
+                "position_percentage": _safe_float(item.get("accNav")),
+            }
+        )
 
     return {"net_worth_trend": net_worth_trend, "accumulated_net_worth": accumulated_net_worth}
 
@@ -171,15 +173,19 @@ def _map_rank_history(section: dict) -> dict:
     for item in items:
         if not isinstance(item, dict):
             continue
-        ranking_trend.append({
-            "date": item.get("date"),
-            "rank": item.get("rank"),
-            "total_funds": str(item.get("total", "")) if item.get("total") is not None else None,
-        })
-        ranking_percentage.append({
-            "date": item.get("date"),
-            "position_percentage": item.get("percentile"),
-        })
+        ranking_trend.append(
+            {
+                "date": item.get("date"),
+                "rank": item.get("rank"),
+                "total_funds": str(item.get("total", "")) if item.get("total") is not None else None,
+            }
+        )
+        ranking_percentage.append(
+            {
+                "date": item.get("date"),
+                "position_percentage": item.get("percentile"),
+            }
+        )
 
     return {"ranking_trend": ranking_trend, "ranking_percentage": ranking_percentage}
 
@@ -194,13 +200,15 @@ def _map_holdings(section: dict) -> dict:
     for item in items:
         if not isinstance(item, dict):
             continue
-        stock_codes.append({
-            "code": item.get("stockCode"),
-            "name": item.get("stockName"),
-            "market": item.get("market"),
-            "original_code": None,
-            "ratio": item.get("ratio"),
-        })
+        stock_codes.append(
+            {
+                "code": item.get("stockCode"),
+                "name": item.get("stockName"),
+                "market": item.get("market"),
+                "original_code": None,
+                "ratio": item.get("ratio"),
+            }
+        )
 
     bond_codes = data.get("bondCodes", []) if isinstance(data, dict) else []
     bond_codes_new = data.get("bondCodesNew", []) if isinstance(data, dict) else []
@@ -246,17 +254,19 @@ def _map_managers(section: dict) -> dict:
     for item in items:
         if not isinstance(item, dict):
             continue
-        result.append({
-            "id": item.get("id"),
-            "name": item.get("name"),
-            "start_date": item.get("startDate"),
-            "photo_url": None,
-            "star_rating": None,
-            "work_experience": None,
-            "ability_assessment": None,
-            "performance": None,
-            "managed_fund_size": None,
-        })
+        result.append(
+            {
+                "id": item.get("id"),
+                "name": item.get("name"),
+                "start_date": item.get("startDate"),
+                "photo_url": None,
+                "star_rating": None,
+                "work_experience": None,
+                "ability_assessment": None,
+                "performance": None,
+                "managed_fund_size": None,
+            }
+        )
     return result
 
 
@@ -321,11 +331,13 @@ def _map_same_type_funds(section: dict) -> list:
         for fund in category:
             if not isinstance(fund, dict):
                 continue
-            funds.append({
-                "code": fund.get("code", ""),
-                "name": fund.get("name", ""),
-                "return_rate": _safe_float(fund.get("returnRate")),
-            })
+            funds.append(
+                {
+                    "code": fund.get("code", ""),
+                    "name": fund.get("name", ""),
+                    "return_rate": _safe_float(fund.get("returnRate")),
+                }
+            )
         result.append(funds)
     return result
 
@@ -350,10 +362,12 @@ def _map_position_trend(section: dict) -> list:
     for item in data:
         if not isinstance(item, dict):
             continue
-        result.append({
-            "date": item.get("date"),
-            "position_percentage": _safe_float(item.get("positionPercentage")),
-        })
+        result.append(
+            {
+                "date": item.get("date"),
+                "position_percentage": _safe_float(item.get("positionPercentage")),
+            }
+        )
     return result
 
 
@@ -380,6 +394,7 @@ def _map_performance_evaluation(section: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Risk metrics (computed from navHistory, NOT from EastMoney)
 # ---------------------------------------------------------------------------
+
 
 def calculate_risk_metrics_from_nav_history(nav_history_section: dict) -> dict:
     """Compute risk metrics from DataService detail.sections.navHistory.data.
@@ -517,13 +532,19 @@ def calculate_risk_metrics_from_nav_history(nav_history_section: dict) -> dict:
 
 def _empty_risk_metrics() -> dict:
     return {
-        "annual_return_1y": None, "annual_return_3y": None,
-        "volatility_1y": None, "volatility_3y": None,
-        "max_drawdown_3m": None, "max_drawdown_6m": None,
-        "max_drawdown_1y": None, "max_drawdown_3y": None,
+        "annual_return_1y": None,
+        "annual_return_3y": None,
+        "volatility_1y": None,
+        "volatility_3y": None,
+        "max_drawdown_3m": None,
+        "max_drawdown_6m": None,
+        "max_drawdown_1y": None,
+        "max_drawdown_3y": None,
         "max_drawdown_all": None,
-        "sharpe_ratio_1y": None, "sharpe_ratio_3y": None,
-        "calmar_ratio_1y": None, "calmar_ratio_3y": None,
+        "sharpe_ratio_1y": None,
+        "sharpe_ratio_3y": None,
+        "calmar_ratio_1y": None,
+        "calmar_ratio_3y": None,
     }
 
 
@@ -531,13 +552,14 @@ def _empty_risk_metrics() -> dict:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _to_str(value) -> Optional[str]:
+
+def _to_str(value) -> str | None:
     if value is None:
         return None
     return str(value)
 
 
-def _fmt_float4(value) -> Optional[str]:
+def _fmt_float4(value) -> str | None:
     """Format float to 4 decimal places, matching legacy format."""
     if value is None:
         return None
@@ -547,9 +569,9 @@ def _fmt_float4(value) -> Optional[str]:
         return str(value)
 
 
-def _safe_float(value) -> Optional[float]:
+def _safe_float(value) -> float | None:
     """Convert value to float, returning None on failure."""
-    if value is None or value == '' or value == '-':
+    if value is None or value == "" or value == "-":
         return None
     try:
         return float(value)

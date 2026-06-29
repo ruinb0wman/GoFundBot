@@ -1,4 +1,5 @@
 flask==2.3.3
+flask-compress>=1.15
 prometheus-client>=0.18.0
 flasgger>=0.9.0
 flask-cors==4.0.0

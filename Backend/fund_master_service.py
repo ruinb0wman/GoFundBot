@@ -11,25 +11,27 @@ Fund-Master 核心功能服务模块
 包含：7x24快讯、行业板块排行、实时金价、历史金价、A股成交量、上证指数、市场指数汇总
 """
 
+import contextlib
 import datetime
 import html
-from core.logging import get_logger
-
-logger = get_logger(__name__)
 import json
 import os
 import re
-import time
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import requests
 import urllib3
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urlencode
 
+from core.logging import get_logger
 from core.request import get_eastmoney_circuit_breaker
+
+logger = get_logger(__name__)
 
 try:
     from curl_cffi import requests as curl_requests
+
     CURL_CFFI_AVAILABLE = True
 except ImportError:
     CURL_CFFI_AVAILABLE = False
@@ -37,24 +39,25 @@ except ImportError:
 
 urllib3.disable_warnings()
 
+
 class FundMasterService:
     """Fund-Master 核心数据服务"""
-    
+
     # 内存缓存（带过期时间）
     _cache = {}
     _cache_lock = threading.Lock()
-    
+
     # 缓存过期时间配置（秒）
     CACHE_TTL = {
-        'flash_news': 30,           # 快讯 30秒
-        'sector_rank': 300,         # 板块排行 5分钟
-        'market_index': 60,         # 市场指数 1分钟
-        'gold_realtime': 60,        # 实时金价 1分钟
-        'gold_history': 3600,       # 历史金价 1小时
-        'a_volume_7days': 300,      # 7日成交量 5分钟
-        'sse_30min': 60,            # 上证30分钟 1分钟
+        "flash_news": 30,  # 快讯 30秒
+        "sector_rank": 300,  # 板块排行 5分钟
+        "market_index": 60,  # 市场指数 1分钟
+        "gold_realtime": 60,  # 实时金价 1分钟
+        "gold_history": 3600,  # 历史金价 1小时
+        "a_volume_7days": 300,  # 7日成交量 5分钟
+        "sse_30min": 60,  # 上证30分钟 1分钟
     }
-    
+
     def __init__(self):
         self.session = requests.Session()
         # 市场数据接口经常被本机代理配置影响；这里禁用环境代理，避免 ProxyError 导致页面空白。
@@ -109,12 +112,7 @@ class FundMasterService:
         if CURL_CFFI_AVAILABLE:
             try:
                 response = curl_requests.get(
-                    url,
-                    params=params,
-                    headers=headers,
-                    timeout=timeout,
-                    verify=False,
-                    impersonate="chrome"
+                    url, params=params, headers=headers, timeout=timeout, verify=False, impersonate="chrome"
                 )
                 response.raise_for_status()
                 if is_em:
@@ -136,7 +134,7 @@ class FundMasterService:
         if "Connection" in message or "connect" in message.lower():
             return "市场数据源连接失败"
         return message[:120]
-    
+
     def _init_baidu_session(self):
         """初始化百度股市通会话（使用 curl_cffi 绕过反爬）"""
         if CURL_CFFI_AVAILABLE:
@@ -152,22 +150,20 @@ class FundMasterService:
                 "sec-fetch-dest": "empty",
                 "sec-fetch-mode": "cors",
                 "sec-fetch-site": "same-site",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
             }
             # 预热会话
-            try:
+            with contextlib.suppress(Exception):
                 self.baidu_session.get(
                     "https://gushitong.baidu.com/index/ab-000001",
                     headers={"user-agent": self.baidu_session.headers["user-agent"]},
-                    timeout=10, 
-                    verify=False
+                    timeout=10,
+                    verify=False,
                 )
-            except Exception:
-                pass
         else:
             # 降级使用普通 requests
             self.baidu_session = self.session
-    
+
     def _get_cache(self, key: str):
         """获取缓存数据"""
         with self._cache_lock:
@@ -182,7 +178,7 @@ class FundMasterService:
         with self._cache_lock:
             cached = self._cache.get(key)
             return cached[0] if cached else None
-    
+
     def _set_cache(self, key: str, data, ttl_key: str):
         """设置缓存数据"""
         with self._cache_lock:
@@ -224,7 +220,7 @@ class FundMasterService:
             path = self._sector_rank_cache_file()
             if not os.path.exists(path):
                 return None
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 cached = json.load(f)
             rows = cached.get("data") or []
             if not rows:
@@ -251,8 +247,8 @@ class FundMasterService:
         if not rows:
             return False
         return any(
-            abs(self._safe_float(row.get("raw_change"), 0.0)) > 0.0001 or
-            abs(self._safe_float(row.get("raw_main_inflow"), 0.0)) > 0.0001
+            abs(self._safe_float(row.get("raw_change"), 0.0)) > 0.0001
+            or abs(self._safe_float(row.get("raw_main_inflow"), 0.0)) > 0.0001
             for row in rows
         )
 
@@ -266,13 +262,13 @@ class FundMasterService:
         return f"{round(self._safe_float(value, 0.0), 2)}%"
 
     def _get_sector_rank_akshare(self, limit):
-        import os, sys
-        if os.environ.get('DISABLE_AKSHARE_FALLBACK') == '1':
+        import os
+
+        if os.environ.get("DISABLE_AKSHARE_FALLBACK") == "1":
             logger.warning("[FundMaster] akshare 被 DISABLE_AKSHARE_FALLBACK 禁用，跳过")
             return []
         try:
             import akshare as ak
-            import pandas as pd
         except ImportError as e:
             logger.error(f"[FundMaster] akshare 导入失败（未安装?）: {e}")
             return []
@@ -316,15 +312,17 @@ class FundMasterService:
                 inflow_pct = row.get("主力净流入占比") or row.get("净占比") or 0
                 # akshare 同花顺的净流入单位已经是「亿」，直接格式化
                 inflow_val = self._safe_float(inflow, 0.0)
-                rows.append({
-                    "name": str(name),
-                    "code": code,
-                    "change_pct": self._format_pct(change),
-                    "main_inflow": f"{round(inflow_val, 2)}亿" if inflow_val else "0亿",
-                    "main_inflow_pct": self._format_pct(inflow_pct),
-                    "raw_change": self._safe_float(change, 0.0),
-                    "raw_main_inflow": inflow_val
-                })
+                rows.append(
+                    {
+                        "name": str(name),
+                        "code": code,
+                        "change_pct": self._format_pct(change),
+                        "main_inflow": f"{round(inflow_val, 2)}亿" if inflow_val else "0亿",
+                        "main_inflow_pct": self._format_pct(inflow_pct),
+                        "raw_change": self._safe_float(change, 0.0),
+                        "raw_main_inflow": inflow_val,
+                    }
+                )
             rows.sort(key=lambda x: x["raw_change"], reverse=True)
             if self._is_valid_sector_rank(rows):
                 logger.info(f"[FundMaster] akshare 板块数据获取成功，共 {len(rows)} 条（来源: {fn_name}）")
@@ -332,20 +330,20 @@ class FundMasterService:
             logger.info(f"[FundMaster] akshare {fn_name} 数据被 _is_valid_sector_rank 否决（可能非交易日）")
         logger.error("[FundMaster] akshare 板块数据获取失败或数据无效")
         return []
-    
+
     # ==================== 7x24 快讯 ====================
     def get_flash_news(self, count: int = 20) -> dict:
         """
         获取7x24小时快讯
         数据源：百度股市通
-        
+
         Args:
             count: 获取快讯数量，默认20条
-            
+
         Returns:
             dict: {'success': bool, 'data': list, 'update_time': str}
         """
-        cache_key = f'flash_news_{count}'
+        cache_key = f"flash_news_{count}"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
@@ -371,62 +369,63 @@ class FundMasterService:
                 "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "sources": list(sorted({item.get("source", "") for item in result if item.get("source")})),
             }
-            self._set_cache(cache_key, data, 'flash_news')
+            self._set_cache(cache_key, data, "flash_news")
             return data
 
         stale = self._get_stale_cache(cache_key)
         if stale and stale.get("data"):
             return {**stale, "source": "stale_cache"}
         return {"success": False, "error": "；".join(errors) or "获取快讯失败", "data": []}
-        
+
         try:
             url = f"https://finance.pae.baidu.com/selfselect/expressnews?rn={count}&pn=0&tag=A股&finClientType=pc"
             response = self.baidu_session.get(url, timeout=10, verify=False)
-            
+
             if response.json().get("ResultCode") == "0":
                 news_list = response.json()["Result"]["content"]["list"]
                 result = []
-                
+
                 for item in news_list:
                     evaluate = item.get("evaluate", "")
                     title = item.get("title", "")
                     if not title and item.get("content", {}).get("items"):
                         title = item["content"]["items"][0].get("data", "")
-                    
+
                     publish_time = item.get("publish_time", "")
                     if publish_time:
-                        publish_time = datetime.datetime.fromtimestamp(
-                            int(publish_time)
-                        ).strftime("%Y-%m-%d %H:%M:%S")
-                    
+                        publish_time = datetime.datetime.fromtimestamp(int(publish_time)).strftime("%Y-%m-%d %H:%M:%S")
+
                     # 相关股票
                     entities = item.get("entity", [])
                     related_stocks = [
                         {
                             "code": e.get("code", "").strip(),
                             "name": e.get("name", "").strip(),
-                            "ratio": e.get("ratio", "").strip()
+                            "ratio": e.get("ratio", "").strip(),
                         }
-                        for e in entities if e.get("code")
+                        for e in entities
+                        if e.get("code")
                     ]
-                    
-                    result.append({
-                        "title": title,
-                        "evaluate": evaluate,  # 利好/利空/空
-                        "publish_time": publish_time,
-                        "related_stocks": related_stocks
-                    })
-                
+
+                    result.append(
+                        {
+                            "title": title,
+                            "evaluate": evaluate,  # 利好/利空/空
+                            "publish_time": publish_time,
+                            "related_stocks": related_stocks,
+                        }
+                    )
+
                 data = {
                     "success": True,
                     "data": result,
-                    "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 }
-                self._set_cache(cache_key, data, 'flash_news')
+                self._set_cache(cache_key, data, "flash_news")
                 return data
-            
+
             return {"success": False, "error": "获取快讯失败", "data": []}
-        
+
         except Exception as e:
             return {"success": False, "error": str(e), "data": []}
 
@@ -464,19 +463,22 @@ class FundMasterService:
             if key in seen:
                 continue
             seen.add(key)
-            result.append({
-                "title": title,
-                "evaluate": item.get("evaluate", ""),
-                "publish_time": self._news_time_to_text(item.get("publish_time")),
-                "related_stocks": item.get("related_stocks") or [],
-                "source": item.get("source", "")
-            })
+            result.append(
+                {
+                    "title": title,
+                    "evaluate": item.get("evaluate", ""),
+                    "publish_time": self._news_time_to_text(item.get("publish_time")),
+                    "related_stocks": item.get("related_stocks") or [],
+                    "source": item.get("source", ""),
+                }
+            )
 
         def sort_key(item):
             try:
                 return datetime.datetime.strptime((item.get("publish_time") or "")[:19], "%Y-%m-%d %H:%M:%S")
             except Exception:
                 return datetime.datetime.min
+
         return sorted(result, key=sort_key, reverse=True)
 
     def _fetch_baidu_flash_news(self, count):
@@ -496,17 +498,20 @@ class FundMasterService:
                 {
                     "code": e.get("code", "").strip(),
                     "name": e.get("name", "").strip(),
-                    "ratio": e.get("ratio", "").strip()
+                    "ratio": e.get("ratio", "").strip(),
                 }
-                for e in entities if e.get("code")
+                for e in entities
+                if e.get("code")
             ]
-            result.append({
-                "title": title,
-                "evaluate": item.get("evaluate", ""),
-                "publish_time": item.get("publish_time", ""),
-                "related_stocks": related_stocks,
-                "source": "百度股市通"
-            })
+            result.append(
+                {
+                    "title": title,
+                    "evaluate": item.get("evaluate", ""),
+                    "publish_time": item.get("publish_time", ""),
+                    "related_stocks": related_stocks,
+                    "source": "百度股市通",
+                }
+            )
         return result
 
     def _fetch_eastmoney_flash_news(self, count):
@@ -515,7 +520,7 @@ class FundMasterService:
             url,
             headers={
                 "Referer": "https://kuaixun.eastmoney.com/",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             },
             timeout=8,
             verify=False,
@@ -527,13 +532,15 @@ class FundMasterService:
         news_list = payload.get("LivesList") or payload.get("data") or payload.get("list") or []
         result = []
         for item in news_list:
-            result.append({
-                "title": item.get("title") or item.get("digest") or item.get("simtitle"),
-                "evaluate": "",
-                "publish_time": item.get("showtime") or item.get("time") or item.get("ctime"),
-                "related_stocks": [],
-                "source": "东方财富"
-            })
+            result.append(
+                {
+                    "title": item.get("title") or item.get("digest") or item.get("simtitle"),
+                    "evaluate": "",
+                    "publish_time": item.get("showtime") or item.get("time") or item.get("ctime"),
+                    "related_stocks": [],
+                    "source": "东方财富",
+                }
+            )
         return result
 
     def _fetch_cls_flash_news(self, count):
@@ -551,23 +558,25 @@ class FundMasterService:
             },
             headers={
                 "Referer": "https://www.cls.cn/telegraph",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             },
-            timeout=8
+            timeout=8,
         )
         data = payload.get("data") or {}
         news_list = data.get("roll_data") or data.get("telegram") or data.get("list") or []
         result = []
         for item in news_list:
-            result.append({
-                "title": item.get("content") or item.get("title") or item.get("brief"),
-                "evaluate": "",
-                "publish_time": item.get("ctime") or item.get("time") or item.get("created_at"),
-                "related_stocks": [],
-                "source": "财联社"
-            })
+            result.append(
+                {
+                    "title": item.get("content") or item.get("title") or item.get("brief"),
+                    "evaluate": "",
+                    "publish_time": item.get("ctime") or item.get("time") or item.get("created_at"),
+                    "related_stocks": [],
+                    "source": "财联社",
+                }
+            )
         return result
-    
+
     # ==================== 行业板块排行 ====================
     def get_sector_rank(self, limit: int = 90) -> dict:
         """
@@ -581,7 +590,7 @@ class FundMasterService:
             dict: {'success': bool, 'data': list, 'update_time': str}
         """
         limit = max(1, min(int(limit or 90), 120))
-        cache_key = f'sector_rank_{limit}'
+        cache_key = f"sector_rank_{limit}"
         data_date = self._last_a_share_trading_date()
 
         cached = self._get_cache(cache_key)
@@ -598,25 +607,25 @@ class FundMasterService:
                 "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "data_date": data_date,
                 "is_stale": False,
-                "source": "akshare.ths"
+                "source": "akshare.ths",
             }
-            self._set_cache(cache_key, data, 'sector_rank')
+            self._set_cache(cache_key, data, "sector_rank")
             self._save_sector_rank_file_cache(data)
             return data
 
-        logger.info(f"[FundMaster] akshare 无数据，尝试过期缓存...")
+        logger.info("[FundMaster] akshare 无数据，尝试过期缓存...")
         stale = self._get_stale_cache(cache_key)
         if stale and stale.get("data"):
             logger.warning(f"[FundMaster] 使用过期内存缓存，{len(stale['data'])} 条")
             return {**stale, "is_stale": True, "source": "stale_cache"}
 
-        logger.info(f"[FundMaster] 过期缓存无数据，尝试文件缓存...")
+        logger.info("[FundMaster] 过期缓存无数据，尝试文件缓存...")
         file_cached = self._load_sector_rank_file_cache(limit, data_date, require_full=False)
         if file_cached:
             logger.info(f"[FundMaster] 使用文件缓存，{len(file_cached.get('data', []))} 条")
             return {**file_cached, "is_stale": True, "source": "file_cache"}
 
-        logger.info(f"[FundMaster] 文件缓存无数据，使用占位数据")
+        logger.info("[FundMaster] 文件缓存无数据，使用占位数据")
         fallback_rows = self._get_sector_rank_fallback(limit)
         if fallback_rows:
             return {
@@ -627,7 +636,7 @@ class FundMasterService:
                 "data_date": data_date,
                 "is_stale": True,
                 "is_partial": True,
-                "source": "fallback"
+                "source": "fallback",
             }
 
         return {"success": False, "error": "获取板块数据失败", "data": []}
@@ -635,22 +644,41 @@ class FundMasterService:
     def _get_sector_rank_fallback(self, limit: int = 50) -> list:
         """返回结构稳定的板块占位数据，避免外部数据源故障时前端整块不可用。"""
         names = [
-            "银行", "证券", "保险", "房地产开发", "半导体", "消费电子", "汽车整车", "医药商业",
-            "白酒", "电池", "光伏设备", "通信设备", "软件开发", "游戏", "军工装备", "贵金属",
-            "煤炭行业", "有色金属", "电力行业", "旅游酒店"
+            "银行",
+            "证券",
+            "保险",
+            "房地产开发",
+            "半导体",
+            "消费电子",
+            "汽车整车",
+            "医药商业",
+            "白酒",
+            "电池",
+            "光伏设备",
+            "通信设备",
+            "软件开发",
+            "游戏",
+            "军工装备",
+            "贵金属",
+            "煤炭行业",
+            "有色金属",
+            "电力行业",
+            "旅游酒店",
         ]
         result = []
-        for name in names[:max(0, limit)]:
-            result.append({
-                "name": name,
-                "change_pct": "0.00%",
-                "main_inflow": "0亿",
-                "main_inflow_pct": "0.00%",
-                "raw_change": 0.0,
-                "raw_main_inflow": 0.0
-            })
+        for name in names[: max(0, limit)]:
+            result.append(
+                {
+                    "name": name,
+                    "change_pct": "0.00%",
+                    "main_inflow": "0亿",
+                    "main_inflow_pct": "0.00%",
+                    "raw_change": 0.0,
+                    "raw_main_inflow": 0.0,
+                }
+            )
         return result
-    
+
     # ==================== 市场指数汇总 ====================
     def get_market_index(self) -> dict:
         """
@@ -660,7 +688,7 @@ class FundMasterService:
         Returns:
             dict: {'success': bool, 'data': list, 'update_time': str}
         """
-        cache_key = 'market_index'
+        cache_key = "market_index"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
@@ -672,9 +700,9 @@ class FundMasterService:
                     "success": True,
                     "data": result,
                     "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "source": "sina"
+                    "source": "sina",
                 }
-                self._set_cache(cache_key, data, 'market_index')
+                self._set_cache(cache_key, data, "market_index")
                 return data
             return {"success": False, "error": "获取指数数据失败", "data": []}
         except Exception as e:
@@ -715,21 +743,21 @@ class FundMasterService:
             url = "https://hq.sinajs.cn/list=" + ",".join(code for code, _, _ in code_map)
             headers = {
                 "Referer": "https://finance.sina.com.cn/",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             }
             response = self.session.get(url, headers=headers, timeout=8, verify=False)
             response.raise_for_status()
-            response.encoding = 'gbk'  # Sina 返回 GBK 编码，必须显式设置
+            response.encoding = "gbk"  # Sina 返回 GBK 编码，必须显式设置
             text = response.text
             result = []
             now = datetime.datetime.now()
             for code, fallback_name, market in code_map:
-                marker = f"var hq_str_{code}=\""
+                marker = f'var hq_str_{code}="'
                 start = text.find(marker)
                 if start < 0:
                     continue
                 start += len(marker)
-                end = text.find("\";", start)
+                end = text.find('";', start)
                 payload = text[start:end]
                 parts = payload.split(",")
                 if len(parts) < 4:
@@ -776,20 +804,24 @@ class FundMasterService:
                             if trading_days_old > 5:
                                 # 数据确实过期，但仍显示最后可用数据而不是归零
                                 # 归零会让用户以为市场暴跌，不如显示历史数据
-                                logger.info(f"[Sina] {fallback_name} 数据日期 {data_date_str} "
-                                            f"({calendar_days_old}天前/{trading_days_old}交易日)，数据可能陈旧但仍显示")
+                                logger.info(
+                                    f"[Sina] {fallback_name} 数据日期 {data_date_str} "
+                                    f"({calendar_days_old}天前/{trading_days_old}交易日)，数据可能陈旧但仍显示"
+                                )
                         except ValueError:
                             pass
 
-                result.append({
-                    "code": code,
-                    "name": name,
-                    "price": f"{price:.2f}" if price else "-",
-                    "change_pct": f"{'+' if pct >= 0 else ''}{pct:.2f}%",
-                    "market": market,
-                    "raw_change": pct,
-                    "prev_close": prev_close
-                })
+                result.append(
+                    {
+                        "code": code,
+                        "name": name,
+                        "price": f"{price:.2f}" if price else "-",
+                        "change_pct": f"{'+' if pct >= 0 else ''}{pct:.2f}%",
+                        "market": market,
+                        "raw_change": pct,
+                        "prev_close": prev_close,
+                    }
+                )
             if result:
                 return result
         except Exception:
@@ -816,104 +848,98 @@ class FundMasterService:
             {"name": "法国CAC40", "price": "-", "change_pct": "0.00%", "market": "全球", "raw_change": 0.0},
             {"name": "印度SENSEX", "price": "-", "change_pct": "0.00%", "market": "全球", "raw_change": 0.0},
         ]
-    
+
     # ==================== 实时贵金属价格 ====================
     def get_gold_realtime(self) -> dict:
         """
         获取实时贵金属价格
         数据源：金投网/集金号
-        
+
         Returns:
             dict: {'success': bool, 'data': list, 'update_time': str}
         """
-        cache_key = 'gold_realtime'
+        cache_key = "gold_realtime"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
-        
+
         try:
             headers = {
                 "accept": "*/*",
                 "referer": "https://quote.cngold.org/gjs/gjhj.html",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
             }
-            
+
             url = "https://api.jijinhao.com/quoteCenter/realTime.htm"
-            params = {
-                "codes": "JO_71,JO_92233,JO_92232,JO_75",
-                "_": str(int(time.time() * 1000))
-            }
-            
+            params = {"codes": "JO_71,JO_92233,JO_92232,JO_75", "_": str(int(time.time() * 1000))}
+
             response = requests.get(url, headers=headers, params=params, timeout=10, verify=False)
             raw = response.text.replace("var quote_json = ", "")
             data = json.loads(raw)
-            
+
             result = []
             if data:
-                code_map = {
-                    "JO_71": "黄金T+D",
-                    "JO_92233": "国际黄金",
-                    "JO_92232": "国际白银",
-                    "JO_75": "白银T+D"
-                }
-                
+                code_map = {"JO_71": "黄金T+D", "JO_92233": "国际黄金", "JO_92232": "国际白银", "JO_75": "白银T+D"}
+
                 for code in ["JO_71", "JO_92233", "JO_92232"]:
                     if code in data:
                         d = data[code]
                         update_time = ""
                         if d.get("time"):
-                            update_time = datetime.datetime.fromtimestamp(
-                                d["time"] / 1000
-                            ).strftime("%Y-%m-%d %H:%M:%S")
-                        
-                        result.append({
-                            "name": d.get("showName", code_map.get(code, code)),
-                            "price": round(d.get("q63", 0), 2),
-                            "change": round(d.get("q70", 0), 2),
-                            "change_pct": f"{round(d.get('q80', 0), 2)}%",
-                            "open": round(d.get("q1", 0), 2),
-                            "high": round(d.get("q3", 0), 2),
-                            "low": round(d.get("q4", 0), 2),
-                            "prev_close": round(d.get("q2", 0), 2),
-                            "update_time": update_time,
-                            "unit": d.get("unit", "")
-                        })
-            
+                            update_time = datetime.datetime.fromtimestamp(d["time"] / 1000).strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            )
+
+                        result.append(
+                            {
+                                "name": d.get("showName", code_map.get(code, code)),
+                                "price": round(d.get("q63", 0), 2),
+                                "change": round(d.get("q70", 0), 2),
+                                "change_pct": f"{round(d.get('q80', 0), 2)}%",
+                                "open": round(d.get("q1", 0), 2),
+                                "high": round(d.get("q3", 0), 2),
+                                "low": round(d.get("q4", 0), 2),
+                                "prev_close": round(d.get("q2", 0), 2),
+                                "update_time": update_time,
+                                "unit": d.get("unit", ""),
+                            }
+                        )
+
             data = {
                 "success": True,
                 "data": result,
-                "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
-            self._set_cache(cache_key, data, 'gold_realtime')
+            self._set_cache(cache_key, data, "gold_realtime")
             return data
-        
+
         except Exception as e:
             return {"success": False, "error": str(e), "data": []}
-    
+
     # ==================== 黄金历史价格 ====================
     def get_gold_history(self, days: int = 10) -> dict:
         """
         获取黄金历史价格
         数据源：金投网/集金号
-        
+
         Args:
             days: 获取天数，默认10天
-            
+
         Returns:
             dict: {'success': bool, 'data': list, 'update_time': str}
         """
-        cache_key = f'gold_history_{days}'
+        cache_key = f"gold_history_{days}"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
-        
+
         try:
             headers = {
                 "accept": "*/*",
                 "referer": "https://quote.cngold.org/gjs/swhj_zghj.html",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             }
-            
+
             # 中国黄金基础金价
             url = "https://api.jijinhao.com/quoteCenter/history.htm"
             params = {
@@ -922,60 +948,62 @@ class FundMasterService:
                 "pageSize": str(days),
                 "needField": "128,129,70",
                 "currentPage": "1",
-                "_": int(time.time() * 1000)
+                "_": int(time.time() * 1000),
             }
             response = requests.get(url, headers=headers, params=params, timeout=10, verify=False)
             data1 = json.loads(response.text.replace("var quote_json = ", ""))["data"]
-            
+
             # 周大福金价
             params["code"] = "JO_42660"
             response = requests.get(url, headers=headers, params=params, timeout=10, verify=False)
             data2 = json.loads(response.text.replace("var quote_json = ", ""))["data"]
-            
+
             result = []
             for i in range(len(data1)):
                 gold = data1[i]
                 t = gold.get("time", 0)
                 date = datetime.datetime.fromtimestamp(t / 1000).strftime("%Y-%m-%d") if t else ""
-                
+
                 gold2 = data2[i] if i < len(data2) else {}
-                
-                result.append({
-                    "date": date,
-                    "china_gold_price": gold.get("q1", "N/A"),
-                    "china_gold_change": str(gold.get("q70", "N/A")),
-                    "zhoudafu_price": gold2.get("q1", "N/A"),
-                    "zhoudafu_change": str(gold2.get("q70", "N/A"))
-                })
-            
+
+                result.append(
+                    {
+                        "date": date,
+                        "china_gold_price": gold.get("q1", "N/A"),
+                        "china_gold_change": str(gold.get("q70", "N/A")),
+                        "zhoudafu_price": gold2.get("q1", "N/A"),
+                        "zhoudafu_change": str(gold2.get("q70", "N/A")),
+                    }
+                )
+
             # 按日期倒序（最新的在前）
             result = result[::-1]
-            
+
             data = {
                 "success": True,
                 "data": result,
-                "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
-            self._set_cache(cache_key, data, 'gold_history')
+            self._set_cache(cache_key, data, "gold_history")
             return data
-        
+
         except Exception as e:
             return {"success": False, "error": str(e), "data": []}
-    
+
     # ==================== 近7日A股成交量 ====================
     def get_a_volume_7days(self) -> dict:
         """
         获取近7日A股成交量（沪深北三市）
         数据源：百度股市通
-        
+
         Returns:
             dict: {'success': bool, 'data': list, 'update_time': str}
         """
-        cache_key = 'a_volume_7days'
+        cache_key = "a_volume_7days"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
-        
+
         try:
             url = "https://finance.pae.baidu.com/sapi/v1/metrictrend"
             params = {
@@ -984,52 +1012,54 @@ class FundMasterService:
                 "code": "000001",
                 "targetType": "market",
                 "metric": "amount",
-                "finClientType": "pc"
+                "finClientType": "pc",
             }
-            
+
             response = self.baidu_session.get(url, params=params, timeout=10, verify=False)
-            
+
             if str(response.json().get("ResultCode")) == "0":
                 trend = response.json()["Result"]["trend"]
                 result = []
-                
+
                 # 近8天的日期（包括今天）
                 today = datetime.datetime.now()
                 dates = [(today - datetime.timedelta(days=i)).strftime("%Y-%m-%d") for i in range(8)]
-                
+
                 for date in dates:
                     total = trend[0]
                     sh = trend[1]
                     sz = trend[2]
                     bj = trend[3]
-                    
+
                     total_data = [x for x in total["content"] if x["marketDate"] == date]
                     sh_data = [x for x in sh["content"] if x["marketDate"] == date]
                     sz_data = [x for x in sz["content"] if x["marketDate"] == date]
                     bj_data = [x for x in bj["content"] if x["marketDate"] == date]
-                    
+
                     if total_data and sh_data and sz_data and bj_data:
-                        result.append({
-                            "date": date,
-                            "total": total_data[0]["data"]["amount"] + "亿",
-                            "shanghai": sh_data[0]["data"]["amount"] + "亿",
-                            "shenzhen": sz_data[0]["data"]["amount"] + "亿",
-                            "beijing": bj_data[0]["data"]["amount"] + "亿"
-                        })
-                
+                        result.append(
+                            {
+                                "date": date,
+                                "total": total_data[0]["data"]["amount"] + "亿",
+                                "shanghai": sh_data[0]["data"]["amount"] + "亿",
+                                "shenzhen": sz_data[0]["data"]["amount"] + "亿",
+                                "beijing": bj_data[0]["data"]["amount"] + "亿",
+                            }
+                        )
+
                 data = {
                     "success": True,
                     "data": result,
-                    "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 }
-                self._set_cache(cache_key, data, 'a_volume_7days')
+                self._set_cache(cache_key, data, "a_volume_7days")
                 return data
-            
+
             return {"success": False, "error": "获取成交量数据失败", "data": []}
-        
+
         except Exception as e:
             return {"success": False, "error": str(e), "data": []}
-    
+
     # ==================== 市场指数分时数据 ====================
     def _get_sina_intraday(self, code: str) -> list:
         """
@@ -1039,15 +1069,10 @@ class FundMasterService:
         """
         try:
             url = "https://quotes.sina.cn/cn/api/jsonp_v2.php/var%20_s=/CN_MarketDataService.getKLineData"
-            params = {
-                "symbol": code,
-                "scale": "5",
-                "ma": "no",
-                "datalen": "240"
-            }
+            params = {"symbol": code, "scale": "5", "ma": "no", "datalen": "240"}
             headers = {
                 "Referer": "https://finance.sina.com.cn/",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             }
             response = requests.get(url, params=params, headers=headers, timeout=8)
             text = response.text
@@ -1057,12 +1082,12 @@ class FundMasterService:
             json_end = text.rfind("])")
             if json_start < 0 or json_end < 0:
                 return []
-            json_str = text[json_start + 1:json_end + 1]
+            json_str = text[json_start + 1 : json_end + 1]
             data = json.loads(json_str)
 
             # 取昨收价（从市场指数总览缓存）
             pre_close = 0
-            index_cache = self._get_cache('market_index')
+            index_cache = self._get_cache("market_index")
             if index_cache and index_cache.get("data"):
                 for item in index_cache["data"]:
                     if item.get("code") == code:
@@ -1086,13 +1111,15 @@ class FundMasterService:
                     pct = (change / pre_close) * 100
                     change_pct = f"{round(pct, 2)}%"
 
-                result.append({
-                    "time": time_str,
-                    "price": str(close_price),
-                    "change": f"{'+' if change > 0 else ''}{change}",
-                    "change_pct": change_pct,
-                    "volume": str(volume)
-                })
+                result.append(
+                    {
+                        "time": time_str,
+                        "price": str(close_price),
+                        "change": f"{'+' if change > 0 else ''}{change}",
+                        "change_pct": change_pct,
+                        "volume": str(volume),
+                    }
+                )
             return result
         except Exception as e:
             logger.error(f"Error fetching sina intraday for {code}: {e}")
@@ -1106,7 +1133,7 @@ class FundMasterService:
         Returns:
             dict: {'sh': [], 'sz': [], 'hs300': [], 'update_time': str}
         """
-        cache_key = 'indices_intraday'
+        cache_key = "indices_intraday"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
@@ -1121,10 +1148,7 @@ class FundMasterService:
         }
         intraday = {key: [] for key in targets}
         with ThreadPoolExecutor(max_workers=3) as executor:
-            futures = {
-                executor.submit(self._get_sina_intraday, code): key
-                for key, code in targets.items()
-            }
+            futures = {executor.submit(self._get_sina_intraday, code): key for key, code in targets.items()}
             for future in as_completed(futures):
                 key = futures[future]
                 try:
@@ -1134,14 +1158,10 @@ class FundMasterService:
 
         data = {
             "success": True,
-            "data": {
-                "sh": intraday["sh"],
-                "sz": intraday["sz"],
-                "hs300": intraday["hs300"]
-            },
-            "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "data": {"sh": intraday["sh"], "sz": intraday["sz"], "hs300": intraday["hs300"]},
+            "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
-        self._set_cache(cache_key, data, 'sse_30min')  # TTL 1分钟
+        self._set_cache(cache_key, data, "sse_30min")  # TTL 1分钟
         return data
 
     def get_sse_30min(self) -> dict:
@@ -1151,17 +1171,14 @@ class FundMasterService:
         # 直接复用新的分时数据获取逻辑，但只返回上证数据
         full_data = self.get_indices_intraday()
         if full_data["success"]:
-            return {
-                "success": True,
-                "data": full_data["data"]["sh"],
-                "update_time": full_data["update_time"]
-            }
+            return {"success": True, "data": full_data["data"]["sh"], "update_time": full_data["update_time"]}
         return {"success": False, "error": "获取上证指数数据失败", "data": []}
-    
+
     def _get_sector_rank_via_service(self, limit: int = 500) -> dict:
         """通过 MarketDataService 获取板块（同花顺源），失败时降级到 FundMasterService"""
         try:
             from services.market_data import get_market_data_service as get_mds
+
             return get_mds().get_industry_boards(page_size=limit)
         except Exception:
             return self.get_sector_rank(limit=limit)
@@ -1200,12 +1217,13 @@ class FundMasterService:
             "market_index": results.get("market_index"),
             "gold_realtime": results.get("gold_realtime"),
             "a_volume_7days": results.get("a_volume_7days"),
-            "update_time": update_time
+            "update_time": update_time,
         }
 
 
 # 全局单例
 _fund_master_service = None
+
 
 def get_fund_master_service() -> FundMasterService:
     """获取 FundMasterService 单例"""

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 统一 HTTP 请求层
 
@@ -13,17 +12,19 @@
 
 import logging
 import time
-import urllib3
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
+import urllib3
 
 from .errors import (
-    MarketDataError,
-    RequestTimeoutError,
-    ConnectionError as MDConnectionError,
     BadResponseError,
+    MarketDataError,
     ParseError,
+    RequestTimeoutError,
+)
+from .errors import (
+    ConnectionError as MDConnectionError,
 )
 
 urllib3.disable_warnings()
@@ -43,7 +44,7 @@ except ImportError:
 
 DEFAULT_TIMEOUT = 10  # 秒
 DEFAULT_MAX_RETRIES = 2
-DEFAULT_HEADERS: Dict[str, str] = {
+DEFAULT_HEADERS: dict[str, str] = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -58,6 +59,7 @@ DEFAULT_HEADERS: Dict[str, str] = {
 # East Money API 频繁连接失败时，跳过它直接使用备用数据源，
 # 避免每次请求都等待多层 session + curl_cffi 超时。
 
+
 class EastMoneyCircuitBreaker:
     """East Money API 熔断器（模块级单例）"""
 
@@ -71,12 +73,13 @@ class EastMoneyCircuitBreaker:
 
     def __init__(self):
         import threading
+
         self._lock = threading.Lock()
         self._consecutive_failures = 0
-        self._state = "closed"          # closed | open | half_open
+        self._state = "closed"  # closed | open | half_open
         self._open_time: float = 0.0
-        self.FAILURE_THRESHOLD = 3       # 连续失败 3 次触发熔断
-        self.RECOVERY_TIMEOUT = 300      # 5 分钟后尝试恢复
+        self.FAILURE_THRESHOLD = 3  # 连续失败 3 次触发熔断
+        self.RECOVERY_TIMEOUT = 300  # 5 分钟后尝试恢复
 
     @staticmethod
     def _is_eastmoney_url(url: str) -> bool:
@@ -126,7 +129,7 @@ class EastMoneyCircuitBreaker:
 
 
 # 模块级单例
-_circuit_breaker: Optional[EastMoneyCircuitBreaker] = None
+_circuit_breaker: EastMoneyCircuitBreaker | None = None
 
 
 def get_eastmoney_circuit_breaker() -> EastMoneyCircuitBreaker:
@@ -138,16 +141,17 @@ def get_eastmoney_circuit_breaker() -> EastMoneyCircuitBreaker:
 
 # ── 公共 API ────────────────────────────────────────────────────
 
+
 def get(
     url: str,
     *,
-    params: Optional[Dict[str, Any]] = None,
-    headers: Optional[Dict[str, str]] = None,
-    referer: Optional[str] = None,
+    params: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    referer: str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
     max_retries: int = DEFAULT_MAX_RETRIES,
     verify: bool = False,
-    impersonate: Optional[str] = None,
+    impersonate: str | None = None,
 ) -> requests.Response:
     """
     发送 GET 请求（带重试 + 多会话兜底）
@@ -216,7 +220,7 @@ def get(
                 short = _short_reason(exc)
                 errors.append(f"{label}:{short}")
                 if attempt < max_retries:
-                    time.sleep(min(2 ** attempt, 4))
+                    time.sleep(min(2**attempt, 4))
 
     # 所有尝试均失败 → 归一化错误
     if is_em:
@@ -227,12 +231,12 @@ def get(
 def get_json(
     url: str,
     *,
-    params: Optional[Dict[str, Any]] = None,
-    headers: Optional[Dict[str, str]] = None,
-    referer: Optional[str] = None,
+    params: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    referer: str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
     max_retries: int = DEFAULT_MAX_RETRIES,
-    impersonate: Optional[str] = None,
+    impersonate: str | None = None,
 ) -> Any:
     """
     发送 GET 请求并返回解析后的 JSON
@@ -263,12 +267,12 @@ def get_json(
 def get_text(
     url: str,
     *,
-    params: Optional[Dict[str, Any]] = None,
-    headers: Optional[Dict[str, str]] = None,
-    referer: Optional[str] = None,
+    params: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    referer: str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
     max_retries: int = DEFAULT_MAX_RETRIES,
-    encoding: Optional[str] = None,
+    encoding: str | None = None,
 ) -> str:
     """
     发送 GET 请求并返回文本
@@ -291,7 +295,8 @@ def get_text(
 
 # ── 内部辅助 ────────────────────────────────────────────────────
 
-def _build_sessions(impersonate: Optional[str] = None):
+
+def _build_sessions(impersonate: str | None = None):
     """构建会话迭代器：env 代理 → 直连 → (可选) curl_cffi"""
     # 会话 1: 使用系统代理
     s1 = requests.Session()
@@ -305,11 +310,7 @@ def _build_sessions(impersonate: Optional[str] = None):
 
     # 会话 3: curl_cffi Chrome 指纹模拟
     if CURL_CFFI_AVAILABLE and impersonate:
-        targets = (
-            [impersonate]
-            if impersonate != "auto"
-            else ["chrome124", "chrome120", "chrome110", "edge101"]
-        )
+        targets = [impersonate] if impersonate != "auto" else ["chrome124", "chrome120", "chrome110", "edge101"]
         for target in targets:
             try:
                 sess = curl_requests.Session()

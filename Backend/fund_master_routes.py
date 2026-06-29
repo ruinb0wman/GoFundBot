@@ -10,17 +10,18 @@ DataService-first architecture:
 """
 
 from flask import Blueprint, jsonify, request
+
+from core.logging import get_logger
 from fund_master_service import get_fund_master_service
 from services.data_service_client import DataServiceError, get_data_service_client
-from core.logging import get_logger
 
 logger = get_logger(__name__)
 
 # 创建 Blueprint
-fund_master_bp = Blueprint('fund_master', __name__, url_prefix='/api/market')
+fund_master_bp = Blueprint("fund_master", __name__, url_prefix="/api/market")
 
 
-@fund_master_bp.route('/overview', methods=['GET'])
+@fund_master_bp.route("/overview", methods=["GET"])
 def get_market_overview():
     """
     获取市场概览（汇总所有关键数据）
@@ -30,20 +31,20 @@ def get_market_overview():
     return jsonify(service.get_market_overview())
 
 
-@fund_master_bp.route('/news', methods=['GET'])
+@fund_master_bp.route("/news", methods=["GET"])
 def get_flash_news():
     """
     获取7x24快讯 – DataService first, legacy fallback
     GET /api/market/news?count=30&page=1
     """
-    count = request.args.get('count', 30, type=int)
-    page = request.args.get('page', 1, type=int)
+    count = request.args.get("count", 30, type=int)
+    page = request.args.get("page", 1, type=int)
 
     # 1) Try DataService
     try:
         ds_payload = get_data_service_client().get_flash_news(count=count, page=page)
-        ds_data = ds_payload.get('data', {}) if isinstance(ds_payload, dict) else {}
-        ds_items = ds_data.get('items', []) if isinstance(ds_data, dict) else []
+        ds_data = ds_payload.get("data", {}) if isinstance(ds_payload, dict) else {}
+        ds_items = ds_data.get("items", []) if isinstance(ds_data, dict) else []
 
         if ds_items:
             # Map to legacy format expected by Frontend / AI summary
@@ -51,25 +52,31 @@ def get_flash_news():
             for item in ds_items:
                 if not isinstance(item, dict):
                     continue
-                news_list.append({
-                    'title': item.get('title', ''),
-                    'evaluate': item.get('summary', ''),
-                    'publish_time': item.get('publishedAt', ''),
-                    'related_stocks': [],
-                    'source': item.get('source', ''),
-                })
-            meta = ds_payload.get('meta', {}) if isinstance(ds_payload.get('meta'), dict) else {}
-            sources = sorted({item.get('source', '') for item in news_list if item.get('source')})
-            logger.info(f"market news: DataService success, {len(news_list)} items (page={page}, total={ds_data.get('total', len(news_list))}, sources={sources})")
-            return jsonify({
-                'success': True,
-                'data': news_list,
-                'update_time': meta.get('updatedAt', ''),
-                'total': ds_data.get('total', len(news_list)),
-                'hasMore': ds_data.get('hasMore', False),
-                'sources': sources,
-                'source': meta.get('provider') or 'data_service',
-            })
+                news_list.append(
+                    {
+                        "title": item.get("title", ""),
+                        "evaluate": item.get("summary", ""),
+                        "publish_time": item.get("publishedAt", ""),
+                        "related_stocks": [],
+                        "source": item.get("source", ""),
+                    }
+                )
+            meta = ds_payload.get("meta", {}) if isinstance(ds_payload.get("meta"), dict) else {}
+            sources = sorted({item.get("source", "") for item in news_list if item.get("source")})
+            logger.info(
+                f"market news: DataService success, {len(news_list)} items (page={page}, total={ds_data.get('total', len(news_list))}, sources={sources})"
+            )
+            return jsonify(
+                {
+                    "success": True,
+                    "data": news_list,
+                    "update_time": meta.get("updatedAt", ""),
+                    "total": ds_data.get("total", len(news_list)),
+                    "hasMore": ds_data.get("hasMore", False),
+                    "sources": sources,
+                    "source": meta.get("provider") or "data_service",
+                }
+            )
     except DataServiceError as e:
         logger.error(f"market news: DataService unavailable, fallback to legacy: {e}")
 
@@ -78,7 +85,7 @@ def get_flash_news():
     return jsonify(service.get_flash_news(count=count))
 
 
-@fund_master_bp.route('/sectors', methods=['GET'])
+@fund_master_bp.route("/sectors", methods=["GET"])
 def get_sector_rank():
     """
     获取行业板块排行 – TongHuaShun first
@@ -88,14 +95,14 @@ def get_sector_rank():
     数据流：路由 → FundMasterService → akshare.stock_board_industry_summary_ths。
     东财行业板块源长期不稳定，这里不再作为主链路。
     """
-    limit = request.args.get('limit', 90, type=int)
+    limit = request.args.get("limit", 90, type=int)
     limit = max(1, min(int(limit or 90), 120))
 
     service = get_fund_master_service()
     return jsonify(service.get_sector_rank(limit=limit))
 
 
-@fund_master_bp.route('/sector/<code>/constituents', methods=['GET'])
+@fund_master_bp.route("/sector/<code>/constituents", methods=["GET"])
 def get_sector_constituents(code):
     """
     获取板块成分股 – DataService first, legacy fallback
@@ -104,38 +111,43 @@ def get_sector_constituents(code):
     # 1) Try DataService
     try:
         ds_payload = get_data_service_client().get_market_sector_constituents(code)
-        ds_data = ds_payload.get('data', {}) if isinstance(ds_payload, dict) else {}
-        ds_items = ds_data.get('items', []) if isinstance(ds_data, dict) else []
+        ds_data = ds_payload.get("data", {}) if isinstance(ds_payload, dict) else {}
+        ds_items = ds_data.get("items", []) if isinstance(ds_data, dict) else []
 
         if ds_items:
             constituents = []
             for item in ds_items:
                 if not isinstance(item, dict):
                     continue
-                constituents.append({
-                    'code': item.get('code', ''),
-                    'name': item.get('name', ''),
-                    'price': _safe_float(item.get('price')),
-                    'change_pct': _fmt_pct(item.get('changePercent')),
-                    'market_value': _safe_float(item.get('marketValue')),
-                    'pe': _safe_float(item.get('pe')),
-                })
+                constituents.append(
+                    {
+                        "code": item.get("code", ""),
+                        "name": item.get("name", ""),
+                        "price": _safe_float(item.get("price")),
+                        "change_pct": _fmt_pct(item.get("changePercent")),
+                        "market_value": _safe_float(item.get("marketValue")),
+                        "pe": _safe_float(item.get("pe")),
+                    }
+                )
             logger.info(f"sector constituents: DataService success, {len(constituents)} items for {code}")
-            return jsonify({
-                'success': True,
-                'data': constituents,
-            })
+            return jsonify(
+                {
+                    "success": True,
+                    "data": constituents,
+                }
+            )
     except DataServiceError as e:
         logger.error(f"sector constituents: DataService unavailable, fallback to legacy: {e}")
 
     # 2) Fallback to legacy
     from services.market_data import get_market_data_service as get_mds
+
     mds = get_mds()
     result = mds.get_industry_constituents(code)
     return jsonify(result)
 
 
-@fund_master_bp.route('/index', methods=['GET'])
+@fund_master_bp.route("/index", methods=["GET"])
 def get_market_index():
     """
     获取市场指数汇总 – DataService first, legacy fallback
@@ -144,8 +156,8 @@ def get_market_index():
     # 1) Try DataService
     try:
         ds_payload = get_data_service_client().get_market_indices()
-        ds_data = ds_payload.get('data', {}) if isinstance(ds_payload, dict) else {}
-        ds_items = ds_data.get('items', []) if isinstance(ds_data, dict) else []
+        ds_data = ds_payload.get("data", {}) if isinstance(ds_payload, dict) else {}
+        ds_items = ds_data.get("items", []) if isinstance(ds_data, dict) else []
 
         if ds_items:
             # Map to legacy format
@@ -153,22 +165,28 @@ def get_market_index():
             for item in ds_items:
                 if not isinstance(item, dict):
                     continue
-                change_num = _safe_float(item.get('changePercent'))
-                price_num = _safe_float(item.get('price'))
-                indices.append({
-                    'code': item.get('code', ''),
-                    'name': item.get('name', ''),
-                    'price': f"{price_num:.2f}" if price_num is not None else '-',
-                    'change_pct': f"{'+' if (change_num or 0) >= 0 else ''}{change_num:.2f}%" if change_num is not None else '0.00%',
-                    'market': item.get('market', ''),
-                    'raw_change': change_num or 0.0,
-                })
+                change_num = _safe_float(item.get("changePercent"))
+                price_num = _safe_float(item.get("price"))
+                indices.append(
+                    {
+                        "code": item.get("code", ""),
+                        "name": item.get("name", ""),
+                        "price": f"{price_num:.2f}" if price_num is not None else "-",
+                        "change_pct": f"{'+' if (change_num or 0) >= 0 else ''}{change_num:.2f}%"
+                        if change_num is not None
+                        else "0.00%",
+                        "market": item.get("market", ""),
+                        "raw_change": change_num or 0.0,
+                    }
+                )
             logger.info(f"market index: DataService success, {len(indices)} indices")
-            return jsonify({
-                'success': True,
-                'data': indices,
-                'update_time': __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            })
+            return jsonify(
+                {
+                    "success": True,
+                    "data": indices,
+                    "update_time": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            )
     except DataServiceError as e:
         logger.error(f"market index: DataService unavailable, fallback to legacy: {e}")
 
@@ -177,7 +195,7 @@ def get_market_index():
     return jsonify(service.get_market_index())
 
 
-@fund_master_bp.route('/index/<code>/detail', methods=['GET'])
+@fund_master_bp.route("/index/<code>/detail", methods=["GET"])
 def get_index_detail(code):
     """
     获取单个市场指数详情（含完整 OHLCV 数据）
@@ -195,26 +213,26 @@ def get_index_detail(code):
     }
     try:
         resp = _req.get(url, headers=headers, timeout=10)
-        resp.encoding = 'gbk'
+        resp.encoding = "gbk"
         text = resp.text
     except Exception as e:
-        return jsonify({'success': False, 'error': f'请求新浪数据失败: {str(e)}'}), 502
+        return jsonify({"success": False, "error": f"请求新浪数据失败: {str(e)}"}), 502
 
     marker = f'var hq_str_{code}="'
     start = text.find(marker)
     if start < 0:
-        return jsonify({'success': False, 'error': f'未找到指数 {code}'}), 404
+        return jsonify({"success": False, "error": f"未找到指数 {code}"}), 404
 
     start += len(marker)
     end = text.find('";', start)
-    parts = text[start:end].split(',')
+    parts = text[start:end].split(",")
 
     if len(parts) < 6:
-        return jsonify({'success': False, 'error': '数据格式异常'}), 500
+        return jsonify({"success": False, "error": "数据格式异常"}), 500
 
     code_lower = code.lower()
 
-    if code_lower.startswith(('sh', 'sz')):
+    if code_lower.startswith(("sh", "sz")):
         name = parts[0] if parts[0] else code
         price = _safe_float(parts[3])
         prev_close = _safe_float(parts[2])
@@ -226,49 +244,72 @@ def get_index_detail(code):
         amplitude = ((high - low) / prev_close * 100) if prev_close else 0.0
         volume = _safe_float(parts[8]) if len(parts) > 8 else 0
         amount = _safe_float(parts[9]) if len(parts) > 9 else 0
-        market = 'A股'
-    elif code_lower.startswith('hk'):
+        market = "A股"
+    elif code_lower.startswith("hk"):
         name = parts[0] if parts[0] else code
         price = _safe_float(parts[6] if len(parts) > 6 else parts[3])
         change_pct = _safe_float(parts[8] if len(parts) > 8 else 0)
-        prev_close = 0; high = 0; low = 0; open_ = 0
-        change_amt = 0; amplitude = 0; volume = 0; amount = 0
-        market = '港股'
-    elif code_lower.startswith('gb_'):
+        prev_close = 0
+        high = 0
+        low = 0
+        open_ = 0
+        change_amt = 0
+        amplitude = 0
+        volume = 0
+        amount = 0
+        market = "港股"
+    elif code_lower.startswith("gb_"):
         name = parts[0] if parts[0] else code
         price = _safe_float(parts[1] if len(parts) > 1 else 0)
         change_pct = _safe_float(parts[2] if len(parts) > 2 else 0)
-        prev_close = 0; high = 0; low = 0; open_ = 0
-        change_amt = 0; amplitude = 0; volume = 0; amount = 0
-        market = '美股'
-    elif code_lower.startswith('b_'):
+        prev_close = 0
+        high = 0
+        low = 0
+        open_ = 0
+        change_amt = 0
+        amplitude = 0
+        volume = 0
+        amount = 0
+        market = "美股"
+    elif code_lower.startswith("b_"):
         name = parts[0] if parts[0] else code
         price = _safe_float(parts[1] if len(parts) > 1 else 0)
         change_pct = _safe_float(parts[3] if len(parts) > 3 else 0)
-        prev_close = 0; high = 0; low = 0; open_ = 0
-        change_amt = 0; amplitude = 0; volume = 0; amount = 0
-        market = '全球'
+        prev_close = 0
+        high = 0
+        low = 0
+        open_ = 0
+        change_amt = 0
+        amplitude = 0
+        volume = 0
+        amount = 0
+        market = "全球"
     else:
-        return jsonify({'success': False, 'error': f'不支持的指数代码: {code}'}), 400
+        return jsonify({"success": False, "error": f"不支持的指数代码: {code}"}), 400
 
-    return jsonify({'success': True, 'data': {
-        'code': code,
-        'name': name,
-        'price': price,
-        'change_pct': round(change_pct, 2),
-        'change_amt': round(change_amt, 2),
-        'open': open_,
-        'high': high,
-        'low': low,
-        'prev_close': prev_close,
-        'volume': volume,
-        'amount': amount,
-        'amplitude': round(amplitude, 2),
-        'market': market,
-    }})
+    return jsonify(
+        {
+            "success": True,
+            "data": {
+                "code": code,
+                "name": name,
+                "price": price,
+                "change_pct": round(change_pct, 2),
+                "change_amt": round(change_amt, 2),
+                "open": open_,
+                "high": high,
+                "low": low,
+                "prev_close": prev_close,
+                "volume": volume,
+                "amount": amount,
+                "amplitude": round(amplitude, 2),
+                "market": market,
+            },
+        }
+    )
 
 
-@fund_master_bp.route('/index/<code>/kline', methods=['GET'])
+@fund_master_bp.route("/index/<code>/kline", methods=["GET"])
 def get_index_kline(code):
     """
     获取市场指数历史 K 线数据
@@ -281,10 +322,11 @@ def get_index_kline(code):
         - endDate: 结束日期 YYYYMMDD（可选）
     """
     from services.market_data import get_market_data_service as get_mds
-    period = request.args.get('period', 'daily')
-    adjust = request.args.get('adjust', 'qfq')
-    start_date = request.args.get('startDate', '')
-    end_date = request.args.get('endDate', '')
+
+    period = request.args.get("period", "daily")
+    adjust = request.args.get("adjust", "qfq")
+    start_date = request.args.get("startDate", "")
+    end_date = request.args.get("endDate", "")
     try:
         mds = get_mds()
         result = mds.get_a_stock_kline(
@@ -294,14 +336,14 @@ def get_index_kline(code):
             start_date=start_date,
             end_date=end_date,
         )
-        if not result.get('success'):
+        if not result.get("success"):
             return jsonify(result), 404
         return jsonify(result)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@fund_master_bp.route('/gold/realtime', methods=['GET'])
+@fund_master_bp.route("/gold/realtime", methods=["GET"])
 def get_gold_realtime():
     """
     获取实时贵金属价格
@@ -311,18 +353,18 @@ def get_gold_realtime():
     return jsonify(service.get_gold_realtime())
 
 
-@fund_master_bp.route('/gold/history', methods=['GET'])
+@fund_master_bp.route("/gold/history", methods=["GET"])
 def get_gold_history():
     """
     获取黄金历史价格
     GET /api/market/gold/history?days=10
     """
-    days = request.args.get('days', 10, type=int)
+    days = request.args.get("days", 10, type=int)
     service = get_fund_master_service()
     return jsonify(service.get_gold_history(days=days))
 
 
-@fund_master_bp.route('/volume', methods=['GET'])
+@fund_master_bp.route("/volume", methods=["GET"])
 def get_a_volume_7days():
     """
     获取近7日A股成交量
@@ -332,7 +374,7 @@ def get_a_volume_7days():
     return jsonify(service.get_a_volume_7days())
 
 
-@fund_master_bp.route('/indices/intraday', methods=['GET'])
+@fund_master_bp.route("/indices/intraday", methods=["GET"])
 def get_indices_intraday():
     """
     获取多指数分时数据（上证、深证、沪深300）
@@ -342,7 +384,7 @@ def get_indices_intraday():
     return jsonify(service.get_indices_intraday())
 
 
-@fund_master_bp.route('/sse', methods=['GET'])
+@fund_master_bp.route("/sse", methods=["GET"])
 def get_sse_30min():
     """
     获取近30分钟上证指数
@@ -356,9 +398,10 @@ def get_sse_30min():
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _safe_float(value) -> float:
     """Convert value to float, returning 0.0 on failure."""
-    if value is None or value == '' or value == '-':
+    if value is None or value == "" or value == "-":
         return 0.0
     try:
         return float(value)
@@ -376,7 +419,7 @@ def _sector_moves_look_one_sided(sectors) -> bool:
     """Reject obviously suspicious sector snapshots before falling back."""
     if not sectors or len(sectors) < 20:
         return False
-    moves = [_safe_float(item.get('raw_change')) for item in sectors]
+    moves = [_safe_float(item.get("raw_change")) for item in sectors]
     non_zero = [move for move in moves if abs(move) > 0.0001]
     if len(non_zero) < 10:
         return True

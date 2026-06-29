@@ -1,9 +1,11 @@
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
-from models import Base
 from pathlib import Path
+
 from flask import g
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.orm import Session, sessionmaker
+
 from core.logging import get_logger
+from models import Base
 
 logger = get_logger(__name__)
 
@@ -18,7 +20,18 @@ DATABASE_PATH = PROJECT_ROOT / "Data" / "funds.db"
 DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
+
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.close()
+
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 def migrate_db():
     """数据库迁移：为现有表添加缺失的列"""
@@ -27,22 +40,22 @@ def migrate_db():
         try:
             result = conn.execute(text("PRAGMA table_info(fund_watchlist)"))
             columns = [row[1] for row in result.fetchall()]
-            if 'group_id' not in columns:
+            if "group_id" not in columns:
                 conn.execute(text("ALTER TABLE fund_watchlist ADD COLUMN group_id INTEGER DEFAULT NULL"))
                 conn.commit()
                 logger.info("Migration: Added group_id column to fund_watchlist table")
         except Exception as e:
             logger.warning(f"Migration check for fund_watchlist: {e}")
-        
+
         # 检查并添加 daily_market_summary 表的新列
         try:
             result = conn.execute(text("PRAGMA table_info(daily_market_summary)"))
             columns = [row[1] for row in result.fetchall()]
-            if 'current_step' not in columns:
+            if "current_step" not in columns:
                 conn.execute(text("ALTER TABLE daily_market_summary ADD COLUMN current_step INTEGER DEFAULT 0"))
                 conn.commit()
                 logger.info("Migration: Added current_step column to daily_market_summary table")
-            if 'step_message' not in columns:
+            if "step_message" not in columns:
                 conn.execute(text("ALTER TABLE daily_market_summary ADD COLUMN step_message VARCHAR(200)"))
                 conn.commit()
                 logger.info("Migration: Added step_message column to daily_market_summary table")
@@ -62,6 +75,7 @@ def migrate_db():
         except Exception as e:
             logger.warning(f"Migration cleanup for fund_nav_history: {e}")
 
+
 def init_db():
     # 确保 Data 目录存在
     (PROJECT_ROOT / "Data").mkdir(exist_ok=True)
@@ -70,9 +84,10 @@ def init_db():
     # 执行数据库迁移
     migrate_db()
 
+
 def get_request_db() -> Session:
     """获取 Flask 请求作用域内的数据库会话（通过 g 缓存，teardown 自动关闭）"""
-    if 'db' not in g:
+    if "db" not in g:
         g.db = SessionLocal()
     return g.db
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # DEPRECATED:
 # This module is kept as fallback during the DataService migration.
 # New external financial data access should be implemented in DataService providers.
@@ -21,16 +20,14 @@
 import json
 import logging
 import os
-import sys
 import threading
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from core.errors import MarketDataError
 from providers import eastmoney as em
 from providers import tencent as tx
-from symbols import to_board_secid, to_eastmoney_secid, to_exchange_code
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +37,7 @@ def _akshare_disabled() -> bool:
 
     Set DISABLE_AKSHARE_FALLBACK=1 env var to bypass akshare.
     """
-    if os.environ.get('DISABLE_AKSHARE_FALLBACK') == '1':
-        return True
-    return False
+    return os.environ.get("DISABLE_AKSHARE_FALLBACK") == "1"
 
 
 class MarketDataService:
@@ -56,7 +51,7 @@ class MarketDataService:
     _instance: Optional["MarketDataService"] = None
 
     # 缓存 TTL（秒）
-    CACHE_TTL: Dict[str, int] = {
+    CACHE_TTL: dict[str, int] = {
         "industry_boards": 300,
         "industry_spot": 60,
         "industry_constituents": 300,
@@ -73,14 +68,14 @@ class MarketDataService:
     def __init__(self):
         if self._initialized:
             return
-        self._cache: Dict[str, Any] = {}
-        self._cache_time: Dict[str, float] = {}
+        self._cache: dict[str, Any] = {}
+        self._cache_time: dict[str, float] = {}
         self._lock = threading.Lock()
         self._initialized = True
 
     # ── 缓存 ──────────────────────────────────────────────────
 
-    def _cache_get(self, key: str) -> Optional[Any]:
+    def _cache_get(self, key: str) -> Any | None:
         with self._lock:
             if key in self._cache:
                 data, expire = self._cache[key]
@@ -88,7 +83,7 @@ class MarketDataService:
                     return data
         return None
 
-    def _cache_get_stale(self, key: str) -> Optional[Any]:
+    def _cache_get_stale(self, key: str) -> Any | None:
         """获取过期缓存（兜底用）"""
         with self._lock:
             entry = self._cache.get(key)
@@ -107,7 +102,7 @@ class MarketDataService:
         page: int = 1,
         page_size: int = 500,
         use_cache: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         获取行业板块列表
 
@@ -120,7 +115,7 @@ class MarketDataService:
                 return cached
 
         data_date = self._last_trading_date()
-        boards: List[Dict] = []
+        boards: list[dict] = []
         source = ""
 
         # 同花顺 (akshare) —— 唯一数据源
@@ -167,7 +162,7 @@ class MarketDataService:
 
     # ── 行业板块实时行情 ──────────────────────────────────────
 
-    def get_industry_spot(self, board_code: str, use_cache: bool = True) -> Dict[str, Any]:
+    def get_industry_spot(self, board_code: str, use_cache: bool = True) -> dict[str, Any]:
         """获取单个板块实时行情"""
         cache_key = f"spot_{board_code}"
         if use_cache:
@@ -197,7 +192,7 @@ class MarketDataService:
         page: int = 1,
         page_size: int = 500,
         use_cache: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """获取行业板块成份股（East Money 失败时降级 akshare）"""
         cache_key = f"constituents_{board_code}_{page}_{page_size}"
         if use_cache:
@@ -205,7 +200,7 @@ class MarketDataService:
             if cached:
                 return cached
 
-        stocks: List[Dict] = []
+        stocks: list[dict] = []
         source = ""
 
         # 方案 1: East Money
@@ -251,7 +246,7 @@ class MarketDataService:
         start_date: str = "",
         end_date: str = "",
         use_cache: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """获取 A 股 K 线（腾讯 → 东方财富 → akshare 兜底）"""
         cache_key = f"kline_{stock_code}_{klt}_{fqt}_{start_date}_{end_date}"
         if use_cache:
@@ -337,7 +332,7 @@ class MarketDataService:
         fqt: str = "qfq",
         start_date: str = "",
         end_date: str = "",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """通过 akshare 获取 A 股历史日 K 线（仅支持日线前复权）"""
         import akshare as ak
 
@@ -379,9 +374,9 @@ class MarketDataService:
             "换手率": "turnoverRate",
         }
 
-        result: List[Dict[str, Any]] = []
+        result: list[dict[str, Any]] = []
         for _, row in df.iterrows():
-            item: Dict[str, Any] = {}
+            item: dict[str, Any] = {}
             for cn_col, en_col in COLUMN_MAP.items():
                 if cn_col in df.columns:
                     val = row[cn_col]
@@ -401,10 +396,10 @@ class MarketDataService:
 
     def get_realtime_quotes(
         self,
-        codes: List[str],
+        codes: list[str],
         *,
         use_cache: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """批量获取腾讯实时行情"""
         cache_key = f"qt_{'_'.join(sorted(codes))}"
         if use_cache:
@@ -425,7 +420,7 @@ class MarketDataService:
             logger.warning(f"[MarketData] 腾讯行情失败: {exc}")
             return {"success": False, "data": [], "error": str(exc)}
 
-    def get_realtime_quote(self, code: str, *, use_cache: bool = True) -> Dict[str, Any]:
+    def get_realtime_quote(self, code: str, *, use_cache: bool = True) -> dict[str, Any]:
         """获取单只股票腾讯实时行情"""
         result = self.get_realtime_quotes([code], use_cache=use_cache)
         if result["success"] and result["data"]:
@@ -434,7 +429,7 @@ class MarketDataService:
 
     # ── 市场指数（批量）────────────────────────────────────────
 
-    def get_market_indices(self, secids: List[str]) -> Dict[str, Any]:
+    def get_market_indices(self, secids: list[str]) -> dict[str, Any]:
         """获取市场指数"""
         try:
             indices = em.get_market_indices(secids)
@@ -449,7 +444,7 @@ class MarketDataService:
 
     # ── 内部：akshare 备选 ────────────────────────────────────
 
-    def _get_boards_akshare(self, limit: int) -> List[Dict]:
+    def _get_boards_akshare(self, limit: int) -> list[dict]:
         """通过 akshare 获取板块（备选），提取包括主力资金在内的全部可用字段"""
         if _akshare_disabled():
             return []
@@ -479,20 +474,22 @@ class MarketDataService:
                     # 统一转为 元 存储（与 East Money f62 字段一致）
                     amount_yi = _safe_float(row.get("总成交额", 0))
                     inflow_yi = _safe_float(net_inflow)
-                    rows.append({
-                        "name": str(name),
-                        "code": str(row.get("板块代码", row.get("代码", ""))),
-                        "changePercent": _safe_float(change),
-                        "price": _safe_float(row.get("均价", 0)),
-                        "volume": _safe_float(row.get("总成交量", 0)),
-                        "amount": amount_yi * 1e8,          # 亿 → 元
-                        "mainNetInflow": inflow_yi * 1e8,   # 亿 → 元
-                        "riseCount": int(_safe_float(row.get("上涨家数", 0))),
-                        "fallCount": int(_safe_float(row.get("下跌家数", 0))),
-                        "leadingStock": str(row.get("领涨股", "")),
-                        "leadingStockPrice": _safe_float(row.get("领涨股-最新价", 0)),
-                        "leadingStockChangePercent": _safe_float(row.get("领涨股-涨跌幅", 0)),
-                    })
+                    rows.append(
+                        {
+                            "name": str(name),
+                            "code": str(row.get("板块代码", row.get("代码", ""))),
+                            "changePercent": _safe_float(change),
+                            "price": _safe_float(row.get("均价", 0)),
+                            "volume": _safe_float(row.get("总成交量", 0)),
+                            "amount": amount_yi * 1e8,  # 亿 → 元
+                            "mainNetInflow": inflow_yi * 1e8,  # 亿 → 元
+                            "riseCount": int(_safe_float(row.get("上涨家数", 0))),
+                            "fallCount": int(_safe_float(row.get("下跌家数", 0))),
+                            "leadingStock": str(row.get("领涨股", "")),
+                            "leadingStockPrice": _safe_float(row.get("领涨股-最新价", 0)),
+                            "leadingStockChangePercent": _safe_float(row.get("领涨股-涨跌幅", 0)),
+                        }
+                    )
                 rows.sort(key=lambda x: x["changePercent"], reverse=True)
                 if rows:
                     return rows
@@ -500,7 +497,7 @@ class MarketDataService:
                 continue
         return []
 
-    def _get_constituents_akshare(self, board_code: str, limit: int) -> List[Dict]:
+    def _get_constituents_akshare(self, board_code: str, limit: int) -> list[dict]:
         """通过 akshare 获取板块成份股（备选）"""
         if _akshare_disabled():
             return []
@@ -515,13 +512,15 @@ class MarketDataService:
                 return []
             rows = []
             for _, row in df.head(limit).iterrows():
-                rows.append({
-                    "code": str(row.get("代码", "")),
-                    "name": str(row.get("名称", "")),
-                    "price": _safe_float(row.get("最新价", 0)),
-                    "changePercent": _safe_float(row.get("涨跌幅", 0)),
-                    "change": _safe_float(row.get("涨跌额", 0)),
-                })
+                rows.append(
+                    {
+                        "code": str(row.get("代码", "")),
+                        "name": str(row.get("名称", "")),
+                        "price": _safe_float(row.get("最新价", 0)),
+                        "changePercent": _safe_float(row.get("涨跌幅", 0)),
+                        "change": _safe_float(row.get("涨跌额", 0)),
+                    }
+                )
             return rows
         except Exception:
             return []
@@ -544,7 +543,7 @@ class MarketDataService:
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         return os.path.join(root, "Data", f"{name}_cache.json")
 
-    def _save_file_cache(self, name: str, data: Dict):
+    def _save_file_cache(self, name: str, data: dict):
         try:
             path = self._cache_file_path(name)
             os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -553,12 +552,12 @@ class MarketDataService:
         except Exception:
             pass
 
-    def _load_file_cache(self, name: str, limit: int) -> Optional[Dict]:
+    def _load_file_cache(self, name: str, limit: int) -> dict | None:
         try:
             path = self._cache_file_path(name)
             if not os.path.exists(path):
                 return None
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 cached = json.load(f)
             rows = cached.get("data") or []
             if not rows:
@@ -572,7 +571,7 @@ class MarketDataService:
 
 # ── 单例 ──────────────────────────────────────────────────────
 
-_service_instance: Optional[MarketDataService] = None
+_service_instance: MarketDataService | None = None
 
 
 def get_market_data_service() -> MarketDataService:
@@ -584,7 +583,8 @@ def get_market_data_service() -> MarketDataService:
 
 # ── 格式适配（兼容旧前端）──────────────────────────────────────
 
-def _board_to_legacy(b: Dict[str, Any]) -> Dict[str, Any]:
+
+def _board_to_legacy(b: dict[str, Any]) -> dict[str, Any]:
     """将新 provider 格式转为旧前端兼容格式"""
     raw_change = b.get("changePercent", 0)
     raw_inflow = b.get("mainNetInflow", 0)
@@ -641,8 +641,10 @@ def _safe_float_str(val, default: str = "0.00") -> str:
 
 def _format_kline_date(val) -> str:
     """将 akshare 返回的日期转为 YYYYMMDD 字符串"""
-    from datetime import date as dt_date, datetime as dt_datetime
-    if isinstance(val, dt_datetime) or isinstance(val, dt_date):
+    from datetime import date as dt_date
+    from datetime import datetime as dt_datetime
+
+    if isinstance(val, (dt_datetime, dt_date)):
         return val.strftime("%Y%m%d")
     s = str(val).strip()
     # YYYY-MM-DD → YYYYMMDD

@@ -1,5 +1,7 @@
 from functools import wraps
-from flask import jsonify, request, current_app
+
+from flask import current_app, request
+
 from core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -13,6 +15,7 @@ def deprecated_route(sunset_version: str = "v2", alternative: str = ""):
         @deprecated_route(alternative='/api/v1/fund/<fund_code>')
         def old_handler(fund_code): ...
     """
+
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -27,14 +30,15 @@ def deprecated_route(sunset_version: str = "v2", alternative: str = ""):
                 body, status, headers = resp, 200, {}
 
             if isinstance(headers, dict):
-                headers['X-Deprecated'] = 'true'
-                headers['Sunset'] = sunset_version
+                headers["X-Deprecated"] = "true"
+                headers["Sunset"] = sunset_version
                 if alternative:
-                    headers['X-Alt-Route'] = alternative
+                    headers["X-Alt-Route"] = alternative
 
             logger.warning(f"已废弃端点被调用: {request.method} {request.path}")
             return body, status, headers
 
         wrapper._deprecated = True
         return wrapper
+
     return decorator

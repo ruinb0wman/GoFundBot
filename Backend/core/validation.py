@@ -1,11 +1,10 @@
 from functools import wraps
-from typing import Type
 
-from flask import request, jsonify, g
+from flask import g, jsonify, request
 from pydantic import BaseModel, ValidationError
 
 
-def validate_body(schema: Type[BaseModel]):
+def validate_body(schema: type[BaseModel]):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -13,17 +12,21 @@ def validate_body(schema: Type[BaseModel]):
             try:
                 g.validated_body = schema.model_validate(data)
             except ValidationError as e:
-                return jsonify({
-                    "code": "VALIDATION_ERROR",
-                    "message": "请求参数校验失败",
-                    "detail": e.errors(include_input=False, mode='json'),
-                }), 422
+                return jsonify(
+                    {
+                        "code": "VALIDATION_ERROR",
+                        "message": "请求参数校验失败",
+                        "detail": e.errors(include_input=False, mode="json"),
+                    }
+                ), 422
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
-def validate_query(schema: Type[BaseModel]):
+def validate_query(schema: type[BaseModel]):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -31,11 +34,15 @@ def validate_query(schema: Type[BaseModel]):
             try:
                 g.validated_query = schema.model_validate(data)
             except ValidationError as e:
-                return jsonify({
-                    "code": "VALIDATION_ERROR",
-                    "message": "查询参数校验失败",
-                    "detail": e.errors(include_input=False, mode='json'),
-                }), 422
+                return jsonify(
+                    {
+                        "code": "VALIDATION_ERROR",
+                        "message": "查询参数校验失败",
+                        "detail": e.errors(include_input=False, mode="json"),
+                    }
+                ), 422
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator

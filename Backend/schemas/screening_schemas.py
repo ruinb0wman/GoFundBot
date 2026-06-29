@@ -1,22 +1,21 @@
-from typing import Optional
 from pydantic import BaseModel, field_validator
 
 
 class ScreeningQuerySchema(BaseModel):
-    fund_type: Optional[str] = None
-    keyword: Optional[str] = None
-    min_return_1y: Optional[float] = None
-    max_return_1y: Optional[float] = None
-    min_sharpe_1y: Optional[float] = None
-    max_drawdown_1y: Optional[float] = None
-    min_volatility_1y: Optional[float] = None
-    max_volatility_1y: Optional[float] = None
-    pass_4433: Optional[bool] = None
-    industry_tag: Optional[str] = None
-    min_scale: Optional[float] = None
-    max_scale: Optional[float] = None
-    sort_by: Optional[str] = None
-    sort_order: Optional[str] = "desc"
+    fund_type: str | None = None
+    keyword: str | None = None
+    min_return_1y: float | None = None
+    max_return_1y: float | None = None
+    min_sharpe_1y: float | None = None
+    max_drawdown_1y: float | None = None
+    min_volatility_1y: float | None = None
+    max_volatility_1y: float | None = None
+    pass_4433: bool | None = None
+    industry_tag: str | None = None
+    min_scale: float | None = None
+    max_scale: float | None = None
+    sort_by: str | None = None
+    sort_order: str | None = "desc"
     page: int = 1
     page_size: int = 20
 

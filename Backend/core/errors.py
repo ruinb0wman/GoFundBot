@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 统一错误类型
 
@@ -17,24 +16,29 @@ class MarketDataError(Exception):
 
 class RequestTimeoutError(MarketDataError):
     """请求超时"""
+
     pass
 
 
 class ConnectionError(MarketDataError):
     """连接失败（DNS / 代理 / 被拒）"""
+
     pass
 
 
 class BadResponseError(MarketDataError):
     """响应状态码异常（非 2xx）"""
+
     pass
 
 
 class ParseError(MarketDataError):
     """响应解析失败（JSON 解析 / 字段缺失）"""
+
     pass
 
 
 class RateLimitError(MarketDataError):
     """速率限制"""
+
     pass

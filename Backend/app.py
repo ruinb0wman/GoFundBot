@@ -3,27 +3,28 @@ GoFundBot Backend — 精简入口模块
 Flask 应用初始化、Blueprint 注册、中间件、启动/关闭钩子。
 """
 
-import os
-import sys
-import time
-import signal
 import atexit
+import signal
+import sys
 import threading
-from datetime import datetime, timezone
+import time
+from datetime import datetime
+
+from flasgger import Swagger
 from flask import Flask, g, request
+from flask_compress import Compress
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flasgger import Swagger
+from sqlalchemy import desc
 
-from database import init_db, SessionLocal
-from core.logging import init_logging, get_logger
+from config import ConfigValidationError, get_config
+from core.cache_headers import apply_cache_headers
 from core.cors_config import parse_cors_origins
-from core.metrics import metrics_endpoint, http_requests_total, http_request_duration_seconds
-from config import get_config, ConfigValidationError
+from core.logging import get_logger, init_logging
+from core.metrics import http_request_duration_seconds, http_requests_total
+from database import SessionLocal, init_db
 from models import DataFetchTask
-from sqlalchemy import text, desc
-from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
@@ -32,8 +33,9 @@ logger = get_logger(__name__)
 # Flask app 创建 & 中间件
 # ============================================================================
 
-app = Flask(__name__, static_folder='static', static_url_path='')
+app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app, origins=parse_cors_origins())
+Compress(app)
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -42,26 +44,30 @@ limiter = Limiter(
 )
 limiter.init_app(app)
 
-Swagger(app, template={
-    'swagger': '2.0',
-    'info': {
-        'title': 'GoFundBot API',
-        'description': '基金数据服务平台 API 文档。\n\n基础路径: `/api/` (旧) / `/api/v1/` (新)',
-        'version': '0.1.0',
-        'contact': {'name': 'GoFundBot'},
+Swagger(
+    app,
+    template={
+        "swagger": "2.0",
+        "info": {
+            "title": "GoFundBot API",
+            "description": "基金数据服务平台 API 文档。\n\n基础路径: `/api/` (旧) / `/api/v1/` (新)",
+            "version": "0.1.0",
+            "contact": {"name": "GoFundBot"},
+        },
+        "basePath": "/",
+        "schemes": ["http"],
+        "tags": [
+            {"name": "Fund", "description": "基金查询与搜索"},
+            {"name": "System", "description": "系统管理与监控"},
+        ],
     },
-    'basePath': '/',
-    'schemes': ['http'],
-    'tags': [
-        {'name': 'Fund', 'description': '基金查询与搜索'},
-        {'name': 'System', 'description': '系统管理与监控'},
-    ],
-})
+)
 
 
 # ============================================================================
 # Prometheus 请求埋点
 # ============================================================================
+
 
 @app.before_request
 def before_request_metrics():
@@ -70,28 +76,29 @@ def before_request_metrics():
 
 @app.after_request
 def after_request_metrics(response):
-    start = getattr(g, '_request_start_time', None)
+    start = getattr(g, "_request_start_time", None)
     if start and response.status_code < 400:
         path = request.path
         duration = time.time() - start
         http_request_duration_seconds.labels(method=request.method, path=path).observe(duration)
         http_requests_total.labels(method=request.method, path=path, status=response.status_code).inc()
-    return response
+    return apply_cache_headers(response)
 
 
 # ============================================================================
 # 数据库会话
 # ============================================================================
 
+
 def get_db():
-    if 'db' not in g:
+    if "db" not in g:
         g.db = SessionLocal()
     return g.db
 
 
 @app.teardown_appcontext
 def teardown_db(exception):
-    db = g.pop('db', None)
+    db = g.pop("db", None)
     if db is not None:
         db.close()
 
@@ -101,17 +108,17 @@ def teardown_db(exception):
 # ============================================================================
 
 # 现有蓝图
-from fund_master_routes import fund_master_bp
 from data_service_routes import data_service_bp
-from routes_v1 import register_v1_blueprints
+from fund_master_routes import fund_master_bp
+from routes.backtest_routes import backtest_bp
 
 # 新拆分蓝图
 from routes.fund_routes import fund_bp
-from routes.watchlist_routes import watchlist_bp
-from routes.screening_routes import screening_bp
 from routes.research_routes import research_bp
-from routes.backtest_routes import backtest_bp
+from routes.screening_routes import screening_bp
 from routes.system_routes import system_bp
+from routes.watchlist_routes import watchlist_bp
+from routes_v1 import register_v1_blueprints
 
 app.register_blueprint(fund_master_bp)
 app.register_blueprint(data_service_bp)
@@ -135,11 +142,13 @@ init_db()
 # 服务预加载 & 后台调度
 # ============================================================================
 
+
 def preload_services():
     def _preload():
         time.sleep(2)
         try:
             from ai_service import get_ai_service
+
             ai_service = get_ai_service()
             if ai_service.is_available():
                 logger.info("AI 服务已就绪（硅基流动 API）")
@@ -152,10 +161,10 @@ def preload_services():
 def _cleanup_stale_tasks_on_startup():
     try:
         db = SessionLocal()
-        stale = db.query(DataFetchTask).filter(DataFetchTask.status == 'running').all()
+        stale = db.query(DataFetchTask).filter(DataFetchTask.status == "running").all()
         for task in stale:
-            task.status = 'failed'
-            task.message = '服务器重启，任务中断'
+            task.status = "failed"
+            task.message = "服务器重启，任务中断"
             task.finished_time = datetime.now()
             task.updated_time = datetime.now()
         if stale:
@@ -170,13 +179,12 @@ def _auto_ranking_scheduler():
     def _run_weekly():
         from models import FundScreeningRank
         from services.screening_engine import calculate_same_type_rankings
+
         while True:
             time.sleep(3600)
             try:
                 db = SessionLocal()
-                latest_ranking = db.query(FundScreeningRank).order_by(
-                    desc(FundScreeningRank.updated_time)
-                ).first()
+                latest_ranking = db.query(FundScreeningRank).order_by(desc(FundScreeningRank.updated_time)).first()
                 should_run = False
                 if latest_ranking and latest_ranking.updated_time:
                     delta = datetime.now() - latest_ranking.updated_time
@@ -240,7 +248,7 @@ signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
 # 主入口
 # ============================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     init_logging()
     logger.info("GoFundBot Backend 启动中...")
     try:
@@ -253,6 +261,6 @@ if __name__ == '__main__':
     _auto_ranking_scheduler()
     logger.info("GoFundBot Backend 已就绪")
     try:
-        app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
+        app.run(debug=False, host="0.0.0.0", port=5000, threaded=True)
     finally:
         _graceful_shutdown()

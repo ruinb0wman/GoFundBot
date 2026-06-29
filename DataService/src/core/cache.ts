@@ -119,8 +119,16 @@ class MemoryCache {
   }
 }
 
-const maxEntries = Number(process.env.CACHE_MAX_ENTRIES ?? 2000);
+const maxEntries = Number(process.env.CACHE_MAX_ENTRIES ?? 5000);
 export const cache = new MemoryCache(maxEntries);
+
+export function getCacheStats() {
+  return {
+    size: cache.size,
+    maxEntries,
+    utilization: `${((cache.size / maxEntries) * 100).toFixed(1)}%`,
+  };
+}
 
 export async function cacheThrough<T>(
   key: string,

@@ -31,7 +31,7 @@ const eastMoneyMarketProvider = new EastMoneyMarketProvider();
 export async function getMarketQuotes(symbolsParam: string | undefined): Promise<ServiceResult<MarketQuoteDto[]>> {
   const symbols = parseSymbols(symbolsParam);
   const key = `market:quotes:${symbols.join(',')}`;
-  const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider, eastMoneyMarketProvider]);
   const result = await cacheThrough(key, ttl.marketQuotes, () =>
     chain.run('market.quotes', (provider) => provider.quotes(symbols))
   );
@@ -43,7 +43,7 @@ export async function getMarketKline(symbol: string, query: KlineQuery): Promise
   const stockSymbol = assertStockSymbol(symbol);
   const options = parseKlineOptions(query);
   const key = `market:kline:${stockSymbol}:${JSON.stringify(options)}`;
-  const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider, eastMoneyMarketProvider]);
   const result = await cacheThrough(key, ttl.marketKline, () =>
     chain.run('market.kline', (provider) => provider.kline(stockSymbol, options))
   );
