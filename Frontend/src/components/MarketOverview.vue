@@ -98,6 +98,27 @@
       </div>
     </div>
 
+    <!-- 5. 市场异动 -->
+    <div class="market-section">
+      <div class="section-header">
+        <h3><LucideIcon name="BellRing" :size="20" /> 市场异动</h3>
+        <button class="refresh-btn" @click="fetchAnomalies" :disabled="anomaliesLoading">
+          <span :class="{ spinning: anomaliesLoading }"><LucideIcon name="RefreshCw" :size="16" /></span>
+        </button>
+      </div>
+      <div v-if="anomaliesLoading" class="anomaly-loading">加载中...</div>
+      <div v-else-if="anomalies.length === 0" class="anomaly-empty">
+        <LucideIcon name="CheckCircle" :size="16" /> 今日未检测到市场异动
+      </div>
+      <div v-else class="anomaly-list">
+        <div v-for="(item, i) in anomalies" :key="i" class="anomaly-item" :class="item.type">
+          <span class="anomaly-type-badge">{{ item.type === 'index_surge' ? '大涨' : item.type === 'index_plunge' ? '大跌' : '异动' }}</span>
+          <span class="anomaly-name">{{ item.name }}</span>
+          <span class="anomaly-value" :class="item.type === 'index_surge' ? 'positive' : 'negative'">{{ item.value }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 黄金历史走势弹窗 -->
     <Teleport to="body">
       <div v-if="goldModal.visible" class="gold-modal-overlay" @click.self="closeGoldHistory">
@@ -126,7 +147,7 @@
 <script>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { marketAPI } from '../services/api'
+import { marketAPI, alertAPI } from '../services/api'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"
@@ -502,6 +523,26 @@ export default {
       }
     })
 
+    const anomalies = ref([])
+    const anomaliesLoading = ref(false)
+
+    const fetchAnomalies = async () => {
+      anomaliesLoading.value = true
+      try {
+        const res = await alertAPI.marketAnomaly()
+        const data = res.data || {}
+        anomalies.value = data.anomalies || []
+      } catch {
+        anomalies.value = []
+      } finally {
+        anomaliesLoading.value = false
+      }
+    }
+
+    onMounted(() => {
+      fetchAnomalies()
+    })
+
     onUnmounted(() => {
       if (refreshTimer) clearInterval(refreshTimer)
     })
@@ -515,7 +556,8 @@ export default {
       formatDate, getChangeClass, getUpDnClass, navigateToIndex,
       volumeOption,
       tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate, currentChartOption,
-      echartThemeName
+      echartThemeName,
+      anomalies, anomaliesLoading, fetchAnomalies,
     }
   }
 }
@@ -740,4 +782,40 @@ export default {
   padding: 2px 6px;
   border-radius: 4px;
 }
+
+.anomaly-loading, .anomaly-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.anomaly-list { display: flex; flex-direction: column; gap: 6px; }
+
+.anomaly-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  font-size: 13px;
+}
+
+.anomaly-type-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.anomaly-item.index_surge .anomaly-type-badge { background: var(--color-danger-bg); color: var(--color-danger); }
+.anomaly-item.index_plunge .anomaly-type-badge { background: var(--color-success-bg); color: var(--color-success); }
+
+.anomaly-name { flex: 1; color: var(--text-primary); }
+.anomaly-value { font-weight: 600; }
+.anomaly-value.positive { color: var(--color-danger); }
+.anomaly-value.negative { color: var(--color-success); }
 </style>

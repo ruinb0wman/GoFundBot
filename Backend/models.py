@@ -353,6 +353,21 @@ class FundWatchlist(Base):
     updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+class AlertRule(Base):
+    """基金价格/收益率告警规则表"""
+
+    __tablename__ = "alert_rule"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fund_code = Column(String(6), nullable=False, index=True)
+    alert_type = Column(String(20), nullable=False)  # price_up / price_down / return_above / return_below
+    threshold = Column(Float, nullable=False)  # 阈值 (百分比)
+    enabled = Column(Integer, default=1)  # 1=启用 0=禁用
+    last_triggered = Column(DateTime)
+    created_time = Column(DateTime, default=datetime.now)
+    updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 class DailyMarketSummary(Base):
     """
     每日市场行情摘要缓存表

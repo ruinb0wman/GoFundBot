@@ -110,6 +110,7 @@ def teardown_db(exception):
 # 现有蓝图
 from data_service_routes import data_service_bp
 from fund_master_routes import fund_master_bp
+from routes.alert_routes import alert_bp
 from routes.backtest_routes import backtest_bp
 
 # 新拆分蓝图
@@ -128,6 +129,7 @@ app.register_blueprint(screening_bp)
 app.register_blueprint(research_bp)
 app.register_blueprint(backtest_bp)
 app.register_blueprint(system_bp)
+app.register_blueprint(alert_bp)
 register_v1_blueprints(app)
 
 

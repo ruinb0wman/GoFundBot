@@ -1933,7 +1933,7 @@ const emit = defineEmits(['view-fund', 'add-to-compare'])
 .quick-tag.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: rgb(50, 53, 218);
+  color: var(--text-inverse);
 }
 
 .quick-tag.has-active {

@@ -96,7 +96,13 @@ frontend:  npx vue-tsc --noEmit → npm test → npm run build
 | `Backend/config.py` | Config validation on startup |
 | `Backend/services/industry_classification.py` | Industry classification core logic |
 | `DataService/src/` | TypeScript Express app with ProviderChain |
-| `Frontend/src/` | Vue 3 + TypeScript + `<script setup lang="ts">` (全量迁移完成); `composables/` 含 `useSearchHistory` / `useOnlineStatus` / `useBreakpoint` / `useChartResize`; `components/` 含 `OfflineBanner` / `ErrorBoundary` / `HamburgerButton` / `MobileDrawer` / `BottomNav` |
+| `Frontend/src/` | Vue 3 + TypeScript + `<script setup lang="ts">` (全量迁移完成); `composables/` 含 `useSearchHistory` / `useOnlineStatus` / `useBreakpoint` / `useChartResize` / `useNotification`; `components/` 含 `OfflineBanner` / `ErrorBoundary` / `HamburgerButton` / `MobileDrawer` / `BottomNav` / `AlertBadge` / `AlertSettings` |
+| `Backend/models.py` | SQLAlchemy 模型: AlertRule (告警规则) |
+| `Backend/routes/alert_routes.py` | 告警 CRUD + 检查 + 市场异动 API |
+| `Backend/schemas/alert_schemas.py` | Pydantic 校验: AlertRuleCreateSchema / AlertRuleUpdateSchema |
+| `Backend/services/market_alert.py` | 市场异动检测 (指数涨跌 >3%) |
+| `Frontend/src/stores/alertStore.ts` | Pinia store: 告警规则管理 |
+| `Frontend/src/utils/exportUtils.ts` | CSV 导出工具函数 |
 | `Frontend/tsconfig.json` | TypeScript strict mode config |
 | `.pre-commit-config.yaml` | Pre-commit hooks (private key + .env check) |
 

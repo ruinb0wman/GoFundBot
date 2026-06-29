@@ -7,6 +7,9 @@
         <span class="count-badge" v-if="selectedFunds.length">{{ selectedFunds.length }}/{{ maxFunds }}</span>
       </h2>
       <div class="header-actions" v-if="selectedFunds.length > 0">
+        <button class="btn btn-export" @click="exportComparison">
+          <LucideIcon name="Download" :size="14" /> 导出 CSV
+        </button>
         <button
           class="btn btn-clear"
           @click="clearSelection"
@@ -266,6 +269,7 @@ import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { fundAPI } from '../services/api'
+import { exportToCSV } from '../utils/exportUtils'
 
 const props = defineProps({
   compareFunds: {
@@ -543,6 +547,39 @@ const clearSelection = () => {
   emit('clear-funds')
 }
 
+const exportComparison = () => {
+  const funds: any[] = selectedFunds.value
+  const rows = [
+    { key: '近3月收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.m3 ? formatReturn(f.returns.m3) : '--'])) },
+    { key: '近6月收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.m6 ? formatReturn(f.returns.m6) : '--'])) },
+    { key: '近1年收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.y1 ? formatReturn(f.returns.y1) : '--'])) },
+    { key: '近3年收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.y3 ? formatReturn(f.returns.y3) : '--'])) },
+    { key: '成立以来收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.all ? formatReturn(f.returns.all) : '--'])) },
+    { key: '基金规模', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.scale || '--'])) },
+    { key: '基金类型', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.fundType || '--'])) },
+    { key: '最大回撤(近1年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.max_drawdown_1y ? formatDrawdown(f.riskMetrics.max_drawdown_1y) : '--'])) },
+    { key: '最大回撤(近3年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.max_drawdown_3y ? formatDrawdown(f.riskMetrics.max_drawdown_3y) : '--'])) },
+    { key: '夏普比率(近1年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.sharpe_ratio_1y ? formatSharpe(f.riskMetrics.sharpe_ratio_1y) : '--'])) },
+    { key: '夏普比率(近3年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.sharpe_ratio_3y ? formatSharpe(f.riskMetrics.sharpe_ratio_3y) : '--'])) },
+    { key: '年化波动率(近1年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.volatility_1y ? formatVolatility(f.riskMetrics.volatility_1y) : '--'])) },
+    { key: '综合评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.evaluation?.avgScore != null ? String(f.evaluation.avgScore) : '--'])) },
+    { key: '选证能力', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 0)])) },
+    { key: '收益率评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 1)])) },
+    { key: '抗风险评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 2)])) },
+    { key: '稳定性评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 3)])) },
+    { key: '择时能力评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 4)])) },
+    { key: '基金经理', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.manager?.name || '--'])) },
+    { key: '从业经验', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.manager?.experience || '--'])) },
+    { key: '管理规模', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.manager?.managedSize || '--'])) },
+    { key: '经理评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.manager?.avgScore != null ? String(f.manager.avgScore) : '--'])) },
+  ]
+  const columns = [
+    { key: 'key', label: '指标' },
+    ...funds.map((f: any) => ({ key: f.code || f.name, label: `${f.name} (${f.code})` })),
+  ]
+  exportToCSV(rows, columns, `基金对比_${new Date().toISOString().slice(0, 10)}`)
+}
+
 const getValueClass = (value: any) => {
   if (value === null || value === undefined || value === '--') return ''
   const num = parseFloat(value)
@@ -780,6 +817,16 @@ onUnmounted(() => {
 }
 
 .btn-clear:hover:not(:disabled) { background: var(--bg-hover); }
+
+.btn-export {
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-export:hover { opacity: 0.9; }
 
 .selection-area {
   padding: 12px 20px;

@@ -49,6 +49,7 @@
               <LucideIcon name="TrendingUp" :size="16" /> 投研看板
             </button>
           </div>
+          <AlertBadge />
           <button
             class="theme-toggle"
             @click="toggleTheme"
@@ -137,6 +138,7 @@ import LucideIcon from './components/LucideIcon.vue'
 import HamburgerButton from './components/HamburgerButton.vue'
 import MobileDrawer from './components/MobileDrawer.vue'
 import BottomNav from './components/BottomNav.vue'
+import AlertBadge from './components/AlertBadge.vue'
 
 defineOptions({ name: 'App' })
 

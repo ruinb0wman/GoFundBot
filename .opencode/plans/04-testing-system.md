@@ -1,7 +1,7 @@
 # 4. 测试体系 — 执行计划
 
-> 基线状态：Backend 仅 1 个测试文件 (5 条 `_build_portfolio_industry_tag` 用例)，DataService/Frontend 零测试  
-> 目标：每层覆盖核心路径，中断可恢复  
+> 基线状态：Backend 仅 1 个测试文件 (5 条 `_build_portfolio_industry_tag` 用例)，DataService/Frontend 零测试
+> 目标：每层覆盖核心路径，中断可恢复
 > 测试框架：Backend = `unittest` (已用)；DataService = Vitest；Frontend = Vitest + @vue/test-utils
 
 ---

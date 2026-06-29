@@ -129,7 +129,7 @@ function navigate(route: string) {
 
 .drawer-item.active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .drawer-enter-active,

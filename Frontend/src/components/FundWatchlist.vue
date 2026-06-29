@@ -113,6 +113,7 @@
             @drop="onDrop"
             @add-to-compare="addToCompare"
             @add-to-realtime="$emit('add-to-realtime', $event)"
+            @show-alert-settings="openAlertSettings"
           />
         </div>
       </div>
@@ -153,6 +154,7 @@
             @drop="onDrop"
             @add-to-compare="addToCompare"
             @add-to-realtime="$emit('add-to-realtime', $event)"
+            @show-alert-settings="openAlertSettings"
           />
           <div v-if="getGroupFunds(group.id).length === 0" class="group-empty">
             暂无基金，拖拽基金到此分组
@@ -181,6 +183,8 @@
         </div>
       </div>
     </div>
+
+    <AlertSettings :fundCode="alertFundCode" :visible="alertFundCode !== ''" @close="alertFundCode = ''" />
   </div>
 </template>
 
@@ -190,10 +194,11 @@ import { watchlistAPI } from '../services/api'
 import { useWatchlistStore } from '../stores/watchlistStore'
 import FundListItems from './FundListItems.vue'
 import SkeletonCard from './SkeletonCard.vue'
+import AlertSettings from './AlertSettings.vue'
 
 export default {
   name: 'FundWatchlist',
-  components: { FundListItems, SkeletonCard },
+  components: { FundListItems, SkeletonCard, AlertSettings },
   props: {
     compareMode: { type: Boolean, default: false },
     compareFunds: { type: Array, default: () => [] },
@@ -217,6 +222,7 @@ export default {
     const editingGroup = ref(null)
     const groupName = ref('')
     const groupNameInput = ref(null)
+    const alertFundCode = ref('')
 
     // 估值刷新相关
     const estimateRefreshTimer = ref(null)
@@ -385,6 +391,10 @@ export default {
     // 查看详情
     const viewFundDetail = (fundCode) => {
       emit('view-fund', fundCode)
+    }
+
+    const openAlertSettings = (fundCode) => {
+      alertFundCode.value = fundCode
     }
 
     // 添加到对比
@@ -572,6 +582,7 @@ export default {
       groupNameInput,
       lastEstimateUpdate,
       isRefreshingEstimates,
+      alertFundCode,
       compareMode: toRef(props, 'compareMode'),
       compareFunds: toRef(props, 'compareFunds'),
       loadWatchlist,

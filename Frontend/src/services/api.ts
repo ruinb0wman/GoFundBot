@@ -120,4 +120,13 @@ export const researchAPI = {
   getSectorSummary(limit = 50) { return getWithLocalFallback('/research/sector-summary', { params: { limit } }) },
 }
 
+export const alertAPI = {
+  list() { return api.get('/alerts') },
+  create(data: { fund_code: string; alert_type: string; threshold: number }) { return api.post('/alerts', data) },
+  update(id: number, data: { threshold?: number; enabled?: number }) { return api.put(`/alerts/${id}`, data) },
+  remove(id: number) { return api.delete(`/alerts/${id}`) },
+  check() { return api.get('/alerts/check') },
+  marketAnomaly() { return api.get('/alerts/market-anomaly') },
+}
+
 export default api

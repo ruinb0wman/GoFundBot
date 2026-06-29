@@ -61,14 +61,22 @@
         >
           <LucideIcon name="Plus" :size="14" />
         </button>
-        <button
-          v-else
-          class="btn-icon btn-remove"
-          @click.stop="$emit('remove-fund', fund.fund_code)"
-          title="移除"
-        >
-          <LucideIcon name="X" :size="14" />
-        </button>
+        <template v-else>
+          <button
+            class="btn-icon btn-alert"
+            @click.stop="$emit('show-alert-settings', fund.fund_code)"
+            title="告警设置"
+          >
+            <LucideIcon name="Bell" :size="13" />
+          </button>
+          <button
+            class="btn-icon btn-remove"
+            @click.stop="$emit('remove-fund', fund.fund_code)"
+            title="移除"
+          >
+            <LucideIcon name="X" :size="14" />
+          </button>
+        </template>
       </div>
     </div>
   </div>
@@ -107,6 +115,7 @@ defineEmits<{
   'drop': [event: DragEvent, groupId: number | null]
   'add-to-compare': [payload: { code: string; name: string }]
   'add-to-realtime': [fund: any]
+  'show-alert-settings': [fundCode: string]
 }>()
 
 function isDragging(index: number): boolean {
@@ -176,4 +185,6 @@ function getChangeClass(change: unknown): string {
 .btn-icon:hover { background: var(--color-danger-bg); color: var(--color-danger); }
 .btn-add-realtime { font-size: 16px; font-weight: bold; color: var(--color-success); }
 .btn-add-realtime:hover { background: var(--color-success-bg); color: var(--color-success); }
+.btn-alert { font-size: 14px; }
+.btn-alert:hover { background: var(--color-primary-bg); color: var(--color-primary); }
 </style>
