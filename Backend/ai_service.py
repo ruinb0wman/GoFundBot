@@ -1,5 +1,5 @@
 """
-AI 分析服务模块 - 使用硅基流动（SiliconFlow）API
+AI 分析服务模块
 
 该模块提供基于 LangChain 的 AI 分析功能，包括：
 - 基金深度分析
