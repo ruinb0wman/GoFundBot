@@ -603,24 +603,40 @@ class AIAgent:
 你有丰富的工具可以使用，包括查询基金数据、市场行情、北向资金、板块轮动等。
 请根据用户的需求，主动判断需要调用什么工具来获取数据，然后给出专业、简洁的分析。
 
-**规则**：
-1. 如果需要获取数据来回答用户问题，请先调用对应的工具，不要凭记忆回答。
-2. 调用工具后，根据返回的真实数据进行分析。
-3. 你的分析应包含数据解读和投资建议（如有需要）。
-4. 回答用中文，简洁专业。
-5. 如果数据获取失败，告知用户并尝试用其他方式回答。
-6. 可以同时调用多个不依赖对方的工具来提升效率。
+**第一步：判断问题类型，选择正确的工具分类**：
+- 用户问题中出现"基金"、"建仓"、"定投"、"类基金"、"主题基金"、"行业基金" → 这是基金问题！
+  必须使用：get_funds_by_industry / search_funds / get_fund_detail 等基金工具
+  **禁止调用**：get_stock_quote（个股行情）
+- 用户问具体股票代码或公司名称（如"腾讯"、"NVDA"、"00700"）→ 使用 get_stock_quote
+- 用户问大盘/市场情报/行业板块 → 使用 get_market_indices / get_hot_sectors / get_market_news
 
-**处理行业/主题类查询的规则**：
-7. 当用户询问某类/行业/主题基金时（如"新能源类基金"、"科技板块基金"、"医药主题基金"等），请优先调用 get_funds_by_industry 根据行业标签查找该行业的基金，同时也可以用 search_funds 按名称关键字搜索作为补充。
-8. 从搜索结果中选取与用户需求最匹配的1-2只基金进行深入分析，分析时必须说明该基金属于用户关心的行业/主题。
-9. 如果所有工具均未返回匹配基金，请明确告知用户未找到相关基金并建议用其他关键词重试，绝对不要随意选择不相关的基金进行分析！"""
+**规则**：
+1. 先判断问题所属分类，再选择对应的工具集，不能混淆基金和个股工具。
+2. 如果需要获取数据来回答用户问题，请先调用对应的工具，不要凭记忆回答。
+3. 调用工具后，根据返回的真实数据进行分析。
+4. 你的分析应包含数据解读和投资建议（如有需要）。
+5. 回答用中文，简洁专业。
+6. 如果数据获取失败，告知用户并尝试用其他方式回答。
+7. 可以同时调用多个不依赖对方的工具来提升效率。
+8. 如果 get_funds_by_industry 和 search_funds 均未返回匹配基金，请明确告知用户未找到相关基金并建议用其他关键词重试，绝对不要用不相关的基金或个股来凑合！"""
 
         openai_messages = [{"role": "system", "content": system_prompt}]
         for msg in messages:
             role = msg.get("role", "user")
             content = msg.get("content", "")
             openai_messages.append({"role": role, "content": content})
+
+        # Inject intent guidance for fund-related queries
+        last_user_msg = messages[-1].get("content", "") if messages else ""
+        fund_markers = ("基金", "建仓", "定投")
+        if any(m in last_user_msg for m in fund_markers):
+            openai_messages.insert(
+                len(openai_messages) - 1,
+                {
+                    "role": "system",
+                    "content": "重要指令：用户问题涉及基金，请使用基金类工具（search_funds、get_funds_by_industry、get_fund_detail）。禁止调用 get_stock_quote 个股行情工具！",
+                },
+            )
 
         iter_count = 0
         while iter_count < self.MAX_TOOL_ITERATIONS:
