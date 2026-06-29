@@ -254,6 +254,23 @@ class AIAgent:
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_funds_by_industry",
+                    "description": "根据行业/主题标签查找相关基金。适用于用户询问某类基金（如新能源、医药、半导体、白酒、军工等）。返回基金代码、名称和行业标签信息。",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "keyword": {
+                                "type": "string",
+                                "description": "行业/主题关键词，如'新能源'、'医药'、'半导体'、'白酒'、'军工'等",
+                            }
+                        },
+                        "required": ["keyword"],
+                    },
+                },
+            },
         ]
 
     # ------------------------------------------------------------------
@@ -295,6 +312,7 @@ class AIAgent:
             "get_gold_realtime": self._tool_get_gold_realtime,
             "get_fund_holdings": self._tool_get_fund_holdings,
             "get_fund_managers": self._tool_get_fund_managers,
+            "get_funds_by_industry": self._tool_get_funds_by_industry,
         }
         handler = handlers.get(name)
         if not handler:
@@ -523,6 +541,37 @@ class AIAgent:
                 return data.get("fund_managers", [])
             return {"error": "无法获取经理信息"}
 
+    def _tool_get_funds_by_industry(self, keyword: str) -> Any:
+        from database import SessionLocal
+        from models import FundBasicInfo, FundIndustryTag
+
+        db = SessionLocal()
+        try:
+            tags = db.query(FundIndustryTag).filter(FundIndustryTag.industry_tag.like(f"%{keyword}%")).limit(50).all()
+
+            if not tags:
+                return {"funds": [], "total": 0, "message": f"未找到标签包含'{keyword}'的基金"}
+
+            codes = [t.fund_code for t in tags]
+            basics = {b.fund_code: b for b in db.query(FundBasicInfo).filter(FundBasicInfo.fund_code.in_(codes)).all()}
+
+            funds = []
+            for tag in tags:
+                basic = basics.get(tag.fund_code)
+                funds.append(
+                    {
+                        "fund_code": tag.fund_code,
+                        "fund_name": basic.fund_name if basic else None,
+                        "fund_type": basic.fund_type if basic else None,
+                        "industry_tag": tag.industry_tag,
+                        "industry_ratio": tag.industry_ratio,
+                    }
+                )
+
+            return {"funds": funds, "total": len(funds)}
+        finally:
+            db.close()
+
     # ------------------------------------------------------------------
     # ReAct loop — the core chat loop
     # ------------------------------------------------------------------
@@ -560,7 +609,12 @@ class AIAgent:
 3. 你的分析应包含数据解读和投资建议（如有需要）。
 4. 回答用中文，简洁专业。
 5. 如果数据获取失败，告知用户并尝试用其他方式回答。
-6. 可以同时调用多个不依赖对方的工具来提升效率。"""
+6. 可以同时调用多个不依赖对方的工具来提升效率。
+
+**处理行业/主题类查询的规则**：
+7. 当用户询问某类/行业/主题基金时（如"新能源类基金"、"科技板块基金"、"医药主题基金"等），请优先调用 get_funds_by_industry 根据行业标签查找该行业的基金，同时也可以用 search_funds 按名称关键字搜索作为补充。
+8. 从搜索结果中选取与用户需求最匹配的1-2只基金进行深入分析，分析时必须说明该基金属于用户关心的行业/主题。
+9. 如果所有工具均未返回匹配基金，请明确告知用户未找到相关基金并建议用其他关键词重试，绝对不要随意选择不相关的基金进行分析！"""
 
         openai_messages = [{"role": "system", "content": system_prompt}]
         for msg in messages:
