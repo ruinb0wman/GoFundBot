@@ -8,6 +8,7 @@ from database import get_request_db as get_db
 from models import FundTrend
 from schemas.backtest_schemas import FixedInvestmentSchema
 from services.backtest import _run_backtest
+from services.backtest_strategies import suggest_optimal_plan
 from services.helpers import _json_loads
 
 logger = get_logger(__name__)
@@ -120,3 +121,48 @@ def backtest_fixed_investment():
 
         traceback.print_exc()
         return jsonify({"error": f"Backtest execution failed: {str(e)}"}), 500
+
+
+@backtest_bp.route("/strategy-suggest", methods=["POST"])
+def strategy_suggest():
+    """为指定基金推荐最优定投策略"""
+    data = request.get_json() or {}
+    fund_code = data.get("fund_code")
+    if not fund_code:
+        return jsonify({"error": "Missing fund_code"}), 400
+
+    try:
+        db = get_db()
+        trend = db.query(FundTrend).filter(FundTrend.fund_code == fund_code).first()
+        if not trend:
+            return jsonify({"error": f"Fund data not found for code {fund_code}"}), 404
+
+        net_worth_data = _json_loads(trend.net_worth_trend_json, [])
+        if not net_worth_data:
+            return jsonify({"error": "No net worth data available"}), 404
+
+        nav_dict = {}
+        for item in net_worth_data:
+            date_str = item.get("date")
+            nav = item.get("net_worth")
+            if date_str and nav is not None:
+                try:
+                    nav_dict[date_str] = float(nav)
+                except (ValueError, TypeError):
+                    continue
+
+        sorted_dates = sorted(nav_dict.keys())
+        if len(sorted_dates) < 30:
+            return jsonify({"error": "Insufficient data (need at least 30 data points)"}), 400
+
+        result = suggest_optimal_plan(nav_dict, sorted_dates)
+        if "error" in result:
+            return jsonify(result), 400
+
+        return jsonify(result)
+
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        return jsonify({"error": f"Strategy suggestion failed: {str(e)}"}), 500

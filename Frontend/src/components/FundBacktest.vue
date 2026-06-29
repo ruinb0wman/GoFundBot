@@ -191,10 +191,41 @@
           <span v-if="loading">计算中...</span>
           <span v-else>开始回测</span>
         </button>
+        <button class="btn btn-strategy" @click="suggestStrategy" :disabled="loading || strategyLoading">
+          <span v-if="strategyLoading">生成中...</span>
+          <span v-else><LucideIcon name="Wand2" :size="14" /> 智能推荐策略</span>
+        </button>
         <button class="btn btn-secondary" @click="resetParams" :disabled="loading">
           重置参数
         </button>
       </div>
+    </div>
+
+    <!-- 策略推荐结果 -->
+    <div v-if="strategyResult" class="strategy-section">
+      <div class="section-title"><LucideIcon name="Sparkles" :size="18" /> 推荐策略</div>
+      <div class="strategy-card">
+        <div class="strategy-name">{{ strategyResult.recommended.name }}</div>
+        <div class="strategy-desc">{{ strategyResult.recommended.description }}</div>
+        <div class="strategy-reason">{{ strategyResult.recommended.reason }}</div>
+        <div class="strategy-metrics">
+          <div class="metric"><span class="mlabel">年化收益</span><span class="mvalue positive">{{ strategyResult.recommended.summary.annual_return }}%</span></div>
+          <div class="metric"><span class="mlabel">总收益</span><span class="mvalue positive">{{ strategyResult.recommended.summary.return_rate }}%</span></div>
+          <div class="metric"><span class="mlabel">最大回撤</span><span class="mvalue negative">-{{ strategyResult.recommended.summary.max_drawdown }}%</span></div>
+          <div class="metric"><span class="mlabel">夏普比率</span><span class="mvalue">{{ strategyResult.recommended.summary.sharpe_ratio }}</span></div>
+        </div>
+        <button class="btn btn-sm" @click="applyStrategyParams">应用此策略参数</button>
+      </div>
+      <div class="strategy-compare" v-if="strategyResult.strategies.length > 1">
+        <div class="section-subtitle">全部策略对比</div>
+        <div v-for="s in strategyResult.strategies" :key="s.key" class="compare-row" :class="{ recommended: s.key === strategyResult.recommended.key }">
+          <span class="sname">{{ s.name }}</span>
+          <span class="sreturn">{{ s.summary.return_rate }}%</span>
+          <span class="sdrawdown">{{ s.summary.max_drawdown }}%</span>
+          <span class="ssharpe">{{ s.summary.sharpe_ratio }}</span>
+        </div>
+      </div>
+    </div>
     </div>
 
     <!-- 错误提示 -->
@@ -351,6 +382,31 @@ const result: any = ref(null)
 const currentFundCode = ref(props.fundCode || '')
 const currentFundName = ref('')
 const minStartDate = ref('')
+
+const strategyResult: any = ref(null)
+const strategyLoading = ref(false)
+
+const suggestStrategy = async () => {
+  if (!currentFundCode.value) return
+  strategyLoading.value = true
+  strategyResult.value = null
+  try {
+    const response = await backtestAPI.strategySuggest({ fund_code: currentFundCode.value })
+    strategyResult.value = response.data
+  } catch (err: any) {
+    error.value = '策略推荐失败: ' + (err.response?.data?.error || err.message)
+  } finally {
+    strategyLoading.value = false
+  }
+}
+
+const applyStrategyParams = () => {
+  if (!strategyResult.value) return
+  const key = strategyResult.value.recommended.key
+  if (key === 'monthly') params.value.investmentType = 'monthly'
+  else if (key === 'weekly') params.value.investmentType = 'weekly'
+  else params.value.investmentType = key
+}
 
 watch(() => props.fundCode, (val) => {
   if (val) {
@@ -932,6 +988,94 @@ onUnmounted(() => {
   color: var(--color-primary);
   border-color: var(--color-primary);
 }
+
+.btn-strategy {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  color: var(--text-inverse);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-strategy:hover:not(:disabled) { opacity: 0.9; }
+
+.strategy-section {
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.strategy-card {
+  padding: 16px;
+  background: var(--bg-subtle);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.strategy-name { font-size: 16px; font-weight: 700; color: var(--color-primary); margin-bottom: 4px; }
+.strategy-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+.strategy-reason { font-size: 13px; color: var(--text-primary); margin-bottom: 12px; padding: 8px; background: var(--bg-card); border-radius: 6px; }
+
+.strategy-metrics {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.metric { display: flex; flex-direction: column; gap: 2px; }
+.mlabel { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; }
+.mvalue { font-size: 16px; font-weight: 700; }
+.mvalue.positive { color: var(--color-danger); }
+.mvalue.negative { color: var(--color-success); }
+
+.strategy-compare { margin-top: 12px; }
+
+.compare-row {
+  display: flex;
+  gap: 16px;
+  padding: 6px 8px;
+  font-size: 13px;
+  border-radius: 4px;
+  align-items: center;
+}
+.compare-row.recommended { background: var(--color-primary-bg); font-weight: 600; }
+
+.compare-row .sname { flex: 1; color: var(--text-primary); }
+.compare-row .sreturn { width: 60px; color: var(--color-danger); }
+.compare-row .sdrawdown { width: 60px; color: var(--color-success); }
+.compare-row .ssharpe { width: 50px; color: var(--text-primary); }
+
+.btn-sm {
+  padding: 4px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-sm:hover { background: var(--color-primary); color: var(--text-inverse); }
 
 /* 错误提示 */
 .error-message {

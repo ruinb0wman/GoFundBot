@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <div v-if="loading" class="loading">
+    <div v-if="loading && !streamingContent" class="loading">
       <div class="loading-animation">
         <div class="spinner"></div>
         <div class="loading-dots">
@@ -24,6 +24,14 @@
       </div>
       <p class="loading-text">AI 正在深度分析基金表现(可能需要2-3分钟)...</p>
       <p class="loading-sub">结合市场数据、基金业绩、持仓结构进行综合评估</p>
+    </div>
+
+    <div v-if="loading && streamingContent" class="streaming-output">
+      <div class="streaming-header">
+        <div class="streaming-dot"></div>
+        <span>AI 分析生成中...</span>
+      </div>
+      <div class="streaming-text">{{ streamingContent }}</div>
     </div>
 
     <div v-else-if="error" class="error">
@@ -136,6 +144,7 @@ const emit = defineEmits(['close', 'analysis-complete'])
 const data = ref(null)
 const loading = ref(false)
 const error = ref(null)
+const streamingContent = ref('')
 
 // 监听数据变化，分析完成后通知父组件
 watch(data, (newVal) => {
@@ -253,17 +262,76 @@ const analyze = async () => {
   if (!props.fundCode) return
   loading.value = true
   error.value = null
+  streamingContent.value = ''
+
+  // Try SSE streaming first
   try {
-    const response = await fundAPI.analyzeFund(props.fundCode)
-    if (response.data.error) {
-      error.value = response.data.error
-    } else {
-      data.value = response.data
+    const baseUrl = '/api'
+    const response = await fetch(`${baseUrl}/fund/${props.fundCode}/analyze/stream`, {
+      method: 'POST',
+      headers: { 'Accept': 'text/event-stream' },
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+    const body = response.body
+    if (!body) throw new Error('No response body')
+    const reader = body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const payload = line.slice(6).trim()
+          if (payload === '[DONE]') continue
+          try {
+            const parsed = JSON.parse(payload)
+            if (parsed.token) {
+              streamingContent.value = parsed.full || parsed.token
+            }
+            if (parsed.error) {
+              error.value = parsed.error
+              break
+            }
+          } catch {
+            // partial JSON, wait for more data
+          }
+        }
+        if (line.startsWith('event: result')) {
+          // read next data line for result
+          continue
+        }
+      }
     }
-  } catch (err) {
-    error.value = '分析失败: ' + (err.response?.data?.error || err.message)
+
+    // Re-fetch full result for structured display
+    const fullResponse = await fundAPI.analyzeFund(props.fundCode)
+    if (fullResponse.data.error) {
+      error.value = fullResponse.data.error
+    } else {
+      data.value = fullResponse.data
+    }
+  } catch {
+    // Fallback: non-streaming API
+    try {
+      const response = await fundAPI.analyzeFund(props.fundCode)
+      if (response.data.error) {
+        error.value = response.data.error
+      } else {
+        data.value = response.data
+      }
+    } catch (err) {
+      error.value = '分析失败: ' + (err.response?.data?.error || err.message)
+    }
   } finally {
     loading.value = false
+    streamingContent.value = ''
   }
 }
 
@@ -785,6 +853,47 @@ defineExpose({
 
 .retry-btn:hover {
   background: var(--color-danger);
+}
+
+/* 流式输出 */
+.streaming-output {
+  padding: 16px 20px;
+  background: var(--bg-subtle);
+  border-radius: 10px;
+  min-height: 100px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.streaming-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.streaming-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.streaming-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 响应式 */

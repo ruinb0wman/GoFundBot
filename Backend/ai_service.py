@@ -460,6 +460,90 @@ class AIService:
                 "operation_suggestion": "请关注市场变化",
             }
 
+    def analyze_fund_stream(self, fund_data: dict[str, Any]):
+        """Streaming version of analyze_fund.
+
+        Yields SSE-formatted strings for each chunk of LLM output.
+        Final chunk contains the full parsed JSON result.
+        """
+        if not self.is_available():
+            yield f"data: {json.dumps({'error': 'AI 服务未配置'})}\n\n"
+            yield "event: done\ndata: [DONE]\n\n"
+            return
+
+        try:
+            prompt = self._build_fund_analysis_prompt(fund_data)
+            system_prompt = self._get_fund_analysis_system_prompt()
+
+            from openai import OpenAI
+
+            client = OpenAI(api_key=self._api_key, base_url=self._api_base)
+
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            stream = client.chat.completions.create(
+                model=self._model,
+                messages=messages,
+                temperature=0.2,
+                max_tokens=8192,
+                stream=True,
+            )
+
+            full_content = ""
+            for chunk in stream:
+                delta = chunk.choices[0].delta if chunk.choices else None
+                content = delta.content if delta else ""
+                if content:
+                    full_content += content
+                    yield f"data: {json.dumps({'token': content, 'full': full_content})}\n\n"
+
+            # Parse and send final result
+            result = self._parse_fund_analysis_result(full_content)
+            yield f"event: result\ndata: {json.dumps(result)}\n\n"
+            yield "event: done\ndata: [DONE]\n\n"
+
+        except Exception as e:
+            logger.error(f"Streaming AI analysis failed: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield "event: done\ndata: [DONE]\n\n"
+
+    def _get_fund_analysis_system_prompt(self) -> str:
+        return """你是一位资深基金分析师，擅长基金投资分析和风险评估。
+请基于提供的基金数据，给出专业、客观、全面的分析报告。
+
+**重要提示**：
+1. 请务必根据提供的基金数据进行真实评估。
+2. sentiment_score 必须根据基金的实际表现计算（0-100）。
+3. operation_advice 必须基于你的分析结论给出。
+
+**输出要求**：
+请严格按照以下 JSON 格式输出：
+```json
+{
+    "sentiment_score": 0-100 分，
+    "operation_advice": "强烈推荐"/"建议买入"/"持有观望"/"建议减仓"/"建议卖出"，
+    "summary": "详细的分析总结（200-300字）",
+    "dashboard": {
+        "performance_eval": "优秀/良好/一般/较差",
+        "manager_ability": "优秀/良好/一般/较差",
+        "position_analysis": "集中/均衡/分散",
+        "market_outlook": "乐观/中性/谨慎"
+    },
+    "highlights": ["亮点1", "亮点2", "亮点3"],
+    "risk_factors": ["风险1", "风险2", "风险3"],
+    "news_intel": ["相关市场信息1", "相关市场信息2"],
+    "detailed_report": "Markdown格式的详细深度分析报告"
+}
+```
+
+**评分说明**：
+- sentiment_score: 0-100 分，越高表示越值得投资
+- detailed_report: 请提供不少于500字的深度分析，使用 Markdown 格式
+"""
+
 
 # 单例实例
 _ai_service_instance: AIService | None = None
