@@ -9,6 +9,17 @@ repos:
       - id: end-of-file-fixer
         name: 文件末尾换行符
 
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.20
+    hooks:
+      - id: ruff
+        name: ruff lint (Backend)
+        files: ^Backend/
+        args: [--fix]
+      - id: ruff-format
+        name: ruff format (Backend)
+        files: ^Backend/
+
   - repo: local
     hooks:
       - id: prevent-env-commit

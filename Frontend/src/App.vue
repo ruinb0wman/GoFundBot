@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <OfflineBanner />
     <header class="app-header">
       <div class="header-content">
         <div class="header-left">
@@ -10,7 +11,8 @@
           <FundSearch @fund-selected="handleHeaderSearch" :compact="true" />
         </div>
         <div class="header-right">
-          <div class="mode-switch">
+          <HamburgerButton :isOpen="drawerOpen" @toggle="drawerOpen = !drawerOpen" />
+          <div class="mode-switch" :class="{ 'mobile-hidden': isMobile }">
             <button
               class="mode-btn"
               :class="{ active: route.name === 'dashboard' }"
@@ -78,14 +80,16 @@
             @remove-fund="handleRemoveFromCompare"
             @clear-funds="handleClearCompare"
           />
-          <router-view v-else v-slot="{ Component }">
-            <component
-              :is="Component"
-              @navigate-to-fund="handleNavigate"
-              @view-fund="handleNavigate"
-              @view-detail="handleNavigate"
-            />
-          </router-view>
+          <ErrorBoundary v-else>
+            <router-view v-slot="{ Component }">
+              <component
+                :is="Component"
+                @navigate-to-fund="handleNavigate"
+                @view-fund="handleNavigate"
+                @view-detail="handleNavigate"
+              />
+            </router-view>
+          </ErrorBoundary>
         </div>
 
         <aside v-if="!showFullContent" class="dashboard-right">
@@ -96,154 +100,135 @@
 
       <div v-else class="main-layout">
         <div class="content-area full-width">
-          <router-view v-slot="{ Component }">
-            <component
-              :is="Component"
-              @navigate-to-fund="handleNavigate"
-              @view-fund="handleNavigate"
-              @view-detail="handleNavigate"
-            />
-          </router-view>
+          <ErrorBoundary>
+            <router-view v-slot="{ Component }">
+              <component
+                :is="Component"
+                @navigate-to-fund="handleNavigate"
+                @view-fund="handleNavigate"
+                @view-detail="handleNavigate"
+              />
+            </router-view>
+          </ErrorBoundary>
         </div>
       </div>
     </main>
 
-    <footer class="app-footer">
+    <footer class="app-footer" :class="{ 'mobile-hidden': isMobile }">
       <p>数据来源：天天基金 / 东方财富 / 百度股市通 | 更新时间：{{ currentTime }}</p>
     </footer>
+
+    <MobileDrawer :isOpen="drawerOpen" :activeRoute="String(route.name || '')" @close="drawerOpen = false" />
+    <BottomNav />
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from './composables/useTheme'
+import { useBreakpoint } from './composables/useBreakpoint'
 import FundSearch from './components/FundSearch.vue'
 import FundWatchlist from './components/FundWatchlist.vue'
 import FundComparison from './components/FundComparison.vue'
 import FlashNews from './components/FlashNews.vue'
 import SectorRank from './components/SectorRank.vue'
 import LucideIcon from './components/LucideIcon.vue'
+import HamburgerButton from './components/HamburgerButton.vue'
+import MobileDrawer from './components/MobileDrawer.vue'
+import BottomNav from './components/BottomNav.vue'
 
-export default {
-  name: 'App',
-  components: {
-    FundSearch,
-    FundWatchlist,
-    FundComparison,
-    FlashNews,
-    SectorRank,
-    LucideIcon
-  },
-  setup() {
-    const { theme: appTheme, savedTheme, toggleTheme } = useTheme()
-    const currentTime = ref('')
-    const route = useRoute()
-    const router = useRouter()
-    const compareFunds = ref([])
-    const compareMode = ref(false)
+defineOptions({ name: 'App' })
 
-    const showFullContent = computed(() =>
-      !!route.params.code || (compareMode.value && compareFunds.value.length >= 2)
-    )
+const { theme: appTheme, savedTheme, toggleTheme } = useTheme()
+const { isMobile } = useBreakpoint()
+const drawerOpen = ref(false)
+const currentTime = ref('')
+const route = useRoute()
+const router = useRouter()
+const compareFunds: any = ref([])
+const compareMode = ref(false)
 
-    const themeIcon = computed(() => {
-      if (savedTheme.value === 'dark') return 'Moon'
-      if (savedTheme.value === 'auto') return 'Monitor'
-      return 'Sun'
-    })
+const showFullContent = computed(() =>
+  !!route.params.code || (compareMode.value && compareFunds.value.length >= 2)
+)
 
-    const themeTitle = computed(() => {
-      if (savedTheme.value === 'light') return '浅色模式（点击切换）'
-      if (savedTheme.value === 'dark') return '深色模式（点击切换）'
-      return '跟随系统（点击切换）'
-    })
+const themeIcon = computed(() => {
+  if (savedTheme.value === 'dark') return 'Moon'
+  if (savedTheme.value === 'auto') return 'Monitor'
+  return 'Sun'
+})
 
-    const normalizeFundCode = (fundOrCode) => {
-      if (fundOrCode && typeof fundOrCode === 'object') {
-        return fundOrCode.CODE || fundOrCode.fund_code || fundOrCode.code || ''
-      }
-      return fundOrCode || ''
-    }
+const themeTitle = computed(() => {
+  if (savedTheme.value === 'light') return '浅色模式（点击切换）'
+  if (savedTheme.value === 'dark') return '深色模式（点击切换）'
+  return '跟随系统（点击切换）'
+})
 
-    const handleNavigate = (fundOrCode) => {
-      if (compareMode.value) return
-      const code = normalizeFundCode(fundOrCode)
-      if (code) router.push({ name: 'fund-detail', params: { code } })
-    }
+const normalizeFundCode = (fundOrCode: any) => {
+  if (fundOrCode && typeof fundOrCode === 'object') {
+    return fundOrCode.CODE || fundOrCode.fund_code || fundOrCode.code || ''
+  }
+  return fundOrCode || ''
+}
 
-    const handleHeaderSearch = (fundOrCode) => {
-      compareMode.value = false
-      const code = normalizeFundCode(fundOrCode)
-      if (code) router.push({ name: 'fund-detail', params: { code } })
-    }
+const handleNavigate = (fundOrCode: any) => {
+  if (compareMode.value) return
+  const code = normalizeFundCode(fundOrCode)
+  if (code) router.push({ name: 'fund-detail', params: { code } })
+}
 
-    const resetToDashboard = () => {
-      compareMode.value = false
-      compareFunds.value = []
-      router.push({ name: 'dashboard' })
-    }
+const handleHeaderSearch = (fundOrCode: any) => {
+  compareMode.value = false
+  const code = normalizeFundCode(fundOrCode)
+  if (code) router.push({ name: 'fund-detail', params: { code } })
+}
 
-    const toggleCompareMode = () => {
-      compareMode.value = !compareMode.value
-      if (!compareMode.value) {
-        compareFunds.value = []
-      }
-    }
+const resetToDashboard = () => {
+  compareMode.value = false
+  compareFunds.value = []
+  router.push({ name: 'dashboard' })
+}
 
-    const handleAddToCompare = (fund) => {
-      if (compareFunds.value.length >= 5) {
-        alert('最多只能对比5只基金')
-        return
-      }
-      if (compareFunds.value.some(f => f.code === fund.code)) {
-        compareFunds.value = compareFunds.value.filter(f => f.code !== fund.code)
-        return
-      }
-      compareFunds.value.push({
-        code: fund.code,
-        name: fund.name
-      })
-    }
-
-    const handleRemoveFromCompare = (fundCode) => {
-      compareFunds.value = compareFunds.value.filter(f => f.code !== fundCode)
-    }
-
-    const handleClearCompare = () => {
-      compareFunds.value = []
-    }
-
-    const updateTime = () => {
-      const now = new Date()
-      currentTime.value = now.toLocaleString('zh-CN')
-    }
-
-    onMounted(() => {
-      updateTime()
-      setInterval(updateTime, 60000)
-    })
-
-    return {
-      currentTime,
-      route,
-      router,
-      compareFunds,
-      compareMode,
-      showFullContent,
-      themeIcon,
-      themeTitle,
-      toggleTheme,
-      handleNavigate,
-      handleHeaderSearch,
-      resetToDashboard,
-      toggleCompareMode,
-      handleAddToCompare,
-      handleRemoveFromCompare,
-      handleClearCompare
-    }
+const toggleCompareMode = () => {
+  compareMode.value = !compareMode.value
+  if (!compareMode.value) {
+    compareFunds.value = []
   }
 }
+
+const handleAddToCompare = (fund: any) => {
+  if (compareFunds.value.length >= 5) {
+    alert('最多只能对比5只基金')
+    return
+  }
+  if (compareFunds.value.some((f: any) => f.code === fund.code)) {
+    compareFunds.value = compareFunds.value.filter((f: any) => f.code !== fund.code)
+    return
+  }
+  compareFunds.value.push({
+    code: fund.code,
+    name: fund.name
+  })
+}
+
+const handleRemoveFromCompare = (fundCode: string) => {
+  compareFunds.value = compareFunds.value.filter((f: any) => f.code !== fundCode)
+}
+
+const handleClearCompare = () => {
+  compareFunds.value = []
+}
+
+const updateTime = () => {
+  const now = new Date()
+  currentTime.value = now.toLocaleString('zh-CN')
+}
+
+onMounted(() => {
+  updateTime()
+  setInterval(updateTime, 60000)
+})
 </script>
 
 <style>
@@ -710,6 +695,13 @@ export default {
   overflow: hidden;
 }
 
+/* ==================== 移动端辅助类 ==================== */
+@media (max-width: 1024px) {
+  .mobile-hidden {
+    display: none !important;
+  }
+}
+
 /* ==================== 页脚 ==================== */
 .app-footer {
   background: var(--bg-card);
@@ -793,26 +785,27 @@ export default {
 }
 
 @media (max-width: 768px) {
- .app-header {
+  .app-header {
     padding: 10px 16px;
   }
 
- .header-content {
+  .header-content {
     flex-direction: column;
     gap: 12px;
   }
 
- .header-left {
+  .header-left {
     text-align: center;
   }
 
- .mode-btn {
-    padding: 6px 10px;
+  .mode-btn {
+    padding: 8px 12px;
     font-size: 12px;
   }
 
- .app-main {
+  .app-main {
     padding: 12px;
+    padding-bottom: 64px;
   }
 
   .header-search .db-status {

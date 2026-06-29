@@ -84,6 +84,25 @@ svg.lucide, .lucide {
   }
 }
 
+/* ── 移动端触摸适配 ── */
+@media (max-width: 768px) {
+  button, a, .clickable, input, select, textarea {
+    min-height: 44px;
+  }
+
+  table, .vxe-table--wrapper {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .vxe-table--body-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* ── VXETable dark mode overrides (CSS variable approach) ── */
 [data-theme="dark"] {
   --vxe-ui-layout-background-color: var(--bg-card);

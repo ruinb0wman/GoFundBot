@@ -1,22 +1,22 @@
 <template>
   <div class="fund-chart-card">
     <div class="top-tabs">
-      <div 
-        class="tab-item" 
+      <div
+        class="tab-item"
         :class="{ active: activeTab === 'performance' }"
         @click="switchTab('performance')"
       >
         业绩走势
       </div>
-      <div 
-        class="tab-item" 
+      <div
+        class="tab-item"
         :class="{ active: activeTab === 'comparison' }"
         @click="switchTab('comparison')"
       >
         收益对比
       </div>
-      <div 
-        class="tab-item" 
+      <div
+        class="tab-item"
         :class="{ active: activeTab === 'drawdown' }"
         @click="switchTab('drawdown')"
       >
@@ -32,7 +32,7 @@
             <span class="value" :class="getColor(fundChange)">{{ fundChange > 0 ? '+' : ''}}{{ fundChange }}%</span>
         </div>
     </div>
-    
+
     <div class="summary-info drawdown-info" v-else-if="activeTab === 'drawdown'">
         <div class="info-group">
             <div class="legend-dot-row">
@@ -65,9 +65,9 @@
     </div>
 
     <div class="time-ranges">
-      <div 
-        v-for="range in timeRanges" 
-        :key="range.value" 
+      <div
+        v-for="range in timeRanges"
+        :key="range.value"
         class="range-item"
         :class="{ active: selectedRange === range.value }"
         @click="setTimeRange(range.value)"
@@ -128,7 +128,7 @@ export default {
       selectedRange.value = range
       updateChart()
     }
-    
+
     const switchTab = (tab) => {
         activeTab.value = tab
         nextTick(() => {
@@ -226,17 +226,17 @@ export default {
         let curMaxdd = 0;
         let globalPeakIndex = 0;
         let globalValleyIndex = 0;
-        
+
         let runningPeakValue = -Infinity;
         let runningPeakIndex = 0;
-        
+
         for (let i = 0; i < filtered.length; i++) {
             const val = filtered[i][1];
             if (val > runningPeakValue) {
                 runningPeakValue = val;
                 runningPeakIndex = i;
             }
-            
+
             const dd = (runningPeakValue - val) / runningPeakValue;
             if (dd > curMaxdd) {
                 curMaxdd = dd;
@@ -244,22 +244,22 @@ export default {
                 globalValleyIndex = i;
             }
         }
-        
+
         // Check Recovery
         let recoveryIndex = -1;
         const peakValRaw = filtered[globalPeakIndex][1];
-        
+
         for (let i = globalPeakIndex + 1; i < filtered.length; i++) {
             if (filtered[i][1] >= peakValRaw) {
                 recoveryIndex = i;
                 break;
             }
         }
-        
+
         const peakDate = filtered[globalPeakIndex][0];
         const valleyDate = filtered[globalValleyIndex][0];
         const recoveryDate = recoveryIndex !== -1 ? filtered[recoveryIndex][0] : null;
-        
+
         const days = recoveryDate ? Math.ceil((recoveryDate - peakDate) / (1000 * 3600 * 24)) : null;
 
         const ddInfo = {
@@ -273,14 +273,14 @@ export default {
             recoveryValue: recoveryIndex !== -1 ? toPercent(filtered[recoveryIndex][1]) : null
         }
 
-        
+
         maxDrawdownInfo.value = ddInfo
-        
+
         // Also process Comparison Data just in case we need to filter for Comparison Tab?
-        // Usually comparison tab shows "All" or follows the range selector if enabled. 
-        // User requirements usually imply comparison follows standard range or all. 
+        // Usually comparison tab shows "All" or follows the range selector if enabled.
+        // User requirements usually imply comparison follows standard range or all.
         // But the range selector is hidden for comparison in template: v-if="activeTab !== 'comparison'"
-        
+
         return {
             chartData,
             drawdownInfo: ddInfo,
@@ -299,11 +299,11 @@ export default {
     const updateChart = () => {
       if (!chartInstance) return
 
-      chartInstance.clear(); 
+      chartInstance.clear();
 
       const option = {
         grid: { left: '3%', right: '5%', bottom: '10%', top: '15%', containLabel: true },
-        tooltip: { 
+        tooltip: {
             trigger: 'axis',
             formatter: function (params) {
                 let res = '<div>' + echarts.format.formatTime('yyyy-MM-dd', params[0].value[0]) + '</div>'
@@ -362,7 +362,7 @@ export default {
           }
       } else if (activeTab.value === 'comparison') {
           const comparisonData = props.grandTotal || []
-          
+
           if (comparisonData.length > 0) {
               const colors = [
                 cssColor('--chart-1', '#1677ff'),
@@ -371,7 +371,7 @@ export default {
                 cssColor('--chart-4', '#ff4d4f'),
                 cssColor('--chart-5', '#73c0de')
               ];
-              
+
               // Update Legend Info
               comparisonInfo.value = comparisonData.map((item, index) => ({
                   name: item.name,
@@ -381,14 +381,14 @@ export default {
               const series = comparisonData.map((item, index) => {
                   const rawData = item.data || [];
                   const filteredData = filterByDate(rawData, selectedRange.value);
-                  
+
                   return {
                     name: item.name,
                     type: 'line',
-                    data: filteredData, 
+                    data: filteredData,
                     smooth: true,
                     symbol: 'none',
-                    lineStyle: { 
+                    lineStyle: {
                         width: item.name.includes('本基金') ? 3 : 1.5
                     },
                     itemStyle: {
@@ -397,10 +397,10 @@ export default {
                     z: item.name.includes('本基金') ? 3 : 2
                  }
               });
-              
+
               option.series = series
               option.legend = { show: false } // Hide internal legend
-              
+
               // Adjust tooltip for comparison to show %
               option.tooltip.formatter = function (params) {
                   let res = '<div>' + echarts.format.formatTime('yyyy-MM-dd', params[0].value[0]) + '</div>'
@@ -440,22 +440,22 @@ export default {
                       data: []
                   }
               }
-              
+
               if (drawdownInfo && drawdownInfo.peakDate) {
                   const endDate = drawdownInfo.recoveryDate || chartData[chartData.length - 1][0];
-                  
+
                   seriesData.markArea.data.push([
                       { xAxis: drawdownInfo.peakDate },
                       { xAxis: endDate }
                   ]);
-                  
+
                   const points = [];
                   points.push({
                       coord: [drawdownInfo.peakDate, drawdownInfo.peakValue],
-                       itemStyle: { color: cssColor('--color-warning', '#faad14') }, 
-                      label: { show: false } 
+                       itemStyle: { color: cssColor('--color-warning', '#faad14') },
+                      label: { show: false }
                   });
-                   
+
                   points.push({
                        coord: [drawdownInfo.valleyDate, drawdownInfo.valleyValue],
                        itemStyle: { color: cssColor('--color-success', '#52c41a') },
@@ -466,7 +466,7 @@ export default {
                            position: 'top'
                        }
                   });
-                   
+
                   if (drawdownInfo.recoveryDate) {
                        points.push({
                            coord: [drawdownInfo.recoveryDate, drawdownInfo.recoveryValue],
@@ -479,7 +479,7 @@ export default {
                            }
                        });
                   }
-                   
+
                   seriesData.markPoint.data = points;
               }
               option.series.push(seriesData)
@@ -490,20 +490,22 @@ export default {
       chartInstance.resize()                // ensure proper sizing after data update
     }
 
+    const handleResize = () => { chartInstance?.resize() }
+
     onMounted(() => {
       initChart()
-      window.addEventListener('resize', () => chartInstance?.resize())
+      window.addEventListener('resize', handleResize)
     })
 
     onUnmounted(() => {
       if (chartInstance) {
         chartInstance.dispose()
       }
-      window.removeEventListener('resize', () => chartInstance?.resize())
+      window.removeEventListener('resize', handleResize)
     })
 
     watch([() => props.netWorthTrend, () => props.grandTotal], () => {
-      nextTick(() => updateChart()) 
+      nextTick(() => updateChart())
     }, { deep: true })
 
     watch(echartThemeName, () => {
@@ -513,7 +515,7 @@ export default {
         nextTick(() => initChart())
       }
     })
-    
+
     return {
       chartEl,
       timeRanges,

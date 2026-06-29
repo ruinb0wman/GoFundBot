@@ -45,7 +45,7 @@
               <span>一次性买入</span>
             </label>
           </div>
-          
+
           <!-- 定投具体日期选择 -->
           <div v-if="params.investmentType === 'monthly'" class="sub-param">
             <label>定投日：</label>
@@ -70,10 +70,10 @@
         <div class="param-item">
           <label>{{ params.investmentType === 'lump_sum' ? '投资金额' : '每期金额' }}</label>
           <div class="input-with-unit">
-            <input 
-              type="number" 
-              v-model.number="params.amount" 
-              min="0" 
+            <input
+              type="number"
+              v-model.number="params.amount"
+              min="0"
               step="100"
               placeholder="1000"
             />
@@ -84,10 +84,10 @@
         <div class="param-item">
           <label>初始资金</label>
           <div class="input-with-unit">
-            <input 
-              type="number" 
-              v-model.number="params.initialAmount" 
-              min="0" 
+            <input
+              type="number"
+              v-model.number="params.initialAmount"
+              min="0"
               step="1000"
               placeholder="0"
             />
@@ -95,7 +95,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="param-row">
         <div class="param-item">
           <label>分红方式</label>
@@ -110,7 +110,7 @@
             </label>
           </div>
         </div>
-        
+
         <div class="param-item">
           <label>止盈后资金处理</label>
           <div class="radio-group">
@@ -130,10 +130,10 @@
         <div class="param-item">
           <label>止盈率</label>
           <div class="input-with-unit">
-            <input 
-              type="number" 
-              v-model.number="params.takeProfitRate" 
-              min="0" 
+            <input
+              type="number"
+              v-model.number="params.takeProfitRate"
+              min="0"
               step="1"
               placeholder="可选"
             />
@@ -144,10 +144,10 @@
         <div class="param-item">
           <label>止损率</label>
           <div class="input-with-unit">
-            <input 
-              type="number" 
-              v-model.number="params.stopLossRate" 
-              min="0" 
+            <input
+              type="number"
+              v-model.number="params.stopLossRate"
+              min="0"
               step="1"
               placeholder="可选"
             />
@@ -160,11 +160,11 @@
         <div class="param-item">
           <label>手续费率</label>
           <div class="input-with-unit">
-            <input 
-              type="number" 
-              v-model.number="params.feeRate" 
-              min="0" 
-              max="2" 
+            <input
+              type="number"
+              v-model.number="params.feeRate"
+              min="0"
+              max="2"
               step="0.01"
               placeholder="0.15"
             />
@@ -255,15 +255,15 @@
       <div class="chart-section">
         <h4><LucideIcon name="JapaneseYen" :size="18" /> 收益曲线</h4>
         <div class="chart-tabs">
-          <div 
-            class="tab-item" 
+          <div
+            class="tab-item"
             :class="{ active: chartType === 'value' }"
             @click="chartType = 'value'"
           >
             市值变化
           </div>
-          <div 
-            class="tab-item" 
+          <div
+            class="tab-item"
             :class="{ active: chartType === 'return' }"
             @click="chartType = 'return'"
           >
@@ -293,8 +293,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr 
-                v-for="(record, index) in paginatedTimeline" 
+              <tr
+                v-for="(record, index) in paginatedTimeline"
                 :key="index"
                 :class="{ 'investment-day': record.is_investment_day, 'sold-day': record.status === 'sold' }"
               >
@@ -326,437 +326,363 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { backtestAPI, fundAPI } from '../services/api'
 import FundSearch from './FundSearch.vue'
 
-export default {
-  name: 'FundBacktest',
-  components: {
-    FundSearch
-  },
-  props: {
-    fundCode: {
-      type: String,
-      default: ''
-    }
-  },
-  setup(props) {
-    const chartEl = ref(null)
-    const { echartThemeName } = useEChartsTheme()
-    const cssColor = (name, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-    const hexToRgba = (hex, a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})` }
-    const loading = ref(false)
-    const error = ref('')
-    const result = ref(null)
-    
-    // 基金相关状态
-    const currentFundCode = ref(props.fundCode || '')
-    const currentFundName = ref('')
-    const minStartDate = ref('') // 基金成立日期（最早回测日期）
-    
-    watch(() => props.fundCode, (val) => {
-      if (val) {
-        currentFundCode.value = val
-        fetchFundInfo(val)
-      }
-    })
+const props = defineProps({
+  fundCode: {
+    type: String,
+    default: ''
+  }
+})
 
-    const fetchFundInfo = async (code) => {
-      try {
-        const response = await fundAPI.getFundTrend(code)
-        if (response.data && response.data.net_worth_trend && response.data.net_worth_trend.length > 0) {
-          // 获取最早的净值日期作为成立日期
-          const trends = response.data.net_worth_trend
-          // trends通常是按时间排序的，但为了保险起见，我们取第一个
-          // 注意：API返回的数据通常是升序的（旧->新）
-          const firstDate = trends[0].date // 假设格式为 "YYYY-MM-DD"
-          minStartDate.value = firstDate.split(' ')[0] // 确保只有日期部分
-          
-          // 如果当前设置的开始日期早于成立日期，自动调整
-          if (params.value.startDate < minStartDate.value) {
-            params.value.startDate = minStartDate.value
-          }
-        }
-      } catch (err) {
-        console.error('获取基金信息失败:', err)
-        // 如果获取失败，不强制限制最小日期，或者设为默认值
+const chartEl = ref<HTMLElement | null>(null)
+const { echartThemeName } = useEChartsTheme()
+const cssColor = (name: string, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+const hexToRgba = (hex: string, a: number) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})` }
+const loading = ref(false)
+const error = ref('')
+const result: any = ref(null)
+
+const currentFundCode = ref(props.fundCode || '')
+const currentFundName = ref('')
+const minStartDate = ref('')
+
+watch(() => props.fundCode, (val) => {
+  if (val) {
+    currentFundCode.value = val
+    fetchFundInfo(val)
+  }
+})
+
+const fetchFundInfo = async (code: string) => {
+  try {
+    const response = await fundAPI.getFundTrend(code)
+    if (response.data && response.data.net_worth_trend && response.data.net_worth_trend.length > 0) {
+      const firstDate = response.data.net_worth_trend[0].date
+      minStartDate.value = firstDate.split(' ')[0]
+      if (params.value.startDate < minStartDate.value) {
+        params.value.startDate = minStartDate.value
       }
     }
-
-    const handleFundSelected = (fund) => {
-      // FundSearch 返回的是 { CODE: '...', NAME: '...', ... } 或标准格式
-      const code = fund.CODE || fund.fund_code || fund.code
-      currentFundCode.value = code
-      currentFundName.value = fund.NAME || fund.fund_name || fund.name
-      // 重置结果
-      result.value = null
-      error.value = ''
-      // 获取基金详细信息以确定成立日期
-      fetchFundInfo(code)
-    }
-
-    const changeFund = () => {
-      currentFundCode.value = ''
-      currentFundName.value = ''
-      result.value = null
-      error.value = ''
-    }
-
-    const showDetail = ref(false)
-    const chartType = ref('value')
-    const currentPage = ref(1)
-    const pageSize = 50
-    
-    let chartInstance = null
-
-    // 今天的日期
-    const today = new Date().toISOString().split('T')[0]
-    
-    // 默认参数：最近3年，每月定投1000元
-    const params = ref({
-      investmentType: 'monthly',
-      investmentDay: 1, // 默认每月1号 / 周一
-      amount: 1000,
-      initialAmount: 0,
-      feeRate: 0.15,
-      takeProfitRate: null,
-      stopLossRate: null,
-      startDate: new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: today,
-      dividendMode: 'reinvest', // 默认红利再投资
-      takeProfitAction: 'cash' // 默认落袋为安
-    })
-
-    // 监听投资方式变化，重置日期
-    watch(() => params.value.investmentType, (newType) => {
-      if (newType === 'monthly') {
-        params.value.investmentDay = 1
-      } else if (newType === 'weekly') {
-        params.value.investmentDay = 0 // 周一
-      } else {
-        params.value.investmentDay = null
-      }
-    })
-
-    // 分页数据
-    const paginatedTimeline = computed(() => {
-      if (!result.value || !result.value.timeline) return []
-      const start = (currentPage.value - 1) * pageSize
-      const end = start + pageSize
-      return result.value.timeline.slice(start, end)
-    })
-
-    const totalPages = computed(() => {
-      if (!result.value || !result.value.timeline) return 0
-      return Math.ceil(result.value.timeline.length / pageSize)
-    })
-
-    // 执行回测
-    const runBacktest = async () => {
-      if (!params.value.startDate || !params.value.endDate) {
-        error.value = '请选择开始和结束日期'
-        return
-      }
-      
-      if (params.value.investmentType === 'lump_sum') {
-        if (params.value.amount <= 0 && params.value.initialAmount <= 0) {
-          error.value = '请输入投资金额或初始资金'
-          return
-        }
-      } else if (params.value.amount < 100) {
-        error.value = '每期定投金额不能小于100元'
-        return
-      }
-
-      loading.value = true
-      error.value = ''
-      result.value = null
-      currentPage.value = 1
-
-      try {
-        const response = await backtestAPI.fixedInvestment({
-          fund_code: currentFundCode.value,
-          start_date: params.value.startDate,
-          end_date: params.value.endDate,
-          investment_type: params.value.investmentType,
-          investment_day: params.value.investmentDay,
-          amount: params.value.amount,
-          initial_amount: params.value.initialAmount,
-          fee_rate: params.value.feeRate,
-          take_profit_rate: params.value.takeProfitRate,
-          stop_loss_rate: params.value.stopLossRate,
-          dividend_mode: params.value.dividendMode,
-          take_profit_action: params.value.takeProfitAction
-        })
-
-        // 后端成功时直接返回 { summary, timeline }，不包含 code 字段
-        if (response.data && response.data.summary) {
-          result.value = response.data
-          await nextTick()
-          initChart()
-        } else if (response.data.error) {
-          error.value = response.data.error
-        } else {
-          error.value = '回测失败：返回数据格式异常'
-        }
-      } catch (err) {
-        console.error('回测错误:', err)
-        error.value = err.response?.data?.error || err.response?.data?.message || '回测失败，请稍后重试'
-      } finally {
-        loading.value = false
-      }
-    }
-
-    // 重置参数
-    const resetParams = () => {
-      params.value = {
-        investmentType: 'monthly',
-        investmentDay: 1,
-        amount: 1000,
-        initialAmount: 0,
-        feeRate: 0.15,
-        takeProfitRate: null,
-        stopLossRate: null,
-        startDate: new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        endDate: today,
-        dividendMode: 'reinvest',
-        takeProfitAction: 'cash'
-      }
-      result.value = null
-      error.value = ''
-      currentPage.value = 1
-    }
-
-    // 格式化金额
-    const formatMoney = (value) => {
-      if (value === null || value === undefined) return '0.00'
-      return Number(value).toFixed(2)
-    }
-
-    // 格式化收益
-    const formatReturn = (value) => {
-      if (value === null || value === undefined) return '0.00'
-      const num = Number(value)
-      return (num >= 0 ? '+' : '') + num.toFixed(2)
-    }
-
-    // 获取收益样式类
-    const getReturnClass = (value) => {
-      if (value === null || value === undefined) return ''
-      return Number(value) >= 0 ? 'positive' : 'negative'
-    }
-
-    // 初始化图表
-    const initChart = () => {
-      if (!chartEl.value || !result.value) return
-
-      if (chartInstance) {
-        chartInstance.dispose()
-      }
-
-      chartInstance = echarts.init(chartEl.value, echartThemeName.value)
-      updateChart()
-    }
-
-    // 更新图表
-    const updateChart = () => {
-      if (!chartInstance || !result.value) return
-
-      const timeline = result.value.timeline
-      const dates = timeline.map(item => item.date)
-      const primaryColor = cssColor('--color-primary', '#1677ff')
-      const dangerColor = cssColor('--color-danger', '#ff4d4f')
-      const warningColor = cssColor('--color-warning', '#faad14')
-      const tertiaryColor = cssColor('--text-tertiary', '#9ca3af')
-
-      let series = []
-      let yAxisName = ''
-      
-      if (chartType.value === 'value') {
-        yAxisName = '金额（元）'
-        series = [
-          {
-            name: '累计投入',
-            type: 'line',
-            data: timeline.map(item => item.invested),
-            smooth: true,
-            lineStyle: { color: tertiaryColor, width: 2 },
-            itemStyle: { color: tertiaryColor }
-          },
-          {
-            name: '市值',
-            type: 'line',
-            data: timeline.map(item => item.value),
-            smooth: true,
-            lineStyle: { color: primaryColor, width: 2 },
-            itemStyle: { color: primaryColor },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: hexToRgba(primaryColor, 0.3) },
-                { offset: 1, color: hexToRgba(primaryColor, 0.05) }
-              ])
-            }
-          }
-        ]
-      } else {
-        yAxisName = '收益率（%）'
-        series = [
-          {
-            name: '收益率',
-            type: 'line',
-            data: timeline.map(item => item.return_rate),
-            smooth: true,
-            lineStyle: { color: dangerColor, width: 2 },
-            itemStyle: { color: dangerColor },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: hexToRgba(dangerColor, 0.3) },
-                { offset: 1, color: hexToRgba(dangerColor, 0.05) }
-              ])
-            },
-            markLine: {
-              silent: true,
-              symbol: 'none',
-              lineStyle: { color: warningColor, type: 'dashed' },
-              data: [{ yAxis: 0 }],
-              label: { show: false }
-            }
-          }
-        ]
-      }
-
-      const option = {
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'cross' },
-          formatter: (params) => {
-            let html = `<div style="font-weight: bold; margin-bottom: 5px;">${params[0].axisValue}</div>`
-            params.forEach(param => {
-              const value = chartType.value === 'value' 
-                ? formatMoney(param.value)
-                : param.value + '%'
-              html += `<div>${param.marker} ${param.seriesName}: ${value}</div>`
-            })
-            return html
-          }
-        },
-        legend: {
-          data: series.map(s => s.name),
-          top: 10
-        },
-        grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '3%',
-          top: 50,
-          containLabel: true
-        },
-        xAxis: {
-          type: 'category',
-          boundaryGap: false,
-          data: dates,
-          axisLabel: {
-            formatter: (value) => {
-              return value.substring(5)
-            }
-          }
-        },
-        yAxis: {
-          type: 'value',
-          name: yAxisName,
-          axisLabel: {
-            formatter: chartType.value === 'value' 
-              ? (value) => (value / 1000).toFixed(1) + 'k'
-              : '{value}%'
-          }
-        },
-        series: series,
-        dataZoom: [
-          {
-            type: 'inside',
-            start: 0,
-            end: 100
-          },
-          {
-            start: 0,
-            end: 100,
-            height: 20,
-            bottom: 10
-          }
-        ]
-      }
-
-      chartInstance.setOption(option, true)
-    }
-
-    // 监听图表类型变化
-    watch(chartType, () => {
-      updateChart()
-    })
-
-    // 监听结果变化
-    watch(result, (newVal) => {
-      if (newVal) {
-        showDetail.value = false
-      }
-    })
-
-    // 监听主题变化
-    watch(echartThemeName, () => {
-      if (chartInstance) {
-        chartInstance.dispose()
-        chartInstance = null
-      }
-      if (result.value) {
-        nextTick(() => initChart())
-      }
-    })
-
-    // 生命周期
-    onMounted(() => {
-      window.addEventListener('resize', () => {
-        if (chartInstance) {
-          chartInstance.resize()
-        }
-      })
-    })
-
-    onUnmounted(() => {
-      if (chartInstance) {
-        chartInstance.dispose()
-        chartInstance = null
-      }
-    })
-
-    return {
-      chartEl,
-      loading,
-      error,
-      result,
-      showDetail,
-      chartType,
-      currentPage,
-      pageSize,
-      today,
-      params,
-      paginatedTimeline,
-      totalPages,
-      runBacktest,
-      resetParams,
-      formatMoney,
-      formatReturn,
-      getReturnClass,
-      currentFundCode,
-      currentFundName,
-      handleFundSelected,
-      changeFund
-    }
+  } catch (err) {
+    console.error('获取基金信息失败:', err)
   }
 }
+
+const handleFundSelected = (fund: any) => {
+  const code = fund.CODE || fund.fund_code || fund.code
+  currentFundCode.value = code
+  currentFundName.value = fund.NAME || fund.fund_name || fund.name
+  result.value = null
+  error.value = ''
+  fetchFundInfo(code)
+}
+
+const changeFund = () => {
+  currentFundCode.value = ''
+  currentFundName.value = ''
+  result.value = null
+  error.value = ''
+}
+
+const showDetail = ref(false)
+const chartType = ref('value')
+const currentPage = ref(1)
+const pageSize = 50
+
+let chartInstance: echarts.ECharts | null = null
+
+const today = new Date().toISOString().split('T')[0]
+
+const params: any = ref({
+  investmentType: 'monthly',
+  investmentDay: 1 as number | null,
+  amount: 1000,
+  initialAmount: 0,
+  feeRate: 0.15,
+  takeProfitRate: null as number | null,
+  stopLossRate: null as number | null,
+  startDate: new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  endDate: today,
+  dividendMode: 'reinvest',
+  takeProfitAction: 'cash'
+})
+
+watch(() => params.value.investmentType, (newType) => {
+  if (newType === 'monthly') {
+    params.value.investmentDay = 1
+  } else if (newType === 'weekly') {
+    params.value.investmentDay = 0
+  } else {
+    params.value.investmentDay = null
+  }
+})
+
+const paginatedTimeline = computed(() => {
+  if (!result.value || !result.value.timeline) return []
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return result.value.timeline.slice(start, end)
+})
+
+const totalPages = computed(() => {
+  if (!result.value || !result.value.timeline) return 0
+  return Math.ceil(result.value.timeline.length / pageSize)
+})
+
+const runBacktest = async () => {
+  if (!params.value.startDate || !params.value.endDate) {
+    error.value = '请选择开始和结束日期'
+    return
+  }
+
+  if (params.value.investmentType === 'lump_sum') {
+    if (params.value.amount <= 0 && params.value.initialAmount <= 0) {
+      error.value = '请输入投资金额或初始资金'
+      return
+    }
+  } else if (params.value.amount < 100) {
+    error.value = '每期定投金额不能小于100元'
+    return
+  }
+
+  loading.value = true
+  error.value = ''
+  result.value = null
+  currentPage.value = 1
+
+  try {
+    const response = await backtestAPI.fixedInvestment({
+      fund_code: currentFundCode.value,
+      start_date: params.value.startDate,
+      end_date: params.value.endDate,
+      investment_type: params.value.investmentType,
+      investment_day: params.value.investmentDay,
+      amount: params.value.amount,
+      initial_amount: params.value.initialAmount,
+      fee_rate: params.value.feeRate,
+      take_profit_rate: params.value.takeProfitRate,
+      stop_loss_rate: params.value.stopLossRate,
+      dividend_mode: params.value.dividendMode,
+      take_profit_action: params.value.takeProfitAction
+    })
+
+    if (response.data && response.data.summary) {
+      result.value = response.data
+      await nextTick()
+      initChart()
+    } else if (response.data.error) {
+      error.value = response.data.error
+    } else {
+      error.value = '回测失败：返回数据格式异常'
+    }
+  } catch (err: any) {
+    console.error('回测错误:', err)
+    error.value = err.response?.data?.error || err.response?.data?.message || '回测失败，请稍后重试'
+  } finally {
+    loading.value = false
+  }
+}
+
+const resetParams = () => {
+  params.value = {
+    investmentType: 'monthly',
+    investmentDay: 1,
+    amount: 1000,
+    initialAmount: 0,
+    feeRate: 0.15,
+    takeProfitRate: null,
+    stopLossRate: null,
+    startDate: new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: today,
+    dividendMode: 'reinvest',
+    takeProfitAction: 'cash'
+  }
+  result.value = null
+  error.value = ''
+  currentPage.value = 1
+}
+
+const formatMoney = (value: any) => {
+  if (value === null || value === undefined) return '0.00'
+  return Number(value).toFixed(2)
+}
+
+const formatReturn = (value: any) => {
+  if (value === null || value === undefined) return '0.00'
+  const num = Number(value)
+  return (num >= 0 ? '+' : '') + num.toFixed(2)
+}
+
+const getReturnClass = (value: any) => {
+  if (value === null || value === undefined) return ''
+  return Number(value) >= 0 ? 'positive' : 'negative'
+}
+
+const initChart = () => {
+  if (!chartEl.value || !result.value) return
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+  chartInstance = echarts.init(chartEl.value, echartThemeName.value)
+  updateChart()
+}
+
+const updateChart = () => {
+  if (!chartInstance || !result.value) return
+
+  const timeline = result.value.timeline
+  const dates = timeline.map((item: any) => item.date)
+  const primaryColor = cssColor('--color-primary', '#1677ff')
+  const dangerColor = cssColor('--color-danger', '#ff4d4f')
+  const warningColor = cssColor('--color-warning', '#faad14')
+  const tertiaryColor = cssColor('--text-tertiary', '#9ca3af')
+
+  let series: any[] = []
+  let yAxisName = ''
+
+  if (chartType.value === 'value') {
+    yAxisName = '金额（元）'
+    series = [
+      {
+        name: '累计投入',
+        type: 'line',
+        data: timeline.map((item: any) => item.invested),
+        smooth: true,
+        lineStyle: { color: tertiaryColor, width: 2 },
+        itemStyle: { color: tertiaryColor }
+      },
+      {
+        name: '市值',
+        type: 'line',
+        data: timeline.map((item: any) => item.value),
+        smooth: true,
+        lineStyle: { color: primaryColor, width: 2 },
+        itemStyle: { color: primaryColor },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: hexToRgba(primaryColor, 0.3) },
+            { offset: 1, color: hexToRgba(primaryColor, 0.05) }
+          ])
+        }
+      }
+    ]
+  } else {
+    yAxisName = '收益率（%）'
+    series = [
+      {
+        name: '收益率',
+        type: 'line',
+        data: timeline.map((item: any) => item.return_rate),
+        smooth: true,
+        lineStyle: { color: dangerColor, width: 2 },
+        itemStyle: { color: dangerColor },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: hexToRgba(dangerColor, 0.3) },
+            { offset: 1, color: hexToRgba(dangerColor, 0.05) }
+          ])
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { color: warningColor, type: 'dashed' },
+          data: [{ yAxis: 0 }],
+          label: { show: false }
+        }
+      }
+    ]
+  }
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      formatter: (params: any) => {
+        let html = `<div style="font-weight: bold; margin-bottom: 5px;">${params[0].axisValue}</div>`
+        params.forEach((param: any) => {
+          const value = chartType.value === 'value'
+            ? formatMoney(param.value)
+            : param.value + '%'
+          html += `<div>${param.marker} ${param.seriesName}: ${value}</div>`
+        })
+        return html
+      }
+    },
+    legend: {
+      data: series.map(s => s.name),
+      top: 10
+    },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: 50, containLabel: true },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: dates,
+      axisLabel: {
+        formatter: (value: string) => value.substring(5)
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: yAxisName,
+      axisLabel: {
+        formatter: chartType.value === 'value'
+          ? (value: number) => (value / 1000).toFixed(1) + 'k'
+          : '{value}%'
+      }
+    },
+    series: series,
+    dataZoom: [
+      { type: 'inside', start: 0, end: 100 },
+      { start: 0, end: 100, height: 20, bottom: 10 }
+    ]
+  }
+
+  chartInstance.setOption(option, true)
+}
+
+watch(chartType, () => {
+  updateChart()
+})
+
+watch(result, (newVal) => {
+  if (newVal) {
+    showDetail.value = false
+  }
+})
+
+watch(echartThemeName, () => {
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+  if (result.value) {
+    nextTick(() => initChart())
+  }
+})
+
+const handleResize = () => {
+  if (chartInstance) {
+    chartInstance.resize()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+  window.removeEventListener('resize', handleResize)
+})
 </script>
 
 <style scoped>
@@ -1292,23 +1218,23 @@ export default {
     flex-direction: column;
     gap: 15px;
   }
-  
+
   .param-item {
     width: 100%;
   }
-  
+
   .summary-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .chart-container {
     height: 300px;
   }
-  
+
   .param-actions {
     flex-direction: column;
   }
-  
+
   .btn {
     width: 100%;
   }
@@ -1318,17 +1244,17 @@ export default {
   .fund-backtest {
     padding: 15px;
   }
-  
+
   .summary-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .selected-fund-display {
     flex-direction: column;
     gap: 10px;
     align-items: flex-start;
   }
-  
+
   .btn-change {
     align-self: flex-end;
   }

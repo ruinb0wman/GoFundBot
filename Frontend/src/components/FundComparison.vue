@@ -7,9 +7,9 @@
         <span class="count-badge" v-if="selectedFunds.length">{{ selectedFunds.length }}/{{ maxFunds }}</span>
       </h2>
       <div class="header-actions" v-if="selectedFunds.length > 0">
-        <button 
-          class="btn btn-clear" 
-          @click="clearSelection" 
+        <button
+          class="btn btn-clear"
+          @click="clearSelection"
           :disabled="selectedFunds.length === 0"
         >
           清空
@@ -26,9 +26,9 @@
     <!-- 基金选择区域 -->
     <div class="selection-area" v-if="selectedFunds.length > 0">
       <div class="selection-tags">
-        <div 
-          v-for="fund in selectedFunds" 
-          :key="fund.code" 
+        <div
+          v-for="fund in selectedFunds"
+          :key="fund.code"
           class="fund-tag"
           :style="{ borderColor: fund.color }"
         >
@@ -50,9 +50,9 @@
         <div class="section-header">
           <h3><LucideIcon name="BarChart3" :size="20" /> 净值走势对比</h3>
           <div class="time-ranges">
-            <div 
-              v-for="range in timeRanges" 
-              :key="range.value" 
+            <div
+              v-for="range in timeRanges"
+              :key="range.value"
               class="range-item"
               :class="{ active: selectedRange === range.value }"
               @click="setTimeRange(range.value)"
@@ -121,7 +121,7 @@
                   {{ formatReturn(fund.returns?.all) }}
                 </td>
               </tr>
-              
+
               <!-- 基金基本信息 -->
               <tr class="section-row">
                 <td colspan="100%" class="section-title"><LucideIcon name="Briefcase" :size="16" /> 基金信息</td>
@@ -138,7 +138,7 @@
                   {{ fund.fundType || '--' }}
                 </td>
               </tr>
-              
+
               <!-- 风险指标 -->
               <tr class="section-row">
                 <td colspan="100%" class="section-title"><LucideIcon name="TriangleAlert" :size="16" /> 风险指标</td>
@@ -173,7 +173,7 @@
                   {{ formatVolatility(fund.riskMetrics?.volatility_1y) }}
                 </td>
               </tr>
-              
+
               <!-- 评分指标 -->
               <tr class="section-row">
                 <td colspan="100%" class="section-title"><LucideIcon name="Star" :size="16" /> 评分指标</td>
@@ -216,7 +216,7 @@
                   {{ getEvalScore(fund, 4) }}
                 </td>
               </tr>
-              
+
               <!-- 基金经理 -->
               <tr class="section-row">
                 <td colspan="100%" class="section-title"><LucideIcon name="User" :size="16" /> 基金经理</td>
@@ -261,469 +261,412 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { fundAPI } from '../services/api'
 
-export default {
-  name: 'FundComparison',
-  props: {
-    compareFunds: {
-      type: Array,
-      default: () => []
-    },
-    compact: {
-      type: Boolean,
-      default: false
-    }
+const props = defineProps({
+  compareFunds: {
+    type: Array,
+    default: () => []
   },
-  emits: ['remove-fund', 'clear-funds'],
-  setup(props, { emit }) {
-    const chartEl = ref(null)
-    const { echartThemeName } = useEChartsTheme()
-    const cssColor = (name, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-    const selectedRange = ref('1y')
-    const loading = ref(false)
-    const maxFunds = 5
-    let chartInstance = null
+  compact: {
+    type: Boolean,
+    default: false
+  }
+})
 
-    const colors = [
-      cssColor('--chart-1', '#1677ff'),
-      cssColor('--chart-2', '#52c41a'),
-      cssColor('--chart-3', '#faad14'),
-      cssColor('--chart-4', '#ff4d4f'),
-      cssColor('--chart-5', '#73c0de'),
-      cssColor('--chart-6', '#3ba272'),
-      cssColor('--chart-7', '#fc8452'),
-      cssColor('--chart-8', '#9a60b4')
-    ]
+const emit = defineEmits(['remove-fund', 'clear-funds'])
 
-    const timeRanges = [
-      { label: '近3月', value: '3m' },
-      { label: '近6月', value: '6m' },
-      { label: '近1年', value: '1y' },
-      { label: '近3年', value: '3y' },
-      { label: '成立来', value: 'all' }
-    ]
+const chartEl = ref<HTMLElement | null>(null)
+const { echartThemeName } = useEChartsTheme()
+const cssColor = (name: string, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+const selectedRange = ref('1y')
+const loading = ref(false)
+const maxFunds = 5
+let chartInstance: echarts.ECharts | null = null
 
-    const selectedFunds = ref([])
+const colors = [
+  cssColor('--chart-1', '#1677ff'),
+  cssColor('--chart-2', '#52c41a'),
+  cssColor('--chart-3', '#faad14'),
+  cssColor('--chart-4', '#ff4d4f'),
+  cssColor('--chart-5', '#73c0de'),
+  cssColor('--chart-6', '#3ba272'),
+  cssColor('--chart-7', '#fc8452'),
+  cssColor('--chart-8', '#9a60b4')
+]
 
-    // 获取基金对比数据（使用缓存API）
-    const fetchFundCompareData = async (fundCode) => {
-      try {
-        const response = await fundAPI.getFundCompareData(fundCode)
-        return response.data
-      } catch (error) {
-        console.error(`获取基金 ${fundCode} 对比数据失败:`, error)
-        return null
-      }
-    }
+const timeRanges = [
+  { label: '近3月', value: '3m' },
+  { label: '近6月', value: '6m' },
+  { label: '近1年', value: '1y' },
+  { label: '近3年', value: '3y' },
+  { label: '成立来', value: 'all' }
+]
 
-    // 将后端数据转换为统一格式 {x: timestamp, y: value}
-    const normalizeData = (data) => {
-      if (!data || data.length === 0) return []
-      return data.map(item => ({
-        x: new Date(item.date).getTime(),
-        y: item.net_worth
-      })).filter(item => !isNaN(item.x) && item.y !== null && item.y !== undefined)
-    }
+const selectedFunds: any = ref([])
 
-    // 计算收益率
-    const calculateReturns = (trendData) => {
-      if (!trendData || trendData.length === 0) return {}
-      
-      const sortedData = [...trendData].sort((a, b) => a.x - b.x)
-      const latestValue = sortedData[sortedData.length - 1].y
-      const now = Date.now()
-
-      const getReturnForPeriod = (months) => {
-        let targetTime
-        if (months === 'all') {
-          targetTime = sortedData[0].x
-        } else {
-          const date = new Date(now)
-          date.setMonth(date.getMonth() - months)
-          targetTime = date.getTime()
-        }
-        
-        let closest = sortedData[0]
-        for (const item of sortedData) {
-          if (item.x >= targetTime) {
-            closest = item
-            break
-          }
-        }
-        
-        if (closest.y === 0) return null
-        return ((latestValue - closest.y) / closest.y * 100).toFixed(2)
-      }
-
-      return {
-        m3: getReturnForPeriod(3),
-        m6: getReturnForPeriod(6),
-        y1: getReturnForPeriod(12),
-        y3: getReturnForPeriod(36),
-        all: getReturnForPeriod('all')
-      }
-    }
-
-    // 加载基金完整数据（使用缓存API）
-    const loadFundData = async (fund) => {
-      // 获取对比数据（包含走势、详情、风险指标）
-      const data = await fetchFundCompareData(fund.code)
-      
-      if (!data) return fund
-      
-      // 处理走势数据
-      if (data.net_worth_trend && data.net_worth_trend.length > 0) {
-        fund.trendData = normalizeData(data.net_worth_trend)
-        fund.returns = calculateReturns(fund.trendData)
-      }
-      
-      // 基本信息
-      const basicInfo = data.basic_info || {}
-      fund.fundType = basicInfo.fund_type || '--'
-      
-      // 规模波动数据 - 结构是 series: [{y: value, mom: "..."}, ...]
-      const scaleData = data.scale_fluctuation || {}
-      if (scaleData.series && scaleData.series.length > 0) {
-        const latestItem = scaleData.series[scaleData.series.length - 1]
-        if (latestItem && latestItem.y !== undefined && latestItem.y !== null) {
-          fund.scale = latestItem.y.toFixed(2) + '亿'
-        } else {
-          fund.scale = '--'
-        }
-      }
-
-      // 风险指标
-      fund.riskMetrics = data.risk_metrics || {}
-      
-      // 数据来源标记
-      fund.dataSource = data.data_source || 'unknown'
-      fund.cacheTime = data.cache_time
-
-      // 基金评价数据 - categories: ["选证能力","收益率","抗风险","稳定性","择时能力"]
-      const evalData = data.performance_evaluation || {}
-      fund.evaluation = {
-        avgScore: evalData.avr || null,
-        data: evalData.data || [],
-        categories: evalData.categories || []
-      }
-
-      // 基金经理信息
-      const managers = data.fund_managers || []
-      if (managers.length > 0) {
-        const manager = managers[0]
-        fund.manager = {
-          name: manager.name || '--',
-          experience: manager.work_experience || '--',
-          managedSize: manager.managed_fund_size || '--',
-          avgScore: manager.ability_assessment?.average_score || null
-        }
-      }
-
-      return fund
-    }
-
-    // 过滤数据按时间范围
-    const filterByDate = (data, range) => {
-      if (!data || data.length === 0) return []
-      
-      const now = new Date()
-      let startDate = new Date(0)
-
-      if (range === '3m') {
-        startDate = new Date(now.getTime())
-        startDate.setMonth(startDate.getMonth() - 3)
-      } else if (range === '6m') {
-        startDate = new Date(now.getTime())
-        startDate.setMonth(startDate.getMonth() - 6)
-      } else if (range === '1y') {
-        startDate = new Date(now.getTime())
-        startDate.setFullYear(startDate.getFullYear() - 1)
-      } else if (range === '3y') {
-        startDate = new Date(now.getTime())
-        startDate.setFullYear(startDate.getFullYear() - 3)
-      }
-
-      return data.filter(item => item.x >= startDate.getTime())
-    }
-
-    // 转换为百分比变化
-    const toPercentChange = (data) => {
-      if (!data || data.length === 0) return []
-      const sortedData = [...data].sort((a, b) => a.x - b.x)
-      const startVal = sortedData[0].y
-      if (startVal === 0) return []
-      
-      return sortedData.map(item => [
-        item.x,
-        parseFloat(((item.y - startVal) / startVal * 100).toFixed(2))
-      ])
-    }
-
-    // 初始化图表
-    const initChart = () => {
-      if (!chartEl.value) return
-      
-      const rect = chartEl.value.getBoundingClientRect()
-      if (rect.width === 0 || rect.height === 0) {
-        setTimeout(initChart, 100)
-        return
-      }
-      
-      if (chartInstance) {
-        chartInstance.dispose()
-      }
-      chartInstance = echarts.init(chartEl.value, echartThemeName.value)
-      updateChart()
-    }
-
-    // 更新图表
-    const updateChart = () => {
-      if (!chartInstance || selectedFunds.value.length < 2) return
-
-      const series = []
-      
-      selectedFunds.value.forEach((fund) => {
-        if (!fund.trendData || fund.trendData.length === 0) return
-        
-        const filteredData = filterByDate(fund.trendData, selectedRange.value)
-        const percentData = toPercentChange(filteredData)
-        
-        if (percentData.length > 0) {
-          series.push({
-            name: fund.name,
-            type: 'line',
-            data: percentData,
-            smooth: true,
-            symbol: 'none',
-            lineStyle: { width: 2, color: fund.color },
-            itemStyle: { color: fund.color }
-          })
-        }
-      })
-
-      if (series.length === 0) return
-
-      const dangerColor = cssColor('--color-danger', '#ff4d4f')
-      const successColor = cssColor('--color-success', '#52c41a')
-
-      const option = {
-        tooltip: {
-          trigger: 'axis',
-          formatter: function (params) {
-            let res = '<div style="font-weight:bold;margin-bottom:5px;">' + 
-                      echarts.format.formatTime('yyyy-MM-dd', params[0].value[0]) + '</div>'
-            params.forEach(item => {
-              const val = item.value[1]
-              const color = val >= 0 ? dangerColor : successColor
-              res += `<div style="display:flex;align-items:center;margin:3px 0;">
-                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};margin-right:8px;"></span>
-                <span style="flex:1;">${item.seriesName}</span>
-                <span style="font-weight:bold;color:${color};margin-left:10px;">${val >= 0 ? '+' : ''}${val}%</span>
-              </div>`
-            })
-            return res
-          }
-        },
-        legend: {
-          show: true,
-          top: 5,
-          data: selectedFunds.value.map(f => f.name),
-          textStyle: { fontSize: 12 }
-        },
-        grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '3%',
-          top: 40,
-          containLabel: true
-        },
-        xAxis: {
-          type: 'time',
-          boundaryGap: false,
-          axisLine: { show: false },
-          axisTick: { show: false },
-          axisLabel: { formatter: '{MM}-{dd}' }
-        },
-        yAxis: {
-          type: 'value',
-          scale: true,
-          splitLine: { lineStyle: { type: 'dashed' } },
-          axisLabel: { formatter: '{value}%' }
-        },
-        series: series
-      }
-
-      chartInstance.setOption(option, true)
-    }
-
-    const setTimeRange = (range) => {
-      selectedRange.value = range
-      updateChart()
-    }
-
-    const removeFund = (fundCode) => {
-      emit('remove-fund', fundCode)
-    }
-
-    const clearSelection = () => {
-      emit('clear-funds')
-    }
-
-    const getValueClass = (value) => {
-      if (value === null || value === undefined || value === '--') return ''
-      const num = parseFloat(value)
-      if (num > 0) return 'positive'
-      if (num < 0) return 'negative'
-      return ''
-    }
-
-    const getSharpClass = (value) => {
-      if (value === null || value === undefined) return ''
-      const num = parseFloat(value)
-      if (num >= 1) return 'positive'
-      if (num < 0) return 'negative'
-      return ''
-    }
-
-    const getScoreClass = (score) => {
-      if (!score) return ''
-      if (score >= 80) return 'score-high'
-      if (score >= 60) return 'score-mid'
-      return 'score-low'
-    }
-
-    const formatReturn = (value) => {
-      if (value === null || value === undefined) return '--'
-      const num = parseFloat(value)
-      return (num >= 0 ? '+' : '') + value + '%'
-    }
-
-    // 格式化最大回撤
-    const formatDrawdown = (value) => {
-      if (value === null || value === undefined) return '--'
-      return '-' + value.toFixed(2) + '%'
-    }
-
-    // 格式化夏普比率
-    const formatSharpe = (value) => {
-      if (value === null || value === undefined) return '--'
-      return value.toFixed(2)
-    }
-
-    // 格式化波动率
-    const formatVolatility = (value) => {
-      if (value === null || value === undefined) return '--'
-      return value.toFixed(2) + '%'
-    }
-
-    // 夏普比率样式类
-    const getSharpeClass = (value) => {
-      if (value === null || value === undefined) return ''
-      if (value >= 1) return 'positive'
-      if (value >= 0) return ''
-      return 'negative'
-    }
-
-    const getEvalScore = (fund, index) => {
-      if (!fund.evaluation?.data || !fund.evaluation.data[index]) return '--'
-      return fund.evaluation.data[index].toFixed(1)
-    }
-
-    // 监听比较基金列表变化
-    watch(() => props.compareFunds, async (newFunds) => {
-      if (!newFunds || newFunds.length === 0) {
-        selectedFunds.value = []
-        return
-      }
-      
-      loading.value = true
-      
-      const updatedFunds = []
-      for (let i = 0; i < newFunds.length; i++) {
-        const fund = newFunds[i]
-        const existing = selectedFunds.value.find(f => f.code === fund.code)
-        
-        if (existing) {
-          existing.color = colors[i % colors.length]
-          updatedFunds.push(existing)
-        } else {
-          const newFund = {
-            code: fund.code,
-            name: fund.name,
-            color: colors[i % colors.length],
-            trendData: null,
-            returns: {},
-            evaluation: {},
-            manager: null,
-            scale: '--',
-            fundType: '--',
-            riskMetrics: {},
-            dataSource: null,
-            cacheTime: null
-          }
-          await loadFundData(newFund)
-          updatedFunds.push(newFund)
-        }
-      }
-      
-      selectedFunds.value = updatedFunds
-      loading.value = false
-      
-      await nextTick()
-      
-      if (selectedFunds.value.length >= 2) {
-        setTimeout(() => initChart(), 50)
-      }
-    }, { immediate: true, deep: true })
-
-    watch(selectedRange, () => updateChart())
-
-    watch(echartThemeName, () => {
-      if (chartInstance) {
-        chartInstance.dispose()
-        chartInstance = null
-      }
-      if (selectedFunds.value.length >= 2) {
-        setTimeout(() => initChart(), 50)
-      }
-    })
-
-    onMounted(() => {
-      window.addEventListener('resize', () => chartInstance?.resize())
-    })
-
-    onUnmounted(() => {
-      if (chartInstance) chartInstance.dispose()
-      window.removeEventListener('resize', () => chartInstance?.resize())
-    })
-
-    return {
-      chartEl,
-      selectedFunds,
-      selectedRange,
-      timeRanges,
-      loading,
-      maxFunds,
-      setTimeRange,
-      removeFund,
-      clearSelection,
-      getValueClass,
-      getSharpClass,
-      getScoreClass,
-      formatReturn,
-      formatDrawdown,
-      formatSharpe,
-      formatVolatility,
-      getSharpeClass,
-      getEvalScore
-    }
+const fetchFundCompareData = async (fundCode: string) => {
+  try {
+    const response = await fundAPI.getFundCompareData(fundCode)
+    return response.data
+  } catch (error) {
+    console.error(`获取基金 ${fundCode} 对比数据失败:`, error)
+    return null
   }
 }
+
+const normalizeData = (data: any[]) => {
+  if (!data || data.length === 0) return []
+  return data.map((item: any) => ({
+    x: new Date(item.date).getTime(),
+    y: item.net_worth
+  })).filter(item => !isNaN(item.x) && item.y !== null && item.y !== undefined)
+}
+
+const calculateReturns = (trendData: any[]) => {
+  if (!trendData || trendData.length === 0) return {}
+
+  const sortedData = [...trendData].sort((a: any, b: any) => a.x - b.x)
+  const latestValue = sortedData[sortedData.length - 1].y
+  const now = Date.now()
+
+  const getReturnForPeriod = (months: any) => {
+    let targetTime
+    if (months === 'all') {
+      targetTime = sortedData[0].x
+    } else {
+      const date = new Date(now)
+      date.setMonth(date.getMonth() - months)
+      targetTime = date.getTime()
+    }
+
+    let closest = sortedData[0]
+    for (const item of sortedData) {
+      if (item.x >= targetTime) {
+        closest = item
+        break
+      }
+    }
+
+    if (closest.y === 0) return null
+    return ((latestValue - closest.y) / closest.y * 100).toFixed(2)
+  }
+
+  return {
+    m3: getReturnForPeriod(3),
+    m6: getReturnForPeriod(6),
+    y1: getReturnForPeriod(12),
+    y3: getReturnForPeriod(36),
+    all: getReturnForPeriod('all')
+  }
+}
+
+const loadFundData = async (fund: any) => {
+  const data = await fetchFundCompareData(fund.code)
+  if (!data) return fund
+
+  if (data.net_worth_trend && data.net_worth_trend.length > 0) {
+    fund.trendData = normalizeData(data.net_worth_trend)
+    fund.returns = calculateReturns(fund.trendData)
+  }
+
+  const basicInfo = data.basic_info || {}
+  fund.fundType = basicInfo.fund_type || '--'
+
+  const scaleData = data.scale_fluctuation || {}
+  if (scaleData.series && scaleData.series.length > 0) {
+    const latestItem = scaleData.series[scaleData.series.length - 1]
+    if (latestItem && latestItem.y !== undefined && latestItem.y !== null) {
+      fund.scale = latestItem.y.toFixed(2) + '亿'
+    } else {
+      fund.scale = '--'
+    }
+  }
+
+  fund.riskMetrics = data.risk_metrics || {}
+  fund.dataSource = data.data_source || 'unknown'
+  fund.cacheTime = data.cache_time
+
+  const evalData = data.performance_evaluation || {}
+  fund.evaluation = {
+    avgScore: evalData.avr || null,
+    data: evalData.data || [],
+    categories: evalData.categories || []
+  }
+
+  const managers = data.fund_managers || []
+  if (managers.length > 0) {
+    const manager = managers[0]
+    fund.manager = {
+      name: manager.name || '--',
+      experience: manager.work_experience || '--',
+      managedSize: manager.managed_fund_size || '--',
+      avgScore: manager.ability_assessment?.average_score || null
+    }
+  }
+
+  return fund
+}
+
+const filterByDate = (data: any[], range: string) => {
+  if (!data || data.length === 0) return []
+  const now = new Date()
+  let startDate = new Date(0)
+
+  if (range === '3m') {
+    startDate = new Date(now.getTime())
+    startDate.setMonth(startDate.getMonth() - 3)
+  } else if (range === '6m') {
+    startDate = new Date(now.getTime())
+    startDate.setMonth(startDate.getMonth() - 6)
+  } else if (range === '1y') {
+    startDate = new Date(now.getTime())
+    startDate.setFullYear(startDate.getFullYear() - 1)
+  } else if (range === '3y') {
+    startDate = new Date(now.getTime())
+    startDate.setFullYear(startDate.getFullYear() - 3)
+  }
+
+  return data.filter(item => item.x >= startDate.getTime())
+}
+
+const toPercentChange = (data: any[]) => {
+  if (!data || data.length === 0) return []
+  const sortedData = [...data].sort((a: any, b: any) => a.x - b.x)
+  const startVal = sortedData[0].y
+  if (startVal === 0) return []
+  return sortedData.map(item => [
+    item.x,
+    parseFloat(((item.y - startVal) / startVal * 100).toFixed(2))
+  ])
+}
+
+const initChart = () => {
+  if (!chartEl.value) return
+  const rect = chartEl.value.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) {
+    setTimeout(initChart, 100)
+    return
+  }
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+  chartInstance = echarts.init(chartEl.value, echartThemeName.value)
+  updateChart()
+}
+
+const updateChart = () => {
+  if (!chartInstance || selectedFunds.value.length < 2) return
+
+  const series: any[] = []
+
+  selectedFunds.value.forEach((fund: any) => {
+    if (!fund.trendData || fund.trendData.length === 0) return
+    const filteredData = filterByDate(fund.trendData, selectedRange.value)
+    const percentData = toPercentChange(filteredData)
+    if (percentData.length > 0) {
+      series.push({
+        name: fund.name,
+        type: 'line',
+        data: percentData,
+        smooth: true,
+        symbol: 'none',
+        lineStyle: { width: 2, color: fund.color },
+        itemStyle: { color: fund.color }
+      })
+    }
+  })
+
+  if (series.length === 0) return
+
+  const dangerColor = cssColor('--color-danger', '#ff4d4f')
+  const successColor = cssColor('--color-success', '#52c41a')
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      formatter: function (params: any) {
+        let res = '<div style="font-weight:bold;margin-bottom:5px;">' +
+                  echarts.format.formatTime('yyyy-MM-dd', params[0].value[0]) + '</div>'
+        params.forEach((item: any) => {
+          const val = item.value[1]
+          const color = val >= 0 ? dangerColor : successColor
+          res += `<div style="display:flex;align-items:center;margin:3px 0;">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};margin-right:8px;"></span>
+            <span style="flex:1;">${item.seriesName}</span>
+            <span style="font-weight:bold;color:${color};margin-left:10px;">${val >= 0 ? '+' : ''}${val}%</span>
+          </div>`
+        })
+        return res
+      }
+    },
+    legend: {
+      show: true,
+      top: 5,
+      data: selectedFunds.value.map((f: any) => f.name),
+      textStyle: { fontSize: 12 }
+    },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
+    xAxis: {
+      type: 'time',
+      boundaryGap: false,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { formatter: '{MM}-{dd}' }
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      splitLine: { lineStyle: { type: 'dashed' } },
+      axisLabel: { formatter: '{value}%' }
+    },
+    series: series
+  }
+
+  chartInstance.setOption(option, true)
+}
+
+const setTimeRange = (range: string) => {
+  selectedRange.value = range
+  updateChart()
+}
+
+const removeFund = (fundCode: string) => {
+  emit('remove-fund', fundCode)
+}
+
+const clearSelection = () => {
+  emit('clear-funds')
+}
+
+const getValueClass = (value: any) => {
+  if (value === null || value === undefined || value === '--') return ''
+  const num = parseFloat(value)
+  if (num > 0) return 'positive'
+  if (num < 0) return 'negative'
+  return ''
+}
+
+const getSharpClass = (value: any) => {
+  if (value === null || value === undefined) return ''
+  const num = parseFloat(value)
+  if (num >= 1) return 'positive'
+  if (num < 0) return 'negative'
+  return ''
+}
+
+const getScoreClass = (score: any) => {
+  if (!score) return ''
+  if (score >= 80) return 'score-high'
+  if (score >= 60) return 'score-mid'
+  return 'score-low'
+}
+
+const formatReturn = (value: any) => {
+  if (value === null || value === undefined) return '--'
+  const num = parseFloat(value)
+  return (num >= 0 ? '+' : '') + value + '%'
+}
+
+const formatDrawdown = (value: any) => {
+  if (value === null || value === undefined) return '--'
+  return '-' + value.toFixed(2) + '%'
+}
+
+const formatSharpe = (value: any) => {
+  if (value === null || value === undefined) return '--'
+  return value.toFixed(2)
+}
+
+const formatVolatility = (value: any) => {
+  if (value === null || value === undefined) return '--'
+  return value.toFixed(2) + '%'
+}
+
+const getSharpeClass = (value: any) => {
+  if (value === null || value === undefined) return ''
+  if (value >= 1) return 'positive'
+  if (value >= 0) return ''
+  return 'negative'
+}
+
+const getEvalScore = (fund: any, index: number) => {
+  if (!fund.evaluation?.data || !fund.evaluation.data[index]) return '--'
+  return fund.evaluation.data[index].toFixed(1)
+}
+
+watch(() => props.compareFunds, async (newFunds: any) => {
+  if (!newFunds || newFunds.length === 0) {
+    selectedFunds.value = []
+    return
+  }
+
+  loading.value = true
+
+  const updatedFunds = []
+  for (let i = 0; i < newFunds.length; i++) {
+    const fund = newFunds[i]
+    const existing = selectedFunds.value.find((f: any) => f.code === fund.code)
+
+    if (existing) {
+      existing.color = colors[i % colors.length]
+      updatedFunds.push(existing)
+    } else {
+      const newFund: any = {
+        code: fund.code,
+        name: fund.name,
+        color: colors[i % colors.length],
+        trendData: null,
+        returns: {},
+        evaluation: {},
+        manager: null,
+        scale: '--',
+        fundType: '--',
+        riskMetrics: {},
+        dataSource: null,
+        cacheTime: null
+      }
+      await loadFundData(newFund)
+      updatedFunds.push(newFund)
+    }
+  }
+
+  selectedFunds.value = updatedFunds
+  loading.value = false
+
+  await nextTick()
+
+  if (selectedFunds.value.length >= 2) {
+    setTimeout(() => initChart(), 50)
+  }
+}, { immediate: true, deep: true })
+
+watch(selectedRange, () => updateChart())
+
+watch(echartThemeName, () => {
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+  if (selectedFunds.value.length >= 2) {
+    setTimeout(() => initChart(), 50)
+  }
+})
+
+const handleResize = () => { chartInstance?.resize() }
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  if (chartInstance) chartInstance.dispose()
+  window.removeEventListener('resize', handleResize)
+})
 </script>
 
 <style scoped>

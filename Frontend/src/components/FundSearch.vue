@@ -6,10 +6,33 @@
           v-model="searchKeyword"
           placeholder="输入基金代码或名称搜索..."
           @search="performSearch"
-        />
+          @focus="isFocused = true"
+          @blur="onBlur"
+        >
+          <template #dropdown v-if="showHistoryDropdown">
+            <div class="history-dropdown" @mousedown.prevent>
+              <div class="history-header">
+                <span>最近搜索</span>
+                <button class="history-clear-btn" @click="clearHistory">清除</button>
+              </div>
+              <div
+                v-for="(item, index) in searchHistory"
+                :key="item.code"
+                class="history-item"
+                @click="selectFromHistory(item)"
+              >
+                <span class="history-code">{{ item.code }}</span>
+                <span class="history-name">{{ item.name }}</span>
+                <button class="history-remove" @click.stop="removeFromHistory(item.code)">
+                  <LucideIcon name="X" :size="12" />
+                </button>
+              </div>
+            </div>
+          </template>
+        </SearchBar>
         <button @click="performSearch" class="search-btn">搜索</button>
-        <button 
-          @click="updateDatabase" 
+        <button
+          @click="updateDatabase"
           :disabled="updating"
           class="refresh-btn"
           :title="dbStatus.has_cache ? `${dbStatus.count}只基金 | 更新: ${formatDate(dbStatus.last_update)}` : '更新基金数据库'"
@@ -19,7 +42,7 @@
         </button>
       </div>
     </div>
-    
+
     <div v-if="searchResults.length > 0" class="search-results">
       <div
         v-for="fund in searchResults"
@@ -32,113 +55,123 @@
         <div class="fund-type">{{ fund.TYPE || '基金' }}</div>
       </div>
     </div>
-    
+
     <div v-if="loading" class="loading">搜索中...</div>
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue'
 import { fundAPI } from '../services/api'
+import { useSearchHistory } from '../composables/useSearchHistory'
 
-export default {
-  name: 'FundSearch',
-  props: {
-    compact: {
-      type: Boolean,
-      default: false
-    }
-  },
-  emits: ['fund-selected'],
-  data() {
-    return {
-      searchKeyword: '',
-      searchResults: [],
-      loading: false,
-      updating: false,
-      searchTimer: null,
-      dbStatus: {
-        count: 0,
-        last_update: '',
-        has_cache: false
-      }
-    }
-  },
-  mounted() {
-    this.fetchDbStatus()
-  },
-  watch: {
-    searchKeyword(val) {
-      clearTimeout(this.searchTimer)
-      if (val && val.length >= 1) {
-        this.searchTimer = setTimeout(this.performSearch, 150)
-      } else {
-        this.searchResults = []
-      }
-    }
-  },
-  methods: {
-    async fetchDbStatus() {
-      try {
-        const response = await fundAPI.getSearchStatus()
-        this.dbStatus = response.data
-      } catch (error) {
-        console.error('获取数据库状态失败:', error)
-      }
-    },
-    
-    async updateDatabase() {
-      if (this.updating) return
-      
-      this.updating = true
-      try {
-        const response = await fundAPI.updateSearchDatabase()
-        if (response.data.success) {
-          this.dbStatus = {
-            count: response.data.count,
-            last_update: response.data.last_update,
-            has_cache: true
-          }
-          alert(`✅ 更新成功！已加载 ${response.data.count} 只基金`)
-        } else {
-          alert(`❌ 更新失败: ${response.data.error}`)
-        }
-      } catch (error) {
-        console.error('更新数据库失败:', error)
-        alert('❌ 更新失败，请检查网络连接')
-      } finally {
-        this.updating = false
-      }
-    },
-    
-    formatDate(dateStr) {
-      if (!dateStr) return '未知'
-      // 只显示日期部分
-      return dateStr.split(' ')[0]
-    },
-    
-
-    async performSearch() {
-      if (!this.searchKeyword.trim()) return
-      
-      this.loading = true
-      try {
-        const response = await fundAPI.searchFunds(this.searchKeyword)
-        this.searchResults = response.data.data || []
-      } catch (error) {
-        console.error('搜索失败:', error)
-        this.searchResults = []
-      } finally {
-        this.loading = false
-      }
-    },
-    
-    selectFund(fund) {
-      // 传递完整的基金对象，以便接收方获取更多信息（如名称）
-      this.$emit('fund-selected', fund)
-      this.searchResults = []
-      this.searchKeyword = ''
-    }
+const props = defineProps({
+  compact: {
+    type: Boolean,
+    default: false
   }
+})
+
+const emit = defineEmits(['fund-selected'])
+
+const { searchHistory, addToHistory, removeFromHistory, clearHistory } = useSearchHistory()
+
+const searchKeyword = ref('')
+const searchResults = ref<any[]>([])
+const loading = ref(false)
+const updating = ref(false)
+const searchTimer = ref<number | null>(null)
+const isFocused = ref(false)
+const dbStatus = ref({
+  count: 0,
+  last_update: '',
+  has_cache: false
+})
+
+watch(searchKeyword, (val) => {
+  if (searchTimer.value) clearTimeout(searchTimer.value)
+  if (val && val.length >= 1) {
+    searchTimer.value = window.setTimeout(performSearch, 150)
+  } else {
+    searchResults.value = []
+  }
+})
+
+onMounted(() => {
+  fetchDbStatus()
+})
+
+async function fetchDbStatus() {
+  try {
+    const response = await fundAPI.getSearchStatus()
+    dbStatus.value = response.data
+  } catch (error) {
+    console.error('获取数据库状态失败:', error)
+  }
+}
+
+async function updateDatabase() {
+  if (updating.value) return
+
+  updating.value = true
+  try {
+    const response = await fundAPI.updateSearchDatabase()
+    if (response.data.success) {
+      dbStatus.value = {
+        count: response.data.count,
+        last_update: response.data.last_update,
+        has_cache: true
+      }
+      alert(`✅ 更新成功！已加载 ${response.data.count} 只基金`)
+    } else {
+      alert(`❌ 更新失败: ${response.data.error}`)
+    }
+  } catch (error) {
+    console.error('更新数据库失败:', error)
+    alert('❌ 更新失败，请检查网络连接')
+  } finally {
+    updating.value = false
+  }
+}
+
+function onBlur() {
+  isFocused.value = false
+}
+
+const showHistoryDropdown = computed(() =>
+  isFocused.value && !searchKeyword.value && searchHistory.value.length > 0 && searchResults.value.length === 0
+)
+
+function selectFromHistory(item: { code: string; name: string; type: string }) {
+  searchKeyword.value = item.code
+  performSearch()
+}
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return '未知'
+  return dateStr.split(' ')[0]
+}
+
+async function performSearch() {
+  if (!searchKeyword.value.trim()) return
+
+  loading.value = true
+  try {
+    const response = await fundAPI.searchFunds(searchKeyword.value)
+    searchResults.value = response.data.data || []
+  } catch (error) {
+    console.error('搜索失败:', error)
+    searchResults.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+function selectFund(fund: any) {
+  addToHistory(fund)
+  emit('fund-selected', fund)
+  searchResults.value = []
+  searchKeyword.value = ''
 }
 </script>
 
@@ -312,5 +345,89 @@ export default {
   padding: 12px;
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+.history-dropdown {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.history-clear-btn {
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.history-clear-btn:hover {
+  background: var(--bg-subtle);
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.history-item:hover {
+  background: var(--bg-subtle);
+}
+
+.history-code {
+  font-weight: 600;
+  color: var(--color-primary);
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 12px;
+  min-width: 60px;
+}
+
+.history-name {
+  flex: 1;
+  color: var(--text-primary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-remove {
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.history-item:hover .history-remove {
+  opacity: 1;
+}
+
+.history-remove:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 </style>
