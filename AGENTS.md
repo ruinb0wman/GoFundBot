@@ -103,6 +103,9 @@ frontend:  npx vue-tsc --noEmit → npm test → npm run build
 | `Backend/services/market_alert.py` | 市场异动检测 (指数涨跌 >3%) |
 | `Frontend/src/stores/alertStore.ts` | Pinia store: 告警规则管理 |
 | `Frontend/src/utils/exportUtils.ts` | CSV 导出工具函数 |
+| `Frontend/src/locales/` | vue-i18n 国际化 (zh-CN / en) |
+| `Frontend/src/components/LocaleSwitcher.vue` | 语言切换按钮 (Header) |
+| `Backend/services/backtest_strategies.py` | 定投策略推荐引擎 (MA/价值平均策略对比) |
 | `Frontend/tsconfig.json` | TypeScript strict mode config |
 | `.pre-commit-config.yaml` | Pre-commit hooks (private key + .env check) |
 

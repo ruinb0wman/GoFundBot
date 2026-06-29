@@ -358,7 +358,7 @@ MyBot/
 | **生产就绪** | 结构化 JSON 日志、Swagger OpenAPI 文档、Prometheus `/metrics`、SIGTERM 优雅关闭、`/api/v1/` 渐进版本化 |
 | **DataService 迁移** | 基金排名/分红 EastMoney provider 实现，指数行情/K 线 EastMoney 实现，ProviderChain 双源后备，废弃 akshare 桩，默认数据源切换至 `data_service` |
 | **前端增强** | 搜索历史 (`useSearchHistory`)、离线检测 (`useOnlineStatus` + `OfflineBanner`)、错误边界 (`ErrorBoundary`)、移动端适配 (`useBreakpoint` + MobileDrawer + BottomNav + 触摸适配 + 图表 resize 修复)、降级地址 env var 化 |
-| **功能完善** | 深色模式 CSS 变量全覆盖、筛选/对比 CSV 导出、基金价格告警系统 (后端 AlertRule + 前端 AlertBadge/AlertSettings)、市场异动检测; 新增 `exportUtils`、`useNotification`、`AlertBadge`、`AlertSettings` |
+| **功能完善** | 深色模式 CSS 变量全覆盖、筛选/对比 CSV 导出、基金价格告警系统 (后端 AlertRule + 前端 AlertBadge/AlertSettings)、市场异动检测、AI 分析 SSE 流式输出 (打字机效果)、定投策略推荐 (MA/价值平均/周期对比)、i18n 国际化 (vue-i18n, zh-CN/en) |
 
 ## 📝 免责声明
 

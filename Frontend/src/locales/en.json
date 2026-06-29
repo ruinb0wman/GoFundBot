@@ -1,0 +1,78 @@
+{
+  "app.title": "GoFundBot",
+  "app.subtitle": "Smart Fund Analysis · Real-time Market Tracking",
+  "app.footer": "Data Source: TianTianFund / EastMoney / Baidu Stock",
+
+  "nav.dashboard": "Market",
+  "nav.screening": "Fund Screening",
+  "nav.backtest": "Backtest",
+  "nav.portfolio": "Portfolio",
+  "nav.research": "Research",
+
+  "theme.light": "Light",
+  "theme.dark": "Dark",
+  "theme.auto": "System",
+
+  "fund.search.placeholder": "Search fund code or name...",
+  "fund.search.noResults": "No funds found",
+  "fund.search.history": "Search History",
+  "fund.search.clear": "Clear",
+
+  "fund.detail": "Fund Detail",
+  "fund.compare": "Compare",
+  "fund.compare.add": "Add to Compare",
+  "fund.compare.remove": "Remove",
+  "fund.compare.clear": "Clear",
+  "fund.compare.empty": "Click + on watchlist funds to compare",
+  "fund.compare.export": "Export CSV",
+
+  "fund.watchlist": "Watchlist",
+  "fund.watchlist.empty": "No funds in watchlist",
+  "fund.watchlist.add": "Add",
+  "fund.watchlist.remove": "Remove",
+  "fund.watchlist.edit": "Edit",
+  "fund.watchlist.done": "Done",
+
+  "fund.screening.title": "Fund Screening",
+  "fund.screening.export": "Export CSV",
+  "fund.screening.quickTags": "Quick Filters",
+
+  "fund.backtest.title": "Backtest",
+  "fund.backtest.run": "Run Backtest",
+  "fund.backtest.strategy": "Smart Strategy",
+  "fund.backtest.reset": "Reset",
+
+  "fund.aiAnalyze.title": "AI Analysis",
+  "fund.aiAnalyze.start": "Analyze",
+  "fund.aiAnalyze.retry": "Re-analyze",
+  "fund.aiAnalyze.generating": "AI analysis in progress...",
+  "fund.aiAnalyze.loading": "AI is analyzing fund performance (may take 2-3 min)...",
+
+  "market.title": "Market Overview",
+  "market.indices": "Global Indices",
+  "market.volume": "7-Day A-share Volume",
+  "market.gold": "Precious Metals",
+  "market.anomaly": "Market Alerts",
+  "market.news": "7×24 News",
+  "market.sectors": "Sector Ranking",
+
+  "alert.settings": "Alert Settings",
+  "alert.add": "Add Rule",
+  "alert.check": "Check",
+  "alert.empty": "No alert rules",
+  "alert.anomaly.empty": "No anomalies detected today",
+
+  "common.loading": "Loading...",
+  "common.error": "Error",
+  "common.retry": "Retry",
+  "common.close": "Close",
+  "common.save": "Save",
+  "common.cancel": "Cancel",
+  "common.delete": "Delete",
+  "common.confirm": "Confirm",
+  "common.search": "Search",
+  "common.refresh": "Refresh",
+
+  "i18n.switchTo": "English",
+  "i18n.switchToZh": "中文"
+}

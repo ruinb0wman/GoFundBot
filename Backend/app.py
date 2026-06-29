@@ -114,6 +114,7 @@ from routes.alert_routes import alert_bp
 from routes.backtest_routes import backtest_bp
 
 # 新拆分蓝图
+from routes.chat_routes import chat_bp
 from routes.fund_routes import fund_bp
 from routes.research_routes import research_bp
 from routes.screening_routes import screening_bp
@@ -121,6 +122,7 @@ from routes.system_routes import system_bp
 from routes.watchlist_routes import watchlist_bp
 from routes_v1 import register_v1_blueprints
 
+app.register_blueprint(chat_bp)
 app.register_blueprint(fund_master_bp)
 app.register_blueprint(data_service_bp)
 app.register_blueprint(fund_bp)

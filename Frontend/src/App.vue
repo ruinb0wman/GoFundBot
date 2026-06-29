@@ -50,6 +50,7 @@
             </button>
           </div>
           <AlertBadge />
+          <LocaleSwitcher />
           <button
             class="theme-toggle"
             @click="toggleTheme"
@@ -121,6 +122,7 @@
 
     <MobileDrawer :isOpen="drawerOpen" :activeRoute="String(route.name || '')" @close="drawerOpen = false" />
     <BottomNav />
+    <ChatBubble />
   </div>
 </template>
 
@@ -139,6 +141,8 @@ import HamburgerButton from './components/HamburgerButton.vue'
 import MobileDrawer from './components/MobileDrawer.vue'
 import BottomNav from './components/BottomNav.vue'
 import AlertBadge from './components/AlertBadge.vue'
+import LocaleSwitcher from './components/LocaleSwitcher.vue'
+import ChatBubble from './components/ChatBubble.vue'
 
 defineOptions({ name: 'App' })
 

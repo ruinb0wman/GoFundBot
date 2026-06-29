@@ -15,11 +15,13 @@ VXETable.setup({
 })
 
 import router from './router/index'
+import i18n from './locales/index'
 
 const app = createApp(App)
 app.use(createPinia())
 app.use(VXETable)
 app.use(router)
+app.use(i18n)
 
 app.config.errorHandler = (err, _instance, _info) => {
   console.error('[Global Error]', err)

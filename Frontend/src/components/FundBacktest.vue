@@ -226,7 +226,6 @@
         </div>
       </div>
     </div>
-    </div>
 
     <!-- 错误提示 -->
     <div v-if="error" class="error-message">

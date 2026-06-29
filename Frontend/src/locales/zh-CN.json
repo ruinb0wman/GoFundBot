@@ -1,0 +1,78 @@
+{
+  "app.title": "GoFundBot",
+  "app.subtitle": "智能基金分析 · 实时市场追踪",
+  "app.footer": "数据来源：天天基金 / 东方财富 / 百度股市通",
+
+  "nav.dashboard": "市场大盘",
+  "nav.screening": "基金筛选",
+  "nav.backtest": "定投回测",
+  "nav.portfolio": "估值与持仓",
+  "nav.research": "投研看板",
+
+  "theme.light": "浅色模式",
+  "theme.dark": "深色模式",
+  "theme.auto": "跟随系统",
+
+  "fund.search.placeholder": "搜索基金代码或名称...",
+  "fund.search.noResults": "未找到相关基金",
+  "fund.search.history": "搜索历史",
+  "fund.search.clear": "清空",
+
+  "fund.detail": "基金详情",
+  "fund.compare": "基金对比",
+  "fund.compare.add": "添加到对比",
+  "fund.compare.remove": "移除对比",
+  "fund.compare.clear": "清空",
+  "fund.compare.empty": "点击自选基金的 + 按钮添加对比",
+  "fund.compare.export": "导出 CSV",
+
+  "fund.watchlist": "我的自选",
+  "fund.watchlist.empty": "暂无自选基金",
+  "fund.watchlist.add": "添加自选",
+  "fund.watchlist.remove": "移除",
+  "fund.watchlist.edit": "编辑",
+  "fund.watchlist.done": "完成",
+
+  "fund.screening.title": "基金筛选",
+  "fund.screening.export": "导出 CSV",
+  "fund.screening.quickTags": "快速筛选",
+
+  "fund.backtest.title": "定投回测",
+  "fund.backtest.run": "开始回测",
+  "fund.backtest.strategy": "智能推荐策略",
+  "fund.backtest.reset": "重置参数",
+
+  "fund.aiAnalyze.title": "AI 智能分析",
+  "fund.aiAnalyze.start": "开始分析",
+  "fund.aiAnalyze.retry": "重新分析",
+  "fund.aiAnalyze.generating": "AI 分析生成中...",
+  "fund.aiAnalyze.loading": "AI 正在深度分析基金表现(可能需要2-3分钟)...",
+
+  "market.title": "市场概览",
+  "market.indices": "全球行情",
+  "market.volume": "近7日A股成交量",
+  "market.gold": "实时贵金属",
+  "market.anomaly": "市场异动",
+  "market.news": "7×24 快讯",
+  "market.sectors": "板块排行",
+
+  "alert.settings": "告警设置",
+  "alert.add": "添加规则",
+  "alert.check": "检查",
+  "alert.empty": "暂无告警规则",
+  "alert.anomaly.empty": "今日未检测到市场异动",
+
+  "common.loading": "加载中...",
+  "common.error": "出错",
+  "common.retry": "重试",
+  "common.close": "关闭",
+  "common.save": "保存",
+  "common.cancel": "取消",
+  "common.delete": "删除",
+  "common.confirm": "确认",
+  "common.search": "搜索",
+  "common.refresh": "刷新",
+
+  "i18n.switchTo": "Switch to English",
+  "i18n.switchToZh": "切换到中文"
+}

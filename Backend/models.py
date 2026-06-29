@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -390,3 +390,31 @@ class DailyMarketSummary(Base):
     error_message = Column(Text)  # 错误信息（如有）
     created_time = Column(DateTime, default=datetime.now)
     updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+# ==================== 对话 AI 表 ====================
+
+
+class ChatSession(Base):
+    """AI 对话会话"""
+
+    __tablename__ = "chat_session"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(100), default="新对话")
+    created_time = Column(DateTime, default=datetime.now)
+    updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class ChatMessage(Base):
+    """AI 对话消息（含工具调用记录）"""
+
+    __tablename__ = "chat_message"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(Integer, ForeignKey("chat_session.id"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)  # user / assistant / tool
+    content = Column(Text)
+    tool_name = Column(String(50))
+    tool_params_json = Column(Text)
+    created_time = Column(DateTime, default=datetime.now)
