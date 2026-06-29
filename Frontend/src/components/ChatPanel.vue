@@ -129,6 +129,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted, watch } from 'vue'
+import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
 import LucideIcon from './LucideIcon.vue'
 
@@ -221,46 +222,7 @@ async function handleSwitchSession(id: number) {
 
 function renderMarkdown(text: string): string {
   if (!text) return ''
-  let html = escapeHtml(text)
-
-  // Code blocks (```...```)
-  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
-
-  // Bold
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-
-  // Lists
-  html = html.replace(/^- (.+)$/gm, '<li>$1</li>')
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-
-  // Numbered lists
-  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
-  html = html.replace(/(?:^|\n)(<li>.*<\/li>\n?)+/g, (match) => {
-    if (!match.includes('<ol>')) {
-      return '<ol>' + match + '</ol>'
-    }
-    return match
-  })
-
-  // Headers
-  html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>')
-  html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>')
-  html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>')
-
-  // Line breaks
-  html = html.replace(/\n\n/g, '</p><p>')
-  html = html.replace(/\n/g, '<br>')
-
-  return '<p>' + html + '</p>'
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
+  return marked.parse(text, { breaks: true }) as string
 }
 </script>
 
