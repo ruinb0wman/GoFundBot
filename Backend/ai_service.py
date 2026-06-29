@@ -106,17 +106,58 @@ class AIService:
             messages.append({"role": "user", "content": prompt})
 
             response = client.chat.completions.create(
-                model=self._model, messages=messages, temperature=0.3, max_tokens=4096
+                model=self._model, messages=messages, temperature=0.3, max_tokens=8192
             )
 
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            finish_reason = response.choices[0].finish_reason
+            logger.info(
+                f"LLM 响应成功 (model={self._model}, length={len(content) if content else 0}, finish_reason={finish_reason})"
+            )
+            if not content:
+                logger.error(f"LLM 返回空内容 (finish_reason={finish_reason}, model={self._model})")
+                return None
+            return content
 
         except ImportError:
-            logger.info("请安装 openai: pip install openai")
+            logger.error(f"openai 库未安装，无法调用 LLM (base={self._api_base}, model={self._model})")
             return None
         except Exception as e:
-            logger.error(f"调用 LLM 失败: {e}")
+            logger.error(f"调用 LLM 失败 (base={self._api_base}, model={self._model}): {type(e).__name__}: {e}")
             return None
+
+    @staticmethod
+    def _extract_json_from_llm_response(raw: str) -> str:
+        """从 LLM 回复中提取 JSON 字符串，按优先级尝试多种策略。"""
+        stripped = raw.strip()
+
+        # 策略 1: 直接解析（LLM 已输出纯 JSON）
+        if stripped.startswith("{"):
+            try:
+                json.loads(stripped)
+                return stripped
+            except json.JSONDecodeError:
+                pass
+
+        # 策略 2: 贪婪匹配最后的 ```json 代码块（容错 detailed_report 内嵌代码块）
+        blocks = list(re.finditer(r"```json\s*([\s\S]*?)\s*```", raw))
+        if blocks:
+            return blocks[-1].group(1)
+
+        # 策略 3: 用 JSONDecoder.raw_decode 在每一个 { 位置尝试解析
+        decoder = json.JSONDecoder()
+        pos = 0
+        while True:
+            start = stripped.find("{", pos)
+            if start == -1:
+                break
+            try:
+                obj, end = decoder.raw_decode(stripped, start)
+                return stripped[start:end]
+            except json.JSONDecodeError:
+                pos = start + 1
+
+        return raw
 
     def analyze_fund(self, fund_data: dict[str, Any]) -> dict[str, Any]:
         """
@@ -144,12 +185,11 @@ class AIService:
 3. operation_advice 必须基于你的分析结论给出。
 
 **输出要求**：
-请严格按照以下 JSON 格式输出，不要添加任何其他内容：
-```json
+请严格按照以下 JSON 格式输出，直接返回纯 JSON，**不要**使用任何 markdown 代码块包裹（不要使用 ```json ```）：
 {
-    "sentiment_score": 0-100 分，反映基金的投资价值，0 表示非常差，100 表示非常好，50 表示一般，
+    "sentiment_score": 0-100 分，
     "operation_advice": "强烈推荐"/"建议买入"/"持有观望"/"建议减仓"/"建议卖出"，
-    "summary": "详细的分析总结，包含业绩、风险、经理等维度的综合评价（200-300字）",
+    "summary": "详细的分析总结（200-300字）",
     "dashboard": {
         "performance_eval": "优秀/良好/一般/较差",
         "manager_ability": "优秀/良好/一般/较差",
@@ -159,28 +199,26 @@ class AIService:
     "highlights": ["亮点1", "亮点2", "亮点3"],
     "risk_factors": ["风险1", "风险2", "风险3"],
     "news_intel": ["相关市场信息1", "相关市场信息2"],
-    "detailed_report": "Markdown格式的详细深度分析报告，包含：1. 业绩归因分析；2. 风险收益特征；3. 经理管理风格；4. 后市策略建议。请使用二级和三级标题组织内容。"
+    "detailed_report": "Markdown格式的详细深度分析报告（不少于500字，使用 Markdown 标题组织）"
 }
-```
 
 **评分说明**：
 - sentiment_score: 0-100 分，越高表示越值得投资
 - operation_advice: 可选值为 "强烈推荐"、"建议买入"、"持有观望"、"建议减仓"、"建议卖出"
-- detailed_report: 请提供不少于500字的深度分析，使用 Markdown 格式
 """
 
             # 调用 LLM
             result = self._call_llm_simple(prompt, system_prompt)
 
             if not result:
-                return {"error": "AI 分析失败，请稍后重试"}
+                logger.error(f"AI 调用返回空 (base={self._api_base}, model={self._model})")
+                return {"error": f"AI 调用失败 (base={self._api_base}, model={self._model})，请检查 API 服务配置"}
 
-            # 解析结果
             return self._parse_fund_analysis_result(result)
 
         except Exception as e:
-            logger.warning(f"基金分析出错: {e}")
-            return {"error": f"分析过程出错: {str(e)}"}
+            logger.error(f"基金分析出错: {type(e).__name__}: {e}", exc_info=True)
+            return {"error": f"分析过程出错: {type(e).__name__}: {e}"}
 
     def _build_fund_analysis_prompt(self, fund_data: dict[str, Any]) -> str:
         """构建基金分析提示"""
@@ -276,25 +314,9 @@ class AIService:
     def _parse_fund_analysis_result(self, result: str) -> dict[str, Any]:
         """解析基金分析结果"""
         try:
-            # 尝试提取 JSON
-            json_match = re.search(r"```json\s*([\s\S]*?)\s*```", result)
-            if json_match:
-                json_str = json_match.group(1)
-            else:
-                # 尝试直接解析
-                json_str = result.strip()
-                if json_str.startswith("{"):
-                    pass
-                else:
-                    # 尝试找到 JSON 开始位置
-                    start = json_str.find("{")
-                    end = json_str.rfind("}")
-                    if start != -1 and end != -1:
-                        json_str = json_str[start : end + 1]
-
+            json_str = self._extract_json_from_llm_response(result)
             data = json.loads(json_str)
 
-            # 验证必要字段
             required_fields = [
                 "sentiment_score",
                 "operation_advice",
@@ -311,8 +333,7 @@ class AIService:
             return data
 
         except json.JSONDecodeError as e:
-            logger.error(f"JSON 解析失败: {e}")
-            # 返回默认结构
+            logger.error(f"JSON 解析失败: {e}，原始响应前 500 字符: {result[:500]}")
             return {
                 "sentiment_score": 50,
                 "operation_advice": "持有观望",
@@ -371,8 +392,7 @@ class AIService:
 请务必根据提供的市场数据（指数、板块、资讯等）进行真实评估，**绝对不要**直接抄袭示例中的数值。sentiment_score 必须根据市场实际表现计算（0-100）。
 
 **输出要求**：
-请严格按照以下 JSON 格式输出：
-```json
+请严格按照以下 JSON 格式输出，直接返回纯 JSON，**不要**使用任何 markdown 代码块包裹（不要使用 ```json ```）：
 {
     "market_sentiment": "乐观/中性/谨慎/悲观",
     "sentiment_score": 58,
@@ -382,19 +402,21 @@ class AIService:
     "risk_alerts": ["风险提示1", "风险提示2"],
     "operation_suggestion": "短期操作建议（50字内）"
 }
-```
 """
 
             result = self._call_llm_simple(prompt, system_prompt)
 
             if not result:
-                return {"error": "市场分析失败，请稍后重试"}
+                logger.error(f"市场分析 AI 调用返回空 (base={self._api_base}, model={self._model})")
+                return {
+                    "error": f"市场分析 AI 调用失败 (base={self._api_base}, model={self._model})，请检查 API 服务配置"
+                }
 
             return self._parse_market_summary_result(result)
 
         except Exception as e:
-            logger.warning(f"市场分析出错: {e}")
-            return {"error": f"分析过程出错: {str(e)}"}
+            logger.error(f"市场分析出错: {type(e).__name__}: {e}", exc_info=True)
+            return {"error": f"市场分析出错: {type(e).__name__}: {e}"}
 
     def _build_market_summary_prompt(self, market_data: dict[str, Any]) -> str:
         """构建市场分析提示"""
@@ -437,19 +459,11 @@ class AIService:
     def _parse_market_summary_result(self, result: str) -> dict[str, Any]:
         """解析市场分析结果"""
         try:
-            json_match = re.search(r"```json\s*([\s\S]*?)\s*```", result)
-            if json_match:
-                json_str = json_match.group(1)
-            else:
-                json_str = result.strip()
-                start = json_str.find("{")
-                end = json_str.rfind("}")
-                if start != -1 and end != -1:
-                    json_str = json_str[start : end + 1]
-
+            json_str = self._extract_json_from_llm_response(result)
             return json.loads(json_str)
 
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            logger.error(f"市场分析 JSON 解析失败: {e}，原始响应前 500 字符: {result[:500]}")
             return {
                 "market_sentiment": "中性",
                 "sentiment_score": 50,
@@ -506,7 +520,9 @@ class AIService:
             yield "event: done\ndata: [DONE]\n\n"
 
         except Exception as e:
-            logger.error(f"Streaming AI analysis failed: {e}")
+            logger.error(
+                f"Streaming AI analysis failed (base={self._api_base}, model={self._model}): {type(e).__name__}: {e}"
+            )
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
             yield "event: done\ndata: [DONE]\n\n"
 
@@ -520,8 +536,7 @@ class AIService:
 3. operation_advice 必须基于你的分析结论给出。
 
 **输出要求**：
-请严格按照以下 JSON 格式输出：
-```json
+请严格按照以下 JSON 格式输出，直接返回纯 JSON，**不要**使用任何 markdown 代码块包裹（不要使用 ```json ```）：
 {
     "sentiment_score": 0-100 分，
     "operation_advice": "强烈推荐"/"建议买入"/"持有观望"/"建议减仓"/"建议卖出"，
@@ -537,7 +552,6 @@ class AIService:
     "news_intel": ["相关市场信息1", "相关市场信息2"],
     "detailed_report": "Markdown格式的详细深度分析报告"
 }
-```
 
 **评分说明**：
 - sentiment_score: 0-100 分，越高表示越值得投资
