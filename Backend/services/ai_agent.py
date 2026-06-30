@@ -111,10 +111,21 @@ class AIAgent:
                 "type": "function",
                 "function": {
                     "name": "get_hot_sectors",
-                    "description": "获取热门行业板块排行（涨跌幅排名）",
+                    "description": "获取热门行业板块排行（申万/同花顺行业分类，如电力设备、半导体、医药生物、银行、汽车等）。注意：不含概念/主题板块（如新能源、AI等），那些需使用 get_concept_sectors。",
                     "parameters": {
                         "type": "object",
                         "properties": {"limit": {"type": "integer", "description": "返回板块数量，默认10"}},
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_concept_sectors",
+                    "description": "获取东方财富概念板块排行（涨跌幅排序）。概念板块如：新能源、人工智能、低空经济、碳中和、人形机器人、华为概念等。注意与 get_hot_sectors（行业板块）的区别——行业板块是申万/同花顺分类，概念板块是东方财富主题概念分类。当用户询问概念/主题板块行情时使用此工具。",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"limit": {"type": "integer", "description": "返回板块数量，默认10，最大50"}},
                     },
                 },
             },
@@ -299,6 +310,7 @@ class AIAgent:
             "get_market_indices": self._tool_get_market_indices,
             "get_market_news": self._tool_get_market_news,
             "get_hot_sectors": self._tool_get_hot_sectors,
+            "get_concept_sectors": self._tool_get_concept_sectors,
             "get_north_flow": self._tool_get_north_flow,
             "get_market_breadth": self._tool_get_market_breadth,
             "get_main_flow": self._tool_get_main_flow,
@@ -373,6 +385,25 @@ class AIAgent:
         from market_data_service import MarketDataService
 
         return MarketDataService().get_hot_sectors()[:limit]
+
+    def _tool_get_concept_sectors(self, limit: int = 10) -> Any:
+        from services.data_service_client import get_data_service_client
+
+        payload = get_data_service_client().get_market_sectors()
+        data = payload.get("data", {}) if isinstance(payload, dict) else {}
+        items = data.get("items", []) if isinstance(data, dict) else []
+        items = sorted(items, key=lambda x: float(x.get("changePercent") or 0), reverse=True)[:limit]
+
+        return [
+            {
+                "name": item.get("name", ""),
+                "code": item.get("code", ""),
+                "change_pct": item.get("changePercent"),
+                "price": item.get("price"),
+                "main_inflow": item.get("mainNetInflow"),
+            }
+            for item in items
+        ]
 
     def _tool_get_north_flow(self) -> Any:
         from market_data_service import MarketDataService
@@ -541,13 +572,48 @@ class AIAgent:
                 return data.get("fund_managers", [])
             return {"error": "无法获取经理信息"}
 
+    @staticmethod
+    def _expand_industry_keyword(keyword: str) -> list[str]:
+        from services.industry_classification import SHENWAN_SECTOR_MAP, TOPIC_RULES
+
+        kw_upper = keyword.upper()
+        terms = {keyword}
+
+        # 1. Find matching topic in TOPIC_RULES, collect all sub-keywords
+        for topic, sub_keywords in TOPIC_RULES:
+            if any(kw_upper == k.upper() or kw_upper in k.upper() for k in sub_keywords):
+                terms.add(topic)
+                terms.update(sub_keywords)
+
+        # 2. Reverse through SHENWAN_SECTOR_MAP: find the parent Shenwan
+        #    category and collect all sub-sectors that map to the same parent
+        parent = SHENWAN_SECTOR_MAP.get(keyword)
+        if parent:
+            for child, p in SHENWAN_SECTOR_MAP.items():
+                if p == parent:
+                    terms.add(child)
+
+        # 3. Sub-keywords from TOPIC_RULES may also have Shenwan mappings
+        for child_kw in list(terms):
+            parent2 = SHENWAN_SECTOR_MAP.get(child_kw)
+            if parent2:
+                for child2, p2 in SHENWAN_SECTOR_MAP.items():
+                    if p2 == parent2:
+                        terms.add(child2)
+
+        return list(terms)
+
     def _tool_get_funds_by_industry(self, keyword: str) -> Any:
+        from sqlalchemy import or_
+
         from database import SessionLocal
         from models import FundBasicInfo, FundIndustryTag
 
         db = SessionLocal()
         try:
-            tags = db.query(FundIndustryTag).filter(FundIndustryTag.industry_tag.like(f"%{keyword}%")).limit(50).all()
+            search_terms = self._expand_industry_keyword(keyword)
+            conditions = [FundIndustryTag.industry_tag.like(f"%{t}%") for t in search_terms]
+            tags = db.query(FundIndustryTag).filter(or_(*conditions)).limit(50).all()
             seen_codes: set[str] = set()
 
             funds: list[dict] = []
@@ -589,7 +655,7 @@ class AIAgent:
                     return {
                         "funds": [],
                         "total": 0,
-                        "message": f"未找到与'{keyword}'相关的基金（行业标签和基金名称均无匹配）。建议使用其他关键词如'光伏'、'锂电'、'风电'等子领域重试。",
+                        "message": f"未找到与'{keyword}'相关的基金（已自动展开相关关键词搜索，行业标签和基金名称均无匹配）。",
                     }
 
             return {"funds": funds, "total": len(funds)}
@@ -631,11 +697,15 @@ class AIAgent:
 - 用户问题中出现"基金"、"建仓"、"定投"、"类基金"、"主题基金"、"行业基金" → 这是基金问题！
   必须使用：get_funds_by_industry / search_funds / get_fund_detail 等基金工具
   **禁止调用**：get_stock_quote（个股行情）
-  **关键**：从用户问题中提取行业/主题关键词，传入 get_funds_by_industry 的 keyword 参数。
-  例如用户问"新能源板块的基金" → 调用 get_funds_by_industry(keyword="新能源")，不得改用其他行业名。
+**关键**：从用户问题中提取行业/主题关键词，传入 get_funds_by_industry 的 keyword 参数。
+   例如用户问"新能源板块的基金" → 调用 get_funds_by_industry(keyword="新能源")。
+   **注意**：get_funds_by_industry 会自动做关键词展开，例如"新能源"会自动搜索新能源+电力设备+光伏+储能+电池等所有相关标签。所以直接用用户的原词即可，不要自行替换为其他行业名。
 - 用户问具体股票代码或公司名称（如"腾讯"、"NVDA"、"00700"）→ 使用 get_stock_quote
-- 用户问大盘/市场情报/行业板块 → 可使用 get_market_indices / get_hot_sectors / get_market_news
-  注意：如果用户同时提到"基金"+行业，优先使用基金工具搜索对应行业，get_hot_sectors 仅作辅助参考。
+- 用户问大盘/市场情报/板块行情 → 注意区分两种板块类型：
+  * **行业板块**（电力设备、半导体、银行、医药生物）→ 使用 get_hot_sectors
+  * **概念板块**（新能源、人工智能、低空经济、碳中和）→ 使用 get_concept_sectors
+  * 如果拿不准用户指的是哪种，两个工具都调用，分别呈现。
+  注意：如果用户同时提到"基金"+行业，优先使用基金工具搜索对应行业，板块行情仅作辅助参考。
 
 **规则**：
 1. 先判断问题所属分类，再选择对应的工具集，不能混淆基金和个股工具。
@@ -663,7 +733,7 @@ class AIAgent:
                 len(openai_messages) - 1,
                 {
                     "role": "system",
-                    "content": "重要指令：用户问题涉及基金，请使用基金类工具（search_funds、get_funds_by_industry、get_fund_detail）。禁止调用 get_stock_quote 个股行情工具！从用户问题中提取行业/主题名称作为 get_funds_by_industry 的 keyword 参数。如果找不到对应行业的基金，如实告知用户，不要改用其他行业的数据来回答。",
+                    "content": "重要指令：用户问题涉及基金，请使用基金类工具（search_funds、get_funds_by_industry、get_fund_detail）。禁止调用 get_stock_quote 个股行情工具！从用户问题中提取行业/主题名称作为 get_funds_by_industry 的 keyword 参数。get_funds_by_industry 会自动关键词展开（例如\u201c新能源\u201d会同步搜索电力设备、光伏、储能等相关标签），所以直接用用户原词即可。如果找不到对应行业的基金，如实告知用户，不要改用其他行业的数据来回答。",
                 },
             )
 
