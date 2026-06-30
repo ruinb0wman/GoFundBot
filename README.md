@@ -302,8 +302,8 @@ MyBot/
 │   │   ├── eastmoney.py         # 东方财富 API
 │   │   └── tencent.py           # 腾讯财经 API
 │   ├── routes/                  # API 路由蓝图（模块化拆分）
-│   │   ├── fund_routes.py       # 基金详情/搜索/对比 (921 行)
-│   │   ├── screening_routes.py  # 基金筛选 (805 行)
+│   │   ├── fund_routes/         # 基金详情/搜索/对比 (分包)
+│   │   ├── screening_routes/    # 基金筛选 (分包)
 │   │   ├── watchlist_routes.py  # 自选基金 (384 行)
 │   │   ├── research_routes.py   # 投研看板 (123 行)
 │   │   ├── backtest_routes.py   # 定投回测 (122 行)
@@ -318,8 +318,17 @@ MyBot/
 │   │   └── apidoc.py
 │   ├── services/                # 业务服务层
 │   │   ├── data_service_client.py   # DataService HTTP 客户端
-│   │   ├── fund_industry.py         # 基金行业分类
+│   │   ├── ai_agent/               # AI Agent (分包)
+│   │   ├── research/               # 投研服务 (分包)
+│   │   ├── screening_engine/       # 筛选引擎 (分包)
+│   │   ├── market_data/            # 市场数据 (分包)
+│   │   ├── fund_industry/          # 基金行业分类 (分包)
 │   │   └── industry_classification.py
+│   ├── fund_api/               # 旧 fund API (分包)
+│   ├── fund_master_service/    # 大盘服务 (分包)
+│   ├── market_data_service/    # 市场数据服务 (分包)
+│   ├── migrate_db/             # 数据库迁移 (分包)
+│   ├── scripts/                # 质量检查脚本（check_file_length.py）
 │   └── docs/
 ├── Frontend/                    # Vue 3 + TypeScript 前端
 │   ├── tsconfig.json            # TypeScript 严格模式配置
@@ -351,8 +360,9 @@ MyBot/
 | 模块 | 主要进展 |
 |------|----------|
 | **测试体系** | 20 个测试文件, 205 条用例 (Backend 114 + DataService 67 + Frontend 24), Backend 覆盖率 ~40% |
-| **CI/CD** | GitHub Actions 三段矩阵流水线 (ruff lint + python unittest / DataService typecheck + test / Frontend vue-tsc + vitest + build) |
+| **CI/CD** | GitHub Actions 三段矩阵流水线 (ruff lint + ruff format + check_file_length + python unittest / DataService ESLint + typecheck + test / Frontend ESLint + vue-tsc + vitest + build) |
 | **代码质量** | `app.py` 7000 行→266 行, 拆分为 9 个独立蓝图；前端全面 TypeScript + 全量 `<script setup lang="ts">` 迁移 (38 个组件) |
+| **文件拆分** | 后端 11 个单体 .py (最大 1233 行) 拆分为分包，每文件 <500 行；前端 17 个 .vue (最大 2875 行) 拆分为 composable+CSS+子组件，全部 <500 行；引入 ESLint `max-lines` + Python `check_file_length.py` 强制行数限制 |
 | **性能优化** | Pinia 状态管理避免重复请求、Flask-Compress Gzip/Brotli 压缩、HTTP 缓存头 (ETag/Cache-Control)、部分端点分页支持 |
 | **安全加固** | Flask-Limiter + express-rate-limit 速率限制、Pydantic 请求体校验、CORS 白名单配置、CSRF 防护 (SameSite Cookie) |
 | **生产就绪** | 结构化 JSON 日志、Swagger OpenAPI 文档、Prometheus `/metrics`、SIGTERM 优雅关闭、`/api/v1/` 渐进版本化 |

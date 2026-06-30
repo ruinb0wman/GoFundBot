@@ -1,20 +1,16 @@
 <template>
   <div class="stock-popup">
-    <!-- 加载状态 -->
     <div v-if="loading" class="stock-loading">
       <div class="loading-spinner"></div>
       <p>正在获取行情数据...</p>
     </div>
 
-    <!-- 错误状态 -->
     <div v-else-if="error" class="stock-error">
       <span class="error-icon"><LucideIcon name="TriangleAlert" :size="16" /></span>
       <p>{{ error }}</p>
     </div>
 
-    <!-- 行情数据 -->
     <div v-else-if="stockData" class="stock-content">
-      <!-- 头部：名称 + 代码 -->
       <div class="stock-header">
         <div class="stock-title">
           <h2>{{ stockData.name }}</h2>
@@ -23,146 +19,69 @@
         </div>
       </div>
 
-      <!-- 核心行情：价格 + 涨跌 -->
       <div class="stock-price-section">
-        <div class="current-price" :class="changeClass">
-          {{ formatPrice(stockData.price) }}
-        </div>
+        <div class="current-price" :class="changeClass">{{ formatPrice(stockData.price) }}</div>
         <div class="price-change">
-          <span class="change-value" :class="changeClass">
-            {{ formatChange(stockData.change) }}
-          </span>
-          <span class="change-percent" :class="changeClass">
-            {{ formatPercent(stockData.changePercent) }}
-          </span>
+          <span class="change-value" :class="changeClass">{{ formatChange(stockData.change) }}</span>
+          <span class="change-percent" :class="changeClass">{{ formatPercent(stockData.changePercent) }}</span>
         </div>
       </div>
 
-      <!-- 行情详情网格 -->
       <div class="stock-detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">今开</span>
-          <span class="detail-value">{{ formatPrice(stockData.open) }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">昨收</span>
-          <span class="detail-value">{{ formatPrice(stockData.prevClose) }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">最高</span>
-          <span class="detail-value high">{{ formatPrice(stockData.high) }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">最低</span>
-          <span class="detail-value low">{{ formatPrice(stockData.low) }}</span>
-        </div>
+        <div class="detail-item"><span class="detail-label">今开</span><span class="detail-value">{{ formatPrice(stockData.open) }}</span></div>
+        <div class="detail-item"><span class="detail-label">昨收</span><span class="detail-value">{{ formatPrice(stockData.prevClose) }}</span></div>
+        <div class="detail-item"><span class="detail-label">最高</span><span class="detail-value high">{{ formatPrice(stockData.high) }}</span></div>
+        <div class="detail-item"><span class="detail-label">最低</span><span class="detail-value low">{{ formatPrice(stockData.low) }}</span></div>
       </div>
 
-      <!-- 交易数据 -->
       <div class="stock-section">
         <h4 class="section-title">交易数据</h4>
         <div class="stock-detail-grid">
-          <div class="detail-item">
-            <span class="detail-label">成交量</span>
-            <span class="detail-value">{{ formatVolume(stockData.volume) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">成交额</span>
-            <span class="detail-value">{{ formatAmount(stockData.amount) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">换手率</span>
-            <span class="detail-value">{{ formatPercent(stockData.turnoverRate) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">振幅</span>
-            <span class="detail-value">{{ formatPercent(stockData.amplitude) }}</span>
-          </div>
+          <div class="detail-item"><span class="detail-label">成交量</span><span class="detail-value">{{ formatVolume(stockData.volume) }}</span></div>
+          <div class="detail-item"><span class="detail-label">成交额</span><span class="detail-value">{{ formatAmount(stockData.amount) }}</span></div>
+          <div class="detail-item"><span class="detail-label">换手率</span><span class="detail-value">{{ formatPercent(stockData.turnoverRate) }}</span></div>
+          <div class="detail-item"><span class="detail-label">振幅</span><span class="detail-value">{{ formatPercent(stockData.amplitude) }}</span></div>
         </div>
       </div>
 
-      <!-- 估值数据 -->
       <div class="stock-section">
         <h4 class="section-title">估值指标</h4>
         <div class="stock-detail-grid">
-          <div class="detail-item">
-            <span class="detail-label">市盈率(动)</span>
-            <span class="detail-value">{{ formatPE(stockData.pe) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">总市值</span>
-            <span class="detail-value">{{ formatMarketCap(stockData.marketCap) }}</span>
-          </div>
+          <div class="detail-item"><span class="detail-label">市盈率(动)</span><span class="detail-value">{{ formatPE(stockData.pe) }}</span></div>
+          <div class="detail-item"><span class="detail-label">总市值</span><span class="detail-value">{{ formatMarketCap(stockData.marketCap) }}</span></div>
         </div>
       </div>
 
-      <!-- 历史走势图 -->
       <div class="stock-section chart-section">
         <div class="chart-header">
           <h4 class="section-title">走势图</h4>
           <div class="chart-period-tabs">
-            <button
-              v-for="range in klinePeriods"
-              :key="range.value"
-              :class="['period-btn', { active: klineSelectedRange === range.value }]"
-              @click="setKlineRange(range.value)"
-            >
-              {{ range.label }}
-            </button>
+            <button v-for="range in klinePeriods" :key="range.value" :class="['period-btn', { active: klineSelectedRange === range.value }]" @click="setKlineRange(range.value)">{{ range.label }}</button>
           </div>
         </div>
-        <div class="chart-loading" v-if="klineLoading">
-          <div class="loading-spinner"></div>
-          <span>加载走势数据...</span>
-        </div>
-        <div class="chart-error" v-else-if="klineError">
-          <span>{{ klineError }}</span>
-        </div>
+        <div class="chart-loading" v-if="klineLoading"><div class="loading-spinner"></div><span>加载走势数据...</span></div>
+        <div class="chart-error" v-else-if="klineError"><span>{{ klineError }}</span></div>
         <div class="chart-wrapper" v-else-if="filteredKlineData.length > 0">
           <div ref="klineChartEl" class="kline-chart"></div>
           <div class="chart-summary" v-if="klineSummary">
-            <div class="summary-item">
-              <span class="summary-label">区间涨幅</span>
-              <span class="summary-value" :class="klineSummary.changePercent >= 0 ? 'up' : 'down'">
-                {{ klineSummary.changePercent >= 0 ? '+' : '' }}{{ klineSummary.changePercent.toFixed(2) }}%
-              </span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">起始价</span>
-              <span class="summary-value">{{ klineSummary.startPrice.toFixed(2) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">最新价</span>
-              <span class="summary-value">{{ klineSummary.endPrice.toFixed(2) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">最高</span>
-              <span class="summary-value high">{{ klineSummary.high.toFixed(2) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">最低</span>
-              <span class="summary-value low">{{ klineSummary.low.toFixed(2) }}</span>
-            </div>
+            <div class="summary-item"><span class="summary-label">区间涨幅</span><span class="summary-value" :class="klineSummary.changePercent >= 0 ? 'up' : 'down'">{{ klineSummary.changePercent >= 0 ? '+' : '' }}{{ klineSummary.changePercent.toFixed(2) }}%</span></div>
+            <div class="summary-item"><span class="summary-label">起始价</span><span class="summary-value">{{ klineSummary.startPrice.toFixed(2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">最新价</span><span class="summary-value">{{ klineSummary.endPrice.toFixed(2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">最高</span><span class="summary-value high">{{ klineSummary.high.toFixed(2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">最低</span><span class="summary-value low">{{ klineSummary.low.toFixed(2) }}</span></div>
           </div>
         </div>
-        <div class="chart-empty" v-else-if="!klineLoading && !klineError">
-          <span>暂无历史走势数据</span>
-        </div>
+        <div class="chart-empty" v-else-if="!klineLoading && !klineError"><span>暂无历史走势数据</span></div>
       </div>
     </div>
 
-    <!-- 空状态 -->
-    <div v-else class="stock-empty">
-      <p>暂无行情数据</p>
-    </div>
+    <div v-else class="stock-empty"><p>暂无行情数据</p></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import * as echarts from 'echarts'
-import { useEChartsTheme } from '../composables/useEChartsTheme'
-import { marketAPI } from '../services/api'
+import LucideIcon from './LucideIcon.vue'
+import { useStockPopup } from '../composables/useStockPopup'
 
 const props = defineProps({
   stockData: { type: Object, default: null },
@@ -170,674 +89,14 @@ const props = defineProps({
   error: { type: String, default: '' }
 })
 
-const { echartThemeName } = useEChartsTheme()
-const cssColor = (name: string, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-const hexToRgba = (hex: string, a: number) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})` }
-
-// K 线图表状态
-const klineChartEl = ref<HTMLElement | null>(null)
-const klineData = ref<any[]>([])
-const klineLoading = ref(false)
-const klineError = ref('')
-const klineSelectedRange = ref('1y')
-let klineChartInstance: echarts.ECharts | null = null
-
-const klinePeriods = [
-  { label: '近1月', value: '1m' },
-  { label: '近3月', value: '3m' },
-  { label: '近6月', value: '6m' },
-  { label: '近1年', value: '1y' },
-  { label: '全部', value: 'all' }
-]
-
-const filteredKlineData = computed(() => {
-  if (!klineData.value || klineData.value.length === 0) return []
-
-  if (klineSelectedRange.value === 'all') {
-    return [...klineData.value].sort((a: any, b: any) => a.timestamp - b.timestamp)
-  }
-
-  const now = new Date()
-  let cutoff = new Date()
-  const rangeMap: Record<string, number> = { '1m': -1, '3m': -3, '6m': -6, '1y': -12 }
-  const months = rangeMap[klineSelectedRange.value] || -12
-  cutoff.setMonth(now.getMonth() + months)
-
-  const cutoffTs = cutoff.getTime()
-  return klineData.value
-    .filter((item: any) => item.timestamp >= cutoffTs)
-    .sort((a: any, b: any) => a.timestamp - b.timestamp)
-})
-
-const klineSummary = computed(() => {
-  const data = filteredKlineData.value
-  if (data.length === 0) return null
-
-  const closes = data.map((d: any) => d.close).filter((v: any) => v != null)
-  if (closes.length === 0) return null
-
-  const startPrice = closes[0]
-  const endPrice = closes[closes.length - 1]
-  const changePercent = startPrice !== 0 ? ((endPrice - startPrice) / startPrice) * 100 : 0
-  const high = Math.max(...closes)
-  const low = Math.min(...closes)
-
-  return { startPrice, endPrice, changePercent, high, low }
-})
-
-const fetchKlineData = async (code: string) => {
-  if (!code) return
-  klineLoading.value = true
-  klineError.value = ''
-  klineData.value = []
-
-  try {
-    const response = await marketAPI.getStockKline(code, {
-      period: 'daily',
-      adjust: 'qfq',
-      endDate: new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    })
-    if (response.data?.success && Array.isArray(response.data?.data)) {
-      klineData.value = response.data.data.map((item: any) => ({
-        ...item,
-        timestamp: parseKlineDate(item.date),
-        open: parseFloat(item.open) || null,
-        close: parseFloat(item.close) || null,
-        high: parseFloat(item.high) || null,
-        low: parseFloat(item.low) || null,
-        volume: parseFloat(item.volume) || null,
-        amount: parseFloat(item.amount) || null,
-        changePercent: parseFloat(item.changePercent) || null
-      }))
-    } else {
-      klineError.value = response.data?.error || '获取走势数据失败'
-    }
-  } catch (err: any) {
-    console.error('获取K线数据失败:', err)
-    klineError.value = err.response?.data?.error || '网络请求失败，请稍后重试'
-  } finally {
-    klineLoading.value = false
-  }
-}
-
-const parseKlineDate = (dateStr: string) => {
-  if (!dateStr) return 0
-  const s = String(dateStr)
-  if (s.includes('-')) {
-    return new Date(s).getTime()
-  }
-  if (s.length === 8) {
-    const y = s.slice(0, 4)
-    const m = s.slice(4, 6)
-    const d = s.slice(6, 8)
-    return new Date(`${y}-${m}-${d}`).getTime()
-  }
-  return new Date(s).getTime()
-}
-
-const setKlineRange = (range: string) => {
-  klineSelectedRange.value = range
-  nextTick(() => renderKlineChart())
-}
-
-const getTrendColor = (data: any[]) => {
-  const dangerColor = cssColor('--color-danger', '#ff4d4f')
-  const successColor = cssColor('--color-success', '#52c41a')
-  const primaryColor = cssColor('--color-primary', '#1677ff')
-  if (data.length < 2) return { line: primaryColor, area: [hexToRgba(primaryColor, 0.2), hexToRgba(primaryColor, 0.0)] }
-  const firstClose = data[0].close
-  const lastClose = data[data.length - 1].close
-  const isUp = lastClose >= firstClose
-  return {
-    line: isUp ? dangerColor : successColor,
-    area: isUp
-      ? [hexToRgba(dangerColor, 0.2), hexToRgba(dangerColor, 0.0)]
-      : [hexToRgba(successColor, 0.2), hexToRgba(successColor, 0.0)]
-  }
-}
-
-const renderKlineChart = () => {
-  const data = filteredKlineData.value
-  if (!klineChartEl.value || data.length === 0) {
-    if (klineChartInstance) {
-      klineChartInstance.dispose()
-      klineChartInstance = null
-    }
-    return
-  }
-
-  if (!klineChartInstance) {
-    klineChartInstance = echarts.init(klineChartEl.value, echartThemeName.value)
-  }
-
-  const colors = getTrendColor(data)
-
-  const closeSeries = data.map((item: any) => [item.timestamp, item.close])
-
-  const ohlcMap: Record<number, any> = {}
-  data.forEach((item: any) => {
-    ohlcMap[item.timestamp] = item
-  })
-
-  const gridColor = cssColor('--chart-grid', '#e5e7eb')
-  const axisLabelColor = cssColor('--chart-axis-label', '#6b7280')
-  const dangerColor = cssColor('--color-danger', '#ff4d4f')
-  const successColor = cssColor('--color-success', '#52c41a')
-  const option = {
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '8%',
-      top: '8%',
-      containLabel: true
-    },
-    tooltip: {
-      trigger: 'axis',
-      formatter: function (params: any) {
-        if (!params || params.length === 0) return ''
-        const ts = params[0].value[0]
-        const item = ohlcMap[ts]
-        if (!item) return ''
-
-        const date = new Date(ts)
-        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-
-        const changeColor = (item.changePercent || 0) >= 0 ? dangerColor : successColor
-        const changeSign = (item.changePercent || 0) >= 0 ? '+' : ''
-
-        return `
-          <div style="font-weight:600;margin-bottom:6px">${dateStr}</div>
-          <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:12px">
-            <span style="color:${axisLabelColor}">收盘：</span><span style="font-weight:600">${item.close?.toFixed(2) || '--'}</span>
-            <span style="color:${axisLabelColor}">开盘：</span><span>${item.open?.toFixed(2) || '--'}</span>
-            <span style="color:${axisLabelColor}">最高：</span><span style="color:${dangerColor}">${item.high?.toFixed(2) || '--'}</span>
-            <span style="color:${axisLabelColor}">最低：</span><span style="color:${successColor}">${item.low?.toFixed(2) || '--'}</span>
-            <span style="color:${axisLabelColor}">涨跌幅：</span><span style="color:${changeColor}">${changeSign}${(item.changePercent || 0).toFixed(2)}%</span>
-            <span style="color:${axisLabelColor}">成交量：</span><span>${formatKlineVolume(item.volume)}</span>
-          </div>
-        `
-      }
-    },
-    xAxis: {
-      type: 'time',
-      boundaryGap: false,
-      axisLine: { lineStyle: { color: gridColor } },
-      axisTick: { show: false },
-      axisLabel: {
-        color: axisLabelColor,
-        fontSize: 10,
-        formatter: function (value: any) {
-          const d = new Date(value)
-          const m = d.getMonth() + 1
-          const day = d.getDate()
-          return `${m}/${day}`
-        }
-      },
-      splitLine: { show: false }
-    },
-    yAxis: {
-      type: 'value',
-      scale: true,
-      splitLine: { lineStyle: { color: gridColor, type: 'dashed' } },
-      axisLabel: {
-        color: axisLabelColor,
-        fontSize: 10,
-        formatter: '{value}'
-      }
-    },
-    series: [
-      {
-        name: '收盘价',
-        type: 'line',
-        data: closeSeries,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { width: 2, color: colors.line },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: colors.area[0] },
-            { offset: 1, color: colors.area[1] }
-          ])
-        },
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          lineStyle: { type: 'dashed', color: axisLabelColor, width: 1 },
-          data: data.length > 0 ? [{
-            yAxis: data[0].close,
-            label: { formatter: '{c}', fontSize: 10, color: axisLabelColor }
-          }] : []
-        }
-      }
-    ]
-  }
-
-  klineChartInstance.setOption(option, true)
-}
-
-const formatKlineVolume = (vol: any) => {
-  if (vol == null || isNaN(vol)) return '--'
-  if (vol >= 10000) return (vol / 10000).toFixed(1) + ' 万手'
-  return vol.toFixed(0) + ' 手'
-}
-
-watch(() => props.stockData, (newData: any) => {
-  if (newData && newData.code) {
-    fetchKlineData(newData.code)
-  }
-}, { immediate: false })
-
-const handleResize = () => {
-  if (klineChartInstance) {
-    klineChartInstance.resize()
-  }
-}
-
-watch(echartThemeName, () => {
-  if (klineChartInstance) {
-    klineChartInstance.dispose()
-    klineChartInstance = null
-  }
-  nextTick(() => renderKlineChart())
-})
-
-onMounted(() => {
-  window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  if (klineChartInstance) {
-    klineChartInstance.dispose()
-    klineChartInstance = null
-  }
-})
-
-watch(filteredKlineData, () => {
-  nextTick(() => renderKlineChart())
-}, { immediate: false })
-
-const changeClass = computed(() => {
-  if (!props.stockData) return ''
-  const change = parseFloat(props.stockData.changePercent) || 0
-  if (change > 0) return 'up'
-  if (change < 0) return 'down'
-  return ''
-})
-
-const exchangeLabel = computed(() => {
-  const ex = props.stockData?.exchange
-  if (!ex) return ''
-  const map: Record<string, string> = { sh: '沪市', sz: '深市', bj: '北交所' }
-  return map[ex] || ex.toUpperCase()
-})
-
-const formatPrice = (val: any) => {
-  const num = parseFloat(val)
-  if (isNaN(num) || num === 0) return '--'
-  return num.toFixed(2)
-}
-
-const formatChange = (val: any) => {
-  const num = parseFloat(val)
-  if (isNaN(num)) return '--'
-  const prefix = num > 0 ? '+' : ''
-  return prefix + num.toFixed(2)
-}
-
-const formatPercent = (val: any) => {
-  const num = parseFloat(val)
-  if (isNaN(num) || num === 0) return '--'
-  const prefix = num > 0 ? '+' : ''
-  return prefix + num.toFixed(2) + '%'
-}
-
-const formatVolume = (val: any) => {
-  const num = parseFloat(val)
-  if (isNaN(num) || num === 0) return '--'
-  if (num >= 10000) return (num / 10000).toFixed(2) + ' 万手'
-  return num.toFixed(0) + ' 手'
-}
-
-const formatAmount = (val: any) => {
-  const num = parseFloat(val)
-  if (isNaN(num) || num === 0) return '--'
-  if (num >= 100000000) return (num / 100000000).toFixed(2) + ' 亿'
-  if (num >= 10000) return (num / 10000).toFixed(2) + ' 万'
-  return num.toFixed(2)
-}
-
-const formatPE = (val: any) => {
-  const num = parseFloat(val)
-  if (isNaN(num) || num === 0) return '--'
-  return num.toFixed(2)
-}
-
-const formatMarketCap = (val: any) => {
-  const num = parseFloat(val)
-  if (isNaN(num) || num === 0) return '--'
-  if (num >= 100000000) return (num / 100000000).toFixed(2) + ' 亿'
-  if (num >= 10000) return (num / 10000).toFixed(2) + ' 万'
-  return num.toFixed(2)
-}
+const {
+  klineChartEl, klineLoading, klineError, klinePeriods, klineSelectedRange,
+  filteredKlineData, klineSummary, setKlineRange, changeClass, exchangeLabel,
+  formatPrice, formatChange, formatPercent, formatVolume, formatAmount,
+  formatPE, formatMarketCap
+} = useStockPopup(props)
 </script>
 
 <style scoped>
-.stock-popup {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.stock-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-tertiary);
-}
-
-.loading-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--border-subtle);
-  border-top: 3px solid var(--color-primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 12px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.stock-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--color-danger);
-}
-
-.error-icon {
-  display: inline-flex;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.stock-content {
-  padding: 20px 24px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.stock-header {
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.stock-title h2 {
-  margin: 0 0 6px 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.stock-code {
-  display: inline-block;
-  font-family: monospace;
-  font-size: 14px;
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
-  padding: 2px 10px;
-  border-radius: 4px;
-  margin-right: 8px;
-}
-
-.stock-exchange {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  background: var(--bg-subtle);
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.stock-price-section {
-  text-align: center;
-  padding: 16px 0;
-  margin-bottom: 20px;
-  background: var(--bg-subtle);
-  border-radius: 12px;
-}
-
-.current-price {
-  font-size: 42px;
-  font-weight: 700;
-  font-family: 'DIN Alternate', 'Helvetica Neue', monospace;
-  line-height: 1.2;
-  color: var(--text-primary);
-}
-
-.current-price.up {
-  color: var(--color-danger);
-}
-
-.current-price.down {
-  color: var(--color-success);
-}
-
-.price-change {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 8px;
-  font-size: 16px;
-  font-family: 'DIN Alternate', 'Helvetica Neue', monospace;
-}
-
-.change-value.up,
-.change-percent.up {
-  color: var(--color-danger);
-}
-
-.change-value.down,
-.change-percent.down {
-  color: var(--color-success);
-}
-
-.change-value:not(.up):not(.down),
-.change-percent:not(.up):not(.down) {
-  color: var(--text-tertiary);
-}
-
-.stock-detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-}
-
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.detail-item:nth-child(odd) {
-  border-right: 1px solid var(--border-subtle);
-}
-
-.detail-label {
-  font-size: 13px;
-  color: var(--text-tertiary);
-}
-
-.detail-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-family: 'DIN Alternate', 'Helvetica Neue', monospace;
-}
-
-.detail-value.high {
-  color: var(--color-danger);
-}
-
-.detail-value.low {
-  color: var(--color-success);
-}
-
-.stock-section {
-  margin-top: 20px;
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin: 0 0 8px 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--color-primary);
-}
-
-.stock-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-tertiary);
-}
-
-.chart-section {
-  margin-top: 24px;
-}
-
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chart-header .section-title {
-  margin: 0;
-  padding: 0;
-  border: none;
-}
-
-.chart-period-tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.period-btn {
-  padding: 3px 10px;
-  font-size: 11px;
-  border: 1px solid var(--border-default);
-  border-radius: 4px;
-  background: var(--bg-card);
-  color: var(--text-tertiary);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.period-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.period-btn.active {
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  border-color: var(--color-primary);
-}
-
-.chart-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 24px;
-  color: var(--text-tertiary);
-  font-size: 13px;
-}
-
-.chart-loading .loading-spinner {
-  width: 20px;
-  height: 20px;
-  border-width: 2px;
-  margin: 0;
-}
-
-.chart-error {
-  text-align: center;
-  padding: 20px;
-  color: var(--color-danger);
-  font-size: 13px;
-}
-
-.chart-empty {
-  text-align: center;
-  padding: 20px;
-  color: var(--text-tertiary);
-  font-size: 13px;
-}
-
-.chart-wrapper {
-  display: flex;
-  flex-direction: column;
-}
-
-.kline-chart {
-  width: 100%;
-  height: 240px;
-}
-
-.chart-summary {
-  display: flex;
-  justify-content: space-around;
-  padding: 12px 8px 4px;
-  border-top: 1px solid var(--border-subtle);
-  margin-top: 8px;
-}
-
-.summary-item {
-  text-align: center;
-}
-
-.summary-label {
-  display: block;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-bottom: 2px;
-}
-
-.summary-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-family: 'DIN Alternate', 'Helvetica Neue', monospace;
-}
-
-.summary-value.up {
-  color: var(--color-danger);
-}
-
-.summary-value.down {
-  color: var(--color-success);
-}
-
-.summary-value.high {
-  color: var(--color-danger);
-}
-
-.summary-value.low {
-  color: var(--color-success);
-}
+@import './StockPopup.css';
 </style>

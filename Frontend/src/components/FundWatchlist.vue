@@ -1,6 +1,5 @@
 <template>
   <div class="watchlist-container">
-    <!-- 对比模式切换按钮 -->
     <div v-if="showCompareToggle" class="compare-toggle-bar">
       <button
         class="btn-compare-toggle"
@@ -11,7 +10,6 @@
         <span>{{ compareMode ? '退出对比' : '基金对比' }}</span>
         <span v-if="compareFunds.length && compareMode" class="compare-count">{{ compareFunds.length }}</span>
       </button>
-      <!-- 对比模式下显示已选基金 -->
       <div v-if="compareMode && compareFunds.length > 0" class="compare-selected">
         <div v-for="fund in compareFunds" :key="fund.code" class="compare-tag">
           <span class="tag-name">{{ fund.name }}</span>
@@ -25,7 +23,6 @@
       </div>
     </div>
 
-    <!-- 头部操作栏 -->
     <div class="watchlist-header">
       <h2>
         <span class="header-icon"><LucideIcon name="Star" :size="18" /></span>
@@ -66,28 +63,23 @@
       </div>
     </div>
 
-    <!-- 估值更新提示 -->
     <div v-if="lastEstimateUpdate && totalCount > 0" class="estimate-update-hint">
       <span class="hint-icon"><LucideIcon name="BarChart3" :size="12" /></span>
       <span>估值更新于 {{ lastEstimateUpdate }}</span>
       <span class="hint-auto">（自动刷新）</span>
     </div>
 
-    <!-- 加载状态 -->
     <div v-if="loading && totalCount === 0" class="skeleton-loading">
       <SkeletonCard v-for="n in 4" :key="n" :lines="2" :height="80" />
     </div>
 
-    <!-- 空状态 -->
     <div v-else-if="totalCount === 0" class="empty-state">
       <div class="empty-icon"><LucideIcon name="ClipboardList" :size="36" /></div>
       <p>暂无自选基金</p>
       <p class="empty-hint">在基金详情页点击 <LucideIcon name="Star" :size="12" /> 添加自选</p>
     </div>
 
-    <!-- 分组列表 -->
     <div v-else class="watchlist-content">
-      <!-- 未分组的基金 -->
       <div class="fund-group" v-if="ungroupedFunds.length > 0 || groups.length === 0">
         <div class="group-header" @click="toggleGroup(null)">
           <span class="group-toggle"><LucideIcon :name="isGroupExpanded(null) ? 'ChevronDown' : 'ChevronRight'" :size="14" /></span>
@@ -118,7 +110,6 @@
         </div>
       </div>
 
-      <!-- 各分组 -->
       <div
         v-for="group in groups"
         :key="group.id"
@@ -163,7 +154,6 @@
       </div>
     </div>
 
-    <!-- 新建/编辑分组弹窗 -->
     <div v-if="showGroupModal" class="modal-overlay" @click.self="closeGroupModal">
       <div class="modal-box">
         <h3>{{ editingGroup ? '重命名分组' : '新建分组' }}</h3>
@@ -188,758 +178,33 @@
   </div>
 </template>
 
-<script>
-import { ref, computed, onMounted, onUnmounted, nextTick, toRef } from 'vue'
-import { watchlistAPI } from '../services/api'
-import { useWatchlistStore } from '../stores/watchlistStore'
+<script setup>
+import { useFundWatchlist } from '../composables/useFundWatchlist'
 import FundListItems from './FundListItems.vue'
 import SkeletonCard from './SkeletonCard.vue'
 import AlertSettings from './AlertSettings.vue'
 
-export default {
-  name: 'FundWatchlist',
-  components: { FundListItems, SkeletonCard, AlertSettings },
-  props: {
-    compareMode: { type: Boolean, default: false },
-    compareFunds: { type: Array, default: () => [] },
-    showCompareToggle: { type: Boolean, default: false },
-    addToRealtimeMode: { type: Boolean, default: false }
-  },
-  emits: ['view-fund', 'add-to-compare', 'toggle-compare', 'add-to-realtime'],
-  setup(props, { emit }) {
-    const watchlist = ref([])
-    const groups = ref([])
-    const loading = ref(false)
-    const editMode = ref(false)
-    const selectedFunds = ref([])
-    const draggingIndex = ref(null)
-    const dragOverIndex = ref(null)
-    const expandedGroups = ref([null])
-    const isInitialLoad = ref(true)
+const props = defineProps({
+  compareMode: { type: Boolean, default: false },
+  compareFunds: { type: Array, default: () => [] },
+  showCompareToggle: { type: Boolean, default: false },
+  addToRealtimeMode: { type: Boolean, default: false }
+})
+const emit = defineEmits(['view-fund', 'add-to-compare', 'toggle-compare', 'add-to-realtime'])
 
-    // 分组弹窗
-    const showGroupModal = ref(false)
-    const editingGroup = ref(null)
-    const groupName = ref('')
-    const groupNameInput = ref(null)
-    const alertFundCode = ref('')
-
-    // 估值刷新相关
-    const estimateRefreshTimer = ref(null)
-    const lastEstimateUpdate = ref(null)
-    const isRefreshingEstimates = ref(false)
-    const ESTIMATE_REFRESH_INTERVAL = 3 * 60 * 1000  // 3分钟刷新一次估值
-
-    // 日期字符串规范化比较（处理 "2026-6-21" vs "2026-06-22" 这类零填充差异）
-    const _compareDateStr = (val) => {
-      if (!val) return ''
-      const s = String(val)
-      const m = s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/)
-      if (m) {
-        return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`
-      }
-      return s
-    }
-
-    // 计算属性
-    const totalCount = computed(() => watchlist.value.length)
-
-    const ungroupedFunds = computed(() =>
-      watchlist.value.filter(f => !f.group_id)
-    )
-
-    const getGroupFunds = (groupId) => {
-      return watchlist.value.filter(f => f.group_id === groupId)
-    }
-
-    const isGroupExpanded = (groupId) => {
-      return expandedGroups.value.includes(groupId)
-    }
-
-    const watchlistStore = useWatchlistStore()
-
-    const loadWatchlist = async () => {
-      loading.value = true
-      try {
-        await watchlistStore.fetch(true)
-        watchlist.value = watchlistStore.funds
-        groups.value = watchlistStore.groups
-        if (isInitialLoad.value) {
-          expandedGroups.value = [null, ...groups.value.map(g => g.id)]
-          isInitialLoad.value = false
-        } else {
-          const validGroupIds = new Set([null, ...groups.value.map(g => g.id)])
-          expandedGroups.value = expandedGroups.value.filter(id => validGroupIds.has(id))
-        }
-      } catch (error) {
-        console.error('加载自选列表失败:', error)
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const refreshWatchlist = () => loadWatchlist()
-
-    const refreshEstimates = async () => {
-      if (isRefreshingEstimates.value || watchlist.value.length === 0) return
-
-      isRefreshingEstimates.value = true
-      try {
-        await watchlistStore.refreshEstimates()
-        watchlist.value = watchlistStore.funds
-        groups.value = watchlistStore.groups
-        lastEstimateUpdate.value = new Date().toLocaleTimeString()
-      } catch (error) {
-        console.error('刷新估值失败:', error)
-      } finally {
-        isRefreshingEstimates.value = false
-      }
-    }
-
-    // 启动估值自动刷新定时器
-    const startEstimateRefreshTimer = () => {
-      // 先立即刷新一次
-      refreshEstimates()
-
-      // 设置定时刷新
-      estimateRefreshTimer.value = setInterval(() => {
-        // 只在交易时间内刷新（9:30-15:00，周一至周五）
-        const now = new Date()
-        const day = now.getDay()
-        const hour = now.getHours()
-        const minute = now.getMinutes()
-        const timeInMinutes = hour * 60 + minute
-
-        // 周一到周五，9:30-15:00
-        const isTradeDay = day >= 1 && day <= 5
-        const isTradeTime = timeInMinutes >= 9 * 60 + 30 && timeInMinutes <= 15 * 60
-
-        if (isTradeDay && isTradeTime) {
-          refreshEstimates()
-        }
-      }, ESTIMATE_REFRESH_INTERVAL)
-    }
-
-    // 停止估值刷新定时器
-    const stopEstimateRefreshTimer = () => {
-      if (estimateRefreshTimer.value) {
-        clearInterval(estimateRefreshTimer.value)
-        estimateRefreshTimer.value = null
-      }
-    }
-
-    // 分组展开/折叠
-    const toggleGroup = (groupId) => {
-      const index = expandedGroups.value.indexOf(groupId)
-      if (index > -1) {
-        expandedGroups.value.splice(index, 1)
-      } else {
-        expandedGroups.value.push(groupId)
-      }
-    }
-
-    // 编辑模式
-    const enterEditMode = () => {
-      editMode.value = true
-      selectedFunds.value = []
-    }
-
-    const exitEditMode = () => {
-      editMode.value = false
-      selectedFunds.value = []
-    }
-
-    // 选择基金
-    const toggleSelect = (fundCode) => {
-      const index = selectedFunds.value.indexOf(fundCode)
-      if (index > -1) {
-        selectedFunds.value.splice(index, 1)
-      } else {
-        selectedFunds.value.push(fundCode)
-      }
-    }
-
-    // 批量删除
-    const batchDelete = async () => {
-      if (selectedFunds.value.length === 0) return
-      if (!confirm(`确定删除选中的 ${selectedFunds.value.length} 只基金吗？`)) return
-
-      try {
-        await watchlistAPI.batchDelete(selectedFunds.value)
-        watchlist.value = watchlist.value.filter(
-          f => !selectedFunds.value.includes(f.fund_code)
-        )
-        selectedFunds.value = []
-        if (watchlist.value.length === 0) exitEditMode()
-      } catch (error) {
-        console.error('批量删除失败:', error)
-        alert('删除失败，请重试')
-      }
-    }
-
-    // 移除单个
-    const removeFund = async (fundCode) => {
-      if (!confirm('确定移除该基金吗？')) return
-      try {
-        await watchlistAPI.removeFromWatchlist(fundCode)
-        watchlist.value = watchlist.value.filter(f => f.fund_code !== fundCode)
-      } catch (error) {
-        console.error('移除失败:', error)
-      }
-    }
-
-    // 查看详情
-    const viewFundDetail = (fundCode) => {
-      emit('view-fund', fundCode)
-    }
-
-    const openAlertSettings = (fundCode) => {
-      alertFundCode.value = fundCode
-    }
-
-    // 添加到对比
-    const addToCompare = (fund) => {
-      emit('add-to-compare', fund)
-    }
-
-    // 拖拽排序
-    const onDragStart = (event, index, groupId) => {
-      draggingIndex.value = { index, groupId }
-      event.dataTransfer.effectAllowed = 'move'
-    }
-
-    const onDragEnd = async () => {
-      if (draggingIndex.value !== null && dragOverIndex.value !== null) {
-        const fromGroupId = draggingIndex.value.groupId
-        const toGroupId = dragOverIndex.value.groupId
-        const fromFunds = fromGroupId === null ? ungroupedFunds.value : getGroupFunds(fromGroupId)
-
-        // 防御性检查：确保源列表存在
-        if (!fromFunds) {
-          draggingIndex.value = null
-          dragOverIndex.value = null
-          return
-        }
-
-        if (fromGroupId === toGroupId) {
-          // 优化：位置没变不需要请求
-          if (draggingIndex.value.index === dragOverIndex.value.index) {
-            draggingIndex.value = null
-            dragOverIndex.value = null
-            return
-          }
-
-          // 同分组内排序
-          const funds = [...fromFunds]
-          // 确保索引在有效范围内
-          if (draggingIndex.value.index >= 0 && draggingIndex.value.index < funds.length) {
-            const [moved] = funds.splice(draggingIndex.value.index, 1)
-
-            // 确保移动的对象存在
-            if (moved) {
-              funds.splice(dragOverIndex.value.index, 0, moved)
-              try {
-                await watchlistAPI.reorder(funds.map(f => f.fund_code), fromGroupId)
-                loadWatchlist()
-              } catch (error) {
-                console.error('排序失败:', error)
-              }
-            }
-          }
-        } else {
-          // 跨分组移动
-          const fund = fromFunds[draggingIndex.value.index]
-          if (fund) {
-            try {
-              await watchlistAPI.moveFundToGroup(fund.fund_code, toGroupId)
-              loadWatchlist()
-            } catch (error) {
-              console.error('移动失败:', error)
-            }
-          }
-        }
-      }
-
-      draggingIndex.value = null
-      dragOverIndex.value = null
-    }
-
-    const onDragOver = (event, index, groupId) => {
-      event.preventDefault()
-      dragOverIndex.value = { index, groupId }
-    }
-
-    const onDrop = (event, groupId) => {
-      event.preventDefault()
-    }
-
-    // 拖拽到分组区域
-    const onGroupDragOver = (event, groupId) => {
-      event.preventDefault()
-    }
-
-    const onGroupDrop = async (event, groupId) => {
-      event.preventDefault()
-      if (draggingIndex.value && draggingIndex.value.groupId !== groupId) {
-        const fromFunds = draggingIndex.value.groupId === null
-          ? ungroupedFunds.value
-          : getGroupFunds(draggingIndex.value.groupId)
-        const fund = fromFunds[draggingIndex.value.index]
-
-        try {
-          await watchlistAPI.moveFundToGroup(fund.fund_code, groupId)
-          loadWatchlist()
-        } catch (error) {
-          console.error('移动失败:', error)
-        }
-      }
-      draggingIndex.value = null
-      dragOverIndex.value = null
-    }
-
-    // 分组管理
-    const openAddGroupModal = () => {
-      editingGroup.value = null
-      groupName.value = ''
-      showGroupModal.value = true
-      nextTick(() => groupNameInput.value?.focus())
-    }
-
-    const openEditGroupModal = (group) => {
-      editingGroup.value = group
-      groupName.value = group.name
-      showGroupModal.value = true
-      nextTick(() => groupNameInput.value?.focus())
-    }
-
-    const closeGroupModal = () => {
-      showGroupModal.value = false
-      editingGroup.value = null
-      groupName.value = ''
-    }
-
-    const saveGroup = async () => {
-      const name = groupName.value.trim()
-      if (!name) return
-
-      try {
-        if (editingGroup.value) {
-          await watchlistAPI.renameGroup(editingGroup.value.id, name)
-        } else {
-          const response = await watchlistAPI.createGroup(name)
-          // 新创建的分组自动展开
-          if (response.data && response.data.id) {
-            expandedGroups.value.push(response.data.id)
-          }
-        }
-        closeGroupModal()
-        loadWatchlist()
-      } catch (error) {
-        console.error('保存分组失败:', error)
-        alert('操作失败，请重试')
-      }
-    }
-
-    const deleteGroup = async (group) => {
-      if (!confirm(`确定删除分组"${group.name}"吗？\n分组内的基金将移到未分组。`)) return
-      try {
-        await watchlistAPI.deleteGroup(group.id)
-        loadWatchlist()
-      } catch (error) {
-        console.error('删除分组失败:', error)
-      }
-    }
-
-    onMounted(async () => {
-      await loadWatchlist()
-      // 启动估值自动刷新
-      startEstimateRefreshTimer()
-      // 监听自选变更事件（来自 FundBasicInfo 的添加/移除操作），实时刷新列表
-      window.addEventListener('watchlist-updated', refreshWatchlist)
-    })
-
-    onUnmounted(() => {
-      // 组件卸载时停止定时器并移除事件监听
-      stopEstimateRefreshTimer()
-      window.removeEventListener('watchlist-updated', refreshWatchlist)
-    })
-
-    return {
-      watchlist,
-      groups,
-      loading,
-      editMode,
-      selectedFunds,
-      draggingIndex,
-      expandedGroups,
-      totalCount,
-      ungroupedFunds,
-      getGroupFunds,
-      isGroupExpanded,
-      showGroupModal,
-      editingGroup,
-      groupName,
-      groupNameInput,
-      lastEstimateUpdate,
-      isRefreshingEstimates,
-      alertFundCode,
-      compareMode: toRef(props, 'compareMode'),
-      compareFunds: toRef(props, 'compareFunds'),
-      loadWatchlist,
-      refreshWatchlist,
-      refreshEstimates,
-      toggleGroup,
-      enterEditMode,
-      exitEditMode,
-      toggleSelect,
-      batchDelete,
-      removeFund,
-      viewFundDetail,
-      addToCompare,
-      onDragStart,
-      onDragEnd,
-      onDragOver,
-      onDrop,
-      onGroupDragOver,
-      onGroupDrop,
-      openAddGroupModal,
-      openEditGroupModal,
-      closeGroupModal,
-      saveGroup,
-      deleteGroup
-    }
-  }
-}
+const {
+  watchlist, groups, loading, editMode, selectedFunds,
+  draggingIndex, expandedGroups, totalCount,
+  ungroupedFunds, getGroupFunds, isGroupExpanded,
+  showGroupModal, editingGroup, groupName, groupNameInput,
+  lastEstimateUpdate, isRefreshingEstimates, alertFundCode,
+  loadWatchlist, refreshEstimates, toggleGroup,
+  enterEditMode, exitEditMode, toggleSelect, batchDelete,
+  removeFund, viewFundDetail, addToCompare,
+  onDragStart, onDragEnd, onDragOver, onDrop,
+  onGroupDragOver, onGroupDrop,
+  openAddGroupModal, openEditGroupModal, closeGroupModal, saveGroup, deleteGroup
+} = useFundWatchlist(props, emit)
 </script>
 
-<style scoped>
-.watchlist-container {
-  background: var(--bg-card);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: var(--shadow-sm);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 对比切换按钮区域 */
-.compare-toggle-bar {
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-default);
-}
-
-.btn-compare-toggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border: 2px solid var(--border-default);
-  border-radius: 10px;
-  background: var(--bg-primary);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-}
-
-.btn-compare-toggle:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
-}
-
-.btn-compare-toggle.active {
-  border-color: var(--color-primary);
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: var(--text-inverse);
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3);
-}
-
-.toggle-icon {
-  display: inline-flex;
-  align-items: center;
-}
-
-.compare-count {
-  background: rgba(255, 255, 255, 0.25);
-  padding: 2px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.compare-selected {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.compare-tag {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: var(--text-inverse);
-  padding: 4px 10px;
-  border-radius: 15px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.compare-hint {
-  margin-top: 10px;
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 13px;
-  padding: 8px;
-  background: var(--bg-primary);
-  border-radius: 8px;
-}
-
-/* 头部 */
-.watchlist-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-default);
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.watchlist-header h2 {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  font-size: 16px;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.header-icon { display: inline-flex; align-items: center; }
-
-.count-badge {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: var(--text-inverse);
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 6px;
-}
-
-/* 按钮 */
-.btn {
-  padding: 5px 10px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-add-group { background: var(--color-primary-bg); color: var(--color-primary); }
-.btn-add-group:hover { background: var(--color-primary-bg); }
-.btn-edit {   background: var(--bg-subtle); color: var(--color-primary); }
-.btn-edit:hover { background: var(--border-default); }
-.btn-danger { background: var(--color-danger-bg); color: var(--color-danger); }
-.btn-danger:hover:not(:disabled) { background: var(--color-danger-bg); }
-.btn-secondary {   background: var(--bg-subtle); color: var(--text-primary); }
-.btn-secondary:hover { background: var(--border-default); }
-.btn-refresh { background: var(--color-primary-bg); color: var(--color-primary); padding: 5px 8px; display: inline-flex; align-items: center; justify-content: center; }
-.btn-refresh:hover:not(:disabled) { background: var(--color-primary-bg); }
-.btn-primary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  color: var(--text-inverse); }
-.btn-primary:hover:not(:disabled) { opacity: 0.9; }
-
-/* 旋转动画 */
-.rotating {
-  display: block;
-  transform-origin: center;
-  animation: spin 1s linear infinite;
-}
-
-/* 估值更新提示 */
-.estimate-update-hint {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  background: var(--color-primary-bg);
-  border-radius: 6px;
-  margin-bottom: 10px;
-  font-size: 11px;
-  color: var(--color-primary);
-}
-
-.hint-icon { display: inline-flex; align-items: center; }
-.hint-auto { color: var(--text-tertiary); }
-
-/* 状态 */
-.loading-state, .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 15px;
-  color: var(--text-tertiary);
-  flex: 1;
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-default);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.empty-icon { display: inline-flex; align-items: center; margin-bottom: 10px; }
-.empty-state p { margin: 0; font-size: 14px;   color: var(--text-secondary); }
-.empty-hint { font-size: 12px !important; color: var(--text-tertiary) !important; margin-top: 6px !important; }
-
-/* 列表内容 */
-.watchlist-content {
-  flex: 1;
-  overflow-y: auto;
-}
-
-/* 分组 */
-.fund-group {
-  margin-bottom: 8px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.group-header {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  background: var(--bg-subtle);
-  cursor: pointer;
-  gap: 8px;
-  user-select: none;
-}
-
-.group-header:hover {   background: var(--bg-subtle); }
-
-.group-toggle {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  width: 12px;
-}
-
-.group-name {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.group-count {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  background: var(--border-default);
-  padding: 1px 6px;
-  border-radius: 8px;
-}
-
-.group-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.btn-icon-sm {
-  width: 22px;
-  height: 22px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 11px;
-  border-radius: 4px;
-}
-
-.btn-icon-sm:hover { background: var(--border-default); }
-.btn-icon-sm.btn-del:hover { background: var(--color-danger-bg); }
-
-.group-content {
-  border-top: 1px solid var(--border-default);
-}
-
-.group-empty {
-  padding: 20px;
-  text-align: center;
-  color: var(--text-tertiary);
-  font-size: 12px;
-}
-
-/* 弹窗 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-box {
-  background: var(--bg-card);
-  padding: 20px;
-  border-radius: 12px;
-  width: 300px;
-  box-shadow: var(--shadow-lg);
-}
-
-.modal-box h3 {
-  margin: 0 0 15px;
-  font-size: 16px;
-  color: var(--text-primary);
-}
-
-.modal-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  font-size: 14px;
-  margin-bottom: 15px;
-  box-sizing: border-box;
-}
-
-.modal-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-/* 滚动条 */
-.watchlist-content::-webkit-scrollbar { width: 6px; }
-.watchlist-content::-webkit-scrollbar-track { background: var(--bg-hover); border-radius: 3px; }
-.watchlist-content::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 3px; }
-.watchlist-content::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
-</style>
+<style src="./FundWatchlist.css" scoped></style>

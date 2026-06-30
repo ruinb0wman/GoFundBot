@@ -1,0 +1,63 @@
+.market-overview-container { display: flex; flex-direction: column; gap: 16px; }
+.market-section { background: var(--bg-card); border-radius: 12px; padding: 16px; box-shadow: var(--shadow-sm); }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; }
+.section-header h3 { margin: 0; font-size: 1.1em; color: var(--text-primary); }
+.tab-group { display: flex; gap: 8px; margin-left: 16px; flex: 1; }
+.tab-group span { font-size: 0.85em; color: var(--text-secondary); cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: all 0.2s; user-select: none; }
+.tab-group span:hover { color: var(--color-primary); background: var(--color-primary-bg); }
+.tab-group span.active { color: var(--color-primary); font-weight: bold; background: var(--color-primary-bg); }
+.sse-chart-container { height: 200px; }
+.market-sub-section { margin-bottom: 16px; }
+.market-sub-section:last-child { margin-bottom: 0; }
+.sub-title { font-size: 0.95em; color: var(--text-secondary); margin: 0 0 10px 4px; display: flex; align-items: center; gap: 6px; }
+.sub-desc { color: var(--text-tertiary); font-size: 0.85em; font-weight: normal; }
+.index-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 12px; }
+.china-grid { grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); }
+.global-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+.index-card { padding: 10px; border-radius: 8px; text-align: center; background: var(--bg-subtle); border: 1px solid var(--border-subtle); transition: transform 0.2s; }
+.index-card.clickable { cursor: pointer; }
+.index-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.index-card.up { background: var(--color-danger-bg); border-color: var(--color-danger-border); }
+.index-card.down { background: var(--color-success-bg); border-color: var(--color-success-border); }
+.index-name { font-size: 0.85em; color: var(--text-secondary); margin-bottom: 4px; }
+.index-price { font-weight: bold; font-size: 1.1em; color: var(--text-primary); }
+.index-card.up .index-price, .index-card.up .index-change { color: var(--color-danger); }
+.index-card.down .index-price, .index-card.down .index-change { color: var(--color-success); }
+.index-change { font-size: 0.8em; margin-top: 2px; }
+.volume-chart-container { height: 220px; }
+.gold-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.gold-card { padding: 12px; background: var(--color-warning-bg); border: 1px solid var(--color-warning-border); border-radius: 8px; text-align: center; }
+.gold-name { font-size: 0.9em; color: var(--text-secondary); margin-bottom: 4px; }
+.gold-price { font-weight: bold; font-size: 1.2em; color: var(--color-warning); }
+.gold-change { font-size: 0.85em; margin-top: 4px; display: flex; justify-content: center; gap: 6px; }
+.gold-change .pct { padding: 0 4px; border-radius: 4px; }
+.gold-card.up .pct { background: var(--color-danger-bg); color: var(--color-danger); }
+.gold-card.down .pct { background: var(--color-success-bg); color: var(--color-success); }
+.gold-modal-overlay { position: fixed; inset: 0; z-index: 9999; background: var(--bg-overlay); display: flex; align-items: center; justify-content: center; padding: 24px; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.gold-modal { background: var(--bg-elevated); border-radius: 16px; width: 100%; max-width: 680px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); animation: slideUp 0.25s ease; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.gold-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border-subtle); }
+.gold-modal-header h3 { margin: 0; font-size: 16px; color: var(--text-primary); }
+.gold-modal-controls { display: flex; align-items: center; gap: 10px; }
+.days-select { padding: 4px 10px; border: 1px solid var(--border-default); border-radius: 6px; font-size: 12px; background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer; }
+.modal-close-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: var(--bg-subtle); font-size: 16px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+.modal-close-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.gold-modal-body { padding: 20px; flex: 1; min-height: 320px; }
+.gold-chart { width: 100%; height: 380px; }
+.gold-card.clickable { cursor: pointer; }
+.gold-card.clickable:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.refresh-btn, .toggle-btn { background: none; border: none; cursor: pointer; color: var(--color-primary); }
+.empty-state { text-align: center; color: var(--text-tertiary); padding: 20px; font-size: 0.9em; }
+.chart { height: 100%; width: 100%; }
+.update-tag { font-size: 0.8em; color: var(--text-tertiary); background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; }
+.anomaly-loading, .anomaly-empty { display: flex; align-items: center; gap: 6px; padding: 12px 16px; color: var(--text-tertiary); font-size: 13px; }
+.anomaly-list { display: flex; flex-direction: column; gap: 6px; }
+.anomaly-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: var(--bg-subtle); font-size: 13px; }
+.anomaly-type-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.anomaly-item.index_surge .anomaly-type-badge { background: var(--color-danger-bg); color: var(--color-danger); }
+.anomaly-item.index_plunge .anomaly-type-badge { background: var(--color-success-bg); color: var(--color-success); }
+.anomaly-name { flex: 1; color: var(--text-primary); }
+.anomaly-value { font-weight: 600; }
+.anomaly-value.positive { color: var(--color-danger); }
+.anomaly-value.negative { color: var(--color-success); }

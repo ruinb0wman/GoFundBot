@@ -20,13 +20,11 @@
       </div>
     </div>
 
-    <!-- 空状态提示 -->
     <div v-if="selectedFunds.length === 0" class="empty-compare-hint">
       <span class="hint-icon"><LucideIcon name="ArrowBigUp" :size="16" /></span>
       <span>点击自选基金的 <strong>+</strong> 按钮添加对比</span>
     </div>
 
-    <!-- 基金选择区域 -->
     <div class="selection-area" v-if="selectedFunds.length > 0">
       <div class="selection-tags">
         <div
@@ -46,9 +44,7 @@
       </div>
     </div>
 
-    <!-- 对比内容区域（紧凑模式下隐藏详细内容） -->
     <div class="comparison-content" v-if="selectedFunds.length >= 2 && !compact">
-      <!-- 净值走势图表 -->
       <div class="chart-section">
         <div class="section-header">
           <h3><LucideIcon name="BarChart3" :size="20" /> 净值走势对比</h3>
@@ -73,7 +69,6 @@
         </div>
       </div>
 
-      <!-- 多维度数据对比表格 -->
       <div class="data-table-section">
         <h3><LucideIcon name="ClipboardList" :size="20" /> 多维度对比</h3>
         <div class="table-wrapper">
@@ -90,7 +85,6 @@
               </tr>
             </thead>
             <tbody>
-              <!-- 收益率指标 -->
               <tr class="section-row">
                 <td colspan="100%" class="section-title"><LucideIcon name="TrendingUp" :size="16" /> 收益率</td>
               </tr>
@@ -124,140 +118,65 @@
                   {{ formatReturn(fund.returns?.all) }}
                 </td>
               </tr>
-
-              <!-- 基金基本信息 -->
               <tr class="section-row">
                 <td colspan="100%" class="section-title"><LucideIcon name="Briefcase" :size="16" /> 基金信息</td>
               </tr>
               <tr>
                 <td class="sticky-col">基金规模</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ fund.scale || '--' }}
-                </td>
+                <td v-for="fund in selectedFunds" :key="fund.code">{{ fund.scale || '--' }}</td>
               </tr>
               <tr>
                 <td class="sticky-col">基金类型</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ fund.fundType || '--' }}
-                </td>
+                <td v-for="fund in selectedFunds" :key="fund.code">{{ fund.fundType || '--' }}</td>
               </tr>
-
-              <!-- 风险指标 -->
               <tr class="section-row">
                 <td colspan="100%" class="section-title"><LucideIcon name="TriangleAlert" :size="16" /> 风险指标</td>
               </tr>
               <tr>
                 <td class="sticky-col">最大回撤(近1年)</td>
-                <td v-for="fund in selectedFunds" :key="fund.code" class="negative">
-                  {{ formatDrawdown(fund.riskMetrics?.max_drawdown_1y) }}
-                </td>
+                <td v-for="fund in selectedFunds" :key="fund.code" class="negative">{{ formatDrawdown(fund.riskMetrics?.max_drawdown_1y) }}</td>
               </tr>
               <tr>
                 <td class="sticky-col">最大回撤(近3年)</td>
-                <td v-for="fund in selectedFunds" :key="fund.code" class="negative">
-                  {{ formatDrawdown(fund.riskMetrics?.max_drawdown_3y) }}
-                </td>
+                <td v-for="fund in selectedFunds" :key="fund.code" class="negative">{{ formatDrawdown(fund.riskMetrics?.max_drawdown_3y) }}</td>
               </tr>
               <tr>
                 <td class="sticky-col">夏普比率(近1年)</td>
-                <td v-for="fund in selectedFunds" :key="fund.code" :class="getSharpeClass(fund.riskMetrics?.sharpe_ratio_1y)">
-                  {{ formatSharpe(fund.riskMetrics?.sharpe_ratio_1y) }}
-                </td>
+                <td v-for="fund in selectedFunds" :key="fund.code" :class="getSharpeClass(fund.riskMetrics?.sharpe_ratio_1y)">{{ formatSharpe(fund.riskMetrics?.sharpe_ratio_1y) }}</td>
               </tr>
               <tr>
                 <td class="sticky-col">夏普比率(近3年)</td>
-                <td v-for="fund in selectedFunds" :key="fund.code" :class="getSharpeClass(fund.riskMetrics?.sharpe_ratio_3y)">
-                  {{ formatSharpe(fund.riskMetrics?.sharpe_ratio_3y) }}
-                </td>
+                <td v-for="fund in selectedFunds" :key="fund.code" :class="getSharpeClass(fund.riskMetrics?.sharpe_ratio_3y)">{{ formatSharpe(fund.riskMetrics?.sharpe_ratio_3y) }}</td>
               </tr>
               <tr>
                 <td class="sticky-col">年化波动率(近1年)</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ formatVolatility(fund.riskMetrics?.volatility_1y) }}
-                </td>
+                <td v-for="fund in selectedFunds" :key="fund.code">{{ formatVolatility(fund.riskMetrics?.volatility_1y) }}</td>
               </tr>
-
-              <!-- 评分指标 -->
               <tr class="section-row">
                 <td colspan="100%" class="section-title"><LucideIcon name="Star" :size="16" /> 评分指标</td>
               </tr>
               <tr>
                 <td class="sticky-col">综合评分</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  <span class="score-badge" :class="getScoreClass(fund.evaluation?.avgScore)">
-                    {{ fund.evaluation?.avgScore ?? '--' }}
-                  </span>
-                </td>
+                <td v-for="fund in selectedFunds" :key="fund.code"><span class="score-badge" :class="getScoreClass(fund.evaluation?.avgScore)">{{ fund.evaluation?.avgScore ?? '--' }}</span></td>
               </tr>
-              <tr>
-                <td class="sticky-col">选证能力</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ getEvalScore(fund, 0) }}
-                </td>
-              </tr>
-              <tr>
-                <td class="sticky-col">收益率</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ getEvalScore(fund, 1) }}
-                </td>
-              </tr>
-              <tr>
-                <td class="sticky-col">抗风险</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ getEvalScore(fund, 2) }}
-                </td>
-              </tr>
-              <tr>
-                <td class="sticky-col">稳定性</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ getEvalScore(fund, 3) }}
-                </td>
-              </tr>
-              <tr>
-                <td class="sticky-col">择时能力</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ getEvalScore(fund, 4) }}
-                </td>
-              </tr>
-
-              <!-- 基金经理 -->
+              <tr><td class="sticky-col">选证能力</td><td v-for="fund in selectedFunds" :key="fund.code">{{ getEvalScore(fund, 0) }}</td></tr>
+              <tr><td class="sticky-col">收益率</td><td v-for="fund in selectedFunds" :key="fund.code">{{ getEvalScore(fund, 1) }}</td></tr>
+              <tr><td class="sticky-col">抗风险</td><td v-for="fund in selectedFunds" :key="fund.code">{{ getEvalScore(fund, 2) }}</td></tr>
+              <tr><td class="sticky-col">稳定性</td><td v-for="fund in selectedFunds" :key="fund.code">{{ getEvalScore(fund, 3) }}</td></tr>
+              <tr><td class="sticky-col">择时能力</td><td v-for="fund in selectedFunds" :key="fund.code">{{ getEvalScore(fund, 4) }}</td></tr>
               <tr class="section-row">
                 <td colspan="100%" class="section-title"><LucideIcon name="User" :size="16" /> 基金经理</td>
               </tr>
-              <tr>
-                <td class="sticky-col">基金经理</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ fund.manager?.name || '--' }}
-                </td>
-              </tr>
-              <tr>
-                <td class="sticky-col">从业经验</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ fund.manager?.experience || '--' }}
-                </td>
-              </tr>
-              <tr>
-                <td class="sticky-col">管理规模</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  {{ fund.manager?.managedSize || '--' }}
-                </td>
-              </tr>
-              <tr>
-                <td class="sticky-col">经理评分</td>
-                <td v-for="fund in selectedFunds" :key="fund.code">
-                  <span v-if="fund.manager?.avgScore" class="score-badge" :class="getScoreClass(fund.manager.avgScore)">
-                    {{ fund.manager.avgScore }}
-                  </span>
-                  <span v-else>--</span>
-                </td>
-              </tr>
+              <tr><td class="sticky-col">基金经理</td><td v-for="fund in selectedFunds" :key="fund.code">{{ fund.manager?.name || '--' }}</td></tr>
+              <tr><td class="sticky-col">从业经验</td><td v-for="fund in selectedFunds" :key="fund.code">{{ fund.manager?.experience || '--' }}</td></tr>
+              <tr><td class="sticky-col">管理规模</td><td v-for="fund in selectedFunds" :key="fund.code">{{ fund.manager?.managedSize || '--' }}</td></tr>
+              <tr><td class="sticky-col">经理评分</td><td v-for="fund in selectedFunds" :key="fund.code"><span v-if="fund.manager?.avgScore" class="score-badge" :class="getScoreClass(fund.manager.avgScore)">{{ fund.manager.avgScore }}</span><span v-else>--</span></td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- 单只基金提示 -->
     <div v-else-if="selectedFunds.length === 1" class="single-fund-hint">
       <p><LucideIcon name="ArrowBigLeft" :size="16" /> 请再选择至少1只基金进行对比</p>
     </div>
@@ -265,805 +184,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import * as echarts from 'echarts'
-import { useEChartsTheme } from '../composables/useEChartsTheme'
-import { fundAPI } from '../services/api'
-import { exportToCSV } from '../utils/exportUtils'
+import LucideIcon from './LucideIcon.vue'
+import { useFundComparison } from '../composables/useFundComparison'
 
 const props = defineProps({
-  compareFunds: {
-    type: Array,
-    default: () => []
-  },
-  compact: {
-    type: Boolean,
-    default: false
-  }
+  compareFunds: { type: Array, default: () => [] },
+  compact: { type: Boolean, default: false }
 })
-
 const emit = defineEmits(['remove-fund', 'clear-funds'])
 
-const chartEl = ref<HTMLElement | null>(null)
-const { echartThemeName } = useEChartsTheme()
-const cssColor = (name: string, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-const selectedRange = ref('1y')
-const loading = ref(false)
-const maxFunds = 5
-let chartInstance: echarts.ECharts | null = null
-
-const colors = [
-  cssColor('--chart-1', '#1677ff'),
-  cssColor('--chart-2', '#52c41a'),
-  cssColor('--chart-3', '#faad14'),
-  cssColor('--chart-4', '#ff4d4f'),
-  cssColor('--chart-5', '#73c0de'),
-  cssColor('--chart-6', '#3ba272'),
-  cssColor('--chart-7', '#fc8452'),
-  cssColor('--chart-8', '#9a60b4')
-]
-
-const timeRanges = [
-  { label: '近3月', value: '3m' },
-  { label: '近6月', value: '6m' },
-  { label: '近1年', value: '1y' },
-  { label: '近3年', value: '3y' },
-  { label: '成立来', value: 'all' }
-]
-
-const selectedFunds: any = ref([])
-
-const fetchFundCompareData = async (fundCode: string) => {
-  try {
-    const response = await fundAPI.getFundCompareData(fundCode)
-    return response.data
-  } catch (error) {
-    console.error(`获取基金 ${fundCode} 对比数据失败:`, error)
-    return null
-  }
-}
-
-const normalizeData = (data: any[]) => {
-  if (!data || data.length === 0) return []
-  return data.map((item: any) => ({
-    x: new Date(item.date).getTime(),
-    y: item.net_worth
-  })).filter(item => !isNaN(item.x) && item.y !== null && item.y !== undefined)
-}
-
-const calculateReturns = (trendData: any[]) => {
-  if (!trendData || trendData.length === 0) return {}
-
-  const sortedData = [...trendData].sort((a: any, b: any) => a.x - b.x)
-  const latestValue = sortedData[sortedData.length - 1].y
-  const now = Date.now()
-
-  const getReturnForPeriod = (months: any) => {
-    let targetTime
-    if (months === 'all') {
-      targetTime = sortedData[0].x
-    } else {
-      const date = new Date(now)
-      date.setMonth(date.getMonth() - months)
-      targetTime = date.getTime()
-    }
-
-    let closest = sortedData[0]
-    for (const item of sortedData) {
-      if (item.x >= targetTime) {
-        closest = item
-        break
-      }
-    }
-
-    if (closest.y === 0) return null
-    return ((latestValue - closest.y) / closest.y * 100).toFixed(2)
-  }
-
-  return {
-    m3: getReturnForPeriod(3),
-    m6: getReturnForPeriod(6),
-    y1: getReturnForPeriod(12),
-    y3: getReturnForPeriod(36),
-    all: getReturnForPeriod('all')
-  }
-}
-
-const loadFundData = async (fund: any) => {
-  const data = await fetchFundCompareData(fund.code)
-  if (!data) return fund
-
-  if (data.net_worth_trend && data.net_worth_trend.length > 0) {
-    fund.trendData = normalizeData(data.net_worth_trend)
-    fund.returns = calculateReturns(fund.trendData)
-  }
-
-  const basicInfo = data.basic_info || {}
-  fund.fundType = basicInfo.fund_type || '--'
-
-  const scaleData = data.scale_fluctuation || {}
-  if (scaleData.series && scaleData.series.length > 0) {
-    const latestItem = scaleData.series[scaleData.series.length - 1]
-    if (latestItem && latestItem.y !== undefined && latestItem.y !== null) {
-      fund.scale = latestItem.y.toFixed(2) + '亿'
-    } else {
-      fund.scale = '--'
-    }
-  }
-
-  fund.riskMetrics = data.risk_metrics || {}
-  fund.dataSource = data.data_source || 'unknown'
-  fund.cacheTime = data.cache_time
-
-  const evalData = data.performance_evaluation || {}
-  fund.evaluation = {
-    avgScore: evalData.avr || null,
-    data: evalData.data || [],
-    categories: evalData.categories || []
-  }
-
-  const managers = data.fund_managers || []
-  if (managers.length > 0) {
-    const manager = managers[0]
-    fund.manager = {
-      name: manager.name || '--',
-      experience: manager.work_experience || '--',
-      managedSize: manager.managed_fund_size || '--',
-      avgScore: manager.ability_assessment?.average_score || null
-    }
-  }
-
-  return fund
-}
-
-const filterByDate = (data: any[], range: string) => {
-  if (!data || data.length === 0) return []
-  const now = new Date()
-  let startDate = new Date(0)
-
-  if (range === '3m') {
-    startDate = new Date(now.getTime())
-    startDate.setMonth(startDate.getMonth() - 3)
-  } else if (range === '6m') {
-    startDate = new Date(now.getTime())
-    startDate.setMonth(startDate.getMonth() - 6)
-  } else if (range === '1y') {
-    startDate = new Date(now.getTime())
-    startDate.setFullYear(startDate.getFullYear() - 1)
-  } else if (range === '3y') {
-    startDate = new Date(now.getTime())
-    startDate.setFullYear(startDate.getFullYear() - 3)
-  }
-
-  return data.filter(item => item.x >= startDate.getTime())
-}
-
-const toPercentChange = (data: any[]) => {
-  if (!data || data.length === 0) return []
-  const sortedData = [...data].sort((a: any, b: any) => a.x - b.x)
-  const startVal = sortedData[0].y
-  if (startVal === 0) return []
-  return sortedData.map(item => [
-    item.x,
-    parseFloat(((item.y - startVal) / startVal * 100).toFixed(2))
-  ])
-}
-
-const initChart = () => {
-  if (!chartEl.value) return
-  const rect = chartEl.value.getBoundingClientRect()
-  if (rect.width === 0 || rect.height === 0) {
-    setTimeout(initChart, 100)
-    return
-  }
-  if (chartInstance) {
-    chartInstance.dispose()
-  }
-  chartInstance = echarts.init(chartEl.value, echartThemeName.value)
-  updateChart()
-}
-
-const updateChart = () => {
-  if (!chartInstance || selectedFunds.value.length < 2) return
-
-  const series: any[] = []
-
-  selectedFunds.value.forEach((fund: any) => {
-    if (!fund.trendData || fund.trendData.length === 0) return
-    const filteredData = filterByDate(fund.trendData, selectedRange.value)
-    const percentData = toPercentChange(filteredData)
-    if (percentData.length > 0) {
-      series.push({
-        name: fund.name,
-        type: 'line',
-        data: percentData,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { width: 2, color: fund.color },
-        itemStyle: { color: fund.color }
-      })
-    }
-  })
-
-  if (series.length === 0) return
-
-  const dangerColor = cssColor('--color-danger', '#ff4d4f')
-  const successColor = cssColor('--color-success', '#52c41a')
-
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      formatter: function (params: any) {
-        let res = '<div style="font-weight:bold;margin-bottom:5px;">' +
-                  echarts.format.formatTime('yyyy-MM-dd', params[0].value[0]) + '</div>'
-        params.forEach((item: any) => {
-          const val = item.value[1]
-          const color = val >= 0 ? dangerColor : successColor
-          res += `<div style="display:flex;align-items:center;margin:3px 0;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};margin-right:8px;"></span>
-            <span style="flex:1;">${item.seriesName}</span>
-            <span style="font-weight:bold;color:${color};margin-left:10px;">${val >= 0 ? '+' : ''}${val}%</span>
-          </div>`
-        })
-        return res
-      }
-    },
-    legend: {
-      show: true,
-      top: 5,
-      data: selectedFunds.value.map((f: any) => f.name),
-      textStyle: { fontSize: 12 }
-    },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
-    xAxis: {
-      type: 'time',
-      boundaryGap: false,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { formatter: '{MM}-{dd}' }
-    },
-    yAxis: {
-      type: 'value',
-      scale: true,
-      splitLine: { lineStyle: { type: 'dashed' } },
-      axisLabel: { formatter: '{value}%' }
-    },
-    series: series
-  }
-
-  chartInstance.setOption(option, true)
-}
-
-const setTimeRange = (range: string) => {
-  selectedRange.value = range
-  updateChart()
-}
-
-const removeFund = (fundCode: string) => {
-  emit('remove-fund', fundCode)
-}
-
-const clearSelection = () => {
-  emit('clear-funds')
-}
-
-const exportComparison = () => {
-  const funds: any[] = selectedFunds.value
-  const rows = [
-    { key: '近3月收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.m3 ? formatReturn(f.returns.m3) : '--'])) },
-    { key: '近6月收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.m6 ? formatReturn(f.returns.m6) : '--'])) },
-    { key: '近1年收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.y1 ? formatReturn(f.returns.y1) : '--'])) },
-    { key: '近3年收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.y3 ? formatReturn(f.returns.y3) : '--'])) },
-    { key: '成立以来收益', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.returns?.all ? formatReturn(f.returns.all) : '--'])) },
-    { key: '基金规模', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.scale || '--'])) },
-    { key: '基金类型', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.fundType || '--'])) },
-    { key: '最大回撤(近1年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.max_drawdown_1y ? formatDrawdown(f.riskMetrics.max_drawdown_1y) : '--'])) },
-    { key: '最大回撤(近3年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.max_drawdown_3y ? formatDrawdown(f.riskMetrics.max_drawdown_3y) : '--'])) },
-    { key: '夏普比率(近1年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.sharpe_ratio_1y ? formatSharpe(f.riskMetrics.sharpe_ratio_1y) : '--'])) },
-    { key: '夏普比率(近3年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.sharpe_ratio_3y ? formatSharpe(f.riskMetrics.sharpe_ratio_3y) : '--'])) },
-    { key: '年化波动率(近1年)', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.riskMetrics?.volatility_1y ? formatVolatility(f.riskMetrics.volatility_1y) : '--'])) },
-    { key: '综合评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.evaluation?.avgScore != null ? String(f.evaluation.avgScore) : '--'])) },
-    { key: '选证能力', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 0)])) },
-    { key: '收益率评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 1)])) },
-    { key: '抗风险评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 2)])) },
-    { key: '稳定性评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 3)])) },
-    { key: '择时能力评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, getEvalScore(f, 4)])) },
-    { key: '基金经理', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.manager?.name || '--'])) },
-    { key: '从业经验', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.manager?.experience || '--'])) },
-    { key: '管理规模', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.manager?.managedSize || '--'])) },
-    { key: '经理评分', ...Object.fromEntries(funds.map(f => [f.code || f.name, f.manager?.avgScore != null ? String(f.manager.avgScore) : '--'])) },
-  ]
-  const columns = [
-    { key: 'key', label: '指标' },
-    ...funds.map((f: any) => ({ key: f.code || f.name, label: `${f.name} (${f.code})` })),
-  ]
-  exportToCSV(rows, columns, `基金对比_${new Date().toISOString().slice(0, 10)}`)
-}
-
-const getValueClass = (value: any) => {
-  if (value === null || value === undefined || value === '--') return ''
-  const num = parseFloat(value)
-  if (num > 0) return 'positive'
-  if (num < 0) return 'negative'
-  return ''
-}
-
-const getSharpClass = (value: any) => {
-  if (value === null || value === undefined) return ''
-  const num = parseFloat(value)
-  if (num >= 1) return 'positive'
-  if (num < 0) return 'negative'
-  return ''
-}
-
-const getScoreClass = (score: any) => {
-  if (!score) return ''
-  if (score >= 80) return 'score-high'
-  if (score >= 60) return 'score-mid'
-  return 'score-low'
-}
-
-const formatReturn = (value: any) => {
-  if (value === null || value === undefined) return '--'
-  const num = parseFloat(value)
-  return (num >= 0 ? '+' : '') + value + '%'
-}
-
-const formatDrawdown = (value: any) => {
-  if (value === null || value === undefined) return '--'
-  return '-' + value.toFixed(2) + '%'
-}
-
-const formatSharpe = (value: any) => {
-  if (value === null || value === undefined) return '--'
-  return value.toFixed(2)
-}
-
-const formatVolatility = (value: any) => {
-  if (value === null || value === undefined) return '--'
-  return value.toFixed(2) + '%'
-}
-
-const getSharpeClass = (value: any) => {
-  if (value === null || value === undefined) return ''
-  if (value >= 1) return 'positive'
-  if (value >= 0) return ''
-  return 'negative'
-}
-
-const getEvalScore = (fund: any, index: number) => {
-  if (!fund.evaluation?.data || !fund.evaluation.data[index]) return '--'
-  return fund.evaluation.data[index].toFixed(1)
-}
-
-watch(() => props.compareFunds, async (newFunds: any) => {
-  if (!newFunds || newFunds.length === 0) {
-    selectedFunds.value = []
-    return
-  }
-
-  loading.value = true
-
-  const updatedFunds = []
-  for (let i = 0; i < newFunds.length; i++) {
-    const fund = newFunds[i]
-    const existing = selectedFunds.value.find((f: any) => f.code === fund.code)
-
-    if (existing) {
-      existing.color = colors[i % colors.length]
-      updatedFunds.push(existing)
-    } else {
-      const newFund: any = {
-        code: fund.code,
-        name: fund.name,
-        color: colors[i % colors.length],
-        trendData: null,
-        returns: {},
-        evaluation: {},
-        manager: null,
-        scale: '--',
-        fundType: '--',
-        riskMetrics: {},
-        dataSource: null,
-        cacheTime: null
-      }
-      await loadFundData(newFund)
-      updatedFunds.push(newFund)
-    }
-  }
-
-  selectedFunds.value = updatedFunds
-  loading.value = false
-
-  await nextTick()
-
-  if (selectedFunds.value.length >= 2) {
-    setTimeout(() => initChart(), 50)
-  }
-}, { immediate: true, deep: true })
-
-watch(selectedRange, () => updateChart())
-
-watch(echartThemeName, () => {
-  if (chartInstance) {
-    chartInstance.dispose()
-    chartInstance = null
-  }
-  if (selectedFunds.value.length >= 2) {
-    setTimeout(() => initChart(), 50)
-  }
-})
-
-const handleResize = () => { chartInstance?.resize() }
-
-onMounted(() => {
-  window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-  if (chartInstance) chartInstance.dispose()
-  window.removeEventListener('resize', handleResize)
-})
+const {
+  chartEl, selectedRange, loading, maxFunds, timeRanges, selectedFunds,
+  setTimeRange, removeFund, clearSelection, exportComparison,
+  getValueClass, getSharpClass, getScoreClass, getSharpeClass,
+  formatReturn, formatDrawdown, formatSharpe, formatVolatility, getEvalScore
+} = useFundComparison(props, emit)
 </script>
 
 <style scoped>
-.fund-comparison {
-  background: var(--bg-card);
-  border-radius: 12px;
-  box-shadow: var(--shadow-md);
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-/* 紧凑模式样式 */
-.fund-comparison.compact-mode {
-  margin-bottom: 0;
-  box-shadow: none;
-  border-radius: 0;
-}
-
-.fund-comparison.compact-mode .comparison-header {
-  padding: 10px 12px;
-}
-
-.fund-comparison.compact-mode .comparison-header h2 {
-  font-size: 14px;
-}
-
-.fund-comparison.compact-mode .selection-area {
-  padding: 8px 12px;
-}
-
-.fund-comparison.compact-mode .fund-tag {
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-.fund-comparison.compact-mode .tag-code {
-  display: none;
-}
-
-.fund-comparison.compact-mode .add-fund-hint {
-  font-size: 11px;
-}
-
-/* 空状态提示 */
-.empty-compare-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-  font-size: 13px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.empty-compare-hint .hint-icon {
-  display: inline-flex;
-  align-items: center;
-}
-
-.fund-comparison.compact-mode .empty-compare-hint {
-  padding: 10px 12px;
-  font-size: 12px;
-}
-
-.comparison-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-subtle);
-}
-
-.comparison-header h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.header-icon { display: inline-flex; align-items: center; }
-
-.count-badge {
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  padding: 2px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.btn {
-  padding: 6px 14px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.btn-clear {
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-}
-
-.btn-clear:hover:not(:disabled) { background: var(--bg-hover); }
-
-.btn-export {
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.btn-export:hover { opacity: 0.9; }
-
-.selection-area {
-  padding: 12px 20px;
-  background: var(--bg-subtle);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.selection-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  min-height: 32px;
-}
-
-.fund-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  background: var(--bg-card);
-  border: 2px solid;
-  border-radius: 20px;
-  font-size: 13px;
-}
-
-.tag-color {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.tag-name {
-  color: var(--text-primary);
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tag-code { color: var(--text-tertiary); font-size: 12px; }
-
-.tag-remove {
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  padding: 0 2px;
-}
-
-.tag-remove:hover { color: var(--color-danger); }
-
-.add-fund-hint { color: var(--text-tertiary); font-size: 13px; }
-
-.single-fund-hint {
-  padding: 20px;
-  text-align: center;
-  color: var(--text-tertiary);
-}
-
-.comparison-content { padding: 0; }
-
-.chart-section {
-  padding: 15px 20px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.section-header h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.time-ranges {
-  display: flex;
-  gap: 6px;
-}
-
-.range-item {
-  padding: 4px 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 12px;
-  border-radius: 12px;
-  transition: all 0.2s;
-}
-
-.range-item:hover { background: var(--bg-hover); }
-
-.range-item.active {
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  font-weight: 500;
-}
-
-.chart-container {
-  position: relative;
-  height: 240px;
-}
-
-.chart-el { width: 100%; height: 100%; }
-
-.chart-loading {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  color: var(--text-tertiary);
-}
-
-.spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--border-subtle);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.data-table-section {
-  padding: 15px 20px 20px;
-}
-
-.data-table-section h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 12px 0;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-}
-
-.comparison-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  min-width: 600px;
-}
-
-.comparison-table th,
-.comparison-table td {
-  padding: 10px 12px;
-  text-align: center;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.comparison-table th {
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-  font-weight: 500;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.sticky-col {
-  position: sticky;
-  left: 0;
-  background: var(--bg-card);
-  text-align: left !important;
-  font-weight: 500;
-  color: var(--text-primary);
-  min-width: 90px;
-  z-index: 1;
-}
-
-.section-row td {
-  background: var(--color-primary-bg) !important;
-  font-weight: 600;
-  color: var(--color-primary);
-  text-align: left !important;
-  padding: 8px 12px;
-}
-
-.section-title { font-size: 12px; }
-
-.fund-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.fund-name-th {
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.positive { color: var(--color-danger); font-weight: 500; }
-.negative { color: var(--color-success); font-weight: 500; }
-
-.score-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.score-high { background: var(--color-danger-bg); color: var(--color-danger); }
-.score-mid { background: var(--color-warning-bg); color: var(--color-warning); }
-.score-low { background: var(--color-success-bg); color: var(--color-success); }
-
-/* 响应式 */
-@media (max-width: 768px) {
-  .comparison-table { font-size: 12px; }
-  .comparison-table th, .comparison-table td { padding: 8px 8px; }
-  .tag-name { max-width: 60px; }
-  .section-header { flex-direction: column; gap: 10px; align-items: flex-start; }
-}
+@import './FundComparison.css';
 </style>
