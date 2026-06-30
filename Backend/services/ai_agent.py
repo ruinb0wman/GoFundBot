@@ -548,25 +548,49 @@ class AIAgent:
         db = SessionLocal()
         try:
             tags = db.query(FundIndustryTag).filter(FundIndustryTag.industry_tag.like(f"%{keyword}%")).limit(50).all()
+            seen_codes: set[str] = set()
 
-            if not tags:
-                return {"funds": [], "total": 0, "message": f"未找到标签包含'{keyword}'的基金"}
+            funds: list[dict] = []
+            if tags:
+                codes = [t.fund_code for t in tags]
+                seen_codes.update(codes)
+                basics = {
+                    b.fund_code: b for b in db.query(FundBasicInfo).filter(FundBasicInfo.fund_code.in_(codes)).all()
+                }
+                for tag in tags:
+                    basic = basics.get(tag.fund_code)
+                    funds.append(
+                        {
+                            "fund_code": tag.fund_code,
+                            "fund_name": basic.fund_name if basic else None,
+                            "fund_type": basic.fund_type if basic else None,
+                            "industry_tag": tag.industry_tag,
+                            "industry_ratio": tag.industry_ratio,
+                        }
+                    )
 
-            codes = [t.fund_code for t in tags]
-            basics = {b.fund_code: b for b in db.query(FundBasicInfo).filter(FundBasicInfo.fund_code.in_(codes)).all()}
+            if len(funds) < 10:
+                name_query = db.query(FundBasicInfo).filter(FundBasicInfo.fund_name.like(f"%{keyword}%"))
+                if seen_codes:
+                    name_query = name_query.filter(~FundBasicInfo.fund_code.in_(seen_codes))
+                for f in name_query.limit(50).all():
+                    seen_codes.add(f.fund_code)
+                    funds.append(
+                        {
+                            "fund_code": f.fund_code,
+                            "fund_name": f.fund_name,
+                            "fund_type": f.fund_type,
+                            "industry_tag": None,
+                            "industry_ratio": None,
+                        }
+                    )
 
-            funds = []
-            for tag in tags:
-                basic = basics.get(tag.fund_code)
-                funds.append(
-                    {
-                        "fund_code": tag.fund_code,
-                        "fund_name": basic.fund_name if basic else None,
-                        "fund_type": basic.fund_type if basic else None,
-                        "industry_tag": tag.industry_tag,
-                        "industry_ratio": tag.industry_ratio,
+                if not funds:
+                    return {
+                        "funds": [],
+                        "total": 0,
+                        "message": f"未找到与'{keyword}'相关的基金（行业标签和基金名称均无匹配）。建议使用其他关键词如'光伏'、'锂电'、'风电'等子领域重试。",
                     }
-                )
 
             return {"funds": funds, "total": len(funds)}
         finally:
@@ -607,8 +631,11 @@ class AIAgent:
 - 用户问题中出现"基金"、"建仓"、"定投"、"类基金"、"主题基金"、"行业基金" → 这是基金问题！
   必须使用：get_funds_by_industry / search_funds / get_fund_detail 等基金工具
   **禁止调用**：get_stock_quote（个股行情）
+  **关键**：从用户问题中提取行业/主题关键词，传入 get_funds_by_industry 的 keyword 参数。
+  例如用户问"新能源板块的基金" → 调用 get_funds_by_industry(keyword="新能源")，不得改用其他行业名。
 - 用户问具体股票代码或公司名称（如"腾讯"、"NVDA"、"00700"）→ 使用 get_stock_quote
-- 用户问大盘/市场情报/行业板块 → 使用 get_market_indices / get_hot_sectors / get_market_news
+- 用户问大盘/市场情报/行业板块 → 可使用 get_market_indices / get_hot_sectors / get_market_news
+  注意：如果用户同时提到"基金"+行业，优先使用基金工具搜索对应行业，get_hot_sectors 仅作辅助参考。
 
 **规则**：
 1. 先判断问题所属分类，再选择对应的工具集，不能混淆基金和个股工具。
@@ -616,9 +643,11 @@ class AIAgent:
 3. 调用工具后，根据返回的真实数据进行分析。
 4. 你的分析应包含数据解读和投资建议（如有需要）。
 5. 回答用中文，简洁专业。
-6. 如果数据获取失败，告知用户并尝试用其他方式回答。
+6. 如果数据获取失败，如实告知用户缺少哪方面的数据，不要用其他行业的数据来顶替。
 7. 可以同时调用多个不依赖对方的工具来提升效率。
-8. 如果 get_funds_by_industry 和 search_funds 均未返回匹配基金，请明确告知用户未找到相关基金并建议用其他关键词重试，绝对不要用不相关的基金或个股来凑合！"""
+8. 如果 get_funds_by_industry 和 search_funds 均未返回匹配基金，请明确告知用户未找到相关基金并建议用其他关键词重试，绝对不要用不相关的基金或个股来凑合！
+9. 🔴 禁止话题漂移：用户问什么行业你就只能分析什么行业。例如用户问"新能源"，你绝对不能转而分析"半导体"或"科技板块"。即使其他板块表现再好，也只能围绕用户指定的主题来回答。
+10. 🟡 如实反馈：工具返回空结果或报错时，在回答中如实说明（如"目前未找到新能源相关的基金标签数据"），方便用户了解系统当前的数据覆盖情况。"""
 
         openai_messages = [{"role": "system", "content": system_prompt}]
         for msg in messages:
@@ -634,7 +663,7 @@ class AIAgent:
                 len(openai_messages) - 1,
                 {
                     "role": "system",
-                    "content": "重要指令：用户问题涉及基金，请使用基金类工具（search_funds、get_funds_by_industry、get_fund_detail）。禁止调用 get_stock_quote 个股行情工具！",
+                    "content": "重要指令：用户问题涉及基金，请使用基金类工具（search_funds、get_funds_by_industry、get_fund_detail）。禁止调用 get_stock_quote 个股行情工具！从用户问题中提取行业/主题名称作为 get_funds_by_industry 的 keyword 参数。如果找不到对应行业的基金，如实告知用户，不要改用其他行业的数据来回答。",
                 },
             )
 
