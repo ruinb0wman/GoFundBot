@@ -414,11 +414,12 @@ onMounted(() => {
 .header-left h1 {
   font-size: 1.6rem;
   font-weight: 700;
-  margin-bottom: 2px;
+  margin: 0 0 2px 0;
   letter-spacing: -0.5px;
 }
 
 .header-left p {
+  margin: 0;
   opacity: 0.85;
   font-size: 0.85rem;
 }
@@ -585,6 +586,8 @@ onMounted(() => {
 
 .app-main {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   max-width: 1920px;
   width: 100%;
   margin: 0 auto;
@@ -596,7 +599,8 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 380px 1fr 380px;
   gap: 20px;
-  min-height: calc(100vh - 140px);
+  flex: 1;
+  min-height: 0;
   transition: grid-template-columns 0.3s ease;
 }
 
@@ -605,10 +609,6 @@ onMounted(() => {
 }
 
 .dashboard-sidebar {
-  position: sticky;
-  top: 80px;
-  height: fit-content;
-  max-height: calc(100vh - 100px);
   overflow-y: auto;
 }
 
@@ -620,10 +620,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  position: sticky;
-  top: 80px;
-  height: calc(100vh - 100px);
-  min-height: 0;
   overflow: hidden;
 }
 
@@ -740,12 +736,21 @@ onMounted(() => {
   }
 }
 
+@media (min-width: 1025px) {
+  .dashboard-layout {
+    overflow: hidden;
+  }
+  .dashboard-main {
+    overflow-y: auto;
+  }
+}
+
 @media (max-width: 1200px) {
- .dashboard-layout {
+  .dashboard-layout {
     grid-template-columns: 1fr 340px;
   }
 
- .dashboard-sidebar {
+  .dashboard-sidebar {
     display: none;
   }
 
