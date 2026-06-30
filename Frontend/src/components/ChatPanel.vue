@@ -92,6 +92,11 @@
 
           <!-- Markdown content -->
           <div v-if="msg.content" class="message-text" v-html="renderMarkdown(msg.content)" />
+          <!-- Thinking indicator (streaming placeholder, no tokens yet, no running tools) -->
+          <div v-if="msg.id === '__streaming__' && !msg.content && chatStore.isStreaming && !hasRunningToolCall" class="thinking-indicator">
+            <span class="thinking-text">正在思考</span>
+            <span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>
+          </div>
         </div>
       </div>
 
@@ -128,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
 import LucideIcon from './LucideIcon.vue'
@@ -141,6 +146,9 @@ const messagesRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const scrollAnchor = ref<HTMLElement | null>(null)
 const showSessions = ref(false)
+const hasRunningToolCall = computed(() =>
+  chatStore.activeToolCalls.some(t => t.status === 'running')
+)
 
 const toolLabels: Record<string, string> = {
   search_funds: '搜索基金',
@@ -618,6 +626,32 @@ function renderMarkdown(text: string): string {
 
 :deep(.message-text strong) {
   font-weight: 600;
+}
+
+/* ── Thinking indicator ── */
+.thinking-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.thinking-dots span {
+  animation: blink 1.4s infinite;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.2; }
+  40% { opacity: 1; }
 }
 
 /* ── Animations ── */
