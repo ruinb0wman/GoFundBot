@@ -21,6 +21,17 @@ US_INDEX_EM_SYMBOLS = {
     "gb_inx": "标普500",
 }
 
+# 全球指数 (b_ 前缀) EastMoney 历史 K 线名称映射
+# 名称与 ak.index_global_spot_em() 中 "名称" 列一致
+GLOBAL_EM_SYMBOLS = {
+    "b_nky": "日经225",
+    "b_ks11": "韩国KOSPI",
+    "b_ukx": "英国富时100",
+    "b_dax": "德国DAX30",
+    "b_cac": "法国CAC40",
+    "b_sensex": "印度孟买SENSEX",
+}
+
 # Sina 代码 → EastMoney 全球指数代码
 GLOBAL_SPOT_CODE_MAP = {
     "gb_ixic": "NDX",
@@ -258,4 +269,82 @@ def get_us_index_kline(
         "total_count": len(klines),
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "source": source,
+    }
+
+
+def get_global_index_kline(
+    symbol: str,
+    start_date: str = "",
+    end_date: str = "",
+) -> dict[str, Any]:
+    """获取全球指数 (b_ 前缀) K 线数据, 数据源: EastMoney (akshare)"""
+    if not _ensure_akshare():
+        return {"success": False, "data": [], "error": "akshare 不可用"}
+
+    em_name = GLOBAL_EM_SYMBOLS.get(symbol)
+    if not em_name:
+        return {"success": False, "data": [], "error": f"不支持的全球指数: {symbol}"}
+
+    import akshare as ak
+
+    try:
+        df = ak.index_global_hist_em(symbol=em_name)
+    except Exception as exc:
+        logger.warning(f"全球指数 K 线 ({symbol}) 东方财富失败: {exc}")
+        return {"success": False, "data": [], "error": str(exc)}
+
+    if df is None or df.empty:
+        return {"success": False, "data": [], "error": "东方财富未返回数据"}
+
+    klines = []
+    prev_close = None
+    for _, row in df.iterrows():
+        date_str = str(row.get("日期", ""))[:10].replace("-", "")
+        if not date_str:
+            continue
+        o = float(row.get("今开", 0))
+        c = float(row.get("最新价", 0))
+        h = float(row.get("最高", 0))
+        lo_val = float(row.get("最低", 0))
+
+        if prev_close is not None and prev_close > 0:
+            change = c - prev_close
+            change_pct = (c - prev_close) / prev_close * 100
+        else:
+            change = 0.0
+            change_pct = 0.0
+
+        amplitude_val = float(row.get("振幅", 0))
+
+        klines.append(
+            {
+                "date": date_str,
+                "open": _safe_float_str(o),
+                "close": _safe_float_str(c),
+                "high": _safe_float_str(h),
+                "low": _safe_float_str(lo_val),
+                "volume": "0",
+                "amount": "0",
+                "amplitude": _safe_float_str(amplitude_val),
+                "changePercent": _safe_float_str(change_pct),
+                "change": _safe_float_str(change),
+                "turnoverRate": "0.00",
+            }
+        )
+        prev_close = c
+
+    if start_date:
+        klines = [k for k in klines if k["date"] >= start_date]
+    if end_date:
+        klines = [k for k in klines if k["date"] <= end_date]
+
+    from datetime import datetime
+
+    logger.info(f"全球指数 K 线 ({symbol}): 东方财富返回 {len(klines)} 条")
+    return {
+        "success": True,
+        "data": klines,
+        "total_count": len(klines),
+        "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "source": "akshare/eastmoney",
     }

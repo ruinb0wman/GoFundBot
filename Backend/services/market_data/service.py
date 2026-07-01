@@ -307,6 +307,27 @@ class MarketDataService:
             self._cache_set(cache_key, result, "a_stock_kline")
         return result
 
+    # -- Global index K-line --
+
+    def get_global_index_kline(
+        self,
+        symbol: str,
+        *,
+        start_date: str = "",
+        end_date: str = "",
+    ) -> dict[str, Any]:
+        from services.market_data.us_index import get_global_index_kline as _fetch
+
+        cache_key = f"global_index_kline_{symbol}_{start_date}_{end_date}"
+        cached = self._cache_get(cache_key)
+        if cached:
+            return cached
+
+        result = _fetch(symbol, start_date=start_date, end_date=end_date)
+        if result.get("success"):
+            self._cache_set(cache_key, result, "a_stock_kline")
+        return result
+
     # -- Realtime quotes --
 
     def get_realtime_quotes(

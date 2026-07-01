@@ -348,8 +348,11 @@ def get_index_kline(code):
 
     try:
         mds = get_mds()
-        if code.lower() in {"gb_ixic", "gb_dji", "gb_inx"}:
-            result = mds.get_us_index_kline(code.lower(), start_date=start_date, end_date=end_date)
+        code_lower = code.lower()
+        if code_lower.startswith("b_"):
+            result = mds.get_global_index_kline(code_lower, start_date=start_date, end_date=end_date)
+        elif code_lower in {"gb_ixic", "gb_dji", "gb_inx"}:
+            result = mds.get_us_index_kline(code_lower, start_date=start_date, end_date=end_date)
         else:
             result = mds.get_a_stock_kline(code, klt=period, fqt=adjust, start_date=start_date, end_date=end_date)
         if not result.get("success"):
