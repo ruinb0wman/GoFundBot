@@ -286,6 +286,27 @@ class MarketDataService:
             "error": "\u6240\u6709\u6570\u636e\u6e90\uff08\u817e\u8baf/\u4e1c\u65b9\u8d22\u5bcc/akshare\uff09\u5747\u4e0d\u53ef\u7528",
         }
 
+    # -- US index K-line --
+
+    def get_us_index_kline(
+        self,
+        symbol: str,
+        *,
+        start_date: str = "",
+        end_date: str = "",
+    ) -> dict[str, Any]:
+        from services.market_data.us_index import get_us_index_kline as _fetch
+
+        cache_key = f"us_index_kline_{symbol}_{start_date}_{end_date}"
+        cached = self._cache_get(cache_key)
+        if cached:
+            return cached
+
+        result = _fetch(symbol, start_date=start_date, end_date=end_date)
+        if result.get("success"):
+            self._cache_set(cache_key, result, "a_stock_kline")
+        return result
+
     # -- Realtime quotes --
 
     def get_realtime_quotes(

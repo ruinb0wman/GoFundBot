@@ -321,21 +321,20 @@ def get_index_kline(code):
         - startDate: 起始日期 YYYYMMDD（可选）
         - endDate: 结束日期 YYYYMMDD（可选）
     """
-    from services.market_data import get_market_data_service as get_mds
-
+    code = code.strip()
     period = request.args.get("period", "daily")
     adjust = request.args.get("adjust", "qfq")
     start_date = request.args.get("startDate", "")
     end_date = request.args.get("endDate", "")
+
+    from services.market_data import get_market_data_service as get_mds
+
     try:
         mds = get_mds()
-        result = mds.get_a_stock_kline(
-            code.strip(),
-            klt=period,
-            fqt=adjust,
-            start_date=start_date,
-            end_date=end_date,
-        )
+        if code.lower() in {"gb_ixic", "gb_dji", "gb_inx"}:
+            result = mds.get_us_index_kline(code.lower(), start_date=start_date, end_date=end_date)
+        else:
+            result = mds.get_a_stock_kline(code, klt=period, fqt=adjust, start_date=start_date, end_date=end_date)
         if not result.get("success"):
             return jsonify(result), 404
         return jsonify(result)
