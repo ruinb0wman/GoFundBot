@@ -20,8 +20,9 @@
             <button class="mode-btn" :class="{ active: route.name === 'research' }" @click="router.push({ name: 'research' })"><LucideIcon name="TrendingUp" :size="16" /> 投研看板</button>
           </div>
           <AlertBadge />
-          <LocaleSwitcher />
-          <button class="theme-toggle" @click="toggleTheme" :title="themeTitle"><span class="theme-icon"><LucideIcon :name="themeIcon" :size="20" /></span></button>
+          <button class="header-icon-btn" @click="router.push('/settings')" title="设置">
+            <LucideIcon name="Settings" :size="20" />
+          </button>
         </div>
       </div>
     </header>
@@ -88,7 +89,6 @@ import ErrorBoundary from './components/ErrorBoundary.vue'
 import FlashNews from './components/FlashNews.vue'
 import SectorRank from './components/SectorRank.vue'
 import AlertBadge from './components/AlertBadge.vue'
-import LocaleSwitcher from './components/LocaleSwitcher.vue'
 import ChatBubble from './components/ChatBubble.vue'
 import { useApp } from './composables/useApp'
 
@@ -97,7 +97,7 @@ defineOptions({ name: 'App' })
 const {
   drawerOpen, currentTime, route, router, isMobile,
   compareFunds, compareMode, showFullContent,
-  themeIcon, themeTitle, toggleTheme, toggleCompareMode,
+  toggleCompareMode,
   handleNavigate, handleHeaderSearch, resetToDashboard,
   handleAddToCompare, handleRemoveFromCompare, handleClearCompare
 } = useApp()

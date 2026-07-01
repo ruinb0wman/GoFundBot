@@ -1,11 +1,9 @@
 // @ts-nocheck
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useTheme } from './useTheme'
 import { useBreakpoint } from './useBreakpoint'
 
 export function useApp() {
-  const { theme: appTheme, savedTheme, toggleTheme } = useTheme()
   const { isMobile } = useBreakpoint()
   const drawerOpen = ref(false)
   const currentTime = ref('')
@@ -17,18 +15,6 @@ export function useApp() {
   const showFullContent = computed(() =>
     !!route.params.code || (compareMode.value && compareFunds.value.length >= 2)
   )
-
-  const themeIcon = computed(() => {
-    if (savedTheme.value === 'dark') return 'Moon'
-    if (savedTheme.value === 'auto') return 'Monitor'
-    return 'Sun'
-  })
-
-  const themeTitle = computed(() => {
-    if (savedTheme.value === 'light') return '浅色模式（点击切换）'
-    if (savedTheme.value === 'dark') return '深色模式（点击切换）'
-    return '跟随系统（点击切换）'
-  })
 
   const normalizeFundCode = (fundOrCode: any) => {
     if (fundOrCode && typeof fundOrCode === 'object') {
@@ -82,7 +68,7 @@ export function useApp() {
   return {
     drawerOpen, currentTime, route, router, isMobile,
     compareFunds, compareMode, showFullContent,
-    themeIcon, themeTitle, toggleTheme, toggleCompareMode,
+    toggleCompareMode,
     handleNavigate, handleHeaderSearch, resetToDashboard,
     handleAddToCompare, handleRemoveFromCompare, handleClearCompare
   }

@@ -14,8 +14,11 @@ VXETable.setup({
   }
 })
 
+import { clientLogger, initClientLogger } from './core/logger'
 import router from './router/index'
 import i18n from './locales/index'
+
+initClientLogger()
 
 const app = createApp(App)
 app.use(createPinia())
@@ -23,13 +26,13 @@ app.use(VXETable)
 app.use(router)
 app.use(i18n)
 
-app.config.errorHandler = (err, _instance, _info) => {
-  console.error('[Global Error]', err)
+app.config.errorHandler = (err, instance, _info) => {
+  clientLogger.error('Vue error', {
+    message: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+    component: instance?.$options?.name || undefined,
+  })
 }
-
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('[Unhandled Rejection]', event.reason)
-})
 
 import LucideIcon from './components/LucideIcon.vue'
 app.component('LucideIcon', LucideIcon)

@@ -7,12 +7,14 @@ declare module '*.vue' {
 }
 
 declare module 'vxe-table' {
-  import { PluginFunction } from 'vue'
+  import type { DefineComponent, PluginFunction } from 'vue'
   const VXETable: {
     setup: (options: Record<string, any>) => void
     install: PluginFunction
   }
   export default VXETable
+  export const VxeTable: any
+  export const VxeColumn: any
 }
 
 interface ImportMetaEnv {

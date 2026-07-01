@@ -153,9 +153,8 @@
 [data-theme="dark"] .header-search .search-bar { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.10); }
 [data-theme="dark"] .header-search .search-bar:focus-within { border-color: rgba(255, 255, 255, 0.25); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05); }
 .header-right { display: flex; align-items: center; gap: 8px; }
-.theme-toggle { width: 36px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 50%; background: rgba(255, 255, 255, 0.16); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; flex-shrink: 0; }
-.theme-toggle:hover { background: rgba(255, 255, 255, 0.28); }
-.theme-icon { display: inline-flex; align-items: center; line-height: 1; }
+.header-icon-btn { width: 36px; height: 36px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 50%; background: rgba(255, 255, 255, 0.16); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; flex-shrink: 0; color: white; }
+.header-icon-btn:hover { background: rgba(255, 255, 255, 0.28); }
 .mode-switch { display: flex; gap: 6px; background: rgba(255, 255, 255, 0.08); padding: 4px; border-radius: var(--radius-md); }
 .mode-btn { padding: 8px 14px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500; background: transparent; color: rgba(255, 255, 255, 0.75); transition: all 0.2s ease; white-space: nowrap; }
 .mode-btn:hover { background: rgba(255, 255, 255, 0.15); color: white; }

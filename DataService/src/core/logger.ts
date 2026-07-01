@@ -1,3 +1,6 @@
+import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+
 type LogLevel = 'info' | 'warn' | 'error';
 
 export interface Logger {
@@ -5,6 +8,28 @@ export interface Logger {
   warn: (message: string, context?: Record<string, unknown>) => void;
   error: (message: string, context?: Record<string, unknown>) => void;
   child: (baseContext: Record<string, unknown>) => Logger;
+}
+
+const LOG_DIR = process.env.LOG_DIR || join(process.cwd(), 'logs');
+let currentLogDate = '';
+
+function getLogFilePath(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== currentLogDate) {
+    currentLogDate = today;
+    if (!existsSync(LOG_DIR)) {
+      mkdirSync(LOG_DIR, { recursive: true });
+    }
+  }
+  return join(LOG_DIR, `dataservice-${today}.jsonl`);
+}
+
+function writeToFile(line: string): void {
+  try {
+    appendFileSync(getLogFilePath(), line + '\n', 'utf-8');
+  } catch {
+    // 文件写入失败不阻塞主流程
+  }
 }
 
 function write(level: LogLevel, message: string, context?: Record<string, unknown>) {
@@ -16,6 +41,7 @@ function write(level: LogLevel, message: string, context?: Record<string, unknow
   };
 
   const line = JSON.stringify(payload);
+  writeToFile(line);
   if (level === 'error') {
     console.error(line);
     return;

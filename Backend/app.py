@@ -116,6 +116,7 @@ from routes.backtest_routes import backtest_bp
 # 新拆分蓝图
 from routes.chat_routes import chat_bp
 from routes.fund_routes import fund_bp
+from routes.log_routes import log_bp
 from routes.research_routes import research_bp
 from routes.screening_routes import screening_bp
 from routes.system_routes import system_bp
@@ -132,6 +133,7 @@ app.register_blueprint(research_bp)
 app.register_blueprint(backtest_bp)
 app.register_blueprint(system_bp)
 app.register_blueprint(alert_bp)
+app.register_blueprint(log_bp)
 register_v1_blueprints(app)
 
 

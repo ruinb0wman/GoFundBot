@@ -6,6 +6,9 @@ import ScreeningView from '../views/ScreeningView.vue'
 import BacktestView from '../views/BacktestView.vue'
 import PortfolioView from '../views/PortfolioView.vue'
 import ResearchView from '../views/ResearchView.vue'
+import SettingsView from '../views/SettingsView.vue'
+import SettingsGeneral from '../views/SettingsGeneral.vue'
+import LogsViewer from '../views/LogsViewer.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -55,6 +58,20 @@ const routes: RouteRecordRaw[] = [
     name: 'research',
     component: ResearchView,
     meta: { rightbar: false },
+  },
+  {
+    path: '/logs',
+    redirect: '/settings/logs',
+  },
+  {
+    path: '/settings',
+    component: SettingsView,
+    meta: { rightbar: false },
+    children: [
+      { path: '', redirect: { name: 'settings-general' } },
+      { path: 'general', name: 'settings-general', component: SettingsGeneral },
+      { path: 'logs', name: 'settings-logs', component: LogsViewer },
+    ],
   },
 ]
 
