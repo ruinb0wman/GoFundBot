@@ -3,6 +3,7 @@
 """
 
 import logging
+import time
 from datetime import date
 from typing import Any
 
@@ -19,6 +20,67 @@ US_INDEX_EM_SYMBOLS = {
     "gb_dji": "道琼斯",
     "gb_inx": "标普500",
 }
+
+# Sina 代码 → EastMoney 全球指数代码
+GLOBAL_SPOT_CODE_MAP = {
+    "gb_ixic": "NDX",
+    "gb_dji": "DJIA",
+    "gb_inx": "SPX",
+    "hkhsi": "HSI",
+    "hkhscei": "HSCEI",
+    "hkhstech": "HSTECH",
+    "b_nky": "N225",
+    "b_ks11": "KS11",
+    "b_ukx": "FTSE",
+    "b_dax": "GDAXI",
+    "b_cac": "FCHI",
+    "b_sensex": "SENSEX",
+}
+
+_spot_cache: dict[str, dict[str, dict[str, float]]] = {}
+_spot_cache_time: float = 0
+SPOT_CACHE_TTL = 60
+
+
+def get_global_index_spot_ohlc() -> dict[str, dict[str, float]]:
+    global _spot_cache, _spot_cache_time
+    now = time.time()
+    if _spot_cache and (now - _spot_cache_time) < SPOT_CACHE_TTL:
+        return _spot_cache
+
+    import os
+
+    if os.environ.get("DISABLE_AKSHARE_FALLBACK") == "1":
+        return {}
+
+    import akshare as ak
+
+    try:
+        df = ak.index_global_spot_em()
+    except Exception:
+        return {}
+
+    if df is None or df.empty:
+        return {}
+
+    reverse_map: dict[str, str] = {v: k for k, v in GLOBAL_SPOT_CODE_MAP.items()}
+    result: dict[str, dict[str, float]] = {}
+    for _, row in df.iterrows():
+        em_code = str(row.get("代码", ""))
+        sina_code = reverse_map.get(em_code)
+        if not sina_code:
+            continue
+        result[sina_code] = {
+            "open": float(row.get("开盘价", 0)),
+            "high": float(row.get("最高价", 0)),
+            "low": float(row.get("最低价", 0)),
+            "prev_close": float(row.get("昨收价", 0)),
+        }
+
+    _spot_cache.clear()
+    _spot_cache.update(result)
+    _spot_cache_time = now
+    return result
 
 
 def _ensure_akshare() -> bool:

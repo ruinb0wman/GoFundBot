@@ -101,6 +101,7 @@ class FundMasterServiceMarketIndexMixin:
                     name = fallback_name
                     price = self._safe_float(parts[6] if len(parts) > 6 else parts[3])
                     pct = self._safe_float(parts[8] if len(parts) > 8 else 0)
+                    prev_close = 0
                 else:
                     name = fallback_name
                     if code.startswith("b_"):
@@ -109,6 +110,7 @@ class FundMasterServiceMarketIndexMixin:
                     else:
                         price = self._safe_float(parts[1] if len(parts) > 1 else 0)
                         pct = self._safe_float(parts[2] if len(parts) > 2 else 0)
+                    prev_close = 0
 
                     data_date_str = ""
                     if code.startswith("b_") and len(parts) > 6:

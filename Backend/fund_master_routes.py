@@ -287,6 +287,23 @@ def get_index_detail(code):
     else:
         return jsonify({"success": False, "error": f"不支持的指数代码: {code}"}), 400
 
+    # Supplement OHLC for non-A-stock indices via akshare
+    if code_lower.startswith(("hk", "gb_", "b_")):
+        try:
+            from services.market_data.us_index import get_global_index_spot_ohlc
+
+            spot = get_global_index_spot_ohlc()
+            ohlc = spot.get(code_lower)
+            if ohlc:
+                open_ = ohlc["open"]
+                high = ohlc["high"]
+                low = ohlc["low"]
+                prev_close = ohlc["prev_close"]
+                change_amt = price - prev_close
+                amplitude = ((high - low) / prev_close * 100) if prev_close else 0
+        except Exception:
+            pass
+
     return jsonify(
         {
             "success": True,
