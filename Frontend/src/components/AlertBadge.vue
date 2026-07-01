@@ -105,6 +105,7 @@ onUnmounted(() => {
   cursor: pointer;
   position: relative;
   transition: all 0.2s ease;
+  color: white;
 }
 
 .alert-bell:hover { background: rgba(255, 255, 255, 0.28); }

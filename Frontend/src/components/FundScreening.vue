@@ -349,11 +349,13 @@
           ref="screeningGridRef"
           v-bind="gridOptions"
           :data="results"
-          :loading="loading"
           :sort-config="sortConfig"
           @sort-change="handleGridSort"
           @cell-click="handleGridCellClick"
         >
+          <template #loading>
+            <div class="vxe-loading">加载中...</div>
+          </template>
           <template #fundName="{ row }">
             <span class="fund-name-cell" :title="row.fund_name">{{ row.fund_name || '--' }}</span>
           </template>

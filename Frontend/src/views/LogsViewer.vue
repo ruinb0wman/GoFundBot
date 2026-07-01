@@ -42,12 +42,14 @@
     <div class="log-table-wrap">
       <VxeTable
         :data="entries"
-        :loading="loading"
+        :row-config="{ useKey: true }"
         stripe
-        row-key
         max-height="600"
         class="log-table"
       >
+        <template #loading>
+          <div class="vxe-loading">加载中...</div>
+        </template>
         <VxeColumn type="seq" width="50" />
         <VxeColumn field="time" title="时间" width="180">
           <template #default="{ row }">
