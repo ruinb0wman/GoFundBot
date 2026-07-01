@@ -1,8 +1,11 @@
 <template>
-  <div class="chat-panel" @click.stop>
+  <div class="chat-panel" :class="{ 'chat-panel--wide': chatStore.isWideMode }" @click.stop>
     <!-- Header -->
     <div class="chat-header">
       <div class="chat-header-left">
+        <button class="chat-header-btn" @click="chatStore.toggleWideMode()" :title="chatStore.isWideMode ? '窄屏模式' : '宽屏模式'">
+          <LucideIcon :name="chatStore.isWideMode ? 'PanelRightClose' : 'PanelRightOpen'" :size="16" />
+        </button>
         <LucideIcon name="Bot" :size="18" />
         <span class="chat-title">AI 助手</span>
       </div>
@@ -10,14 +13,14 @@
         <button class="chat-header-btn" @click="handleNewSession" title="新对话">
           <LucideIcon name="Plus" :size="16" />
         </button>
-        <button class="chat-header-btn" @click="$emit('close')" title="关闭">
-          <LucideIcon name="X" :size="16" />
+        <button class="chat-header-btn" @click="$emit('close')" title="最小化">
+          <LucideIcon name="Minimize2" :size="16" />
         </button>
       </div>
     </div>
 
-    <!-- Session list (collapsible) -->
-    <div v-if="showSessions" class="chat-sessions">
+    <!-- Session list (collapsible in narrow, always visible in wide) -->
+    <div v-if="showSessions || chatStore.isWideMode" class="chat-sessions">
       <div class="session-list">
         <button
           v-for="session in chatStore.sessions"
@@ -42,8 +45,10 @@
       </div>
     </div>
 
-    <!-- Messages -->
-    <div class="chat-messages" ref="messagesRef">
+    <!-- Chat main area (messages + input) -->
+    <div class="chat-main">
+      <!-- Messages -->
+      <div class="chat-messages" ref="messagesRef">
       <div v-if="chatStore.messages.length === 0 && !chatStore.isStreaming" class="chat-welcome">
         <LucideIcon name="Bot" :size="40" />
         <h3>您好！我是 GoFundBot 助手</h3>
@@ -100,34 +105,36 @@
         </div>
       </div>
 
-      <div ref="scrollAnchor" />
-    </div>
+        <div ref="scrollAnchor" />
+      </div>
 
-    <!-- Input -->
-    <div class="chat-input-area">
-      <button
-        class="chat-session-toggle"
-        @click="showSessions = !showSessions"
-        :title="showSessions ? '隐藏会话' : '显示会话'"
-      >
-        <LucideIcon :name="showSessions ? 'PanelLeftClose' : 'PanelLeft'" :size="16" />
-      </button>
-      <textarea
-        v-model="inputMessage"
-        class="chat-input"
-        placeholder="输入问题..."
-        :disabled="chatStore.isStreaming"
-        @keydown.enter.exact.prevent="handleSend"
-        rows="1"
-        ref="inputRef"
-      />
-      <button
-        class="chat-send-btn"
-        :disabled="chatStore.isStreaming || !inputMessage.trim()"
-        @click="handleSend"
-      >
-        <LucideIcon name="Send" :size="16" />
-      </button>
+      <!-- Input -->
+      <div class="chat-input-area">
+        <button
+          v-if="!chatStore.isWideMode"
+          class="chat-session-toggle"
+          @click="showSessions = !showSessions"
+          :title="showSessions ? '隐藏会话' : '显示会话'"
+        >
+          <LucideIcon :name="showSessions ? 'PanelLeftClose' : 'PanelLeft'" :size="16" />
+        </button>
+        <textarea
+          v-model="inputMessage"
+          class="chat-input"
+          placeholder="输入问题..."
+          :disabled="chatStore.isStreaming"
+          @keydown.enter.exact.prevent="handleSend"
+          rows="1"
+          ref="inputRef"
+        />
+        <button
+          class="chat-send-btn"
+          :disabled="chatStore.isStreaming || !inputMessage.trim()"
+          @click="handleSend"
+        >
+          <LucideIcon name="Send" :size="16" />
+        </button>
+      </div>
     </div>
   </div>
 </template>

@@ -1,3 +1,4 @@
+/* ── Panel (always dark) ── */
 .chat-panel {
   position: fixed;
   bottom: 88px;
@@ -5,13 +6,42 @@
   width: 420px;
   height: 620px;
   max-height: calc(100vh - 120px);
-  background: var(--bg-card);
+  background: var(--bg-page);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  /* Dark theme overrides — dialog always dark regardless of app theme */
+  --bg-page: #1b1b1f;
+  --bg-card: #202127;
+  --bg-primary: #1b1b1f;
+  --bg-hover: #2a2b31;
+  --bg-subtle: #161618;
+  --bg-elevated: #202127;
+  --text-primary: #dfdfd6;
+  --text-secondary: #98989f;
+  --text-tertiary: #6a6a71;
+  --text-inverse: #1b1b1f;
+  --border-default: #3c3f44;
+  --border-subtle: #2e2e32;
+  --color-primary: #a8b1ff;
+  --color-primary-hover: #5c73e7;
+  --color-primary-bg: rgba(100, 108, 255, 0.12);
+  --color-success: #3dd68c;
+  --color-danger: #f66f81;
+  --color-danger-bg: rgba(244, 63, 94, 0.12);
+}
+
+/* ── Main content wrapper (messages + input) ── */
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* ── Header ── */
@@ -20,9 +50,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--color-primary);
-  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-card);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
@@ -43,8 +73,8 @@
   width: 28px;
   height: 28px;
   border: none;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
   border-radius: 6px;
   cursor: pointer;
   display: flex;
@@ -54,14 +84,14 @@
 }
 
 .chat-header-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* ── Session list ── */
 .chat-sessions {
   max-height: 160px;
   overflow-y: auto;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-default);
   background: var(--bg-subtle);
   flex-shrink: 0;
 }
@@ -204,7 +234,7 @@
 
 .message-row.user .message-avatar {
   background: var(--color-primary);
-  color: white;
+  color: var(--text-inverse);
 }
 
 .message-content {
@@ -220,13 +250,13 @@
 }
 
 .message-row.assistant .message-text {
-  background: var(--bg-subtle);
+  background: var(--bg-hover);
   border: 1px solid var(--border-subtle);
 }
 
 .message-row.user .message-text {
   background: var(--color-primary);
-  color: white;
+  color: #1b1b1f;
 }
 
 /* ── Tool calls ── */
@@ -267,8 +297,8 @@
   align-items: flex-end;
   gap: 8px;
   padding: 12px;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--bg-card);
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-primary);
   flex-shrink: 0;
 }
 
@@ -297,7 +327,7 @@
   padding: 8px 12px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  background: var(--bg-primary);
+  background: var(--bg-card);
   color: var(--text-primary);
   font-size: 13px;
   font-family: inherit;
@@ -323,7 +353,7 @@
   height: 36px;
   border-radius: 50%;
   background: var(--color-primary);
-  color: white;
+  color: var(--text-inverse);
   border: none;
   cursor: pointer;
   display: flex;
@@ -427,6 +457,41 @@
   animation: spin 1s linear infinite;
 }
 
+/* ── Wide mode ── */
+.chat-panel--wide {
+  width: min(800px, 60vw);
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: auto 1fr;
+}
+
+.chat-panel--wide .chat-header {
+  grid-column: 1 / -1;
+}
+
+.chat-panel--wide .chat-sessions {
+  grid-row: 2;
+  display: block;
+  max-height: none;
+  height: 100%;
+  border-right: 1px solid var(--border-default);
+  border-bottom: none;
+  overflow-y: auto;
+  background: var(--bg-subtle);
+}
+
+.chat-panel--wide .chat-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.chat-panel--wide .chat-messages {
+  flex: 1;
+  overflow-y: auto;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .chat-panel {
@@ -436,6 +501,10 @@
     height: 100%;
     max-height: 100vh;
     border-radius: 0;
+  }
+
+  .chat-panel--wide {
+    width: 100%;
   }
 
   .chat-messages {

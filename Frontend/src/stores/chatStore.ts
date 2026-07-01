@@ -24,6 +24,7 @@ export const useChatStore = defineStore('chat', {
     streamingContent: '',
     activeToolCalls: [] as ToolCallStatus[],
     isOpen: false,
+    isWideMode: false,
     initialized: false,
   }),
 
@@ -195,6 +196,10 @@ export const useChatStore = defineStore('chat', {
 
     close() {
       this.isOpen = false
+    },
+
+    toggleWideMode() {
+      this.isWideMode = !this.isWideMode
     },
   },
 })

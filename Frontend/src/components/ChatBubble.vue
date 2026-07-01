@@ -36,20 +36,20 @@ const chatStore = useChatStore()
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: var(--color-primary-hover);
   color: white;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 16px rgba(22, 119, 255, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   transition: all 0.2s ease;
 }
 
 .chat-bubble-btn:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 24px rgba(22, 119, 255, 0.45);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
 }
 
 .bubble-fade-enter-active,
