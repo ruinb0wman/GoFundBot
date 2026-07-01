@@ -1,4 +1,3 @@
-// @ts-nocheck
 /* eslint-disable max-lines */
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { screeningAPI, watchlistAPI, fundAPI } from '../services/api'
@@ -999,7 +998,6 @@ export function useFundScreening(emit) {
         getReturnClass,
         getSharpeClass,
         getCalmarClass,
-        getStyleClass,
         handlePrimaryIndustryClick,
         isGroupActive,
         isInWatchlist,
