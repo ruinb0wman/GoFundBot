@@ -1,17 +1,17 @@
 <template>
   <div class="alert-badge-wrapper" ref="wrapperRef">
-    <button class="alert-bell" @click="toggle" :title="`告警 (${unreadCount})`">
+    <button class="alert-bell" @click="toggle" :title="`${t('alert.settings')} (${unreadCount})`">
       <LucideIcon :name="unreadCount > 0 ? 'BellRing' : 'Bell'" :size="18" />
       <span v-if="unreadCount > 0" class="badge-dot">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
     </button>
     <Transition name="alert-dropdown">
       <div v-if="open" class="alert-dropdown">
         <div class="dropdown-header">
-          <span class="dropdown-title">告警列表</span>
+          <span class="dropdown-title">{{ t('alert.list') }}</span>
           <button class="close-btn" @click="close">&times;</button>
         </div>
         <div class="dropdown-body">
-          <div v-if="store.rules.length === 0" class="empty-state">暂无告警规则</div>
+          <div v-if="store.rules.length === 0" class="empty-state">{{ t('alert.empty') }}</div>
           <div v-for="rule in store.rules" :key="rule.id" class="rule-item">
             <div class="rule-info">
               <span class="rule-fund">{{ rule.fund_code }}</span>
@@ -26,7 +26,7 @@
         </div>
         <div class="dropdown-footer">
           <button class="btn-check" @click="refreshCheck" :disabled="store.loading">
-            <LucideIcon name="RefreshCw" :size="14" :class="{ spinning: store.loading }" /> 检查
+            <LucideIcon name="RefreshCw" :size="14" :class="{ spinning: store.loading }" /> {{ t('alert.check') }}
           </button>
         </div>
       </div>
@@ -36,8 +36,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAlertStore } from '../stores/alertStore'
 import { useNotification } from '../composables/useNotification'
+
+const { t } = useI18n()
 
 const store = useAlertStore()
 const { notifyAlert } = useNotification()
@@ -47,9 +50,9 @@ const wrapperRef = ref<HTMLElement | null>(null)
 
 const unreadCount = ref(0)
 
-const typeLabel = (t: string) => {
-  const labels: Record<string, string> = { price_up: '涨超', price_down: '跌超', return_above: '收益上', return_below: '收益下' }
-  return labels[t] || t
+const typeLabel = (type: string) => {
+  const labels: Record<string, string> = { price_up: t('alert.priceUp'), price_down: t('alert.priceDown'), return_above: t('alert.returnAbove'), return_below: t('alert.returnBelow') }
+  return labels[type] || type
 }
 
 const toggle = () => { open.value = !open.value }

@@ -1,9 +1,9 @@
 <template>
   <div class="ability-card">
     <div class="card-header">
-      <h3><LucideIcon name="BarChart3" :size="20" /> 本基金历史表现</h3>
+      <h3><LucideIcon name="BarChart3" :size="20" /> {{ t('fund.abilityEval.title') }}</h3>
       <div class="avg-score" v-if="avgScore">
-        <span class="score-label">综合</span>
+        <span class="score-label">{{ t('fund.abilityEval.composite') }}</span>
         <span class="score-value" :class="getScoreClass(avgScore)">{{ avgScore }}</span>
       </div>
     </div>
@@ -27,7 +27,7 @@
         </div>
       </div>
       <div v-else class="no-data">
-        <p>暂无评价数据</p>
+        <p>{{ t('fund.abilityEval.empty') }}</p>
       </div>
     </div>
   </div>
@@ -35,8 +35,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{ performanceEvaluation?: Record<string, any> }>(), { performanceEvaluation: () => ({}) })
 

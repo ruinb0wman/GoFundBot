@@ -1,5 +1,5 @@
 <template>
-  <button class="hamburger-btn" :class="{ active: isOpen }" @click="$emit('toggle')" aria-label="菜单">
+  <button class="hamburger-btn" :class="{ active: isOpen }" @click="$emit('toggle')" :aria-label="t('common.menu')">
     <span class="hamburger-line" />
     <span class="hamburger-line" />
     <span class="hamburger-line" />
@@ -7,6 +7,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 defineProps<{ isOpen: boolean }>()
 defineEmits<{ toggle: [] }>()
 </script>

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { watchlistAPI } from '../services/api'
 import { useWatchlistStore } from '../stores/watchlistStore'
+import { translate } from '../locales/index'
 
 export function useFundWatchlist(
   props: { compareMode: boolean; compareFunds: any[]; showCompareToggle: boolean; addToRealtimeMode: boolean },
@@ -144,7 +145,7 @@ export function useFundWatchlist(
 
   const batchDelete = async () => {
     if (selectedFunds.value.length === 0) return
-    if (!confirm(`确定删除选中的 ${selectedFunds.value.length} 只基金吗？`)) return
+    if (!confirm(translate('fund.watchlist.confirmDeleteFunds', { count: selectedFunds.value.length }))) return
     try {
       await watchlistAPI.batchDelete(selectedFunds.value)
       watchlist.value = watchlist.value.filter(
@@ -154,12 +155,12 @@ export function useFundWatchlist(
       if (watchlist.value.length === 0) exitEditMode()
     } catch (error) {
       console.error('批量删除失败:', error)
-      alert('删除失败，请重试')
+      alert(translate('fund.watchlist.deleteFailed'))
     }
   }
 
   const removeFund = async (fundCode) => {
-    if (!confirm('确定移除该基金吗？')) return
+    if (!confirm(translate('fund.watchlist.confirmRemoveFund'))) return
     try {
       await watchlistAPI.removeFromWatchlist(fundCode)
       watchlist.value = watchlist.value.filter(f => f.fund_code !== fundCode)
@@ -297,12 +298,12 @@ export function useFundWatchlist(
       loadWatchlist()
     } catch (error) {
       console.error('保存分组失败:', error)
-      alert('操作失败，请重试')
+      alert(translate('fund.watchlist.operationFailed'))
     }
   }
 
   const deleteGroup = async (group) => {
-    if (!confirm(`确定删除分组"${group.name}"吗？\n分组内的基金将移到未分组。`)) return
+    if (!confirm(translate('fund.watchlist.deleteGroupConfirm', { name: group.name }))) return
     try {
       await watchlistAPI.deleteGroup(group.id)
       loadWatchlist()

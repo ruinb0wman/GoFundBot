@@ -2,13 +2,16 @@
   <Transition name="offline-fade">
     <div v-if="!isOnline" class="offline-banner">
       <LucideIcon name="WifiOff" :size="16" />
-      <span>网络已断开，部分功能不可用</span>
+      <span>{{ t('common.offline') }}</span>
     </div>
   </Transition>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useOnlineStatus } from '../composables/useOnlineStatus'
+
+const { t } = useI18n()
 
 const { isOnline } = useOnlineStatus()
 </script>

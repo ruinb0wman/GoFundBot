@@ -3,17 +3,17 @@
     <!-- Header -->
     <div class="chat-header">
       <div class="chat-header-left">
-        <button class="chat-header-btn" @click="chatStore.toggleWideMode()" :title="chatStore.isWideMode ? '窄屏模式' : '宽屏模式'">
+        <button class="chat-header-btn" @click="chatStore.toggleWideMode()" :title="chatStore.isWideMode ? t('chat.narrowMode') : t('chat.wideMode')">
           <LucideIcon :name="chatStore.isWideMode ? 'PanelRightClose' : 'PanelRightOpen'" :size="16" />
         </button>
         <LucideIcon name="Bot" :size="18" />
-        <span class="chat-title">AI 助手</span>
+        <span class="chat-title">{{ t('chat.title') }}</span>
       </div>
       <div class="chat-header-actions">
-        <button class="chat-header-btn" @click="handleNewSession" title="新对话">
+        <button class="chat-header-btn" @click="handleNewSession" :title="t('chat.newSession')">
           <LucideIcon name="Plus" :size="16" />
         </button>
-        <button class="chat-header-btn" @click="$emit('close')" title="最小化">
+        <button class="chat-header-btn" @click="$emit('close')" :title="t('chat.minimize')">
           <LucideIcon name="Minimize2" :size="16" />
         </button>
       </div>
@@ -37,7 +37,7 @@
             tabindex="0"
             @click.stop="chatStore.deleteSession(session.id)"
             @keydown.enter.stop="chatStore.deleteSession(session.id)"
-            title="删除"
+            :title="t('chat.delete')"
           >
             <LucideIcon name="Trash2" :size="12" />
           </span>
@@ -51,8 +51,8 @@
       <div class="chat-messages" ref="messagesRef">
       <div v-if="chatStore.messages.length === 0 && !chatStore.isStreaming" class="chat-welcome">
         <LucideIcon name="Bot" :size="40" />
-        <h3>您好！我是 GoFundBot 助手</h3>
-        <p>我可以帮您查询基金数据、市场行情、运行回测分析等。</p>
+        <h3>{{ t('chat.welcomeTitle') }}</h3>
+        <p>{{ t('chat.welcomeDesc') }}</p>
         <div class="welcome-suggestions">
           <button
             v-for="(s, i) in suggestions"
@@ -99,7 +99,7 @@
           <div v-if="msg.content" class="message-text" v-html="renderMarkdown(msg.content)" />
           <!-- Thinking indicator (streaming placeholder, no tokens yet, no running tools) -->
           <div v-if="msg.id === '__streaming__' && !msg.content && chatStore.isStreaming && !hasRunningToolCall" class="thinking-indicator">
-            <span class="thinking-text">正在思考</span>
+            <span class="thinking-text">{{ t('chat.thinking') }}</span>
             <span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>
           </div>
         </div>
@@ -114,14 +114,14 @@
           v-if="!chatStore.isWideMode"
           class="chat-session-toggle"
           @click="showSessions = !showSessions"
-          :title="showSessions ? '隐藏会话' : '显示会话'"
+          :title="showSessions ? t('chat.hideSessions') : t('chat.showSessions')"
         >
           <LucideIcon :name="showSessions ? 'PanelLeftClose' : 'PanelLeft'" :size="16" />
         </button>
         <textarea
           v-model="inputMessage"
           class="chat-input"
-          placeholder="输入问题..."
+          :placeholder="t('chat.inputPlaceholder')"
           :disabled="chatStore.isStreaming"
           @keydown.enter.exact.prevent="handleSend"
           rows="1"
@@ -141,9 +141,12 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
 import LucideIcon from './LucideIcon.vue'
+
+const { t } = useI18n()
 
 defineEmits<{ close: [] }>()
 
@@ -157,35 +160,35 @@ const hasRunningToolCall = computed(() =>
   chatStore.activeToolCalls.some(t => t.status === 'running')
 )
 
-const toolLabels: Record<string, string> = {
-  search_funds: '搜索基金',
-  get_fund_detail: '获取基金详情',
-  get_fund_estimate: '获取基金估值',
-  get_fund_nav_history: '获取净值历史',
-  get_market_indices: '获取指数行情',
-  get_market_news: '获取市场快讯',
-  get_hot_sectors: '获取热门板块',
-  get_north_flow: '获取北向资金',
-  get_market_breadth: '获取涨跌统计',
-  get_main_flow: '获取主力资金',
-  get_flash_news: '获取快讯新闻',
-  get_watchlist: '获取自选列表',
-  screen_funds_by_4433: '4433筛选基金',
-  run_backtest: '运行定投回测',
-  suggest_strategy: '推荐定投策略',
-  get_stock_quote: '获取个股行情',
-  get_market_anomaly: '检查市场异动',
-  get_gold_realtime: '获取黄金价格',
-  get_fund_holdings: '获取基金持仓',
-  get_fund_managers: '获取基金经理',
-}
+const toolLabels = computed((): Record<string, string> => ({
+  search_funds: t('chat.tool.searchFunds'),
+  get_fund_detail: t('chat.tool.getFundDetail'),
+  get_fund_estimate: t('chat.tool.getFundEstimate'),
+  get_fund_nav_history: t('chat.tool.getFundNavHistory'),
+  get_market_indices: t('chat.tool.getMarketIndices'),
+  get_market_news: t('chat.tool.getMarketNews'),
+  get_hot_sectors: t('chat.tool.getHotSectors'),
+  get_north_flow: t('chat.tool.getNorthFlow'),
+  get_market_breadth: t('chat.tool.getMarketBreadth'),
+  get_main_flow: t('chat.tool.getMainFlow'),
+  get_flash_news: t('chat.tool.getFlashNews'),
+  get_watchlist: t('chat.tool.getWatchlist'),
+  screen_funds_by_4433: t('chat.tool.screenFundsBy4433'),
+  run_backtest: t('chat.tool.runBacktest'),
+  suggest_strategy: t('chat.tool.suggestStrategy'),
+  get_stock_quote: t('chat.tool.getStockQuote'),
+  get_market_anomaly: t('chat.tool.getMarketAnomaly'),
+  get_gold_realtime: t('chat.tool.getGoldRealtime'),
+  get_fund_holdings: t('chat.tool.getFundHoldings'),
+  get_fund_managers: t('chat.tool.getFundManagers'),
+}))
 
-const suggestions = [
-  { text: '今天大盘怎么样？' },
-  { text: '帮我看看北向资金流向' },
-  { text: '筛选通过4433法则的基金' },
-  { text: '推荐几只值得关注的基金' },
-]
+const suggestions = computed(() => [
+  { text: t('chat.suggestion1') },
+  { text: t('chat.suggestion2') },
+  { text: t('chat.suggestion3') },
+  { text: t('chat.suggestion4') },
+])
 
 onMounted(() => {
   chatStore.init()

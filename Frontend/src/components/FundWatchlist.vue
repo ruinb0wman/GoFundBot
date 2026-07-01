@@ -7,7 +7,7 @@
         @click="$emit('toggle-compare')"
       >
         <span class="toggle-icon"><LucideIcon name="TrendingUp" :size="20" /></span>
-        <span>{{ compareMode ? '退出对比' : '基金对比' }}</span>
+        <span>{{ compareMode ? t('fund.watchlist.exitCompare') : t('fund.watchlist.compareMode') }}</span>
         <span v-if="compareFunds.length && compareMode" class="compare-count">{{ compareFunds.length }}</span>
       </button>
       <div v-if="compareMode && compareFunds.length > 0" class="compare-selected">
@@ -16,21 +16,21 @@
         </div>
       </div>
       <div v-if="compareMode && compareFunds.length === 0" class="compare-hint">
-        <LucideIcon name="ArrowBigUp" :size="14" /> 点击下方基金的 <strong>+</strong> 按钮添加对比
+        <LucideIcon name="ArrowBigUp" :size="14" /> {{ t('fund.watchlist.compareHint') }}
       </div>
       <div v-if="compareMode && compareFunds.length === 1" class="compare-hint">
-        还需选择至少 <strong>1</strong> 只基金才能对比
+        {{ t('fund.watchlist.compareNeed', { count: 1 }) }}
       </div>
     </div>
 
     <div class="watchlist-header">
       <h2>
         <span class="header-icon"><LucideIcon name="Star" :size="18" /></span>
-        我的自选
+        {{ t('fund.watchlist') }}
         <span class="count-badge" v-if="totalCount">{{ totalCount }}</span>
       </h2>
       <div class="header-actions">
-        <button class="btn btn-add-group" @click="openAddGroupModal" title="新建分组">
+        <button class="btn btn-add-group" @click="openAddGroupModal" :title="t('fund.watchlist.newGroup')">
           <LucideIcon name="FolderPlus" :size="16" />
         </button>
         <button
@@ -38,7 +38,7 @@
           class="btn btn-edit"
           @click="enterEditMode"
         >
-          编辑
+          {{ t('fund.watchlist.edit') }}
         </button>
         <template v-if="editMode">
           <button
@@ -46,17 +46,17 @@
             :disabled="selectedFunds.length === 0"
             @click="batchDelete"
           >
-            删除{{ selectedFunds.length > 0 ? `(${selectedFunds.length})` : '' }}
+            {{ selectedFunds.length > 0 ? t('fund.watchlist.groupDelete', { count: selectedFunds.length }) : t('common.delete') }}
           </button>
           <button class="btn btn-secondary" @click="exitEditMode">
-            完成
+            {{ t('fund.watchlist.done') }}
           </button>
         </template>
         <button
           class="btn btn-refresh"
           @click="refreshEstimates"
           :disabled="isRefreshingEstimates || totalCount === 0"
-          :title="lastEstimateUpdate ? `估值更新于 ${lastEstimateUpdate}` : '刷新估值'"
+          :title="lastEstimateUpdate ? t('fund.watchlist.estimateUpdated', { time: lastEstimateUpdate }) : t('fund.watchlist.refreshEstimates')"
         >
           <span :class="{ 'rotating': isRefreshingEstimates }"><LucideIcon name="RefreshCw" :size="14" /></span>
         </button>
@@ -65,8 +65,8 @@
 
     <div v-if="lastEstimateUpdate && totalCount > 0" class="estimate-update-hint">
       <span class="hint-icon"><LucideIcon name="BarChart3" :size="12" /></span>
-      <span>估值更新于 {{ lastEstimateUpdate }}</span>
-      <span class="hint-auto">（自动刷新）</span>
+      <span>{{ t('fund.watchlist.estimateUpdated', { time: lastEstimateUpdate }) }}</span>
+      <span class="hint-auto">{{ t('fund.watchlist.autoRefresh') }}</span>
     </div>
 
     <div v-if="loading && totalCount === 0" class="skeleton-loading">
@@ -75,15 +75,15 @@
 
     <div v-else-if="totalCount === 0" class="empty-state">
       <div class="empty-icon"><LucideIcon name="ClipboardList" :size="36" /></div>
-      <p>暂无自选基金</p>
-      <p class="empty-hint">在基金详情页点击 <LucideIcon name="Star" :size="12" /> 添加自选</p>
+      <p>{{ t('fund.watchlist.empty') }}</p>
+      <p class="empty-hint">{{ t('fund.watchlist.emptyHint', { icon: '' }) }} <LucideIcon name="Star" :size="12" /></p>
     </div>
 
     <div v-else class="watchlist-content">
       <div class="fund-group" v-if="ungroupedFunds.length > 0 || groups.length === 0">
         <div class="group-header" @click="toggleGroup(null)">
           <span class="group-toggle"><LucideIcon :name="isGroupExpanded(null) ? 'ChevronDown' : 'ChevronRight'" :size="14" /></span>
-          <span class="group-name">{{ groups.length > 0 ? '未分组' : '全部基金' }}</span>
+          <span class="group-name">{{ groups.length > 0 ? t('fund.watchlist.ungrouped') : t('fund.watchlist.allFunds') }}</span>
           <span class="group-count">{{ ungroupedFunds.length }}</span>
         </div>
         <div class="group-content" v-show="isGroupExpanded(null)">
@@ -122,8 +122,8 @@
           <span class="group-name"><LucideIcon name="Folder" :size="14" /> {{ group.name }}</span>
           <span class="group-count">{{ getGroupFunds(group.id).length }}</span>
           <div class="group-actions" v-if="editMode" @click.stop>
-            <button class="btn-icon-sm" @click="openEditGroupModal(group)" title="重命名"><LucideIcon name="Pencil" :size="14" /></button>
-            <button class="btn-icon-sm btn-del" @click="deleteGroup(group)" title="删除分组"><LucideIcon name="Trash2" :size="14" /></button>
+            <button class="btn-icon-sm" @click="openEditGroupModal(group)" :title="t('fund.watchlist.renameGroup')"><LucideIcon name="Pencil" :size="14" /></button>
+            <button class="btn-icon-sm btn-del" @click="deleteGroup(group)" :title="t('fund.watchlist.delete')"><LucideIcon name="Trash2" :size="14" /></button>
           </div>
         </div>
         <div class="group-content" v-show="isGroupExpanded(group.id)">
@@ -148,7 +148,7 @@
             @show-alert-settings="openAlertSettings"
           />
           <div v-if="getGroupFunds(group.id).length === 0" class="group-empty">
-            暂无基金，拖拽基金到此分组
+            {{ t('fund.watchlist.emptyGroup') }}
           </div>
         </div>
       </div>
@@ -156,19 +156,19 @@
 
     <div v-if="showGroupModal" class="modal-overlay" @click.self="closeGroupModal">
       <div class="modal-box">
-        <h3>{{ editingGroup ? '重命名分组' : '新建分组' }}</h3>
+        <h3>{{ editingGroup ? t('fund.watchlist.renameGroup') : t('fund.watchlist.newGroup') }}</h3>
         <input
           v-model="groupName"
           type="text"
-          placeholder="请输入分组名称"
+          :placeholder="t('fund.watchlist.groupName')"
           class="modal-input"
           @keyup.enter="saveGroup"
           ref="groupNameInput"
         />
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeGroupModal">取消</button>
+          <button class="btn btn-secondary" @click="closeGroupModal">{{ t('fund.watchlist.cancel') }}</button>
           <button class="btn btn-primary" @click="saveGroup" :disabled="!groupName.trim()">
-            {{ editingGroup ? '保存' : '创建' }}
+            {{ editingGroup ? t('fund.watchlist.save') : t('fund.watchlist.create') }}
           </button>
         </div>
       </div>
@@ -179,6 +179,8 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 import { useFundWatchlist } from '../composables/useFundWatchlist'
 import FundListItems from './FundListItems.vue'
 import SkeletonCard from './SkeletonCard.vue'

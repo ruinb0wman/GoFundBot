@@ -13,7 +13,7 @@
       @keyup.enter="onEnter"
       @focus="$emit('focus', $event)"
       @blur="$emit('blur', $event)"
-      :placeholder="placeholder"
+      :placeholder="placeholderText"
       :autofocus="autofocus"
       class="search-bar-input"
     />
@@ -33,7 +33,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   modelValue?: string
@@ -46,7 +49,7 @@ const props = withDefaults(defineProps<{
   iconSize?: number
 }>(), {
   modelValue: '',
-  placeholder: '基金代码/名称',
+  placeholder: '',
   showIcon: true,
   clearable: false,
   compact: false,
@@ -55,6 +58,7 @@ const props = withDefaults(defineProps<{
   iconSize: 16,
 })
 
+const placeholderText = computed(() => props.placeholder || t('searchBar.placeholder'))
 const inputRef = ref<HTMLInputElement | null>(null)
 const emit = defineEmits<{
   'update:modelValue': [value: string]

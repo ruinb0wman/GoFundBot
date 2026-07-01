@@ -3,17 +3,17 @@
     <div class="info-header">
       <div class="header-left-group">
         <div class="title-row">
-          <h2>{{ fundInfo.name || '未知基金' }}</h2>
+          <h2>{{ fundInfo.name || t('common.unknown') }}</h2>
           <span class="fund-code">{{ fundCode }}</span>
           <button
             class="watchlist-btn"
             :class="{ 'in-watchlist': isInWatchlist }"
             @click="toggleWatchlist"
             :disabled="watchlistLoading"
-            :title="isInWatchlist ? '移除自选' : '添加自选'"
+            :title="isInWatchlist ? t('fund.watchlist.remove') : t('fund.watchlist.add')"
           >
             <span class="star-icon"><LucideIcon name="Star" :size="18" :fill="isInWatchlist ? 'currentColor' : 'none'" /></span>
-            <span class="btn-text">{{ isInWatchlist ? '已自选' : '自选' }}</span>
+            <span class="btn-text">{{ isInWatchlist ? t('fund.watchlist.alreadyIn') : t('fund.watchlist.starred') }}</span>
           </button>
           <span
             v-if="fundIndustryTag"
@@ -26,19 +26,19 @@
 
         <div v-if="riskMetrics" class="risk-metrics-inline">
           <div class="risk-item">
-            <span class="risk-label">夏普比率(1年)</span>
+            <span class="risk-label">{{ t('fund.detail.sharpe1y') }}</span>
             <span class="risk-value" :class="getSharpeClass(riskMetrics.sharpe_ratio_1y)">
               {{ riskMetrics.sharpe_ratio_1y || '--' }}
             </span>
           </div>
           <div class="risk-item">
-            <span class="risk-label">最大回撤(1年)</span>
+            <span class="risk-label">{{ t('fund.detail.maxDrawdown1y') }}</span>
             <span class="risk-value negative">
               {{ riskMetrics.max_drawdown_1y ? '-' + riskMetrics.max_drawdown_1y + '%' : '--' }}
             </span>
           </div>
           <div class="risk-item">
-            <span class="risk-label">年化波动率</span>
+            <span class="risk-label">{{ t('fund.detail.volatility1y') }}</span>
             <span class="risk-value">
               {{ riskMetrics.volatility_1y ? riskMetrics.volatility_1y + '%' : '--' }}
             </span>
@@ -49,13 +49,13 @@
       <div class="header-middle-group">
         <button class="ai-analysis-btn" @click="$emit('trigger-ai-analysis')">
           <span class="ai-icon"><LucideIcon name="Bot" :size="16" /></span>
-          <span class="btn-text">AI 智能分析</span>
+          <span class="btn-text">{{ t('fund.aiAnalyze.title') }}</span>
         </button>
       </div>
 
       <div class="header-right">
         <div class="change-box">
-          <div class="label">{{ isEstimateFresh ? '估算涨幅' : '涨跌幅' }}</div>
+          <div class="label">{{ isEstimateFresh ? t('fund.detail.estimateChange') : t('fund.detail.change') }}</div>
           <div class="value" :class="getChangeClass(isEstimateFresh ? fundInfo.gszzl : fundInfo.actualChange)">
             {{ displayChange }}
           </div>
@@ -63,13 +63,13 @@
         </div>
 
         <div class="net-worth-box">
-          <div class="label">单位净值{{ isEstimateFresh ? '（最新）' : '' }}</div>
+          <div class="label">{{ t('fund.detail.netValue') }}{{ isEstimateFresh ? t('fund.detail.latest') : '' }}</div>
           <div class="value">{{ fundInfo.dwjz || '--' }}</div>
           <div class="date">{{ formatDate(fundInfo.jzrq) }}</div>
         </div>
 
         <div v-if="isEstimateFresh" class="estimate-box">
-          <div class="label">估算净值</div>
+          <div class="label">{{ t('fund.detail.estimateValue') }}</div>
           <div class="value" :class="getChangeClass(fundInfo.gszzl)">
             {{ fundInfo.gsz || '--' }}
           </div>
@@ -80,47 +80,50 @@
 
     <div class="info-metrics">
       <div class="metric-item">
-        <div class="metric-label">近1月</div>
+        <div class="metric-label">{{ t('fund.detail.month1') }}</div>
         <div class="metric-value" :class="getChangeClass(fundInfo.syl_1y)">
           {{ fundInfo.syl_1y ? (fundInfo.syl_1y > 0 ? '+' : '') + fundInfo.syl_1y + '%' : '--' }}
         </div>
       </div>
       <div class="metric-item">
-        <div class="metric-label">近3月</div>
+        <div class="metric-label">{{ t('fund.detail.month3') }}</div>
         <div class="metric-value" :class="getChangeClass(fundInfo.syl_3y)">
           {{ fundInfo.syl_3y ? (fundInfo.syl_3y > 0 ? '+' : '') + fundInfo.syl_3y + '%' : '--' }}
         </div>
       </div>
       <div class="metric-item">
-        <div class="metric-label">近6月</div>
+        <div class="metric-label">{{ t('fund.detail.month6') }}</div>
         <div class="metric-value" :class="getChangeClass(fundInfo.syl_6y)">
           {{ fundInfo.syl_6y ? (fundInfo.syl_6y > 0 ? '+' : '') + fundInfo.syl_6y + '%' : '--' }}
         </div>
       </div>
       <div class="metric-item">
-        <div class="metric-label">近1年</div>
+        <div class="metric-label">{{ t('fund.detail.year1') }}</div>
         <div class="metric-value" :class="getChangeClass(fundInfo.syl_1n)">
           {{ fundInfo.syl_1n ? (fundInfo.syl_1n > 0 ? '+' : '') + fundInfo.syl_1n + '%' : '--' }}
         </div>
       </div>
       <div class="metric-item">
-        <div class="metric-label">现费率</div>
+        <div class="metric-label">{{ t('fund.detail.currentRate') }}</div>
         <div class="metric-value rate">{{ formatRate(fundInfo.fund_rate) }}</div>
       </div>
       <div class="metric-item">
-        <div class="metric-label">最小申购</div>
+        <div class="metric-label">{{ t('fund.detail.minSubscription') }}</div>
         <div class="metric-value">{{ formatMinSubscription(fundInfo.fund_minsg) }}</div>
       </div>
     </div>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fundAPI, watchlistAPI } from '../services/api'
 import { useFundStore } from '../stores/fundStore'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   fundCode: string

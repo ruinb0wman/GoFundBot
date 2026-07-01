@@ -14,20 +14,23 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBreakpoint } from '../composables/useBreakpoint'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { isMobile } = useBreakpoint()
 
-const items = [
-  { route: 'dashboard', icon: 'Home', label: '大盘' },
-  { route: 'screening', icon: 'Search', label: '筛选' },
-  { route: 'backtest', icon: 'Coins', label: '回测' },
-  { route: 'portfolio', icon: 'BarChart3', label: '持仓' },
-  { route: 'research', icon: 'TrendingUp', label: '投研' },
-]
+const items = computed(() => [
+  { route: 'dashboard', icon: 'Home', label: t('nav.short.dashboard') },
+  { route: 'screening', icon: 'Search', label: t('nav.short.screening') },
+  { route: 'backtest', icon: 'Coins', label: t('nav.short.backtest') },
+  { route: 'portfolio', icon: 'BarChart3', label: t('nav.short.portfolio') },
+  { route: 'research', icon: 'TrendingUp', label: t('nav.short.research') },
+])
 
 function isActive(name: string): boolean {
   if (!route.name) return false

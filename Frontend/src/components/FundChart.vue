@@ -6,28 +6,28 @@
         :class="{ active: activeTab === 'performance' }"
         @click="switchTab('performance')"
       >
-        业绩走势
-      </div>
-      <div
-        class="tab-item"
-        :class="{ active: activeTab === 'comparison' }"
-        @click="switchTab('comparison')"
-      >
-        收益对比
-      </div>
-      <div
-        class="tab-item"
-        :class="{ active: activeTab === 'drawdown' }"
-        @click="switchTab('drawdown')"
-      >
-        回撤修复
+        {{ t('chart.performanceTrend') }}
+       </div>
+       <div
+         class="tab-item"
+         :class="{ active: activeTab === 'comparison' }"
+         @click="switchTab('comparison')"
+       >
+         {{ t('chart.returnComparison') }}
+       </div>
+       <div
+         class="tab-item"
+         :class="{ active: activeTab === 'drawdown' }"
+         @click="switchTab('drawdown')"
+       >
+         {{ t('chart.drawdownRepair') }}
       </div>
     </div>
 
     <div class="summary-info" v-if="activeTab === 'performance'">
         <div class="info-group">
             <span class="legend-dot blue"></span>
-            <span class="label">本基金</span>
+            <span class="label">{{ t('chart.thisFund') }}</span>
             <br>
             <span class="value" :class="getColor(fundChange)">{{ fundChange > 0 ? '+' : ''}}{{ fundChange }}%</span>
         </div>
@@ -37,16 +37,16 @@
         <div class="info-group">
             <div class="legend-dot-row">
                 <span class="legend-line green"></span>
-                <span class="label">最大回撤</span>
+                <span class="label">{{ t('chart.maxDrawdown') }}</span>
             </div>
             <div class="value-row">{{ maxDrawdownInfo.val }}%</div>
         </div>
         <div class="info-group">
              <div class="legend-dot-row">
                 <span class="legend-box pink"></span>
-                <span class="label">最大回撤修复天数</span>
+                <span class="label">{{ t('chart.drawdownRepairDays') }}</span>
              </div>
-             <div class="value-row">{{ maxDrawdownInfo.days ? maxDrawdownInfo.days + '天' : '正在修复中...' }}</div>
+             <div class="value-row">{{ maxDrawdownInfo.days ? maxDrawdownInfo.days + t('chart.days') : t('chart.repairing') }}</div>
         </div>
     </div>
 
@@ -79,6 +79,8 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 import { useFundChart } from '../composables/useFundChart'
 
 const props = defineProps({

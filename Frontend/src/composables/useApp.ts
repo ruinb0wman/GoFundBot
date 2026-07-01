@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBreakpoint } from './useBreakpoint'
+import { translate } from '../locales/index'
 
 export function useApp() {
   const { isMobile } = useBreakpoint()
@@ -47,7 +48,7 @@ export function useApp() {
   }
 
   const handleAddToCompare = (fund: any) => {
-    if (compareFunds.value.length >= 5) { alert('最多只能对比5只基金'); return }
+    if (compareFunds.value.length >= 5) { alert(translate('fund.compare.maxFunds')); return }
     if (compareFunds.value.some((f: any) => f.code === fund.code)) {
       compareFunds.value = compareFunds.value.filter((f: any) => f.code !== fund.code)
       return

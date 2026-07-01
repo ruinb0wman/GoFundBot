@@ -1,14 +1,17 @@
 <template>
   <div v-if="hasError" class="error-boundary">
     <LucideIcon name="AlertTriangle" :size="24" />
-    <p>页面渲染异常</p>
-    <button class="error-retry-btn" @click="retry">重试</button>
+    <p>{{ t('error.renderError') }}</p>
+    <button class="error-retry-btn" @click="retry">{{ t('common.retry') }}</button>
   </div>
   <slot v-else />
 </template>
 
 <script setup lang="ts">
 import { ref, onErrorCaptured } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const hasError = ref(false)
 

@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { screeningAPI, watchlistAPI, fundAPI } from '../services/api'
 import { useWatchlistStore } from '../stores/watchlistStore'
+import { translate } from '../locales/index'
 
 export function useFundScreening(emit) {
     const dbStatus = ref({
@@ -537,7 +538,7 @@ export function useFundScreening(emit) {
 
     const startUpdate = async () => {
         if (!hasSelectedUpdateTask.value) {
-            alert('请至少选择一个更新任务')
+            alert(translate('fund.screening.selectTask'))
             return
         }
         let buildIndustryDictionary = false
@@ -570,10 +571,10 @@ export function useFundScreening(emit) {
         } catch (err) {
             updateStatus.value.running = false
             if (err.response?.status === 409) {
-                alert('更新任务已在进行中')
+                alert(translate('fund.screening.updateInProgress'))
             } else {
                 console.error('启动更新失败:', err)
-                alert('启动更新失败')
+                alert(translate('fund.screening.updateFailed'))
             }
         }
     }

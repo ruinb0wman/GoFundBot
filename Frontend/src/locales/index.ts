@@ -30,4 +30,8 @@ export function getCurrentLocale(): string {
   return i18n.global.locale.value
 }
 
+export function translate(key: string): string {
+  return i18n.global.t(key)
+}
+
 export default i18n

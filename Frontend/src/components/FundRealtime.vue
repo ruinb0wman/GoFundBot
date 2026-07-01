@@ -1,49 +1,49 @@
 <template>
   <div class="realtime-container">
     <div class="top-row">
-      <button class="btn btn-primary add-fund-trigger" @click="openAddFundModal">+ 添加基金</button>
-      <button class="btn btn-blue" @click="refreshAll" :disabled="refreshing || funds.length === 0">{{ refreshing ? '刷新中...' : '刷新估值' }}</button>
+      <button class="btn btn-primary add-fund-trigger" @click="openAddFundModal">+ {{ t('fund.realtime.addFund') }}</button>
+      <button class="btn btn-blue" @click="refreshAll" :disabled="refreshing || funds.length === 0">{{ refreshing ? t('fund.realtime.refreshing') : t('fund.realtime.refreshEstimate') }}</button>
       <div class="sort-box">
         <select v-model="sortBy" class="select-sort">
-          <option value="changeDesc">收益率从高到低</option>
-          <option value="todayProfitDesc">今日盈亏从高到低</option>
-          <option value="todayProfitAsc">今日盈亏从低到高</option>
-          <option value="totalProfitDesc">持有收益从高到低</option>
+          <option value="changeDesc">{{ t('fund.realtime.sortReturnDesc') }}</option>
+          <option value="todayProfitDesc">{{ t('fund.realtime.sortTodayProfitDesc') }}</option>
+          <option value="todayProfitAsc">{{ t('fund.realtime.sortTodayProfitAsc') }}</option>
+          <option value="totalProfitDesc">{{ t('fund.realtime.sortHoldingProfitDesc') }}</option>
         </select>
       </div>
-      <button class="btn btn-blue" @click="exportData">导出数据</button>
-      <label class="btn btn-green" for="import-file">导入数据</label>
+      <button class="btn btn-blue" @click="exportData">{{ t('fund.realtime.exportData') }}</button>
+      <label class="btn btn-green" for="import-file">{{ t('fund.realtime.importData') }}</label>
       <input id="import-file" class="hidden-file" type="file" accept="application/json" @change="importData" />
     </div>
 
     <div class="overview-box">
       <div class="overview-head">
-        <div class="title-with-icon"><LucideIcon name="BarChart3" :size="18" /> 投资总览<span v-if="activeTab.startsWith('group_')" class="scope-tag">{{ portfolioGroups.find(g => 'group_' + g.id === activeTab)?.name || '' }}</span><span v-else-if="activeTab==='rebalance'" class="scope-tag">再平衡</span><span v-else-if="activeTab==='dividend'" class="scope-tag">红利低波</span></div>
-        <div class="meta-info">实时数据来自互联网，仅供参考。数据更新时间: {{ nowTime }}</div>
+        <div class="title-with-icon"><LucideIcon name="BarChart3" :size="18" /> {{ t('fund.realtime.overview') }}<span v-if="activeTab.startsWith('group_')" class="scope-tag">{{ portfolioGroups.find(g => 'group_' + g.id === activeTab)?.name || '' }}</span><span v-else-if="activeTab==='rebalance'" class="scope-tag">{{ t('fund.realtime.rebalance') }}</span><span v-else-if="activeTab==='dividend'" class="scope-tag">{{ t('fund.realtime.dividendLowVol') }}</span></div>
+        <div class="meta-info">{{ t('fund.realtime.dataDisclaimer') }} {{ nowTime }}</div>
       </div>
       <div class="overview-grid" v-if="hasHoldings">
-        <div class="overview-cell purple"><div class="cell-label">总市值</div><div class="cell-val">¥{{ totalAsset.toFixed(2) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">总成本</div><div class="cell-val">¥{{ totalCost.toFixed(2) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">总收益</div><div class="cell-val" :class="profitTotalClass">{{ totalProfitTotal >= 0 ? '+' : '' }}¥{{ totalProfitTotal.toFixed(2) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">收益率</div><div class="cell-val" :class="profitTotalClass">{{ totalReturnRate >= 0 ? '+' : '' }}{{ totalReturnRate.toFixed(2) }}%</div></div>
-        <div class="overview-cell"><div class="cell-label">今日盈亏</div><div class="cell-val" :class="profitTodayClass">{{ totalProfitToday >= 0 ? '+' : '' }}¥{{ totalProfitToday.toFixed(2) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">今日收益</div><div class="cell-val" :class="profitTodayClass">{{ todayReturnRate >= 0 ? '+' : '' }}{{ todayReturnRate.toFixed(2) }}%</div></div>
+        <div class="overview-cell purple"><div class="cell-label">{{ t('fund.realtime.totalMarket') }}</div><div class="cell-val">¥{{ totalAsset.toFixed(2) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.totalCost') }}</div><div class="cell-val">¥{{ totalCost.toFixed(2) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.totalProfit') }}</div><div class="cell-val" :class="profitTotalClass">{{ totalProfitTotal >= 0 ? '+' : '' }}¥{{ totalProfitTotal.toFixed(2) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.returnRate') }}</div><div class="cell-val" :class="profitTotalClass">{{ totalReturnRate >= 0 ? '+' : '' }}{{ totalReturnRate.toFixed(2) }}%</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.todayProfit') }}</div><div class="cell-val" :class="profitTodayClass">{{ totalProfitToday >= 0 ? '+' : '' }}¥{{ totalProfitToday.toFixed(2) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.todayReturn') }}</div><div class="cell-val" :class="profitTodayClass">{{ todayReturnRate >= 0 ? '+' : '' }}{{ todayReturnRate.toFixed(2) }}%</div></div>
       </div>
-      <div v-else class="overview-grid empty-hint">暂未设置持仓</div>
+      <div v-else class="overview-grid empty-hint">{{ t('fund.realtime.noPosition') }}</div>
     </div>
 
     <div class="pending-txns-bar" v-if="pendingTxns.length">
       <div class="pending-header" @click="showPending = !showPending">
-        <span><LucideIcon name="Hourglass" :size="14" /> {{ pendingTxns.length }} 笔交易待结算（等待当日净值公布）</span>
-        <span class="pending-toggle">{{ showPending ? '收起' : '展开' }} <LucideIcon :name="showPending ? 'ChevronUp' : 'ChevronDown'" :size="12" /></span>
+        <span><LucideIcon name="Hourglass" :size="14" /> {{ pendingTxns.length }} {{ t('fund.realtime.pendingSettlement') }}</span>
+        <span class="pending-toggle">{{ showPending ? t('fund.realtime.collapse') : t('fund.realtime.expand') }} <LucideIcon :name="showPending ? 'ChevronUp' : 'ChevronDown'" :size="12" /></span>
       </div>
       <div class="pending-list" v-if="showPending">
         <div class="pending-item" v-for="txn in pendingTxns" :key="txn.id">
-          <span class="p-type" :class="txn.type">{{ txn.type === 'buy' ? '买入' : '卖出' }}</span>
+          <span class="p-type" :class="txn.type">{{ txn.type === 'buy' ? t('fund.realtime.buy') : t('fund.realtime.sell') }}</span>
           <span class="p-name">{{ txn.fundName }}</span>
           <span class="p-val">{{ txn.type === 'buy' ? '¥' + txn.inputValue.toFixed(2) : txn.inputValue.toFixed(2) + ' 份' }}</span>
-          <span class="p-date">交易日 {{ txn.tradeDate }}</span>
-          <button class="btn-cancel-txn" @click="cancelPendingTxn(txn.id)">取消</button>
+          <span class="p-date">{{ t('fund.realtime.tradeDate') }} {{ txn.tradeDate }}</span>
+          <button class="btn-cancel-txn" @click="cancelPendingTxn(txn.id)">{{ t('fund.realtime.cancel') }}</button>
         </div>
       </div>
     </div>
@@ -172,6 +172,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 import { useFundRealtime } from '../composables/useFundRealtime'
 import FundRealtimeModals from './FundRealtimeModals.vue'
 

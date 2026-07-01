@@ -4,7 +4,7 @@
       <div v-if="isOpen" class="drawer-overlay" @click.self="$emit('close')">
         <aside class="drawer-panel">
           <div class="drawer-header">
-            <h2>导航</h2>
+            <h2>{{ t('common.navigation') }}</h2>
             <button class="drawer-close" @click="$emit('close')">
               <LucideIcon name="X" :size="20" />
             </button>
@@ -28,8 +28,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
+const { t } = useI18n()
 const props = defineProps<{
   isOpen: boolean
   activeRoute: string
@@ -39,13 +42,13 @@ const emit = defineEmits<{ close: [] }>()
 
 const router = useRouter()
 
-const items = [
-  { route: 'dashboard', icon: 'Home', label: '市场大盘' },
-  { route: 'screening', icon: 'Search', label: '基金筛选' },
-  { route: 'backtest', icon: 'Coins', label: '定投回测' },
-  { route: 'portfolio', icon: 'BarChart3', label: '估值与持仓' },
-  { route: 'research', icon: 'TrendingUp', label: '投研看板' },
-]
+const items = computed(() => [
+  { route: 'dashboard', icon: 'Home', label: t('nav.dashboard') },
+  { route: 'screening', icon: 'Search', label: t('nav.screening') },
+  { route: 'backtest', icon: 'Coins', label: t('nav.backtest') },
+  { route: 'portfolio', icon: 'BarChart3', label: t('nav.portfolio') },
+  { route: 'research', icon: 'TrendingUp', label: t('nav.research') },
+])
 
 function navigate(route: string) {
   router.push({ name: route })

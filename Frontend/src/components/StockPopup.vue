@@ -2,7 +2,7 @@
   <div class="stock-popup">
     <div v-if="loading" class="stock-loading">
       <div class="loading-spinner"></div>
-      <p>正在获取行情数据...</p>
+      <p>{{ t('stockPopup.loading') }}</p>
     </div>
 
     <div v-else-if="error" class="stock-error">
@@ -28,60 +28,63 @@
       </div>
 
       <div class="stock-detail-grid">
-        <div class="detail-item"><span class="detail-label">今开</span><span class="detail-value">{{ formatPrice(stockData.open) }}</span></div>
-        <div class="detail-item"><span class="detail-label">昨收</span><span class="detail-value">{{ formatPrice(stockData.prevClose) }}</span></div>
-        <div class="detail-item"><span class="detail-label">最高</span><span class="detail-value high">{{ formatPrice(stockData.high) }}</span></div>
-        <div class="detail-item"><span class="detail-label">最低</span><span class="detail-value low">{{ formatPrice(stockData.low) }}</span></div>
+        <div class="detail-item"><span class="detail-label">{{ t('stockPopup.open') }}</span><span class="detail-value">{{ formatPrice(stockData.open) }}</span></div>
+        <div class="detail-item"><span class="detail-label">{{ t('stockPopup.prevClose') }}</span><span class="detail-value">{{ formatPrice(stockData.prevClose) }}</span></div>
+        <div class="detail-item"><span class="detail-label">{{ t('stockPopup.high') }}</span><span class="detail-value high">{{ formatPrice(stockData.high) }}</span></div>
+        <div class="detail-item"><span class="detail-label">{{ t('stockPopup.low') }}</span><span class="detail-value low">{{ formatPrice(stockData.low) }}</span></div>
       </div>
 
       <div class="stock-section">
-        <h4 class="section-title">交易数据</h4>
+        <h4 class="section-title">{{ t('stockPopup.tradeData') }}</h4>
         <div class="stock-detail-grid">
-          <div class="detail-item"><span class="detail-label">成交量</span><span class="detail-value">{{ formatVolume(stockData.volume) }}</span></div>
-          <div class="detail-item"><span class="detail-label">成交额</span><span class="detail-value">{{ formatAmount(stockData.amount) }}</span></div>
-          <div class="detail-item"><span class="detail-label">换手率</span><span class="detail-value">{{ formatPercent(stockData.turnoverRate) }}</span></div>
-          <div class="detail-item"><span class="detail-label">振幅</span><span class="detail-value">{{ formatPercent(stockData.amplitude) }}</span></div>
+          <div class="detail-item"><span class="detail-label">{{ t('stockPopup.volume') }}</span><span class="detail-value">{{ formatVolume(stockData.volume) }}</span></div>
+          <div class="detail-item"><span class="detail-label">{{ t('stockPopup.amount') }}</span><span class="detail-value">{{ formatAmount(stockData.amount) }}</span></div>
+          <div class="detail-item"><span class="detail-label">{{ t('stockPopup.turnover') }}</span><span class="detail-value">{{ formatPercent(stockData.turnoverRate) }}</span></div>
+          <div class="detail-item"><span class="detail-label">{{ t('stockPopup.amplitude') }}</span><span class="detail-value">{{ formatPercent(stockData.amplitude) }}</span></div>
         </div>
       </div>
 
       <div class="stock-section">
-        <h4 class="section-title">估值指标</h4>
+        <h4 class="section-title">{{ t('stockPopup.valuationMetrics') }}</h4>
         <div class="stock-detail-grid">
-          <div class="detail-item"><span class="detail-label">市盈率(动)</span><span class="detail-value">{{ formatPE(stockData.pe) }}</span></div>
-          <div class="detail-item"><span class="detail-label">总市值</span><span class="detail-value">{{ formatMarketCap(stockData.marketCap) }}</span></div>
+          <div class="detail-item"><span class="detail-label">{{ t('stockPopup.peDynamic') }}</span><span class="detail-value">{{ formatPE(stockData.pe) }}</span></div>
+          <div class="detail-item"><span class="detail-label">{{ t('stockPopup.totalMarketValue') }}</span><span class="detail-value">{{ formatMarketCap(stockData.marketCap) }}</span></div>
         </div>
       </div>
 
       <div class="stock-section chart-section">
         <div class="chart-header">
-          <h4 class="section-title">走势图</h4>
+          <h4 class="section-title">{{ t('stockPopup.chart') }}</h4>
           <div class="chart-period-tabs">
             <button v-for="range in klinePeriods" :key="range.value" :class="['period-btn', { active: klineSelectedRange === range.value }]" @click="setKlineRange(range.value)">{{ range.label }}</button>
           </div>
         </div>
-        <div class="chart-loading" v-if="klineLoading"><div class="loading-spinner"></div><span>加载走势数据...</span></div>
+        <div class="chart-loading" v-if="klineLoading"><div class="loading-spinner"></div><span>{{ t('stockPopup.loadingKline') }}</span></div>
         <div class="chart-error" v-else-if="klineError"><span>{{ klineError }}</span></div>
         <div class="chart-wrapper" v-else-if="filteredKlineData.length > 0">
           <div ref="klineChartEl" class="kline-chart"></div>
           <div class="chart-summary" v-if="klineSummary">
-            <div class="summary-item"><span class="summary-label">区间涨幅</span><span class="summary-value" :class="klineSummary.changePercent >= 0 ? 'up' : 'down'">{{ klineSummary.changePercent >= 0 ? '+' : '' }}{{ klineSummary.changePercent.toFixed(2) }}%</span></div>
-            <div class="summary-item"><span class="summary-label">起始价</span><span class="summary-value">{{ klineSummary.startPrice.toFixed(2) }}</span></div>
-            <div class="summary-item"><span class="summary-label">最新价</span><span class="summary-value">{{ klineSummary.endPrice.toFixed(2) }}</span></div>
-            <div class="summary-item"><span class="summary-label">最高</span><span class="summary-value high">{{ klineSummary.high.toFixed(2) }}</span></div>
-            <div class="summary-item"><span class="summary-label">最低</span><span class="summary-value low">{{ klineSummary.low.toFixed(2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.rangeChange') }}</span><span class="summary-value" :class="klineSummary.changePercent >= 0 ? 'up' : 'down'">{{ klineSummary.changePercent >= 0 ? '+' : '' }}{{ klineSummary.changePercent.toFixed(2) }}%</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.startPrice') }}</span><span class="summary-value">{{ klineSummary.startPrice.toFixed(2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.latestPrice') }}</span><span class="summary-value">{{ klineSummary.endPrice.toFixed(2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.high') }}</span><span class="summary-value high">{{ klineSummary.high.toFixed(2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.low') }}</span><span class="summary-value low">{{ klineSummary.low.toFixed(2) }}</span></div>
           </div>
         </div>
-        <div class="chart-empty" v-else-if="!klineLoading && !klineError"><span>暂无历史走势数据</span></div>
+        <div class="chart-empty" v-else-if="!klineLoading && !klineError"><span>{{ t('stockPopup.emptyHistory') }}</span></div>
       </div>
     </div>
 
-    <div v-else class="stock-empty"><p>暂无行情数据</p></div>
+    <div v-else class="stock-empty"><p>{{ t('stockPopup.emptyQuote') }}</p></div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import LucideIcon from './LucideIcon.vue'
 import { useStockPopup } from '../composables/useStockPopup'
+
+const { t } = useI18n()
 
 const props = defineProps({
   stockData: { type: Object, default: null },

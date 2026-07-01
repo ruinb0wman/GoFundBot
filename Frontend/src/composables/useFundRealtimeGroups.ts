@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { ref, nextTick } from 'vue'
+import { translate } from '../locales/index'
 
 export function useFundRealtimeGroups() {
   const portfolioGroups = ref([])
@@ -54,7 +55,7 @@ export function useFundRealtimeGroups() {
   const deleteGroup = (groupId) => {
     const group = portfolioGroups.value.find(g => g.id === groupId)
     if (!group) return
-    if (!confirm(`确定删除分组"${group.name}"吗？分组内的基金将回到默认状态。`)) return
+    if (!confirm(translate('fund.realtimeGroups.deleteGroupConfirm', { name: group.name }))) return
     const newMap = { ...fundGroupMap.value }
     Object.keys(newMap).forEach(code => {
       if (newMap[code] === groupId) delete newMap[code]

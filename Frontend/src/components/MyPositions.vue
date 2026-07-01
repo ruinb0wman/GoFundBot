@@ -1,16 +1,16 @@
 <template>
   <div class="positions-container">
     <div class="positions-header">
-      <h2><LucideIcon name="Briefcase" :size="22" /> 我的持仓</h2>
-      <p>输入基金代码自动补全名称；按中国基金交易规则自动处理购买日净值；持仓按实时估值刷新盈亏。</p>
+      <h2><LucideIcon name="Briefcase" :size="22" /> {{ t('fund.position.title') }}</h2>
+      <p>{{ t('fund.position.desc') }}</p>
     </div>
 
     <form class="position-form" @submit.prevent="addPosition">
       <div class="field">
-        <label>基金代码</label>
+        <label>{{ t('fund.position.code') }}</label>
         <input
           v-model.trim="form.code"
-          placeholder="如 110022"
+          :placeholder="t('fund.position.codePlaceholder')"
           maxlength="6"
           @blur="handleCodeBlur"
           required
@@ -18,52 +18,52 @@
       </div>
 
       <div class="field">
-        <label>基金名称</label>
-        <input v-model.trim="form.name" placeholder="自动填充，可手动修改" required />
+        <label>{{ t('fund.position.name') }}</label>
+        <input v-model.trim="form.name" :placeholder="t('fund.position.nameHint')" required />
       </div>
 
       <div class="field">
-        <label>购买日期</label>
+        <label>{{ t('fund.position.purchaseDate') }}</label>
         <input v-model="form.purchaseDate" type="date" :max="today" @change="handleDateChange" required />
       </div>
 
       <div class="field">
-        <label>购买时间（用于当日15:00规则）</label>
+        <label>{{ t('fund.position.purchaseDateHint') }}</label>
         <input v-model="form.purchaseTime" type="time" @change="handleDateChange" required />
       </div>
 
       <div class="field">
-        <label>持有份额</label>
-        <input v-model.number="form.shares" type="number" min="0" step="0.01" placeholder="持有份额" required />
+        <label>{{ t('fund.position.shares') }}</label>
+        <input v-model.number="form.shares" type="number" min="0" step="0.01" :placeholder="t('fund.position.shares')" required />
       </div>
 
       <div class="field">
-        <label>成本净值</label>
-        <input v-model.number="form.cost" type="number" min="0" step="0.0001" placeholder="自动填充，可手动修改" required />
+        <label>{{ t('fund.position.costNav') }}</label>
+        <input v-model.number="form.cost" type="number" min="0" step="0.0001" :placeholder="t('fund.position.nameHint')" required />
       </div>
 
-      <button type="submit" :disabled="isAutoFilling">{{ isAutoFilling ? '处理中...' : '添加' }}</button>
+      <button type="submit" :disabled="isAutoFilling">{{ isAutoFilling ? t('fund.position.processing') : t('fund.position.add') }}</button>
     </form>
 
     <p class="tips" v-if="helperText">{{ helperText }}</p>
 
     <div class="operation-panel" v-if="positions.length">
-      <h3><LucideIcon name="Repeat" :size="18" /> 持仓变更（加仓 / 减仓 / 转换）</h3>
-      <p class="operation-tip">建议在晚上 21:00 后操作：基金准确净值通常在晚间更新，按金额换算份额更准确。</p>
+      <h3><LucideIcon name="Repeat" :size="18" /> {{ t('fund.position.changeTitle') }}</h3>
+      <p class="operation-tip">{{ t('fund.position.changeHint') }}</p>
       <form class="operation-form" @submit.prevent="applyOperation">
         <div class="field">
-          <label>操作类型</label>
+          <label>{{ t('fund.position.operationType') }}</label>
           <select v-model="operationForm.type" @change="handleOperationTypeChange">
-            <option value="add">加仓</option>
-            <option value="reduce">减仓</option>
-            <option value="convert">转换</option>
+            <option value="add">{{ t('fund.position.increase') }}</option>
+            <option value="reduce">{{ t('fund.position.decrease') }}</option>
+            <option value="convert">{{ t('fund.position.switch') }}</option>
           </select>
         </div>
 
         <div class="field">
-          <label>原基金</label>
+          <label>{{ t('fund.position.originalFund') }}</label>
           <select v-model="operationForm.sourceId" required>
-            <option value="" disabled>请选择基金</option>
+            <option value="" disabled>{{ t('fund.position.selectFund') }}</option>
             <option v-for="item in positions" :key="item.id" :value="item.id">
               {{ item.name }} ({{ item.code }})
             </option>
@@ -71,66 +71,66 @@
         </div>
 
         <div class="field" v-if="operationForm.type === 'convert'">
-          <label>目标基金代码</label>
+          <label>{{ t('fund.position.targetCode') }}</label>
           <input
             v-model.trim="operationForm.targetCode"
             maxlength="6"
-            placeholder="如 001632"
+            :placeholder="t('fund.position.targetCodePlaceholder')"
             @blur="loadTargetFundName"
             required
           />
         </div>
 
         <div class="field" v-if="operationForm.type === 'convert'">
-          <label>目标基金名称</label>
+          <label>{{ t('fund.position.targetName') }}</label>
           <input v-model.trim="operationForm.targetName" placeholder="自动填充，可手动修改" required />
         </div>
 
         <div class="field">
-          <label>金额（元）</label>
-          <input v-model.number="operationForm.amount" type="number" min="0.01" step="0.01" placeholder="输入金额" required />
+          <label>{{ t('fund.position.amount') }}</label>
+          <input v-model.number="operationForm.amount" type="number" min="0.01" step="0.01" :placeholder="t('fund.position.amountPlaceholder')" required />
         </div>
 
         <div class="field">
-          <label>操作日期</label>
+          <label>{{ t('fund.position.operationDate') }}</label>
           <input v-model="operationForm.date" type="date" :max="today" required />
         </div>
 
-        <button type="submit" :disabled="operationLoading">{{ operationLoading ? '处理中...' : '确认变更' }}</button>
+        <button type="submit" :disabled="operationLoading">{{ operationLoading ? t('fund.position.processing') : t('fund.position.confirmChange') }}</button>
       </form>
       <p class="tips" v-if="operationText">{{ operationText }}</p>
     </div>
 
     <div class="summary" v-if="positions.length">
-      <div>总成本：¥{{ formatNumber(totalCost, 2) }}</div>
-      <div>总市值：¥{{ formatNumber(totalMarket, 2) }}</div>
-      <div :class="totalProfit >= 0 ? 'up' : 'down'">总盈亏：{{ formatSigned(totalProfit) }}</div>
-      <div :class="totalRate >= 0 ? 'up' : 'down'">总收益率：{{ formatSigned(totalRate) }}%</div>
-      <div>上次刷新：{{ lastRefreshTime || '--' }}</div>
+      <div>{{ t('fund.position.totalCost') }} ¥{{ formatNumber(totalCost, 2) }}</div>
+      <div>{{ t('fund.position.totalMarket') }} ¥{{ formatNumber(totalMarket, 2) }}</div>
+      <div :class="totalProfit >= 0 ? 'up' : 'down'">{{ t('fund.position.totalProfit') }} {{ formatSigned(totalProfit) }}</div>
+      <div :class="totalRate >= 0 ? 'up' : 'down'">{{ t('fund.position.totalRate') }} {{ formatSigned(totalRate) }}%</div>
+      <div>{{ t('fund.position.lastRefresh') }} {{ lastRefreshTime || '--' }}</div>
     </div>
 
     <div class="calendar-pnl" v-if="positions.length">
       <div class="pnl-card" :class="calendarPnl.day >= 0 ? 'up-bg' : 'down-bg'">
-        <div class="label">今日盈亏</div>
+        <div class="label">{{ t('fund.position.todayProfit') }}</div>
         <div class="value">{{ formatSigned(calendarPnl.day) }}</div>
       </div>
       <div class="pnl-card" :class="calendarPnl.month >= 0 ? 'up-bg' : 'down-bg'">
-        <div class="label">本月盈亏</div>
+        <div class="label">{{ t('fund.position.monthProfit') }}</div>
         <div class="value">{{ formatSigned(calendarPnl.month) }}</div>
       </div>
       <div class="pnl-card" :class="calendarPnl.year >= 0 ? 'up-bg' : 'down-bg'">
-        <div class="label">本年盈亏</div>
+        <div class="label">{{ t('fund.position.yearProfit') }}</div>
         <div class="value">{{ formatSigned(calendarPnl.year) }}</div>
       </div>
     </div>
 
     <div class="charts" v-if="positions.length">
       <div class="chart-card">
-        <h3><LucideIcon name="BarChart3" :size="18" /> 持仓盈亏柱状图（明细）</h3>
+        <h3><LucideIcon name="BarChart3" :size="18" /> {{ t('fund.position.profitChart') }}</h3>
         <div ref="pnlBarChartEl" class="chart-el"></div>
       </div>
       <div class="chart-card">
-        <h3><LucideIcon name="TrendingUp" :size="18" /> 持有收益率走势（从成本起算）</h3>
+        <h3><LucideIcon name="TrendingUp" :size="18" /> {{ t('fund.position.returnChart') }}</h3>
         <div ref="returnTrendChartEl" class="chart-el"></div>
       </div>
     </div>
@@ -139,19 +139,19 @@
       <table class="positions-table">
         <thead>
           <tr>
-            <th>代码</th>
-            <th>名称</th>
-            <th>购买日期</th>
-            <th>购买时间</th>
-            <th>份额</th>
-            <th>成本净值</th>
-            <th>实时估值</th>
-            <th>估值时间</th>
-            <th>持仓成本</th>
-            <th>持仓市值</th>
-            <th>盈亏</th>
-            <th>盈亏率</th>
-            <th>操作</th>
+            <th>{{ t('common.code') }}</th>
+            <th>{{ t('common.name') }}</th>
+            <th>{{ t('fund.position.purchaseDate') }}</th>
+            <th>{{ t('fund.position.purchaseTime') }}</th>
+            <th>{{ t('fund.position.shares') }}</th>
+            <th>{{ t('fund.position.costNav') }}</th>
+            <th>{{ t('fund.position.realtimeVal') }}</th>
+            <th>{{ t('fund.position.valTime') }}</th>
+            <th>{{ t('fund.position.costPrice') }}</th>
+            <th>{{ t('fund.realtime.currentMarket') }}</th>
+            <th>{{ t('fund.realtime.profitLoss') }}</th>
+            <th>{{ t('fund.realtime.returnRate') }}</th>
+            <th>{{ t('common.action') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -169,18 +169,20 @@
             <td :class="profit(item) >= 0 ? 'up' : 'down'">{{ formatSigned(profit(item)) }}</td>
             <td :class="profitRate(item) >= 0 ? 'up' : 'down'">{{ formatSigned(profitRate(item)) }}%</td>
             <td>
-              <button class="danger" @click="removePosition(item.id)">删除</button>
+              <button class="danger" @click="removePosition(item.id)">{{ t('common.delete') }}</button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div v-else class="empty">暂无持仓，先添加一条记录吧。</div>
+    <div v-else class="empty">{{ t('fund.realtime.noPosition') }}</div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 import { useMyPositions } from '../composables/useMyPositions'
 
 const {

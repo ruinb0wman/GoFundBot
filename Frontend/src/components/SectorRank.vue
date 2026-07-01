@@ -1,36 +1,36 @@
 ﻿<template>
   <div class="sector-rank-container">
     <div class="section-header">
-      <h3><LucideIcon name="Factory" :size="20" /> 行业板块排行</h3>
-      <button class="refresh-btn" @click="fetchSectors" :disabled="loading" title="刷新板块数据">
+      <h3><LucideIcon name="Factory" :size="20" /> {{ t('sectorRank.title') }}</h3>
+      <button class="refresh-btn" @click="fetchSectors" :disabled="loading" :title="t('sectorRank.refresh')">
         <span :class="{ 'spinning': loading }"><LucideIcon name="RefreshCw" :size="16" /></span>
       </button>
       <button
         class="expand-btn"
         @click="openSectorModal()"
         :disabled="!sectors.length"
-        title="放大查看板块排行"
+        :title="t('sectorRank.expand')"
       >
         <LucideIcon name="Maximize2" :size="16" />
       </button>
     </div>
     <div class="filter-panel">
       <div class="market-stats" v-if="sectors.length">
-        <span class="stat-chip total">{{ isFromCache ? '缓存数据' : '实时数据' }} {{ sectors.length }}</span>
-        <span class="stat-chip up">上涨 {{ upCount }}</span>
-        <span class="stat-chip flat">平盘 {{ flatCount }}</span>
-        <span class="stat-chip down">下跌 {{ downCount }}</span>
+        <span class="stat-chip total">{{ isFromCache ? t('sectorRank.cachedData') : t('sectorRank.liveData') }} {{ sectors.length }}</span>
+        <span class="stat-chip up">{{ t('sectorRank.up') }} {{ upCount }}</span>
+        <span class="stat-chip flat">{{ t('sectorRank.flat') }} {{ flatCount }}</span>
+        <span class="stat-chip down">{{ t('sectorRank.down') }} {{ downCount }}</span>
       </div>
     </div>
 
     <div v-if="loading && !sectors.length" class="loading-state">
       <span class="loading-spinner"></span>
-      <span>加载中...</span>
+      <span>{{ t('common.loading') }}</span>
     </div>
 
     <div v-else-if="error" class="error-state">
       <span>{{ error }}</span>
-      <button @click="fetchSectors">重试</button>
+      <button @click="fetchSectors">{{ t('common.retry') }}</button>
     </div>
 
     <div v-else class="sector-content">
@@ -61,7 +61,7 @@
           <div class="sector-info">
             <div class="sector-name">{{ sector.name }}</div>
             <div class="sector-flow">
-              <span class="label">主力:</span>
+              <span class="label">{{ t('sectorRank.mainFlow') }}</span>
               <span :class="getFlowClass(sector.main_inflow)">{{ sector.main_inflow }}</span>
             </div>
           </div>
@@ -71,24 +71,24 @@
         </div>
       </div>
 
-      <div v-if="!displayedSectors.length" class="empty-filter">没有匹配的板块</div>
+      <div v-if="!displayedSectors.length" class="empty-filter">{{ t('sectorRank.noMatch') }}</div>
 
       <div v-if="filteredSectors.length > pageSize" class="pagination">
-        <button class="page-btn" @click="currentPage = 1" :disabled="currentPage === 1">首页</button>
-        <button class="page-btn" @click="currentPage -= 1" :disabled="currentPage === 1">上一页</button>
-        <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页</span>
-        <button class="page-btn" @click="currentPage += 1" :disabled="currentPage === totalPages">下一页</button>
+        <button class="page-btn" @click="currentPage = 1" :disabled="currentPage === 1">{{ t('sectorRank.firstPage') }}</button>
+        <button class="page-btn" @click="currentPage -= 1" :disabled="currentPage === 1">{{ t('sectorRank.prevPage') }}</button>
+        <span class="page-info">{{ t('sectorRank.pageInfo', { current: currentPage, total: totalPages }) }}</span>
+        <button class="page-btn" @click="currentPage += 1" :disabled="currentPage === totalPages">{{ t('sectorRank.nextPage') }}</button>
       </div>
     </div>
 
     <div v-if="updateTime" class="update-time">
-      <span v-if="isFromCache" class="data-source-badge stale" title="数据来自本地缓存，非实时行情">
-        <LucideIcon name="Package" :size="14" /> 本地缓存
+      <span v-if="isFromCache" class="data-source-badge stale" :title="t('sectorRank.localCache')">
+        <LucideIcon name="Package" :size="14" /> {{ t('sectorRank.localCache') }}
       </span>
-      <span v-if="dataDate" class="data-date" title="数据对应的交易日">
+      <span v-if="dataDate" class="data-date" :title="t('sectorRank.dataDate')">
         <LucideIcon v-if="isStale" name="Calendar" :size="14" /> {{ dataDate }}
       </span>
-      <span class="last-refresh">上次刷新 {{ updateTime.slice(-8) }}</span>
+      <span class="last-refresh">{{ t('sectorRank.lastRefresh', { time: updateTime.slice(-8) }) }}</span>
     </div>
 
     <Teleport to="body">
@@ -96,12 +96,12 @@
         <div class="sector-modal">
           <div class="modal-header">
             <div>
-              <h3>行业板块排行</h3>
+              <h3>{{ t('sectorRank.title') }}</h3>
               <p>
-                {{ dataDate || '最新数据' }}
-                <span>上涨 {{ upCount }}</span>
-                <span>下跌 {{ downCount }}</span>
-                <span>共 {{ filteredSectors.length }} 个</span>
+                {{ dataDate || t('sectorRank.latestData') }}
+                <span>{{ t('sectorRank.up') }} {{ upCount }}</span>
+                <span>{{ t('sectorRank.down') }} {{ downCount }}</span>
+                <span>{{ t('sectorRank.total', { count: filteredSectors.length }) }}</span>
               </p>
             </div>
             <button class="modal-close" @click="closeSectorModal">×</button>
@@ -110,35 +110,35 @@
           <div class="modal-filters">
             <SearchBar
               v-model.trim="keyword"
-              placeholder="搜索板块名称或代码..."
+              :placeholder="t('sectorRank.searchPlaceholder')"
               compact
               size="sm"
             />
             <div class="filter-row">
               <select v-model="sortBy" class="sort-select">
-                <option value="change_desc">涨跌幅 ↓</option>
-                <option value="change_asc">涨跌幅 ↑</option>
-                <option value="inflow_desc">主力净流入 ↓</option>
-                <option value="inflow_asc">主力净流入 ↑</option>
-                <option value="name">按名称</option>
+                <option value="change_desc">{{ t('sectorRank.sortChangeDesc') }}</option>
+                <option value="change_asc">{{ t('sectorRank.sortChangeAsc') }}</option>
+                <option value="inflow_desc">{{ t('sectorRank.sortInflowDesc') }}</option>
+                <option value="inflow_asc">{{ t('sectorRank.sortInflowAsc') }}</option>
+                <option value="name">{{ t('sectorRank.sortBy') }}</option>
               </select>
               <select v-model="changeFilter" class="sort-select">
-                <option value="all">全部涨跌</option>
-                <option value="up">上涨</option>
-                <option value="down">下跌</option>
-                <option value="flat">平盘</option>
+                <option value="all">{{ t('sectorRank.filterAll') }}</option>
+                <option value="up">{{ t('sectorRank.filterUp') }}</option>
+                <option value="down">{{ t('sectorRank.filterDown') }}</option>
+                <option value="flat">{{ t('sectorRank.filterFlat') }}</option>
               </select>
               <select v-model="flowFilter" class="sort-select">
-                <option value="all">全部资金</option>
-                <option value="inflow">主力流入</option>
-                <option value="outflow">主力流出</option>
+                <option value="all">{{ t('sectorRank.filterAllFlow') }}</option>
+                <option value="inflow">{{ t('sectorRank.filterInflow') }}</option>
+                <option value="outflow">{{ t('sectorRank.filterOutflow') }}</option>
               </select>
             </div>
             <div class="market-stats" v-if="sectors.length">
-              <span class="stat-chip total">{{ isFromCache ? '缓存数据' : '实时数据' }} {{ sectors.length }}</span>
-              <span class="stat-chip up">上涨 {{ upCount }}</span>
-              <span class="stat-chip flat">平盘 {{ flatCount }}</span>
-              <span class="stat-chip down">下跌 {{ downCount }}</span>
+              <span class="stat-chip total">{{ isFromCache ? t('sectorRank.cachedData') : t('sectorRank.liveData') }} {{ sectors.length }}</span>
+              <span class="stat-chip up">{{ t('sectorRank.up') }} {{ upCount }}</span>
+              <span class="stat-chip flat">{{ t('sectorRank.flat') }} {{ flatCount }}</span>
+              <span class="stat-chip down">{{ t('sectorRank.down') }} {{ downCount }}</span>
             </div>
           </div>
 
@@ -169,7 +169,7 @@
               <div class="modal-sector-main">
                 <div class="modal-sector-name">{{ sector.name }}</div>
                 <div class="modal-sector-flow">
-                  主力净流入 <span :class="getFlowClass(sector.main_inflow)">{{ sector.main_inflow }}</span>
+                  {{ t('sectorRank.mainInflow') }} <span :class="getFlowClass(sector.main_inflow)">{{ sector.main_inflow }}</span>
                 </div>
               </div>
               <div class="modal-sector-change" :class="{ up: sector.raw_change > 0, down: sector.raw_change < 0 }">
@@ -185,7 +185,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { marketAPI } from '../services/api'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{ limit?: number; autoRefresh?: boolean; refreshInterval?: number }>(), { limit: 90, autoRefresh: true, refreshInterval: 300000 })
 
@@ -233,10 +236,10 @@ const fetchSectors = async () => {
       return
     }
     clearSectorData()
-    error.value = response.data.error || '外部行情源暂不可用，暂无可展示的板块排行'
+    error.value = response.data.error || t('common.error')
   } catch (e) {
     clearSectorData()
-    error.value = '外部行情源连接失败，请稍后重试'
+    error.value = t('flashNews.networkError')
     console.error('获取板块排行失败:', e)
   } finally {
     loading.value = false

@@ -1,8 +1,8 @@
 <template>
   <div class="settings-general">
     <section class="setting-section">
-      <h3>外观</h3>
-      <p class="section-desc">选择主题显示模式</p>
+      <h3>{{ t('settings.general.appearance') }}</h3>
+      <p class="section-desc">{{ t('settings.general.themeDesc') }}</p>
       <div class="option-group">
         <button
           v-for="opt in themeOptions"
@@ -18,8 +18,8 @@
     </section>
 
     <section class="setting-section">
-      <h3>语言</h3>
-      <p class="section-desc">选择界面显示语言</p>
+      <h3>{{ t('settings.general.language') }}</h3>
+      <p class="section-desc">{{ t('settings.general.langDesc') }}</p>
       <div class="option-group">
         <button
           v-for="opt in localeOptions"
@@ -37,23 +37,25 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTheme } from '../composables/useTheme'
 import { getCurrentLocale, setLocale as setAppLocale } from '../locales/index'
 
+const { t } = useI18n()
 const { savedTheme, toggleTheme } = useTheme()
 
 const currentLocale = computed(() => getCurrentLocale())
 
-const themeOptions = [
-  { value: 'light', icon: 'Sun', label: '浅色' },
-  { value: 'dark', icon: 'Moon', label: '深色' },
-  { value: 'auto', icon: 'Monitor', label: '跟随系统' },
-]
+const themeOptions = computed(() => [
+  { value: 'light', icon: 'Sun', label: t('theme.light') },
+  { value: 'dark', icon: 'Moon', label: t('theme.dark') },
+  { value: 'auto', icon: 'Monitor', label: t('theme.auto') },
+])
 
-const localeOptions = [
-  { value: 'zh', label: '中文' },
-  { value: 'en', label: 'English' },
-]
+const localeOptions = computed(() => [
+  { value: 'zh', label: t('locale.zh') },
+  { value: 'en', label: t('locale.en') },
+])
 
 function setTheme(mode: string) {
   while (savedTheme.value !== mode) {

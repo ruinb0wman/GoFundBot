@@ -1,23 +1,23 @@
 <template>
   <div class="fund-backtest">
     <div class="backtest-header">
-      <h3><LucideIcon name="BarChart3" :size="20" /> 定投回测</h3>
-      <p class="header-desc">模拟历史定投收益，验证投资策略</p>
+      <h3><LucideIcon name="BarChart3" :size="20" /> {{ t('backtest.title') }}</h3>
+      <p class="header-desc">{{ t('backtest.desc') }}</p>
     </div>
 
     <!-- 基金选择 -->
     <div class="fund-select-section">
       <div v-if="!currentFundCode" class="search-container">
-        <p class="select-hint">请先选择一只基金进行回测</p>
+        <p class="select-hint">{{ t('backtest.selectFund') }}</p>
         <FundSearch @fund-selected="handleFundSelected" />
       </div>
       <div v-else class="selected-fund-display">
         <div class="fund-info">
-          <span class="label">当前回测基金:</span>
+          <span class="label">{{ t('backtest.currentFund') }}</span>
           <span class="code">{{ currentFundCode }}</span>
           <span class="name" v-if="currentFundName">{{ currentFundName }}</span>
         </div>
-        <button class="btn-change" @click="changeFund">更换基金</button>
+        <button class="btn-change" @click="changeFund">{{ t('backtest.changeFund') }}</button>
       </div>
     </div>
 
@@ -26,41 +26,41 @@
       <div class="backtest-params">
         <div class="param-row">
         <div class="param-item">
-          <label>投资方式</label>
+          <label>{{ t('backtest.investmentMethod') }}</label>
           <div class="radio-group">
             <label class="radio-label">
               <input type="radio" v-model="params.investmentType" value="monthly" />
-              <span>每月定投</span>
+              <span>{{ t('backtest.monthly') }}</span>
             </label>
             <label class="radio-label">
               <input type="radio" v-model="params.investmentType" value="weekly" />
-              <span>每周定投</span>
+              <span>{{ t('backtest.weekly') }}</span>
             </label>
             <label class="radio-label">
               <input type="radio" v-model="params.investmentType" value="daily" />
-              <span>每日定投</span>
+              <span>{{ t('backtest.daily') }}</span>
             </label>
             <label class="radio-label">
               <input type="radio" v-model="params.investmentType" value="lump_sum" />
-              <span>一次性买入</span>
+              <span>{{ t('backtest.lumpSum') }}</span>
             </label>
           </div>
 
           <!-- 定投具体日期选择 -->
           <div v-if="params.investmentType === 'monthly'" class="sub-param">
-            <label>定投日：</label>
+            <label>{{ t('backtest.investmentDay') }}</label>
             <select v-model="params.investmentDay">
-              <option v-for="d in 28" :key="d" :value="d">每月{{ d }}号</option>
+              <option v-for="d in 28" :key="d" :value="d">{{ t('backtest.dayOfMonth', { d }) }}</option>
             </select>
           </div>
           <div v-if="params.investmentType === 'weekly'" class="sub-param">
-            <label>定投日：</label>
+            <label>{{ t('backtest.investmentDay') }}</label>
             <select v-model="params.investmentDay">
-              <option :value="0">周一</option>
-              <option :value="1">周二</option>
-              <option :value="2">周三</option>
-              <option :value="3">周四</option>
-              <option :value="4">周五</option>
+              <option :value="0">{{ t('backtest.monday') }}</option>
+              <option :value="1">{{ t('backtest.tuesday') }}</option>
+              <option :value="2">{{ t('backtest.wednesday') }}</option>
+              <option :value="3">{{ t('backtest.thursday') }}</option>
+              <option :value="4">{{ t('backtest.friday') }}</option>
             </select>
           </div>
         </div>
@@ -68,7 +68,7 @@
 
       <div class="param-row">
         <div class="param-item">
-          <label>{{ params.investmentType === 'lump_sum' ? '投资金额' : '每期金额' }}</label>
+          <label>{{ params.investmentType === 'lump_sum' ? t('backtest.investAmount') : t('backtest.perPeriodAmount') }}</label>
           <div class="input-with-unit">
             <input
               type="number"
@@ -77,7 +77,7 @@
               step="100"
               placeholder="1000"
             />
-            <span class="unit">元</span>
+            <span class="unit">{{ t('backtest.yuan') }}</span>
           </div>
         </div>
 
@@ -175,13 +175,13 @@
 
       <div class="param-row">
         <div class="param-item">
-          <label>开始日期</label>
+          <label>{{ t('backtest.startDate') }}</label>
           <input type="date" v-model="params.startDate" :min="minStartDate" :max="params.endDate" />
           <div v-if="minStartDate" class="date-hint">成立日: {{ minStartDate }}</div>
         </div>
 
         <div class="param-item">
-          <label>结束日期</label>
+          <label>{{ t('backtest.endDate') }}</label>
           <input type="date" v-model="params.endDate" :min="params.startDate" :max="today" />
         </div>
       </div>
@@ -189,7 +189,7 @@
       <div class="param-actions">
         <button class="btn btn-primary" @click="runBacktest" :disabled="loading">
           <span v-if="loading">计算中...</span>
-          <span v-else>开始回测</span>
+          <span v-else>{{ t('backtest.run') }}</span>
         </button>
         <button class="btn btn-strategy" @click="suggestStrategy" :disabled="loading || strategyLoading">
           <span v-if="strategyLoading">生成中...</span>
@@ -239,7 +239,7 @@
         <h4><LucideIcon name="TrendingUp" :size="18" /> 回测结果</h4>
         <div class="summary-grid">
           <div class="summary-card">
-            <div class="card-label">总投入</div>
+            <div class="card-label">{{ t('backtest.totalInvestment') }}</div>
             <div class="card-value">{{ formatMoney(result.summary.total_invested) }}</div>
           </div>
           <div class="summary-card highlight">
@@ -247,15 +247,15 @@
             <div class="card-value">{{ formatMoney(result.summary.final_value) }}</div>
           </div>
           <div class="summary-card" :class="getReturnClass(result.summary.total_return)">
-            <div class="card-label">总收益</div>
+            <div class="card-label">{{ t('backtest.totalReturn') }}</div>
             <div class="card-value">{{ formatReturn(result.summary.total_return) }}</div>
           </div>
           <div class="summary-card" :class="getReturnClass(result.summary.return_rate)">
-            <div class="card-label">收益率</div>
+            <div class="card-label">{{ t('backtest.returnRate') }}</div>
             <div class="card-value">{{ result.summary.return_rate }}%</div>
           </div>
           <div class="summary-card">
-            <div class="card-label">年化收益率</div>
+            <div class="card-label">{{ t('backtest.annualReturn') }}</div>
             <div class="card-value" :class="getReturnClass(result.summary.annual_return)">
               {{ result.summary.annual_return }}%
             </div>
@@ -357,6 +357,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 import { useFundBacktest } from '../composables/useFundBacktest'
 import FundSearch from './FundSearch.vue'
 

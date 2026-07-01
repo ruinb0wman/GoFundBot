@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
 import { marketAPI } from '../services/api'
+import { translate } from '../locales/index'
 
 export function useStockPopup(props: any) {
   const { echartThemeName } = useEChartsTheme()
@@ -21,9 +22,9 @@ export function useStockPopup(props: any) {
   let klineChartInstance: echarts.ECharts | null = null
 
   const klinePeriods = [
-    { label: '近1月', value: '1m' }, { label: '近3月', value: '3m' },
-    { label: '近6月', value: '6m' }, { label: '近1年', value: '1y' },
-    { label: '全部', value: 'all' }
+    { label: translate('fund.detail.month1'), value: '1m' }, { label: translate('fund.detail.month3'), value: '3m' },
+    { label: translate('fund.detail.month6'), value: '6m' }, { label: translate('fund.detail.year1'), value: '1y' },
+    { label: translate('fund.detail.sinceInception'), value: 'all' }
   ]
 
   const filteredKlineData = computed(() => {

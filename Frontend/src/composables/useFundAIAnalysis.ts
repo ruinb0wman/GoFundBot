@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { ref, watch, computed } from 'vue'
 import { fundAPI } from '../services/api'
+import { translate } from '../locales/index'
 import type { AnalystReport, FundAnalysisResult } from '../types'
 
 export function useFundAIAnalysis<T extends (...args: any[]) => any>(
@@ -22,17 +23,17 @@ export function useFundAIAnalysis<T extends (...args: any[]) => any>(
   })
 
   const dashboardItems = {
-    performance_eval: { label: '业绩评价', icon: 'TrendingUp' },
-    manager_ability: { label: '经理能力', icon: 'UserCircle' },
-    position_analysis: { label: '持仓结构', icon: 'BarChart3' },
-    market_outlook: { label: '后市展望', icon: 'Telescope' }
+    performance_eval: { label: translate('fund.aiAnalyze.performanceEval'), icon: 'TrendingUp' },
+    manager_ability: { label: translate('fund.aiAnalyze.managerAbility'), icon: 'UserCircle' },
+    position_analysis: { label: translate('fund.aiAnalyze.positionAnalysis'), icon: 'BarChart3' },
+    market_outlook: { label: translate('fund.aiAnalyze.marketOutlook'), icon: 'Telescope' }
   }
 
   const ratingMap: Record<string, string> = {
-    'Strong Buy': '强烈看多',
-    'Buy': '建议买入',
-    'Hold': '持有观望',
-    'Underweight': '建议减仓',
+    'Strong Buy': translate('fund.aiAnalyze.strongBuy'),
+    'Buy': translate('fund.aiAnalyze.buy'),
+    'Hold': translate('fund.aiAnalyze.hold'),
+    'Underweight': translate('fund.aiAnalyze.underweight'),
     'Sell': '建议卖出',
   }
 

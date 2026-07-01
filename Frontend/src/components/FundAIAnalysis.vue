@@ -3,15 +3,15 @@
     <div class="header">
       <div class="title-area">
         <span class="icon"><LucideIcon name="Bot" :size="20" /></span>
-        <h3>AI 智能分析</h3>
-        <span class="badge" v-if="data">已分析</span>
+        <h3>{{ t('fund.aiAnalyze.title') }}</h3>
+        <span class="badge" v-if="data">{{ t('fund.aiAnalyze.analyzed') }}</span>
       </div>
       <div class="header-actions">
         <button v-if="!loading" @click="analyze" class="analyze-btn" :class="{ 'has-data': data }">
           <span class="btn-icon"><LucideIcon :name="data ? 'RefreshCw' : 'Sparkles'" :size="16" /></span>
-          {{ data ? '重新分析' : '开始分析' }}
+          {{ data ? t('fund.aiAnalyze.retry') : t('fund.aiAnalyze.start') }}
         </button>
-        <button class="close-btn" @click="$emit('close')" title="关闭">×</button>
+        <button class="close-btn" @click="$emit('close')" :title="t('common.close')">×</button>
       </div>
     </div>
 
@@ -22,8 +22,8 @@
           <span></span><span></span><span></span>
         </div>
       </div>
-      <p class="loading-text">AI 正在深度分析基金表现(可能需要2-3分钟)...</p>
-      <p class="loading-sub">结合市场数据、基金业绩、持仓结构进行综合评估</p>
+      <p class="loading-text">{{ t('fund.aiAnalyze.loading') }}</p>
+      <p class="loading-sub">{{ t('fund.aiAnalyze.loadingSub') }}</p>
     </div>
 
     <div v-if="loading && stageMessage && !streamingContent" class="loading">
@@ -36,7 +36,7 @@
     <div v-if="loading && streamingContent" class="streaming-output">
       <div class="streaming-header">
         <div class="streaming-dot"></div>
-        <span>AI 分析生成中...</span>
+        <span>{{ t('fund.aiAnalyze.generating') }}</span>
       </div>
       <div class="streaming-text">{{ streamingContent }}</div>
     </div>
@@ -44,7 +44,7 @@
     <div v-else-if="error" class="error">
       <span class="error-icon"><LucideIcon name="TriangleAlert" :size="20" /></span>
       <p>{{ error }}</p>
-      <button @click="analyze" class="retry-btn">重试</button>
+      <button @click="analyze" class="retry-btn">{{ t('common.retry') }}</button>
     </div>
 
     <div v-else-if="data" class="analysis-content">
@@ -59,7 +59,7 @@
             </svg>
             <div class="score-value">{{ data.sentiment_score }}</div>
           </div>
-          <div class="score-label">综合评分</div>
+          <div class="score-label">{{ t('fund.aiAnalyze.compositeScore') }}</div>
         </div>
         <div class="advice-card" :class="adviceClass">
           <div class="advice-icon"><LucideIcon :name="adviceIcon" :size="32" /></div>
@@ -90,7 +90,7 @@
 
       <div class="details-grid">
         <div class="detail-col highlights">
-          <h4><span class="col-icon"><LucideIcon name="Check" :size="16" /></span> 投资亮点</h4>
+          <h4><span class="col-icon"><LucideIcon name="Check" :size="16" /></span> {{ t('fund.aiAnalyze.highlights') }}</h4>
           <ul>
             <li v-for="(item, i) in data.highlights" :key="i">
               <span class="bullet">•</span>{{ item }}
@@ -98,7 +98,7 @@
           </ul>
         </div>
         <div class="detail-col risks">
-          <h4><span class="col-icon"><LucideIcon name="TriangleAlert" :size="16" /></span> 风险提示</h4>
+          <h4><span class="col-icon"><LucideIcon name="TriangleAlert" :size="16" /></span> {{ t('fund.aiAnalyze.risks') }}</h4>
           <ul>
             <li v-for="(item, i) in data.risk_factors" :key="i">
               <span class="bullet">•</span>{{ item }}
@@ -108,7 +108,7 @@
       </div>
 
       <div class="news-section" v-if="data.news_intel && data.news_intel.length">
-        <h4><span class="col-icon"><LucideIcon name="Newspaper" :size="16" /></span> 实时情报</h4>
+        <h4><span class="col-icon"><LucideIcon name="Newspaper" :size="16" /></span> {{ t('fund.aiAnalyze.realtime') }}</h4>
         <ul>
           <li v-for="(news, i) in data.news_intel" :key="i">{{ news }}</li>
         </ul>
@@ -116,7 +116,7 @@
 
       <div class="analyst-section" v-if="analystReports && analystReports.length">
         <div class="analyst-header" @click="showAnalysts = !showAnalysts">
-          <h4><LucideIcon name="Users" :size="16" /> 专业分析师视角 <span class="analyst-count">（{{ analystReports.length }}位）</span></h4>
+          <h4><LucideIcon name="Users" :size="16" /> {{ t('fund.aiAnalyze.analystViews') }} <span class="analyst-count">{{ t('fund.aiAnalyze.analystCount', { count: analystReports.length }) }}</span></h4>
           <span class="toggle-icon">{{ showAnalysts ? '▲' : '▼' }}</span>
         </div>
         <div class="analyst-grid" v-if="showAnalysts">
@@ -128,13 +128,13 @@
             </div>
             <p class="analyst-thesis">{{ r.thesis }}</p>
             <div class="analyst-meta" v-if="r.key_evidence?.length">
-              <span class="meta-label">关键证据：</span>
+              <span class="meta-label">{{ t('fund.aiAnalyze.evidence') }}：</span>
               <div class="meta-tags">
                 <span class="evidence-tag" v-for="e in r.key_evidence" :key="e">{{ e }}</span>
               </div>
             </div>
             <div class="analyst-meta" v-if="r.risk_flags?.length">
-              <span class="meta-label">风险关注：</span>
+              <span class="meta-label">{{ t('fund.aiAnalyze.riskFlags') }}：</span>
               <div class="meta-tags">
                 <span class="flag-tag" v-for="f in r.risk_flags" :key="f">{{ f }}</span>
               </div>
@@ -146,26 +146,29 @@
       <div class="detailed-report" v-if="data.detailed_report">
         <div class="report-header">
           <span class="report-icon"><LucideIcon name="FileText" :size="20" /></span>
-          <h4>深度分析报告</h4>
+          <h4>{{ t('fund.aiAnalyze.deepReport') }}</h4>
         </div>
         <div class="markdown-content" v-html="parsedReport"></div>
       </div>
 
       <div class="disclaimer">
-        <LucideIcon name="Lightbulb" :size="16" /> 以上分析由 AI 生成，仅供参考，不构成投资建议。投资有风险，入市需谨慎。
+        <LucideIcon name="Lightbulb" :size="16" /> {{ t('fund.aiAnalyze.disclaimer') }}
       </div>
     </div>
 
     <div v-else class="empty-state">
       <div class="empty-icon"><LucideIcon name="Telescope" :size="36" /></div>
-      <p class="empty-title">点击上方按钮，获取 AI 对该基金的实时深度分析报告</p>
-      <p class="empty-sub">分析内容包括：业绩评价、经理能力、持仓分析、后市展望等</p>
+      <p class="empty-title">{{ t('fund.aiAnalyze.emptyTitle') }}</p>
+      <p class="empty-sub">{{ t('fund.aiAnalyze.emptySub') }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useFundAIAnalysis } from '../composables/useFundAIAnalysis'
+
+const { t } = useI18n()
 
 const props = defineProps({
   fundCode: { type: String, required: true }

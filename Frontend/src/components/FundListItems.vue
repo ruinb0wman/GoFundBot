@@ -32,7 +32,7 @@
           class="btn-compare"
           :class="{ 'in-compare': isInCompare(fund.fund_code) }"
           @click.stop="$emit('add-to-compare', { code: fund.fund_code, name: fund.fund_name })"
-          :title="isInCompare(fund.fund_code) ? '已添加到对比' : '添加到对比'"
+          :title="isInCompare(fund.fund_code) ? t('fund.listItem.addedToCompare') : t('fund.listItem.addToCompare')"
         >
           <LucideIcon :name="isInCompare(fund.fund_code) ? 'Check' : 'Plus'" :size="14" />
         </button>
@@ -57,7 +57,7 @@
           v-if="addToRealtimeMode"
           class="btn-icon btn-add-realtime"
           @click.stop="$emit('add-to-realtime', fund)"
-          title="添加到实时估值"
+          :title="t('fund.listItem.addToRealtime')"
         >
           <LucideIcon name="Plus" :size="14" />
         </button>
@@ -65,14 +65,14 @@
           <button
             class="btn-icon btn-alert"
             @click.stop="$emit('show-alert-settings', fund.fund_code)"
-            title="告警设置"
+            :title="t('fund.listItem.alertSettings')"
           >
             <LucideIcon name="Bell" :size="13" />
           </button>
           <button
             class="btn-icon btn-remove"
             @click.stop="$emit('remove-fund', fund.fund_code)"
-            title="移除"
+            :title="t('fund.watchlist.remove')"
           >
             <LucideIcon name="X" :size="14" />
           </button>
@@ -83,7 +83,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { DraggingIndex, CompareFund } from '../types'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   funds?: any[]

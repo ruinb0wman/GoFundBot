@@ -4,12 +4,12 @@
     <!-- 头部 -->
     <div class="news-header-bar">
       <div class="header-left">
-        <h3 class="header-title"><LucideIcon name="Newspaper" :size="18" /> 7×24 快讯</h3>
-        <span v-if="!loading && newsList.length" class="count-badge">{{ newsList.length }} 条</span>
+        <h3 class="header-title"><LucideIcon name="Newspaper" :size="18" /> {{ t('flashNews.title') }}</h3>
+        <span v-if="!loading && newsList.length" class="count-badge">{{ newsList.length }} {{ t('flashNews.itemCount') }}</span>
       </div>
       <div class="header-right">
         <span v-if="sourcesText" class="sources-tag" :title="sourcesText">{{ sourcesText }}</span>
-        <button class="refresh-btn" @click="resetAndFetch" :disabled="loading" title="刷新快讯">
+        <button class="refresh-btn" @click="resetAndFetch" :disabled="loading" :title="t('flashNews.refresh')">
           <span :class="{ spinning: loading }"><LucideIcon name="RefreshCw" :size="16" /></span>
         </button>
       </div>
@@ -28,13 +28,13 @@
     <div v-else-if="error && !newsList.length" class="error-state">
       <span class="error-icon"><LucideIcon name="TriangleAlert" :size="20" /></span>
       <span class="error-text">{{ error }}</span>
-      <button class="retry-btn" @click="resetAndFetch">重试</button>
+      <button class="retry-btn" @click="resetAndFetch">{{ t('common.retry') }}</button>
     </div>
 
     <!-- 空 -->
     <div v-else-if="!newsList.length && !loading" class="empty-state">
       <span class="empty-icon"><LucideIcon name="MailOpen" :size="28" /></span>
-      <span>暂无快讯数据</span>
+      <span>{{ t('flashNews.noData') }}</span>
     </div>
 
     <!-- 列表 -->
@@ -63,17 +63,17 @@
 
       <!-- 底部加载状态 -->
       <div v-if="loadingMore" class="loading-more">
-        <span class="loading-dot"></span> 加载更多快讯...
+        <span class="loading-dot"></span> {{ t('flashNews.loadMore') }}
       </div>
       <div v-else-if="!hasMore && newsList.length > 0" class="loading-more end">
-        — 已加载全部快讯 —
+        — {{ t('flashNews.allLoaded') }} —
       </div>
     </div>
 
     <!-- 底部 -->
     <div v-if="updateTime && !loading" class="news-footer">
       <span class="footer-dot online"></span>
-      <span>更新于 {{ formatUpdateTime(updateTime) }}</span>
+      <span>{{ t('flashNews.updatedAt') }} {{ formatUpdateTime(updateTime) }}</span>
     </div>
 
     <!-- 详情弹窗 -->
@@ -95,7 +95,7 @@
               >{{ modal.news.evaluate }}</span>
             </div>
             <div v-if="modal.news?.related_stocks?.length" class="modal-stocks">
-              <span class="modal-stocks-label">相关股票</span>
+              <span class="modal-stocks-label">{{ t('flashNews.relatedStocks') }}</span>
               <div class="modal-stocks-list">
                 <span
                   v-for="stock in modal.news.related_stocks"
@@ -120,9 +120,12 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { marketAPI } from '../services/api'
 
 const props = withDefaults(defineProps<{ count?: number; autoRefresh?: boolean; refreshInterval?: number }>(), { count: 30, autoRefresh: true, refreshInterval: 30000 })
+
+const { t } = useI18n()
 
 const MAX_LEN = 35
 const PAGE_SIZE = 50
@@ -223,11 +226,11 @@ const fetchNews = async (page = 1, append = false) => {
         setTimeout(() => { newsList.value.forEach((n: any) => (n._isNew = false)) }, 2000)
       })
     } else if (page === 1) {
-      error.value = response.data.error || '获取快讯失败'
+      error.value = response.data.error || t('flashNews.error')
     }
   } catch (e) {
     if (page === 1) {
-      error.value = '网络异常，请稍后重试'
+      error.value = t('flashNews.networkError')
     }
   } finally {
     loading.value = false

@@ -2,12 +2,12 @@
   <div class="alert-settings-overlay" v-if="visible" @mousedown.self="close">
     <div class="alert-settings-dialog">
       <div class="dialog-header">
-        <h3><LucideIcon name="Bell" :size="18" /> 告警设置 - {{ fundCode }}</h3>
+        <h3><LucideIcon name="Bell" :size="18" /> {{ t('alert.settingsTitle', { code: fundCode }) }}</h3>
         <button class="close-btn" @click="close">&times;</button>
       </div>
       <div class="dialog-body">
         <div v-if="existing.length > 0" class="current-rules">
-          <label class="section-label">当前规则</label>
+          <label class="section-label">{{ t('alert.currentRules') }}</label>
           <div v-for="rule in existing" :key="rule.id" class="rule-row">
             <span class="rule-type">{{ typeLabel(rule.alert_type) }} {{ rule.threshold }}%</span>
             <label class="toggle-label">
@@ -18,17 +18,17 @@
           </div>
         </div>
         <div class="new-rule">
-          <label class="section-label">添加新规则</label>
+          <label class="section-label">{{ t('alert.addNewRule') }}</label>
           <div class="form-row">
             <select v-model="newType" class="form-select">
-              <option value="price_up">涨超</option>
-              <option value="price_down">跌超</option>
-              <option value="return_above">收益大于</option>
-              <option value="return_below">收益小于</option>
+              <option value="price_up">{{ t('alert.priceUp') }}</option>
+              <option value="price_down">{{ t('alert.priceDown') }}</option>
+              <option value="return_above">{{ t('alert.returnAbove') }}</option>
+              <option value="return_below">{{ t('alert.returnBelow') }}</option>
             </select>
             <input v-model="newThreshold" type="number" step="0.1" min="0.1" max="1000"
-                   placeholder="阈值 (%)" class="form-input" />
-            <button class="btn-add" @click="addRule" :disabled="!newThreshold">添加</button>
+                   :placeholder="t('alert.threshold')" class="form-input" />
+            <button class="btn-add" @click="addRule" :disabled="!newThreshold">{{ t('alert.addBtn') }}</button>
           </div>
         </div>
       </div>
@@ -38,7 +38,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAlertStore } from '../stores/alertStore'
+
+const { t } = useI18n()
 
 const props = defineProps<{ fundCode: string; visible: boolean }>()
 const emit = defineEmits(['close'])
@@ -49,9 +52,9 @@ const newThreshold = ref('')
 
 const existing = computed(() => store.rulesByFund(props.fundCode))
 
-const typeLabel = (t: string) => {
-  const labels: Record<string, string> = { price_up: '涨超', price_down: '跌超', return_above: '收益上', return_below: '收益下' }
-  return labels[t] || t
+const typeLabel = (type: string) => {
+  const labels: Record<string, string> = { price_up: t('alert.priceUp'), price_down: t('alert.priceDown'), return_above: t('alert.returnAbove'), return_below: t('alert.returnBelow') }
+  return labels[type] || type
 }
 
 const close = () => emit('close')
