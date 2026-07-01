@@ -48,6 +48,7 @@ class FundMasterServiceBase:
         "market_index": 60,
         "gold_realtime": 60,
         "gold_history": 3600,
+        "silver_history": 3600,
         "a_volume_7days": 300,
         "sse_30min": 60,
     }

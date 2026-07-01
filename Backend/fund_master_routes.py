@@ -383,6 +383,17 @@ def get_gold_history():
     return jsonify(service.get_gold_history(days=days))
 
 
+@fund_master_bp.route("/silver/history", methods=["GET"])
+def get_silver_history():
+    """
+    获取现货白银历史价格
+    GET /api/market/silver/history?days=10
+    """
+    days = request.args.get("days", 10, type=int)
+    service = get_fund_master_service()
+    return jsonify(service.get_silver_history(days=days))
+
+
 @fund_master_bp.route("/volume", methods=["GET"])
 def get_a_volume_7days():
     """

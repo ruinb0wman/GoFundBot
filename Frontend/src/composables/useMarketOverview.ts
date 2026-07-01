@@ -27,15 +27,42 @@ export function useMarketOverview(props: any) {
     return `rgba(${r},${g},${b},${alpha})`
   }
 
-  const goldModal: any = ref({ visible: false, name: '', code: '' })
+  const goldModal: any = ref({ visible: false, name: '', code: '', metalType: 'gold' })
   const goldDays = ref(10)
   const goldModalHistory: any = ref([])
 
-  const goldChartOption = computed(() => {
+  const metalChartOption = computed(() => {
     echartThemeName.value
     const data = goldModalHistory.value
     if (!data.length) return null
     const dates = data.map((i: any) => i.date.slice(5))
+    const isSilver = goldModal.value.metalType === 'silver'
+
+    if (isSilver) {
+      const prices = data.map((i: any) => parseFloat(i.price) || null)
+      const firstPrice = prices.find((p: number | null) => p !== null)
+      const priceColor = prices[prices.length - 1] >= firstPrice
+        ? cssVar('--color-danger', '#ff4d4f')
+        : cssVar('--color-success', '#52c41a')
+      return {
+        grid: { top: 20, right: 20, bottom: 30, left: 55, containLabel: false },
+        tooltip: {
+          trigger: 'axis',
+          formatter: (params: any) => {
+            const idx = params[0]?.dataIndex
+            if (idx == null) return ''
+            const d = data[idx]
+            return `<b>${d.date}</b><br/>价格: ${d.price} (${d.change}) ${d.unit || ''}<br/>最高: ${d.high}<br/>最低: ${d.low}`
+          }
+        },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 }, axisTick: { show: false } },
+        yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { type: 'dashed', color: cssVar('--border-subtle', '#f0f0f0') } }, axisLabel: { color: cssVar('--text-tertiary', '#9ca3af'), fontSize: 10 } },
+        series: [
+          { name: '收盘价', data: prices, type: 'line', smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { width: 2, color: priceColor }, itemStyle: { color: priceColor }, areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: hexToRgba(priceColor, 0.2) }, { offset: 1, color: hexToRgba(priceColor, 0) }] } } }
+        ]
+      }
+    }
+
     const chinaGold = data.map((i: any) => parseFloat(i.china_gold_price) || null)
     const zhoudafu = data.map((i: any) => parseFloat(i.zhoudafu_price) || null)
     return {
@@ -60,23 +87,25 @@ export function useMarketOverview(props: any) {
   })
 
   const openGoldHistory = async (item: any) => {
-    goldModal.value = { visible: true, name: item.name, code: item.code || '' }
+    const isSilver = item.name && (item.name.includes('白银') || item.name.includes('银'))
+    goldModal.value = { visible: true, name: item.name, code: item.code || '', metalType: isSilver ? 'silver' : 'gold' }
     document.body.style.overflow = 'hidden'
-    await fetchGoldHistoryForModal()
+    await fetchMetalHistoryForModal()
   }
 
   const closeGoldHistory = () => {
-    goldModal.value = { visible: false, name: '', code: '' }
+    goldModal.value = { visible: false, name: '', code: '', metalType: 'gold' }
     document.body.style.overflow = ''
   }
 
-  const isGoldItem = (item: any) => item.name && (item.name.includes('黄金') || item.name.includes('金'))
+  const isGoldItem = (item: any) => item.name && (item.name.includes('黄金') || item.name.includes('金') || item.name.includes('白银') || item.name.includes('银'))
 
-  const fetchGoldHistoryForModal = async () => {
+  const fetchMetalHistoryForModal = async () => {
     try {
-      const res = await marketAPI.getGoldHistory(goldDays.value)
+      const isSilver = goldModal.value.metalType === 'silver'
+      const res = isSilver ? await marketAPI.getSilverHistory(goldDays.value) : await marketAPI.getGoldHistory(goldDays.value)
       if (res.data.success) goldModalHistory.value = res.data.data
-    } catch (e) { console.error('获取黄金历史失败:', e) }
+    } catch (e) { console.error('获取历史数据失败:', e) }
   }
 
   const indicesIntraday: any = ref({ sh: [], sz: [], hs300: [] })
@@ -248,8 +277,8 @@ export function useMarketOverview(props: any) {
 
   return {
     loading, fetchAll, marketIndex, indices,
-    goldRealtime, goldModal, goldDays, goldModalHistory, goldChartOption,
-    openGoldHistory, closeGoldHistory, isGoldItem, fetchGoldHistoryForModal,
+    goldRealtime, goldModal, goldDays, goldModalHistory, metalChartOption,
+    openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
     aVolume, updateTime, formatDate, getChangeClass, getUpDnClass, navigateToIndex,
     volumeOption, tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate,
     currentChartOption, echartThemeName, anomalies, anomaliesLoading, fetchAnomalies

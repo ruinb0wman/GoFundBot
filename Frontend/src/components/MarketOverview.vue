@@ -88,7 +88,7 @@
           <div class="gold-modal-header">
             <h3><LucideIcon name="TrendingUp" :size="20" /> {{ goldModal.name }} — {{ t('market.goldTrendDays', { days: goldDays }) }}</h3>
             <div class="gold-modal-controls">
-              <select v-model="goldDays" class="days-select" @change="fetchGoldHistoryForModal">
+              <select v-model="goldDays" class="days-select" @change="fetchMetalHistoryForModal">
                 <option :value="7">{{ t('market.days7') }}</option>
                 <option :value="10">{{ t('market.days10') }}</option>
                 <option :value="30">{{ t('market.days30') }}</option>
@@ -97,7 +97,7 @@
             </div>
           </div>
           <div class="gold-modal-body">
-            <v-chart v-if="goldChartOption" class="gold-chart" :option="goldChartOption" autoresize :theme="echartThemeName" />
+            <v-chart v-if="metalChartOption" class="gold-chart" :option="metalChartOption" autoresize :theme="echartThemeName" />
             <div v-else class="empty-state">{{ t('market.noHistoryData') }}</div>
           </div>
         </div>
@@ -130,8 +130,8 @@ const props = defineProps({
 
 const {
   loading, fetchAll, marketIndex, indices,
-  goldRealtime, goldModal, goldDays, goldChartOption,
-  openGoldHistory, closeGoldHistory, isGoldItem, fetchGoldHistoryForModal,
+  goldRealtime, goldModal, goldDays, metalChartOption,
+  openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
   aVolume, volumeOption, echartThemeName,
   tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate,
   currentChartOption, getUpDnClass, navigateToIndex, formatDate,

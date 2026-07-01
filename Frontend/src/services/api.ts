@@ -102,6 +102,7 @@ export const marketAPI = {
   getMarketIndex() { return api.get('/market/index') },
   getGoldRealtime() { return api.get('/market/gold/realtime') },
   getGoldHistory(days = 10) { return api.get(`/market/gold/history?days=${days}`) },
+  getSilverHistory(days = 10) { return api.get(`/market/silver/history?days=${days}`) },
   getVolumeWeekly() { return api.get('/market/volume') },
   getSSE30min() { return api.get('/market/sse') },
   getIndicesIntraday() { return api.get('/market/indices/intraday') },

@@ -83,6 +83,28 @@ class FundMasterServiceGoldMixin:
         except Exception as e:
             return {"success": False, "error": str(e), "data": []}
 
+    def _fetch_metal_history(self, code: str, days: int, need_field: str = "128,129,70") -> dict | None:
+        try:
+            headers = {
+                "accept": "*/*",
+                "referer": "https://quote.cngold.org/gjs/swhj_zghj.html",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            }
+            url = "https://api.jijinhao.com/quoteCenter/history.htm"
+            params = {
+                "code": code,
+                "style": "3",
+                "pageSize": str(days),
+                "needField": need_field,
+                "currentPage": "1",
+                "_": int(time.time() * 1000),
+            }
+            response = requests.get(url, headers=headers, params=params, timeout=10, verify=False)
+            parsed = json.loads(response.text.replace("var quote_json = ", ""))
+            return parsed
+        except Exception:
+            return None
+
     def get_gold_history(self, days: int = 10) -> dict:
         """
         获取黄金历史价格
@@ -100,27 +122,12 @@ class FundMasterServiceGoldMixin:
             return cached
 
         try:
-            headers = {
-                "accept": "*/*",
-                "referer": "https://quote.cngold.org/gjs/swhj_zghj.html",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-            }
-
-            url = "https://api.jijinhao.com/quoteCenter/history.htm"
-            params = {
-                "code": "JO_52683",
-                "style": "3",
-                "pageSize": str(days),
-                "needField": "128,129,70",
-                "currentPage": "1",
-                "_": int(time.time() * 1000),
-            }
-            response = requests.get(url, headers=headers, params=params, timeout=10, verify=False)
-            data1 = json.loads(response.text.replace("var quote_json = ", ""))["data"]
-
-            params["code"] = "JO_42660"
-            response = requests.get(url, headers=headers, params=params, timeout=10, verify=False)
-            data2 = json.loads(response.text.replace("var quote_json = ", ""))["data"]
+            data1_data = self._fetch_metal_history("JO_52683", days)
+            data2_data = self._fetch_metal_history("JO_42660", days)
+            if data1_data is None:
+                raise RuntimeError("gold history API failed")
+            data1 = data1_data.get("data", [])
+            data2 = data2_data.get("data", []) if data2_data else []
 
             result = []
             for i in range(len(data1)):
@@ -140,14 +147,62 @@ class FundMasterServiceGoldMixin:
                     }
                 )
 
-            result = result[::-1]
-
             data = {
                 "success": True,
                 "data": result,
                 "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
             self._set_cache(cache_key, data, "gold_history")
+            return data
+
+        except Exception as e:
+            return {"success": False, "error": str(e), "data": []}
+
+    def get_silver_history(self, days: int = 10) -> dict:
+        """
+        获取现货白银历史价格
+        数据源：金投网/集金号
+
+        Args:
+            days: 获取天数，默认10天
+
+        Returns:
+            dict: {'success': bool, 'data': list, 'update_time': str}
+        """
+        cache_key = f"silver_history_{days}"
+        cached = self._get_cache(cache_key)
+        if cached:
+            return cached
+
+        try:
+            parsed = self._fetch_metal_history("JO_92232", days, need_field="70")
+            if parsed is None:
+                raise RuntimeError("silver history API failed")
+            raw = parsed.get("data", [])
+            unit = parsed.get("unit", "美元/盎司")
+
+            result = []
+            for item in raw:
+                t = item.get("time", 0)
+                date = datetime.datetime.fromtimestamp(t / 1000).strftime("%Y-%m-%d") if t else ""
+                result.append(
+                    {
+                        "date": date,
+                        "price": item.get("q1", "N/A"),
+                        "change": str(item.get("q70", "N/A")),
+                        "high": item.get("q3", "N/A"),
+                        "low": item.get("q4", "N/A"),
+                        "volume": item.get("q60", 0),
+                        "unit": unit,
+                    }
+                )
+
+            data = {
+                "success": True,
+                "data": result,
+                "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            self._set_cache(cache_key, data, "silver_history")
             return data
 
         except Exception as e:
