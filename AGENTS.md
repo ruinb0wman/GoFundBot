@@ -5,7 +5,7 @@
 Three independent services, **start in order**:
 
 1. **DataService** (port 3100) — Node.js/Express/TypeScript data gateway
-2. **Backend** (port 5000) — Flask monolith (business logic, AI, DB)
+2. **Backend** (port 5000) — Flask monolith (business logic, multi-analyst AI pipeline, DB, memory log)
 3. **Frontend** (port 5173) — Vue 3 + Vite, proxies `/api` → backend
 
 ## Critical data-flow rule
@@ -79,6 +79,7 @@ frontend:  npm run lint → npx vue-tsc --noEmit → npm test → npm run build
 - **API docs**: Swagger UI at `/api/docs` via flasgger. `@swag_from` decorators on v1 endpoints.
 - **Config validation**: `config.py:validate()` checks `LLM_API_KEY` and `DATA_SERVICE_BASE_URL` at startup.
 - **Database**: SQLite at `Backend/Data/funds.db`, auto-created on startup.
+- **Analysis memory**: `analysis_memory` table stores past fund analysis decisions; resolve_pending() computes returns and generates LLM reflections for future context injection.
 - **Cache TTLs** (DataService): fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
 - **Frontend Vite** proxies `/api` → `localhost:5000`; production: Flask serves `Frontend/dist/`.
 - **gray/green akshare**: `DISABLE_AKSHARE_FALLBACK=1` env var to disable akshare in legacy Backend path (DataService no longer uses akshare).
@@ -90,8 +91,9 @@ frontend:  npm run lint → npx vue-tsc --noEmit → npm test → npm run build
 |-----------|------|
 | `Backend/app.py` | 266-line bootstrap — blueprint registration, middleware, graceful shutdown |
 | `Backend/services/data_service_client.py` | DataService HTTP client — all external data fetch goes here |
-| `Backend/ai_service.py` | LLM analysis via LangChain + OpenAI-compatible API |
+| `Backend/ai_service.py` | Multi-analyst orchestrator — 4 parallel analysts + supervisor + memory reflection + anti-hallucination data injection |
 | `Backend/schemas/` | Pydantic input validation models |
+| `Backend/schemas/analysis_schemas.py` | Analysis output schemas: Rating (StrEnum 5-tier), DashboardEval, AnalystReport, FundAnalysisResult |
 | `Backend/core/validation.py` | `@validate_body` / `@validate_query` decorators |
 | `Backend/core/logging.py` | Structured JSON logging setup |
 | `Backend/core/metrics.py` | Prometheus metrics (`/metrics` endpoint) |
@@ -99,6 +101,8 @@ frontend:  npm run lint → npx vue-tsc --noEmit → npm test → npm run build
 | `Backend/routes/fund_routes/` | 基金路由包 (detail, compare, search, market, analyze, helpers) 分包后各文件 <500 行 |
 | `Backend/routes/screening_routes/` | 筛选路由包 (tasks, industry, query) |
 | `Backend/services/ai_agent/` | AI Agent 包 (tool_handlers, chat) |
+| `Backend/services/fund_analysts/` | 多分析师包 — performance/holding/manager/market + Supervisor + Orchestrator (并行 ThreadPoolExecutor) |
+| `Backend/services/memory_log.py` | 分析记忆日志 — store_analysis() / resolve_pending() / get_past_context() + LLM 反思生成 |
 | `Backend/services/research/` | 投研服务包 (market_stats, etf_tracking, sector_summary) |
 | `Backend/services/screening_engine/` | 筛选引擎包 (tasks, rankings) |
 | `Backend/services/market_data/` | 市场数据服务包 (service, formatters) |
@@ -117,7 +121,7 @@ frontend:  npm run lint → npx vue-tsc --noEmit → npm test → npm run build
 | `Backend/services/industry_classification.py` | Industry classification core logic |
 | `DataService/src/` | TypeScript Express app with ProviderChain |
 | `Frontend/src/` | Vue 3 + TypeScript + `<script setup lang="ts">` (全量迁移完成); `composables/` 含 `useSearchHistory` / `useOnlineStatus` / `useBreakpoint` / `useChartResize` / `useNotification` / `useFundRealtime*` (5 文件) / `useFundScreening` / `useFundComparison` 等 17+ composables; `components/` 含 `OfflineBanner` / `ErrorBoundary` / `HamburgerButton` / `MobileDrawer` / `BottomNav` / `AlertBadge` / `AlertSettings` |
-| `Backend/models.py` | SQLAlchemy 模型: AlertRule (告警规则) |
+| `Backend/models.py` | SQLAlchemy 模型: AlertRule (告警规则), AnalysisMemory (分析记忆) |
 | `Backend/routes/alert_routes.py` | 告警 CRUD + 检查 + 市场异动 API |
 | `Backend/schemas/alert_schemas.py` | Pydantic 校验: AlertRuleCreateSchema / AlertRuleUpdateSchema |
 | `Backend/services/market_alert.py` | 市场异动检测 (指数涨跌 >3%) |
@@ -126,6 +130,9 @@ frontend:  npm run lint → npx vue-tsc --noEmit → npm test → npm run build
 | `Frontend/src/locales/` | vue-i18n 国际化 (zh-CN / en) |
 | `Frontend/src/components/LocaleSwitcher.vue` | 语言切换按钮 (Header) |
 | `Backend/services/backtest_strategies.py` | 定投策略推荐引擎 (MA/价值平均策略对比) |
+| `Backend/tests/test_analysis_schemas.py` | Pydantic schema 验证测试 (24 条) |
+| `Backend/tests/test_fund_analysts.py` | 多分析师 + Supervisor + Orchestrator 测试 (48 条) |
+| `Backend/tests/test_memory_log.py` | 记忆反思系统测试 (17 条) |
 | `Frontend/tsconfig.json` | TypeScript strict mode config |
 | `.pre-commit-config.yaml` | Pre-commit hooks (private key + .env check) |
 

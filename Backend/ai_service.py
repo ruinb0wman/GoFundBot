@@ -25,6 +25,9 @@ from typing import Any
 from dotenv import load_dotenv
 
 from core.logging import get_logger
+from schemas.analysis_schemas import FundAnalysisResult
+from services.fund_analysts.orchestrator import AnalystOrchestrator
+from services.memory_log import AnalysisMemoryLog
 
 logger = get_logger(__name__)
 
@@ -159,9 +162,60 @@ class AIService:
 
         return raw
 
+    def _get_memory_log(self) -> AnalysisMemoryLog:
+        return AnalysisMemoryLog(api_key=self._api_key, api_base=self._api_base, model=self._model)
+
+    def _fetch_news_context(self, max_items: int = 8) -> str:
+        """预获取实时快讯（来源：东方财富/财联社/百度），注入 prompt 防止 LLM 幻觉"""
+        try:
+            from services.data_service_client import get_data_service_client
+
+            client = get_data_service_client()
+            payload = client.get_flash_news(count=max_items)
+            data = payload.get("data", {}) if isinstance(payload, dict) else {}
+            items = data.get("items", []) if isinstance(data, dict) else []
+            if not items:
+                return ""
+
+            lines = []
+            for item in items[:max_items]:
+                title = item.get("title", "")
+                pub_time = item.get("publishedAt", "")
+                if title:
+                    prefix = f"[{pub_time}] " if pub_time else ""
+                    lines.append(f"- {prefix}{title}")
+            return "\n".join(lines)
+        except Exception as e:
+            logger.warning(f"获取快讯失败（非关键，继续分析）: {e}")
+            return ""
+
+    def _fetch_sector_context(self, max_items: int = 5) -> str:
+        """预获取热点板块数据（来源：同花顺行业板块）"""
+        try:
+            from market_data_service import MarketDataService
+
+            sectors = MarketDataService().get_hot_sectors()
+            if not sectors or not isinstance(sectors, list):
+                return ""
+
+            lines = []
+            for sec in sectors[:max_items]:
+                name = sec.get("name", "")
+                change = sec.get("changePercent", sec.get("change", ""))
+                if name:
+                    if isinstance(change, (int, float)):
+                        change_str = f"{change:+.2f}%"
+                    else:
+                        change_str = str(change) if change else ""
+                    lines.append(f"- {name}：{change_str}")
+            return "\n".join(lines)
+        except Exception as e:
+            logger.warning(f"获取板块数据失败（非关键，继续分析）: {e}")
+            return ""
+
     def analyze_fund(self, fund_data: dict[str, Any]) -> dict[str, Any]:
         """
-        使用 AI 分析基金
+        使用多分析师辩论 + 记忆反思模式分析基金
 
         Args:
             fund_data: 基金数据，包含 basic_info, performance, portfolio 等
@@ -172,56 +226,50 @@ class AIService:
         if not self.is_available():
             return {"error": "AI 服务未配置，请检查 LLM_API_KEY 环境变量"}
 
+        basic_info = fund_data.get("basic_info", {})
+        fund_code = basic_info.get("fund_code", "")
+
         try:
-            # 构建分析提示
-            prompt = self._build_fund_analysis_prompt(fund_data)
+            memory = self._get_memory_log()
+            if fund_code:
+                memory.resolve_pending(fund_code)
+            past_ctx = memory.get_past_context(fund_code) if fund_code else ""
 
-            system_prompt = """你是一位资深基金分析师，擅长基金投资分析和风险评估。
-请基于提供的基金数据，给出专业、客观、全面的分析报告。
+            news_ctx = self._fetch_news_context()
+            sector_ctx = self._fetch_sector_context()
+            market_ctx = ""
+            if news_ctx:
+                market_ctx += "### 实时快讯\n" + news_ctx + "\n"
+            if sector_ctx:
+                market_ctx += "\n### 热点板块\n" + sector_ctx
 
-**重要提示**：
-1. 请务必根据提供的基金数据（业绩、风险、持仓等）进行真实评估，**绝对不要**直接抄袭示例中的数值。
-2. sentiment_score 必须根据基金的实际表现计算（0-100），反映其投资价值。
-3. operation_advice 必须基于你的分析结论给出。
+            orchestrator = AnalystOrchestrator(
+                api_key=self._api_key,
+                api_base=self._api_base,
+                model=self._model,
+            )
+            result = orchestrator.analyze(fund_data, market_context=market_ctx, past_context=past_ctx)
 
-**输出要求**：
-请严格按照以下 JSON 格式输出，直接返回纯 JSON，**不要**使用任何 markdown 代码块包裹（不要使用 ```json ```）：
-{
-    "sentiment_score": 0-100 分，
-    "operation_advice": "强烈推荐"/"建议买入"/"持有观望"/"建议减仓"/"建议卖出"，
-    "summary": "详细的分析总结（200-300字）",
-    "dashboard": {
-        "performance_eval": "优秀/良好/一般/较差",
-        "manager_ability": "优秀/良好/一般/较差",
-        "position_analysis": "集中/均衡/分散",
-        "market_outlook": "乐观/中性/谨慎"
-    },
-    "highlights": ["亮点1", "亮点2", "亮点3"],
-    "risk_factors": ["风险1", "风险2", "风险3"],
-    "news_intel": ["相关市场信息1", "相关市场信息2"],
-    "detailed_report": "Markdown格式的详细深度分析报告（不少于500字，使用 Markdown 标题组织）"
-}
+            if fund_code:
+                memory.store_analysis(fund_code, result)
 
-**评分说明**：
-- sentiment_score: 0-100 分，越高表示越值得投资
-- operation_advice: 可选值为 "强烈推荐"、"建议买入"、"持有观望"、"建议减仓"、"建议卖出"
-"""
-
-            # 调用 LLM
-            result = self._call_llm_simple(prompt, system_prompt)
-
-            if not result:
-                logger.error(f"AI 调用返回空 (base={self._api_base}, model={self._model})")
-                return {"error": f"AI 调用失败 (base={self._api_base}, model={self._model})，请检查 API 服务配置"}
-
-            return self._parse_fund_analysis_result(result)
+            return result
 
         except Exception as e:
             logger.error(f"基金分析出错: {type(e).__name__}: {e}", exc_info=True)
             return {"error": f"分析过程出错: {type(e).__name__}: {e}"}
 
-    def _build_fund_analysis_prompt(self, fund_data: dict[str, Any]) -> str:
+    def _build_fund_analysis_prompt(self, fund_data: dict[str, Any], market_context: str = "") -> str:
         """构建基金分析提示"""
+        prompt = ""
+        if market_context:
+            prompt += f"""## 今日市场动态（系统自动采集，请基于真实数据评估）
+
+{market_context}
+
+---
+
+"""
         basic_info = fund_data.get("basic_info", {})
         performance = fund_data.get("performance", {})
         portfolio = fund_data.get("portfolio", {})
@@ -229,7 +277,7 @@ class AIService:
         risk_metrics = fund_data.get("risk_metrics", {})
         realtime = fund_data.get("realtime_estimate", {})
 
-        prompt = f"""请分析以下基金：
+        prompt += f"""请分析以下基金：
 
 ## 基本信息
 - 基金名称：{basic_info.get("fund_name", "未知")}
@@ -312,29 +360,15 @@ class AIService:
         return prompt
 
     def _parse_fund_analysis_result(self, result: str) -> dict[str, Any]:
-        """解析基金分析结果"""
+        """解析基金分析结果，使用 Pydantic 验证"""
         try:
             json_str = self._extract_json_from_llm_response(result)
-            data = json.loads(json_str)
-
-            required_fields = [
-                "sentiment_score",
-                "operation_advice",
-                "summary",
-                "dashboard",
-                "highlights",
-                "risk_factors",
-                "detailed_report",
-            ]
-            for field in required_fields:
-                if field not in data:
-                    data[field] = self._get_default_value(field)
-
-            return data
-
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON 解析失败: {e}，原始响应前 500 字符: {result[:500]}")
+            parsed = FundAnalysisResult.model_validate_json(json_str)
+            return parsed.model_dump()
+        except Exception as e:
+            logger.error(f"Pydantic 解析失败: {e}，原始响应前 500 字符: {result[:500]}")
             return {
+                "rating": "Hold",
                 "sentiment_score": 50,
                 "operation_advice": "持有观望",
                 "summary": result[:200] if result else "分析结果解析失败",
@@ -349,25 +383,6 @@ class AIService:
                 "news_intel": [],
                 "detailed_report": result if result else "暂无详细分析",
             }
-
-    def _get_default_value(self, field: str) -> Any:
-        """获取字段默认值"""
-        defaults = {
-            "sentiment_score": 50,
-            "operation_advice": "持有观望",
-            "summary": "暂无分析",
-            "dashboard": {
-                "performance_eval": "一般",
-                "manager_ability": "一般",
-                "position_analysis": "均衡",
-                "market_outlook": "中性",
-            },
-            "highlights": [],
-            "risk_factors": [],
-            "news_intel": [],
-            "detailed_report": "暂无详细分析报告",
-        }
-        return defaults.get(field)
 
     def generate_market_summary(self, market_data: dict[str, Any]) -> dict[str, Any]:
         """
@@ -475,10 +490,10 @@ class AIService:
             }
 
     def analyze_fund_stream(self, fund_data: dict[str, Any]):
-        """Streaming version of analyze_fund.
+        """Streaming debate version of analyze_fund.
 
-        Yields SSE-formatted strings for each chunk of LLM output.
-        Final chunk contains the full parsed JSON result.
+        Yields SSE-formatted stage events for bull/bear/manager phases,
+        then the final parsed result.
         """
         if not self.is_available():
             yield f"data: {json.dumps({'error': 'AI 服务未配置'})}\n\n"
@@ -486,37 +501,33 @@ class AIService:
             return
 
         try:
-            prompt = self._build_fund_analysis_prompt(fund_data)
-            system_prompt = self._get_fund_analysis_system_prompt()
+            basic_info = fund_data.get("basic_info", {})
+            fund_code = basic_info.get("fund_code", "")
 
-            from openai import OpenAI
+            memory = self._get_memory_log()
+            if fund_code:
+                memory.resolve_pending(fund_code)
+            past_ctx = memory.get_past_context(fund_code) if fund_code else ""
 
-            client = OpenAI(api_key=self._api_key, base_url=self._api_base)
+            news_ctx = self._fetch_news_context()
+            sector_ctx = self._fetch_sector_context()
+            market_ctx = ""
+            if news_ctx:
+                market_ctx += "### 实时快讯\n" + news_ctx + "\n"
+            if sector_ctx:
+                market_ctx += "\n### 热点板块\n" + sector_ctx
 
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-
-            stream = client.chat.completions.create(
+            yield f"event: stage\ndata: {json.dumps({'stage': 'orchestrating', 'message': '四位专业分析师正在并行评估基金...'})}\n\n"
+            orchestrator = AnalystOrchestrator(
+                api_key=self._api_key,
+                api_base=self._api_base,
                 model=self._model,
-                messages=messages,
-                temperature=0.2,
-                max_tokens=8192,
-                stream=True,
             )
+            result = orchestrator.analyze(fund_data, market_context=market_ctx, past_context=past_ctx)
 
-            full_content = ""
-            for chunk in stream:
-                delta = chunk.choices[0].delta if chunk.choices else None
-                content = delta.content if delta else ""
-                if content:
-                    full_content += content
-                    yield f"data: {json.dumps({'token': content, 'full': full_content})}\n\n"
-
-            # Parse and send final result
-            result = self._parse_fund_analysis_result(full_content)
-            yield f"event: result\ndata: {json.dumps(result)}\n\n"
+            if fund_code:
+                memory.store_analysis(fund_code, result)
+            yield f"event: result\ndata: {json.dumps(result, ensure_ascii=False)}\n\n"
             yield "event: done\ndata: [DONE]\n\n"
 
         except Exception as e:
@@ -525,38 +536,6 @@ class AIService:
             )
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
             yield "event: done\ndata: [DONE]\n\n"
-
-    def _get_fund_analysis_system_prompt(self) -> str:
-        return """你是一位资深基金分析师，擅长基金投资分析和风险评估。
-请基于提供的基金数据，给出专业、客观、全面的分析报告。
-
-**重要提示**：
-1. 请务必根据提供的基金数据进行真实评估。
-2. sentiment_score 必须根据基金的实际表现计算（0-100）。
-3. operation_advice 必须基于你的分析结论给出。
-
-**输出要求**：
-请严格按照以下 JSON 格式输出，直接返回纯 JSON，**不要**使用任何 markdown 代码块包裹（不要使用 ```json ```）：
-{
-    "sentiment_score": 0-100 分，
-    "operation_advice": "强烈推荐"/"建议买入"/"持有观望"/"建议减仓"/"建议卖出"，
-    "summary": "详细的分析总结（200-300字）",
-    "dashboard": {
-        "performance_eval": "优秀/良好/一般/较差",
-        "manager_ability": "优秀/良好/一般/较差",
-        "position_analysis": "集中/均衡/分散",
-        "market_outlook": "乐观/中性/谨慎"
-    },
-    "highlights": ["亮点1", "亮点2", "亮点3"],
-    "risk_factors": ["风险1", "风险2", "风险3"],
-    "news_intel": ["相关市场信息1", "相关市场信息2"],
-    "detailed_report": "Markdown格式的详细深度分析报告"
-}
-
-**评分说明**：
-- sentiment_score: 0-100 分，越高表示越值得投资
-- detailed_report: 请提供不少于500字的深度分析，使用 Markdown 格式
-"""
 
 
 # 单例实例

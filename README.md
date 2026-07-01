@@ -9,7 +9,10 @@ GoFundBot 是一个基于 Python (Flask) 和 Vue 3 构建的智能基金分析�
 ## 🚀 功能特性
 
 ### 🤖 AI 智能投顾
-*   **深度基金分析**：基于 LLM 生成专业的基金诊断报告，涵盖业绩归因、风险特征、经理风格及后市策略。
+*   **多分析师辩论**：四位专业 AI 分析师（业绩/持仓/经理/市场环境）并行评估，研究总监综合裁决。
+*   **标准化 5 档评级**：基于 Pydantic 结构化输出的 Strong Buy→Sell 评级体系，可信度高。
+*   **记忆反思系统**：每次分析决策自动存储，后续拉取实际收益并生成事后反思，注入未来分析。
+*   **防幻觉设计**：预获取东方财富/财联社/百度股市通实时快讯及行业板块数据，直接注入 prompt。
 *   **智能仪表盘**：通过 AI 对基金的业绩、管理能力、持仓及市场前景进行多维度打分。
 *   **市场情绪摘要**：每日自动生成市场行情摘要，捕捉关键市场动态与板块机会。
 
@@ -105,7 +108,8 @@ GoFundBot 是一个基于 Python (Flask) 和 Vue 3 构建的智能基金分析�
 *   **框架**: Flask (Blueprint 模块化路由, 9 个蓝图)
 *   **API 版本化**: 渐进式 `/api/v1/` 迁移 (`@deprecated_route` 装饰器)
 *   **安全/限流**: Flask-Limiter, Pydantic `@validate_body`/`@validate_query`, Flask-CORS
-*   **AI/LLM**: LangChain, OpenAI SDK (适配 SiliconFlow/DeepSeek 等模型)
+*   **AI/LLM**: OpenAI SDK, Pydantic 结构化输出
+*   **分析引擎**: 多分析师并行辩论（ThreadPoolExecutor）、记忆反思系统（AnalysisMemoryLog）
 *   **数据存储**: SQLAlchemy (SQLite)
 *   **网络请求**: Requests, Curl_cffi (处理复杂反爬)
 *   **监控**: Prometheus 客户端 (`/metrics` 端点)
@@ -289,7 +293,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 MyBot/
 ├── Backend/                     # Flask 后端
 │   ├── app.py                   # 应用入口 (266 行，仅引导 + 中间件注册)
-│   ├── ai_service.py            # AI 分析服务（LangChain + LLM）
+│   ├── ai_service.py            # AI 分析调度器（多分析师编排 + 记忆反思 + 防幻觉注入）
 │   ├── core/                    # 公共模块
 │   │   ├── request.py           # HTTP 请求层（熔断器 + 多会话）
 │   │   ├── errors.py            # 错误类型
@@ -312,11 +316,14 @@ MyBot/
 │   │   ├── __init__.py
 │   │   └── fund.py
 │   ├── schemas/                 # Pydantic 校验模型
+│   │   ├── analysis_schemas.py  # 分析输出 Schema (Rating, DashboardEval, AnalystReport, FundAnalysisResult)
 │   │   ├── watchlist_schemas.py
 │   │   ├── backtest_schemas.py
 │   │   ├── screening_schemas.py
 │   │   └── apidoc.py
 │   ├── services/                # 业务服务层
+│   │   ├── fund_analysts/       # 多分析师包（业绩/持仓/经理/市场 + Supervisor + Orchestrator）
+│   │   ├── memory_log.py            # 分析记忆日志 + 反思引擎
 │   │   ├── data_service_client.py   # DataService HTTP 客户端
 │   │   ├── ai_agent/               # AI Agent (分包)
 │   │   ├── research/               # 投研服务 (分包)
@@ -332,6 +339,7 @@ MyBot/
 │   └── docs/
 ├── Frontend/                    # Vue 3 + TypeScript 前端
 │   ├── tsconfig.json            # TypeScript 严格模式配置
+│   ├── types.ts                 # TypeScript 类型定义（含 AnalystReport, FundAnalysisResult）
 │   ├── src/
 │   │   ├── components/          # 35 个 Vue 组件（全量 <script setup lang="ts">）
 │   │   │   ├── FundDetail.vue
@@ -366,6 +374,9 @@ MyBot/
 | **性能优化** | Pinia 状态管理避免重复请求、Flask-Compress Gzip/Brotli 压缩、HTTP 缓存头 (ETag/Cache-Control)、部分端点分页支持 |
 | **安全加固** | Flask-Limiter + express-rate-limit 速率限制、Pydantic 请求体校验、CORS 白名单配置、CSRF 防护 (SameSite Cookie) |
 | **生产就绪** | 结构化 JSON 日志、Swagger OpenAPI 文档、Prometheus `/metrics`、SIGTERM 优雅关闭、`/api/v1/` 渐进版本化 |
+| **AI 分析重构** | 四位专业分析师（业绩/持仓/经理/市场环境）并行辩论→研究总监综合裁决；Pydantic 结构化输出（5 档评级 + AnalystReport + FundAnalysisResult schema）；防幻觉实时数据预注入（东方财富/财联社/百度）；记忆反思闭环（存储→收益追踪→LLM 反思→注入下次分析） |
+| **前端分析增强** | 新增 Rating 色标徽章、分析师视角可折叠区域（角色色点 + 评分 + thesis + 证据标签 + 风险标签）、SSE 阶段事件流式加载状态 |
+| **测试扩展** | Backend 203 条测试（新增 test_analysis_schemas 24 条 + test_fund_analysts 48 条 + test_memory_log 17 条） |
 | **DataService 迁移** | 基金排名/分红 EastMoney provider 实现，指数行情/K 线 EastMoney 实现，ProviderChain 双源后备，废弃 akshare 桩，默认数据源切换至 `data_service` |
 | **前端增强** | 搜索历史 (`useSearchHistory`)、离线检测 (`useOnlineStatus` + `OfflineBanner`)、错误边界 (`ErrorBoundary`)、移动端适配 (`useBreakpoint` + MobileDrawer + BottomNav + 触摸适配 + 图表 resize 修复)、降级地址 env var 化 |
 | **功能完善** | 深色模式 CSS 变量全覆盖、筛选/对比 CSV 导出、基金价格告警系统 (后端 AlertRule + 前端 AlertBadge/AlertSettings)、市场异动检测、AI 分析 SSE 流式输出 (打字机效果)、定投策略推荐 (MA/价值平均/周期对比)、i18n 国际化 (vue-i18n, zh-CN/en) |

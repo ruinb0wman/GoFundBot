@@ -42,3 +42,31 @@ export interface Portfolio {
   stock_codes_new?: PortfolioHolding[]
   stock_codes?: (string | number)[]
 }
+
+export interface FundDashboard {
+  performance_eval: string
+  manager_ability: string
+  position_analysis: string
+  market_outlook: string
+}
+
+export interface AnalystReport {
+  analyst_role: string
+  thesis: string
+  score: number
+  key_evidence: string[]
+  risk_flags: string[]
+}
+
+export interface FundAnalysisResult {
+  rating: string
+  sentiment_score: number
+  operation_advice: string
+  summary: string
+  dashboard: FundDashboard
+  highlights: string[]
+  risk_factors: string[]
+  news_intel: string[]
+  detailed_report: string
+  analyst_reports?: AnalystReport[]
+}

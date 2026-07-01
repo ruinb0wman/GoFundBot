@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <div v-if="loading && !streamingContent" class="loading">
+    <div v-if="loading && !streamingContent && !stageMessage" class="loading">
       <div class="loading-animation">
         <div class="spinner"></div>
         <div class="loading-dots">
@@ -24,6 +24,13 @@
       </div>
       <p class="loading-text">AI 正在深度分析基金表现(可能需要2-3分钟)...</p>
       <p class="loading-sub">结合市场数据、基金业绩、持仓结构进行综合评估</p>
+    </div>
+
+    <div v-if="loading && stageMessage && !streamingContent" class="loading">
+      <div class="loading-animation">
+        <div class="spinner"></div>
+      </div>
+      <p class="loading-text">{{ stageMessage }}</p>
     </div>
 
     <div v-if="loading && streamingContent" class="streaming-output">
@@ -57,6 +64,13 @@
         <div class="advice-card" :class="adviceClass">
           <div class="advice-icon"><LucideIcon :name="adviceIcon" :size="32" /></div>
           <div class="advice-text">{{ data.operation_advice }}</div>
+        </div>
+      </div>
+
+      <div class="rating-section" v-if="data.rating">
+        <div class="rating-badge" :style="{ borderColor: ratingColor, color: ratingColor }">
+          <span class="rating-label">{{ ratingLabel }}</span>
+          <span class="rating-code">{{ data.rating }}</span>
         </div>
       </div>
 
@@ -100,6 +114,35 @@
         </ul>
       </div>
 
+      <div class="analyst-section" v-if="analystReports && analystReports.length">
+        <div class="analyst-header" @click="showAnalysts = !showAnalysts">
+          <h4><LucideIcon name="Users" :size="16" /> 专业分析师视角 <span class="analyst-count">（{{ analystReports.length }}位）</span></h4>
+          <span class="toggle-icon">{{ showAnalysts ? '▲' : '▼' }}</span>
+        </div>
+        <div class="analyst-grid" v-if="showAnalysts">
+          <div class="analyst-card" v-for="r in analystReports" :key="r.analyst_role">
+            <div class="analyst-role">
+              <span class="role-dot" :style="{ background: roleColor(r.analyst_role) }"></span>
+              {{ analystRoleNames[r.analyst_role] || r.analyst_role }}
+              <span class="role-score">{{ r.score }}/10</span>
+            </div>
+            <p class="analyst-thesis">{{ r.thesis }}</p>
+            <div class="analyst-meta" v-if="r.key_evidence?.length">
+              <span class="meta-label">关键证据：</span>
+              <div class="meta-tags">
+                <span class="evidence-tag" v-for="e in r.key_evidence" :key="e">{{ e }}</span>
+              </div>
+            </div>
+            <div class="analyst-meta" v-if="r.risk_flags?.length">
+              <span class="meta-label">风险关注：</span>
+              <div class="meta-tags">
+                <span class="flag-tag" v-for="f in r.risk_flags" :key="f">{{ f }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="detailed-report" v-if="data.detailed_report">
         <div class="report-header">
           <span class="report-icon"><LucideIcon name="FileText" :size="20" /></span>
@@ -121,7 +164,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useFundAIAnalysis } from '../composables/useFundAIAnalysis'
 
 const props = defineProps({
@@ -131,8 +174,11 @@ const emit = defineEmits(['close', 'analysis-complete'])
 
 const {
   data, loading, error, streamingContent,
-  dashboardItems, scoreColorClass, scoreColor, scoreProgress,
-  parsedReport, adviceClass, adviceIcon, getEvalClass, analyze
+  stageMessage, analystReports, showAnalysts,
+  dashboardItems, ratingLabel, ratingColor,
+  scoreColorClass, scoreColor, scoreProgress,
+  parsedReport, adviceClass, adviceIcon, getEvalClass,
+  analystRoleNames, roleColor, analyze
 } = useFundAIAnalysis(props, emit)
 
 defineExpose({ analyze })

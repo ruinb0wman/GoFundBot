@@ -418,3 +418,21 @@ class ChatMessage(Base):
     tool_name = Column(String(50))
     tool_params_json = Column(Text)
     created_time = Column(DateTime, default=datetime.now)
+
+
+class AnalysisMemory(Base):
+    """Past fund analysis decisions and their outcomes for reflection."""
+
+    __tablename__ = "analysis_memory"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fund_code = Column(String(6), nullable=False, index=True)
+    analysis_date = Column(DateTime, nullable=False)
+    rating = Column(String(20))
+    sentiment_score = Column(Integer)
+    thesis = Column(Text)
+    resolved = Column(Integer, default=0)
+    actual_return = Column(Float, nullable=True)
+    reflection = Column(Text, nullable=True)
+    resolved_date = Column(DateTime, nullable=True)
+    created_time = Column(DateTime, default=datetime.now)
