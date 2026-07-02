@@ -3,7 +3,6 @@ import logging
 import os
 import sys
 from datetime import UTC, datetime
-from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 
@@ -20,6 +19,8 @@ class JsonFormatter(logging.Formatter):
         }
         if hasattr(record, "source"):
             payload["source"] = record.source
+        if record.exc_info:
+            payload["exc_info"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False)
 
 
@@ -34,6 +35,66 @@ def _retention_days() -> int:
     return int(os.getenv("LOG_RETENTION_DAYS", "30"))
 
 
+class DailyJsonlFileHandler(logging.Handler):
+    """每天生成一个 {name}-YYYY-MM-DD.jsonl 文件的 Handler。"""
+
+    def __init__(self, name: str, log_dir: Path | None = None):
+        super().__init__()
+        self.name = name
+        self.log_dir = log_dir or _log_dir()
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self._current_date = ""
+        self._file = None
+        self._open_file()
+
+    def _file_path(self) -> Path:
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        return self.log_dir / f"{self.name}-{today}.jsonl"
+
+    def _open_file(self):
+        if self._file:
+            self._file.close()
+        self._current_date = datetime.now(UTC).strftime("%Y-%m-%d")
+        self._file = open(self._file_path(), "a", encoding="utf-8")
+
+    def emit(self, record):
+        if datetime.now(UTC).strftime("%Y-%m-%d") != self._current_date:
+            self._open_file()
+        try:
+            self._file.write(self.format(record) + "\n")
+            self._file.flush()
+        except Exception:
+            self.handleError(record)
+
+    def close(self):
+        if self._file:
+            self._file.close()
+            self._file = None
+        super().close()
+
+
+def _cleanup_old_logs(log_dir: Path, retention_days: int):
+    """清理超过保留期的旧日志文件。"""
+    if not log_dir.exists():
+        return
+    cutoff = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    try:
+        from datetime import timedelta
+
+        cutoff -= timedelta(days=retention_days)
+    except Exception:
+        return
+    for f in log_dir.iterdir():
+        if not f.is_file() or f.suffix != ".jsonl":
+            continue
+        try:
+            mtime = datetime.fromtimestamp(f.stat().st_mtime, tz=UTC)
+            if mtime < cutoff:
+                f.unlink()
+        except Exception:
+            pass
+
+
 def init_logging(level=logging.INFO):
     root = logging.getLogger()
     root.handlers.clear()
@@ -43,19 +104,13 @@ def init_logging(level=logging.INFO):
     stream_handler.setFormatter(formatter)
     root.addHandler(stream_handler)
 
-    log_path = _log_dir()
-    log_path.mkdir(parents=True, exist_ok=True)
-    file_handler = TimedRotatingFileHandler(
-        filename=str(log_path / "backend.log"),
-        when="midnight",
-        interval=1,
-        backupCount=_retention_days(),
-        encoding="utf-8",
-    )
-    file_handler.suffix = "%Y-%m-%d.jsonl"
+    log_dir = _log_dir()
+    log_dir.mkdir(parents=True, exist_ok=True)
+    file_handler = DailyJsonlFileHandler("backend", log_dir)
     file_handler.setFormatter(formatter)
     root.addHandler(file_handler)
 
+    _cleanup_old_logs(log_dir, _retention_days())
     root.setLevel(level)
 
 
@@ -72,9 +127,14 @@ def list_log_files() -> list[dict]:
         if not f.is_file() or f.suffix != ".jsonl":
             continue
         name = f.stem
-        if "-" in name:
-            source, date_str = name.split("-", 1)
-            files.append({"source": source, "date": date_str, "size": f.stat().st_size, "path": str(f)})
+        # 期望格式: {source}-YYYY-MM-DD
+        if "-" not in name:
+            continue
+        source, date_str = name.split("-", 1)
+        # 校验 date 部分是否像 YYYY-MM-DD
+        if len(date_str) != 10 or date_str[4] != "-" or date_str[7] != "-":
+            continue
+        files.append({"source": source, "date": date_str, "size": f.stat().st_size, "path": str(f)})
     return files
 
 

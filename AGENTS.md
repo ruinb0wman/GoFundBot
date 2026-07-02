@@ -71,7 +71,7 @@ frontend:  npm run lint → npx vue-tsc --noEmit → npm test → npm run build
 - **Input validation**: Pydantic `@validate_body` / `@validate_query` decorators on key POST/PUT routes (`schemas/`).
 - **CORS**: `CORS_ORIGINS` env var controls allowed origins (comma-separated, `*` = all).
 - **Security headers**: DataService uses `helmet` (CSP/COEP disabled).
-- **Structured logging**: JSON format via `core/logging.py` (Backend) and `core/logger.ts` (DataService) with `requestId` per request.
+- **Structured logging**: JSON format via `core/logging.py` (Backend) and `core/logger.ts` (DataService) with `requestId` per request. Daily files are named `{source}-YYYY-MM-DD.jsonl` under `Backend/Data/logs`; DataService defaults to sharing this directory when running inside the monorepo (`LOG_DIR` overrides it).
 - **Health check**: Backend `GET /health` — deep check (DB + DataService). DataService `GET /api/health` includes cache stats.
 - **Metrics**: Prometheus client at `/metrics` — `http_requests_total`, `http_request_duration_seconds`, `db_connections_active`, etc.
 - **Graceful shutdown**: Both services handle `SIGTERM`/`SIGINT` — 10s wait for in-flight requests, then force exit.
