@@ -202,7 +202,7 @@ const {
   getHoldingReturnRate, ensureProfitNavDates, settleOfficialNavProfits,
   getHoldingProfitTodayClass, getHoldingProfitTotalClass,
   calculateShare, formatMoney, formatShare,
-  saveTradeRecords, buildTradeRecord, upsertTradeRecord, removeTradeRecordByTxnId,
+  buildTradeRecord, upsertTradeRecord, removeTradeRecordByTxnId,
   getTradeStatusText, getLegacyPendingRecord, getFundTradeRecords,
   toggleCollapse, isSelected, openAddFundModal, closeAddFundModal,
   selectFundForAdd, toggleSelectFund, mapPortfolioHoldings,

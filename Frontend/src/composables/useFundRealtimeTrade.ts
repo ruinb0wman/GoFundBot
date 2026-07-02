@@ -1,9 +1,10 @@
 // @ts-nocheck
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { portfolioAPI } from '../services/portfolioApi'
 import {
-  getDateText, getCurrentPrice, getFundNavByDate, hasExactNavForDate,
-  isTradeDatePending, getHoldingProfitToday, getHoldingProfitTotal,
-  getHoldingAmount, buildTradeRecord, genTxnId,
+  getFundNavByDate, getCurrentPrice, getDateText, hasExactNavForDate,
+  getHoldingAmount, getHoldingProfitTotal, hasFreshEstimate,
+  getFundTrendSeries, buildTradeRecord, genTxnId,
 } from './useFundRealtimeBase'
 
 export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
@@ -16,10 +17,6 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
   const showEditModal = ref(false)
   const editForm = ref({ fund: null, amount: '', profit: 0 })
 
-  const saveTradeRecords = () => {
-    localStorage.setItem('realtime_trade_records', JSON.stringify(tradeRecords.value))
-  }
-
   const upsertTradeRecord = (record) => {
     const idx = tradeRecords.value.findIndex(r => r.id === record.id || (record.txnId && r.txnId === record.txnId))
     if (idx >= 0) {
@@ -29,12 +26,23 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
     } else {
       tradeRecords.value = [record, ...tradeRecords.value]
     }
-    saveTradeRecords()
+    portfolioAPI.addTrade({
+      fund_code: record.fundCode,
+      fund_name: record.fundName,
+      type: record.type,
+      trade_date: record.tradeDate,
+      amount: record.amount,
+      share: record.share,
+      nav: record.nav,
+      status: record.status || 'settled',
+      txn_id: record.txnId || record.id || '',
+      settled_at: record.settledAt || '',
+    }).catch(() => {})
   }
 
   const removeTradeRecordByTxnId = (txnId) => {
     tradeRecords.value = tradeRecords.value.filter(r => r.txnId !== txnId)
-    saveTradeRecords()
+    portfolioAPI.deletePendingTrade(txnId).catch(() => {})
   }
 
   const getLegacyPendingRecord = (txn, fund) => {
@@ -114,7 +122,7 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
       profit_nav_date: getDateText(fund.jzrq) || todayDate.value
     }
     holdings.value = newHoldings
-    localStorage.setItem('realtime_holdings', JSON.stringify(newHoldings))
+    portfolioAPI.upsertHolding(fund.code, newHoldings[fund.code]).catch(() => {})
     closeEditModal()
   }
 
@@ -128,7 +136,7 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
     const newHoldings = { ...holdings.value }
     delete newHoldings[fund.code]
     holdings.value = newHoldings
-    localStorage.setItem('realtime_holdings', JSON.stringify(newHoldings))
+    portfolioAPI.deleteHolding(fund.code).catch(() => {})
     closeHoldingModal()
   }
 
@@ -168,6 +176,13 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
     return pending ? `确认${base}并挂起` : `确认${base}`
   }
 
+  const isTradeDatePending = (fund, tradeDate) => {
+    if (!fund || !tradeDate) return false
+    const today = new Date().toISOString().slice(0, 10)
+    if (tradeDate !== today) return false
+    return !hasExactNavForDate(fund, tradeDate)
+  }
+
   const settleTrade = (fund, type, inputValue, nav, tradeDate, options = {}) => {
     const newHoldings = { ...holdings.value }
     const h = newHoldings[fund.code] || { share: 0, cost: 0, buy_date: '' }
@@ -201,7 +216,6 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
     }
 
     holdings.value = newHoldings
-    localStorage.setItem('realtime_holdings', JSON.stringify(newHoldings))
 
     if (options.record !== false) {
       const record = buildTradeRecord(fund, type, inputValue, nav, tradeDate, 'settled', options.txnId || '')
@@ -210,6 +224,9 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
       }
       upsertTradeRecord(record)
     }
+    portfolioAPI.upsertHolding(fund.code, newHoldings[fund.code] || {
+      share: 0, cost: 0, buy_date: '', profit: 0, profit_nav_date: ''
+    }).catch(() => {})
   }
 
   const saveTrade = () => {
@@ -235,7 +252,6 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
       }
       upsertTradeRecord(buildTradeRecord(fund, type, inputValue, nav, tradeDate, 'pending', txnId))
       pendingTxns.value.push(txn)
-      localStorage.setItem('realtime_pending_txns', JSON.stringify(pendingTxns.value))
       closeHoldingModal()
       return
     }
@@ -246,13 +262,13 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
 
   const cancelPendingTxn = (txnId) => {
     pendingTxns.value = pendingTxns.value.filter(t => t.id !== txnId)
-    localStorage.setItem('realtime_pending_txns', JSON.stringify(pendingTxns.value))
     removeTradeRecordByTxnId(txnId)
   }
 
   const settlePendingTxnsIfReady = () => {
     if (!pendingTxns.value.length) return
     const remaining = []
+    const settledIds = []
     let changed = false
 
     for (const txn of pendingTxns.value) {
@@ -265,6 +281,7 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
         const nav = getFundNavByDate(fund, txn.tradeDate)
         if (nav > 0) {
           settleTrade(fund, txn.type, txn.inputValue, nav, txn.tradeDate, { txnId: txn.id })
+          settledIds.push(txn.id)
           changed = true
           continue
         }
@@ -274,14 +291,55 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
 
     if (changed) {
       pendingTxns.value = remaining
-      localStorage.setItem('realtime_pending_txns', JSON.stringify(remaining))
+      if (settledIds.length) {
+        portfolioAPI.batchSettleTrades(settledIds).catch(() => {})
+      }
     }
   }
+
+  // ==================== Init ====================
+
+  onMounted(async () => {
+    try {
+      const res = await portfolioAPI.getTrades()
+      const data = res?.data
+      if (Array.isArray(data) && data.length) {
+        const settled = data.filter(r => r.status === 'settled' || r.status !== 'pending')
+        const pending = data.filter(r => r.status === 'pending')
+        tradeRecords.value = settled.map(r => ({
+          id: r.id,
+          txnId: r.txn_id || '',
+          fundCode: r.fund_code,
+          fundName: r.fund_name || r.fund_code,
+          type: r.type,
+          tradeDate: r.trade_date || '',
+          amount: r.amount || 0,
+          share: r.share || 0,
+          nav: r.nav || 0,
+          status: r.status || 'settled',
+          createdAt: r.created_at || '',
+          settledAt: r.settled_at || '',
+        }))
+        if (pending.length) {
+          pendingTxns.value = pending.map(r => ({
+            id: r.txn_id || r.id,
+            fundCode: r.fund_code,
+            fundName: r.fund_name || r.fund_code,
+            type: r.type,
+            tradeDate: r.trade_date || '',
+            inputValue: r.amount || 0,
+            nav: r.nav || 0,
+            createdAt: r.created_at || '',
+          }))
+        }
+      }
+    } catch { /* API not available */ }
+  })
 
   return {
     holdingModal, tradeForm, pendingTxns, tradeRecords, tradeHistoryModal, showPending,
     showEditModal, editForm,
-    saveTradeRecords, upsertTradeRecord, removeTradeRecordByTxnId,
+    upsertTradeRecord, removeTradeRecordByTxnId,
     getFundTradeRecords, getLegacyPendingRecord,
     openHoldingModal, openTradeHistory, closeTradeHistory, openTradeModal,
     openEditModal, closeEditModal, saveEdit, closeHoldingModal, clearHolding,

@@ -5,10 +5,10 @@ import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
 import { useDebouncedWatch } from './useDebouncedWatch'
 import { fundAPI } from '../services/api'
+import { portfolioAPI } from '../services/portfolioApi'
 import { useFundStore } from '../stores/fundStore'
 
 export function useMyPositions() {
-  const STORAGE_KEY = 'gofundbot_positions'
   const today = new Date().toISOString().split('T')[0]
   const { echartThemeName } = useEChartsTheme()
   const cssColor = (name, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
@@ -232,6 +232,7 @@ export function useMyPositions() {
         operationText.value = `转换完成：卖出 ${source.code} 金额 ¥${amount.toFixed(2)}，买入 ${targetCode}。`
       }
       await Promise.all([refreshRealtimeQuotes(), loadHistoryForPositions()])
+      syncToApi()
       renderCharts()
       if (operationForm.type !== 'convert') {
         operationForm.amount = null
@@ -519,24 +520,6 @@ export function useMyPositions() {
     await fillCostByDateRule()
   }
 
-  const save = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(positions.value))
-  }
-
-  const load = () => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        positions.value = JSON.parse(raw).map(item => ({
-          ...item,
-          code: normalizeFundCode(item.code)
-        }))
-      }
-    } catch (error) {
-      console.error('读取持仓失败:', error)
-    }
-  }
-
   const resetForm = () => {
     form.code = ''
     form.name = ''
@@ -549,7 +532,7 @@ export function useMyPositions() {
 
   const addPosition = async () => {
     const code = normalizeFundCode(form.code)
-    positions.value.unshift({
+    const newPos = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       code,
       name: form.name,
@@ -557,15 +540,33 @@ export function useMyPositions() {
       purchaseTime: form.purchaseTime,
       shares: Number(form.shares),
       cost: Number(form.cost)
-    })
+    }
+    positions.value.unshift(newPos)
     resetForm()
+    portfolioAPI.addPosition({
+      fund_code: code, fund_name: form.name || '',
+      purchase_date: form.purchaseDate || '', purchase_time: form.purchaseTime || '',
+      shares: Number(form.shares) || 0, cost: Number(form.cost) || 0,
+    }).catch(() => {})
     await refreshRealtimeQuotes()
     await loadHistoryForPositions()
     renderCharts()
   }
 
+  const syncToApi = async () => {
+    portfolioAPI.clearPositions().catch(() => {})
+    for (const p of positions.value) {
+      await portfolioAPI.addPosition({
+        fund_code: p.code, fund_name: p.name || '',
+        purchase_date: p.purchaseDate || '', purchase_time: p.purchaseTime || '',
+        shares: p.shares || 0, cost: p.cost || 0,
+      })
+    }
+  }
+
   const removePosition = async id => {
     positions.value = positions.value.filter(item => item.id !== id)
+    portfolioAPI.deletePosition(id).catch(() => {})
     await loadHistoryForPositions()
     renderCharts()
   }
@@ -573,7 +574,6 @@ export function useMyPositions() {
   const formatNumber = (value, digit = 2) => Number(value || 0).toFixed(digit)
   const formatSigned = value => `${value >= 0 ? '+' : ''}${formatNumber(value, 2)}`
 
-  watch(positions, save, { deep: true })
   useDebouncedWatch([quoteMap, historyMap], () => renderCharts(), 300, { deep: true })
 
   watch(echartThemeName, () => {
@@ -583,7 +583,17 @@ export function useMyPositions() {
   })
 
   onMounted(async () => {
-    load()
+    try {
+      const res = await portfolioAPI.getPositions()
+      const data = res?.data
+      if (Array.isArray(data)) {
+        positions.value = data.map(p => ({
+          id: p.id, code: p.fund_code, name: p.fund_name,
+          purchaseDate: p.purchase_date, purchaseTime: p.purchase_time,
+          shares: p.shares || 0, cost: p.cost || 0,
+        }))
+      }
+    } catch (e) { console.error('加载持仓失败', e) }
     await Promise.all([refreshRealtimeQuotes(), loadHistoryForPositions()])
     renderCharts()
     startRefreshTimer()

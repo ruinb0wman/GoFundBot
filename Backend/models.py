@@ -392,6 +392,98 @@ class DailyMarketSummary(Base):
     updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+# ==================== 用户持仓组合表 ====================
+
+
+class UserFundPortfolio(Base):
+    """用户自选基金列表（对应前端 realtime_funds）"""
+
+    __tablename__ = "user_fund_portfolio"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fund_code = Column(String(6), unique=True, nullable=False, index=True)
+    fund_name = Column(String(100))
+    fund_type = Column(String(50))
+    fund_data_json = Column(Text)  # 基金完整快照数据
+    sort_order = Column(Integer, default=0)
+    created_time = Column(DateTime, default=datetime.now)
+    updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class UserFundHolding(Base):
+    """用户基金持仓（对应前端 realtime_holdings）"""
+
+    __tablename__ = "user_fund_holding"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fund_code = Column(String(6), unique=True, nullable=False, index=True)
+    share = Column(Float, default=0)
+    cost = Column(Float, default=0)
+    buy_date = Column(String(10))
+    profit = Column(Float, default=0)
+    profit_nav_date = Column(String(10))
+    created_time = Column(DateTime, default=datetime.now)
+    updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class UserTradeRecord(Base):
+    """用户交易记录（含挂起交易，对应前端 realtime_trade_records + realtime_pending_txns）"""
+
+    __tablename__ = "user_trade_record"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fund_code = Column(String(6), nullable=False, index=True)
+    fund_name = Column(String(100))
+    type = Column(String(10), nullable=False)  # buy / sell
+    trade_date = Column(String(10))
+    amount = Column(Float, default=0)
+    share = Column(Float, default=0)
+    nav = Column(Float, default=0)
+    status = Column(String(20), default="settled")  # settled / pending
+    txn_id = Column(String(64))
+    settled_at = Column(String(30))
+    created_time = Column(DateTime, default=datetime.now)
+
+
+class UserPortfolioGroup(Base):
+    """用户分组（对应前端 realtime_portfolio_groups）"""
+
+    __tablename__ = "user_portfolio_group"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50), nullable=False)
+    sort_order = Column(Integer, default=0)
+    created_time = Column(DateTime, default=datetime.now)
+    updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class UserFundGroupMap(Base):
+    """基金→分组映射（对应前端 realtime_fund_group_map）"""
+
+    __tablename__ = "user_fund_group_map"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fund_code = Column(String(6), unique=True, nullable=False, index=True)
+    group_id = Column(Integer, default=None)
+    created_time = Column(DateTime, default=datetime.now)
+
+
+class UserPosition(Base):
+    """手动持仓（对应前端 gofundbot_positions / MyPositions）"""
+
+    __tablename__ = "user_position"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fund_code = Column(String(6), nullable=False, index=True)
+    fund_name = Column(String(100))
+    purchase_date = Column(String(10))
+    purchase_time = Column(String(10))
+    shares = Column(Float, default=0)
+    cost = Column(Float, default=0)
+    created_time = Column(DateTime, default=datetime.now)
+    updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 # ==================== 对话 AI 表 ====================
 
 

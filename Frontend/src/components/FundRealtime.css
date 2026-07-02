@@ -210,7 +210,6 @@
 
 .c-time { text-align: center; color: var(--text-disabled); font-size: 11px; }
 
-}
 .up { color: var(--color-danger) !important; } .down { color: var(--color-success) !important; }
 
 /* 挂起交易提示栏 */

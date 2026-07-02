@@ -120,6 +120,7 @@ from routes.log_routes import log_bp
 from routes.research_routes import research_bp
 from routes.screening_routes import screening_bp
 from routes.system_routes import system_bp
+from routes.user_portfolio import user_portfolio_bp
 from routes.watchlist_routes import watchlist_bp
 from routes_v1 import register_v1_blueprints
 
@@ -134,6 +135,7 @@ app.register_blueprint(backtest_bp)
 app.register_blueprint(system_bp)
 app.register_blueprint(alert_bp)
 app.register_blueprint(log_bp)
+app.register_blueprint(user_portfolio_bp)
 register_v1_blueprints(app)
 
 

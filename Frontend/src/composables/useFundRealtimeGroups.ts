@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import { translate } from '../locales/index'
+import { portfolioAPI } from '../services/portfolioApi'
 
 export function useFundRealtimeGroups() {
   const portfolioGroups = ref([])
@@ -9,6 +10,17 @@ export function useFundRealtimeGroups() {
   const editingGroup = ref(null)
   const groupName = ref('')
   const contextMenu = ref({ show: false, x: 0, y: 0, groupId: null })
+
+  onMounted(async () => {
+    try {
+      const [groupsRes, mapRes] = await Promise.all([
+        portfolioAPI.getGroups(),
+        portfolioAPI.getGroupMap(),
+      ])
+      if (Array.isArray(groupsRes?.data)) portfolioGroups.value = groupsRes.data
+      if (mapRes?.data && typeof mapRes.data === 'object') fundGroupMap.value = mapRes.data
+    } catch { /* API not available */ }
+  })
 
   const openAddGroupModal = () => {
     editingGroup.value = null
@@ -36,23 +48,28 @@ export function useFundRealtimeGroups() {
     groupName.value = ''
   }
 
-  const saveGroup = () => {
+  const saveGroup = async () => {
     const name = groupName.value.trim()
     if (!name) return
     if (editingGroup.value) {
-      const idx = portfolioGroups.value.findIndex(g => g.id === editingGroup.value.id)
+      const id = editingGroup.value.id
+      const idx = portfolioGroups.value.findIndex(g => g.id === id)
       if (idx !== -1) portfolioGroups.value[idx].name = name
+      try { await portfolioAPI.updateGroup(id, { name })
+      } catch { /* fallback */ }
     } else {
-      portfolioGroups.value.push({
-        id: 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        name
-      })
+      const localId = 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
+      const newGroup = { id: localId, name }
+      portfolioGroups.value.push(newGroup)
+      try {
+        const res = await portfolioAPI.createGroup(name)
+        if (res?.data?.id) newGroup.id = res.data.id
+      } catch { /* fallback */ }
     }
-    localStorage.setItem('realtime_portfolio_groups', JSON.stringify(portfolioGroups.value))
     closeGroupModal()
   }
 
-  const deleteGroup = (groupId) => {
+  const deleteGroup = async (groupId) => {
     const group = portfolioGroups.value.find(g => g.id === groupId)
     if (!group) return
     if (!confirm(translate('fund.realtimeGroups.deleteGroupConfirm', { name: group.name }))) return
@@ -61,12 +78,20 @@ export function useFundRealtimeGroups() {
       if (newMap[code] === groupId) delete newMap[code]
     })
     fundGroupMap.value = newMap
-    localStorage.setItem('realtime_fund_group_map', JSON.stringify(newMap))
     portfolioGroups.value = portfolioGroups.value.filter(g => g.id !== groupId)
-    localStorage.setItem('realtime_portfolio_groups', JSON.stringify(portfolioGroups.value))
+    try {
+      if (typeof groupId === 'number') {
+        await portfolioAPI.deleteGroup(groupId)
+      } else {
+        const mappings = Object.entries(fundGroupMap.value).map(([code, gid]) => ({
+          fund_code: code, group_id: gid != null ? String(gid) : null
+        }))
+        await portfolioAPI.syncGroupMap(mappings)
+      }
+    } catch { /* fallback */ }
   }
 
-  const assignFundToGroup = (fundCode, groupId) => {
+  const assignFundToGroup = async (fundCode, groupId) => {
     const newMap = { ...fundGroupMap.value }
     if (!groupId) {
       delete newMap[fundCode]
@@ -74,7 +99,20 @@ export function useFundRealtimeGroups() {
       newMap[fundCode] = groupId
     }
     fundGroupMap.value = newMap
-    localStorage.setItem('realtime_fund_group_map', JSON.stringify(newMap))
+    syncGroupMapDebounced()
+  }
+
+  let syncTimeout = null
+  const syncGroupMapDebounced = () => {
+    if (syncTimeout) clearTimeout(syncTimeout)
+    syncTimeout = setTimeout(async () => {
+      const mappings = Object.entries(fundGroupMap.value).map(([code, gid]) => ({
+        fund_code: code, group_id: gid != null ? String(gid) : null
+      }))
+      try { await portfolioAPI.syncGroupMap(mappings)
+      } catch { /* fallback */ }
+      syncTimeout = null
+    }, 2000)
   }
 
   const openGroupContextMenu = (event, groupId) => {
@@ -95,14 +133,7 @@ export function useFundRealtimeGroups() {
     const groupId = contextMenu.value.groupId
     const group = portfolioGroups.value.find(g => g.id === groupId)
     if (group && confirm(`确定删除分组"${group.name}"吗？分组内的基金将回到默认状态。`)) {
-      const newMap = { ...fundGroupMap.value }
-      Object.keys(newMap).forEach(code => {
-        if (newMap[code] === groupId) delete newMap[code]
-      })
-      fundGroupMap.value = newMap
-      localStorage.setItem('realtime_fund_group_map', JSON.stringify(newMap))
-      portfolioGroups.value = portfolioGroups.value.filter(g => g.id !== groupId)
-      localStorage.setItem('realtime_portfolio_groups', JSON.stringify(portfolioGroups.value))
+      deleteGroup(groupId)
     }
     closeContextMenu()
   }
