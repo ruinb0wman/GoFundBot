@@ -29,6 +29,7 @@ const props = withDefaults(defineProps<{
   visible: boolean
   title?: string
   width?: number | string
+  height?: string
   closable?: boolean
   closeOnOverlay?: boolean
 }>(), {
@@ -50,12 +51,15 @@ const slots = defineSlots<{
 const hasHeader = computed(() => !!(slots.header || props.title))
 
 const modalStyle = computed(() => {
+  const style: Record<string, string> = {}
   const w = props.width
-  if (!w) return {}
-  if (typeof w === 'number') {
-    return { width: `${w}px` }
+  if (w) {
+    style.width = typeof w === 'number' ? `${w}px` : w
   }
-  return { width: w }
+  if (props.height) {
+    style.height = props.height
+  }
+  return style
 })
 
 function onClose() {
