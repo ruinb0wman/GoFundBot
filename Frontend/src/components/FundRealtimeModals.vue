@@ -1,34 +1,20 @@
 <template>
   <div>
     <div v-if="funds" />
-    <div v-if="addFundModalOpen" class="modal-overlay" @click.self="emit('close-add-fund')">
-      <div class="modal-box add-fund-modal">
-        <div class="modal-title-row">
-          <h3>{{ t('fund.realtimeModal.title') }}</h3>
-          <button class="modal-close" @click="emit('close-add-fund')" :aria-label="t('common.close')">×</button>
-        </div>
-        <SearchBar
-          :model-value="searchTerm"
-          @update:model-value="emit('update-search-term', $event)"
-          :placeholder="t('fund.realtimeModal.searchPlaceholder')"
-          @search="emit('search')"
-          autofocus
-        />
-        <div v-if="searchLoading" class="add-loading">{{ t('fund.realtimeModal.searching') }}</div>
-        <div v-else-if="searchResults.length > 0" class="add-result-list">
-          <button v-for="item in searchResults" :key="item.CODE" class="add-result-item" :class="{ selected: isSelected?.(item.CODE) }" @click="emit('select-fund', item)">
-            <span class="fund-code">{{ item.CODE }}</span>
-            <span class="fund-name">{{ item.NAME }}</span>
-          </button>
-        </div>
-        <div v-else-if="searchTerm" class="add-empty">{{ t('fund.realtimeModal.noMatch') }}</div>
-        <div v-else class="add-empty">{{ t('fund.realtimeModal.searchHint') }}</div>
-        <div class="modal-actions">
-          <button class="btn" @click="emit('close-add-fund')">{{ t('fund.realtimeModal.cancel') }}</button>
-          <button class="btn btn-primary" @click="emit('confirm-add-fund')" :disabled="!selectedFunds?.length && !searchTerm">{{ t('fund.realtimeModal.confirmAdd') }}</button>
-        </div>
-      </div>
-    </div>
+    <BaseModal :visible="addFundModalOpen" @close="emit('close-add-fund')">
+      <template #header>
+        <h3>{{ t('fund.realtimeModal.title') }}</h3>
+      </template>
+      <FundSearch
+        :select-mode="true"
+        autofocus
+        @fund-selected="emit('select-fund', $event)"
+      />
+      <template #footer>
+        <button class="btn" @click="emit('close-add-fund')">{{ t('fund.realtimeModal.cancel') }}</button>
+        <button class="btn btn-primary" @click="emit('confirm-add-fund')" :disabled="!selectedFunds?.length">{{ t('fund.realtimeModal.confirmAdd') }}</button>
+      </template>
+    </BaseModal>
 
     <div v-if="holdingModal?.open" class="modal-overlay" @click.self="emit('close-holding')">
       <div class="modal-box holding-modal">
@@ -153,15 +139,14 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BaseModal from './BaseModal.vue'
+import FundSearch from './FundSearch.vue'
 const { t } = useI18n()
 defineOptions({ name: 'FundRealtimeModals' })
 
 const props = defineProps<{
   addFundModalOpen: boolean
-  searchTerm: string
-  searchResults: any[]
   selectedFunds: any[]
-  searchLoading: boolean
   holdingModal: any
   tradeForm: any
   todayDate: string
@@ -185,8 +170,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close-add-fund'): void
-  (e: 'update-search-term', value: string): void
-  (e: 'search'): void
   (e: 'select-fund', fund: any): void
   (e: 'confirm-add-fund'): void
   (e: 'close-holding'): void

@@ -132,10 +132,7 @@
 
     <FundRealtimeModals
       :add-fund-modal-open="addFundModalOpen"
-      :search-term="searchTerm"
-      :search-results="searchResults"
       :selected-funds="selectedFunds"
-      :search-loading="searchLoading"
       :holding-modal="holdingModal"
       :trade-form="tradeForm"
       :today-date="todayDate"
@@ -150,8 +147,6 @@
       :holdings="holdings"
       :funds="funds"
       @close-add-fund="closeAddFundModal"
-      @update-search-term="searchTerm = $event"
-      @search="performSearch"
       @select-fund="selectFundForAdd"
       @confirm-add-fund="confirmAddFund"
       @close-holding="closeHoldingModal"
@@ -182,10 +177,10 @@ const emit = defineEmits(['view-detail'])
 
 const {
   funds, holdings, collapsedCodes, refreshing, refreshMs,
-  searchTerm, searchResults, selectedFunds, showDropdown,
+  selectedFunds, showDropdown,
   addFundModalOpen, username, nowTime, sortBy, activeTab,
   dropdownRef, searchPanelRef, searchTimeoutRef, refreshTimer,
-  timeTimer, searchLoading, todayDate, holdingModal, tradeForm,
+  timeTimer, todayDate, holdingModal, tradeForm,
   pendingTxns, tradeRecords, tradeHistoryModal, showPending,
   dragIndex, dragOverIndex, fundOrder, portfolioGroups, fundGroupMap,
   showGroupModal, editingGroup, groupName, contextMenu,

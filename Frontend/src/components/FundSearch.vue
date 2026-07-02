@@ -8,6 +8,7 @@
           @search="performSearch"
           @focus="isFocused = true"
           @blur="onBlur"
+          :autofocus="autofocus"
         >
           <template #dropdown v-if="showHistoryDropdown">
             <div class="history-dropdown" @mousedown.prevent>
@@ -48,6 +49,7 @@
         v-for="fund in searchResults"
         :key="fund.CODE"
         class="fund-item"
+        :class="{ selected: selectMode && selectedFundCode === fund.CODE }"
         @click="selectFund(fund)"
       >
         <div class="fund-code">{{ fund.CODE }}</div>
@@ -72,8 +74,18 @@ const props = defineProps({
   compact: {
     type: Boolean,
     default: false
+  },
+  selectMode: {
+    type: Boolean,
+    default: false
+  },
+  autofocus: {
+    type: Boolean,
+    default: false
   }
 })
+
+const selectedFundCode = ref('')
 
 const emit = defineEmits(['fund-selected'])
 
@@ -97,6 +109,9 @@ watch(searchKeyword, (val) => {
     searchTimer.value = window.setTimeout(performSearch, 150)
   } else {
     searchResults.value = []
+  }
+  if (props.selectMode) {
+    selectedFundCode.value = ''
   }
 })
 
@@ -173,8 +188,12 @@ async function performSearch() {
 function selectFund(fund: any) {
   addToHistory(fund)
   emit('fund-selected', fund)
-  searchResults.value = []
-  searchKeyword.value = ''
+  if (props.selectMode) {
+    selectedFundCode.value = fund.CODE
+  } else {
+    searchResults.value = []
+    searchKeyword.value = ''
+  }
 }
 </script>
 
@@ -319,6 +338,11 @@ function selectFund(fund: any) {
 
 .fund-item:hover {
   background: var(--bg-subtle);
+}
+
+.fund-item.selected {
+  background: var(--color-primary-bg);
+  border-left: 3px solid var(--color-primary);
 }
 
 .fund-code {
