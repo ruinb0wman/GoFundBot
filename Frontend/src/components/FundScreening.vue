@@ -66,27 +66,27 @@
         </div>
 
         <div class="task-list">
-          <label class="task-item">
-            <input type="checkbox" v-model="updateTasks.basic" />
+          <div class="task-item">
+            <BCheckbox v-model="updateTasks.basic" class="task-checkbox" />
             <span>
               <strong>更新基础数据</strong>
               <em>从快照数据源批量拉取基金排行、收益、类型（500只/批），仅补缺失或超7天</em>
             </span>
-          </label>
-          <label class="task-item">
-            <input type="checkbox" v-model="updateTasks.indicators" />
+          </div>
+          <div class="task-item">
+            <BCheckbox v-model="updateTasks.indicators" class="task-checkbox" />
             <span>
               <strong>计算基金指标</strong>
               <em>同类排名 · 风险指标（回撤/夏普/卡玛）· 板块表现汇总</em>
             </span>
-          </label>
-          <label class="task-item">
-            <input type="checkbox" v-model="updateTasks.market" />
+          </div>
+          <div class="task-item">
+            <BCheckbox v-model="updateTasks.market" class="task-checkbox" />
             <span>
               <strong>更新股市行情</strong>
               <em>构建股票行业字典 · 根据重仓股刷新基金行业分类</em>
             </span>
-          </label>
+          </div>
         </div>
 
         <div class="dialog-actions">
@@ -303,18 +303,17 @@
               <div class="adv-item" v-for="item in group.items" :key="item.key || item.minKey || item.maxKey">
                 <label>{{ item.label }}</label>
                 <label class="adv-check" v-if="item.type === 'checkbox'">
-                  <input v-model="advFilters[item.key]" type="checkbox" />
-                  <span>{{ item.text }}</span>
+                  <BCheckbox v-model="advFilters[item.key]" :label="item.text" size="small" />
                 </label>
                 <div class="adv-range" v-else-if="item.type === 'range'">
-                  <input v-model.number="advFilters[item.minKey]" type="number" placeholder="最小值" step="any" class="adv-inp" />
+                  <BInputNumber v-model="advFilters[item.minKey]" placeholder="最小值" :controls="false" size="small" style="width:80px" />
                   <span class="adv-sep">~</span>
-                  <input v-model.number="advFilters[item.maxKey]" type="number" placeholder="最大值" step="any" class="adv-inp" />
+                  <BInputNumber v-model="advFilters[item.maxKey]" placeholder="最大值" :controls="false" size="small" style="width:80px" />
                   <span class="adv-unit" v-if="item.unit">{{ item.unit }}</span>
                 </div>
                 <div class="adv-range" v-else>
                   <span class="adv-op">{{ item.operator }}</span>
-                  <input v-model.number="advFilters[item.key]" type="number" :placeholder="item.placeholder || ''" step="any" class="adv-inp" />
+                  <BInputNumber v-model="advFilters[item.key]" :placeholder="item.placeholder || ''" :controls="false" size="small" style="width:80px" />
                   <span class="adv-unit" v-if="item.unit">{{ item.unit }}</span>
                 </div>
               </div>
@@ -421,6 +420,8 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useFundScreening } from '../composables/useFundScreening'
 import BButton from './BButton.vue'
+import BInputNumber from './BInputNumber.vue'
+import BCheckbox from './BCheckbox.vue'
 
 defineOptions({ name: 'FundScreening' })
 const emit = defineEmits(['view-fund', 'add-to-compare'])

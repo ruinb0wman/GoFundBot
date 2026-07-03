@@ -6,16 +6,16 @@
         <option value="dataservice">DataService</option>
         <option value="frontend">Frontend</option>
       </select>
-      <input type="date" v-model="dateStr" class="tb-input" @change="loadLogs" />
+      <BDatePicker v-model="dateStr" class="tb-input" @change="loadLogs" />
       <select v-model="levelFilter" class="tb-select" @change="loadLogs">
         <option value="">All</option>
         <option value="error">Error</option>
         <option value="warn">Warn</option>
         <option value="info">Info</option>
       </select>
-      <input
+      <BInput
         v-model="keyword"
-        class="tb-input search-input"
+        class="search-input"
         :placeholder="t('logs.searchPlaceholder')"
         @input="onSearchInput"
       />
@@ -138,6 +138,8 @@
 
 <script setup lang="ts">
 import BButton from '../components/BButton.vue'
+import BInput from '../components/BInput.vue'
+import BDatePicker from '../components/BDatePicker.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { VxeTable, VxeColumn } from 'vxe-table'
@@ -263,7 +265,7 @@ onMounted(loadLogs)
   margin-bottom: 16px;
 }
 
-.tb-select, .tb-input {
+.tb-select {
   padding: 6px 10px;
   border: 1px solid var(--border-default);
   border-radius: 6px;

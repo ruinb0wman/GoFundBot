@@ -228,7 +228,7 @@
   cursor: pointer;
 }
 
-.task-item input {
+.task-checkbox {
   margin-top: 3px;
 }
 
@@ -1040,26 +1040,6 @@
   text-align: center;
 }
 
-.adv-inp {
-  width: 80px;
-  padding: 6px 8px;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  font-size: 13px;
-  outline: none;
-  text-align: center;
-  transition: border-color 0.2s;
-}
-
-.adv-inp:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.08);
-}
-
-.adv-inp::placeholder {
-  color: var(--text-disabled);
-  font-size: 12px;
-}
 
 .adv-sep {
   color: var(--text-tertiary);

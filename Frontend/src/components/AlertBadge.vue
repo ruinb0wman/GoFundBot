@@ -18,10 +18,7 @@
               <span class="rule-type" :class="rule.alert_type">{{ typeLabel(rule.alert_type) }}</span>
               <span class="rule-threshold">{{ rule.threshold }}%</span>
             </div>
-            <label class="toggle-label">
-              <input type="checkbox" :checked="rule.enabled" @change="toggleRule(rule)" />
-              <span class="toggle-track"></span>
-            </label>
+            <BSwitch :modelValue="!!rule.enabled" @update:modelValue="v => toggleRule(rule, v)" size="small" />
           </div>
         </div>
         <div class="dropdown-footer">
@@ -36,6 +33,7 @@
 
 <script setup lang="ts">
 import BButton from './BButton.vue'
+import BSwitch from './BSwitch.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAlertStore } from '../stores/alertStore'
@@ -59,8 +57,8 @@ const typeLabel = (type: string) => {
 const toggle = () => { open.value = !open.value }
 const close = () => { open.value = false }
 
-const toggleRule = async (rule: { id: number; enabled: boolean }) => {
-  await store.update(rule.id, { enabled: rule.enabled ? 0 : 1 })
+const toggleRule = async (rule: { id: number }, val: boolean) => {
+  await store.update(rule.id, { enabled: val ? 1 : 0 })
 }
 
 const refreshCheck = async () => {
@@ -176,29 +174,6 @@ onUnmounted(() => {
 .rule-type.price_down, .rule-type.return_below { background: var(--color-success-bg); color: var(--color-success); }
 .rule-threshold { color: var(--text-tertiary); }
 
-.toggle-label { display: flex; align-items: center; cursor: pointer; }
-.toggle-label input { display: none; }
-.toggle-track {
-  width: 32px;
-  height: 18px;
-  border-radius: 9px;
-  background: var(--border-default);
-  position: relative;
-  transition: background 0.2s;
-}
-.toggle-track::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform 0.2s;
-}
-.toggle-label input:checked + .toggle-track { background: var(--color-primary); }
-.toggle-label input:checked + .toggle-track::after { transform: translateX(14px); }
 
 .dropdown-footer {
   padding: 8px 16px;

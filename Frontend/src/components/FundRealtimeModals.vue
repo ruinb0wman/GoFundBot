@@ -39,9 +39,12 @@
         </div>
         <div class="form-group elegant-input-group">
           <label>{{ t('fund.realtimeModal.tradeDate') }}</label>
-          <div class="input-wrapper date-wrapper">
-            <input :value="tradeForm?.tradeDate" @input="emit('update-trade-date', ($event.target as HTMLInputElement).value)" type="date" class="modal-input no-border" :max="todayDate" />
-          </div>
+          <BDatePicker
+            :modelValue="tradeForm?.tradeDate"
+            @update:modelValue="emit('update-trade-date', $event)"
+            :max="todayDate"
+            class="modal-date"
+          />
         </div>
         <div class="trade-nav-derived" v-if="getTradeNav?.() > 0">
           <span>{{ t('fund.realtimeModal.refNav') }} ¥{{ (getTradeNav?.() ?? 0).toFixed(4) }}</span>
@@ -130,6 +133,7 @@
 import { useI18n } from 'vue-i18n'
 import BButton from './BButton.vue'
 import BaseModal from './BaseModal.vue'
+import BDatePicker from './BDatePicker.vue'
 import FundSearch from './FundSearch.vue'
 const { t } = useI18n()
 defineOptions({ name: 'FundRealtimeModals' })
@@ -322,8 +326,10 @@ const emit = defineEmits<{
   font-size: 16px;
 }
 
-.date-wrapper {
-  padding-right: 10px;
+.modal-date {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 10px;
 }
 
 .trade-nav-derived {

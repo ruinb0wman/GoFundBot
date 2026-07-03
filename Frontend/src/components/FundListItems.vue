@@ -15,12 +15,7 @@
       @dragover="$emit('drag-over', $event, index, groupId)"
     >
       <div class="col-checkbox" v-if="editMode">
-        <input
-          type="checkbox"
-          :checked="selectedFunds.includes(fund.fund_code)"
-          @change="$emit('toggle-select', fund.fund_code)"
-          class="checkbox"
-        />
+        <BCheckbox :modelValue="selectedFunds.includes(fund.fund_code)" @update:modelValue="$emit('toggle-select', fund.fund_code)" size="small" />
       </div>
 
       <div class="col-drag" v-if="editMode">
@@ -78,6 +73,7 @@
 import { useI18n } from 'vue-i18n'
 import type { DraggingIndex, CompareFund } from '../types'
 import BButton from './BButton.vue'
+import BCheckbox from './BCheckbox.vue'
 
 const { t } = useI18n()
 
@@ -166,7 +162,7 @@ function getChangeClass(change: unknown): string {
 .change-up { color: var(--color-danger); }
 .change-down { color: var(--color-success); }
 .change-flat { color: var(--text-tertiary); }
-.checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--color-primary); }
+
 .drag-handle { cursor: grab; color: var(--text-tertiary); font-size: 14px; user-select: none; }
 .drag-handle:active { cursor: grabbing; }
 .list-item.in-compare { background: var(--color-primary-bg); }

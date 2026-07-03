@@ -151,13 +151,11 @@
     <div v-if="showGroupModal" class="modal-overlay" @click.self="closeGroupModal">
       <div class="modal-box">
         <h3>{{ editingGroup ? t('fund.watchlist.renameGroup') : t('fund.watchlist.newGroup') }}</h3>
-        <input
+        <BInput
           v-model="groupName"
-          type="text"
           :placeholder="t('fund.watchlist.groupName')"
-          class="modal-input"
-          @keyup.enter="saveGroup"
           ref="groupNameInput"
+          @keydown="(e) => e.key === 'Enter' && saveGroup()"
         />
         <div class="modal-actions">
           <BButton @click="closeGroupModal">{{ t('fund.watchlist.cancel') }}</BButton>
@@ -177,6 +175,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useFundWatchlist } from '../composables/useFundWatchlist'
 import BButton from './BButton.vue'
+import BInput from './BInput.vue'
 import FundListItems from './FundListItems.vue'
 import SkeletonCard from './SkeletonCard.vue'
 import AlertSettings from './AlertSettings.vue'

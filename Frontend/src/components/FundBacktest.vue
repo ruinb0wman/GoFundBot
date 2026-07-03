@@ -27,24 +27,12 @@
         <div class="param-row">
         <div class="param-item">
           <label>{{ t('backtest.investmentMethod') }}</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input type="radio" v-model="params.investmentType" value="monthly" />
-              <span>{{ t('backtest.monthly') }}</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" v-model="params.investmentType" value="weekly" />
-              <span>{{ t('backtest.weekly') }}</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" v-model="params.investmentType" value="daily" />
-              <span>{{ t('backtest.daily') }}</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" v-model="params.investmentType" value="lump_sum" />
-              <span>{{ t('backtest.lumpSum') }}</span>
-            </label>
-          </div>
+          <BRadioGroup v-model="params.investmentType">
+            <BRadio value="monthly">{{ t('backtest.monthly') }}</BRadio>
+            <BRadio value="weekly">{{ t('backtest.weekly') }}</BRadio>
+            <BRadio value="daily">{{ t('backtest.daily') }}</BRadio>
+            <BRadio value="lump_sum">{{ t('backtest.lumpSum') }}</BRadio>
+          </BRadioGroup>
 
           <!-- 定投具体日期选择 -->
           <div v-if="params.investmentType === 'monthly'" class="sub-param">
@@ -69,120 +57,103 @@
       <div class="param-row">
         <div class="param-item">
           <label>{{ params.investmentType === 'lump_sum' ? t('backtest.investAmount') : t('backtest.perPeriodAmount') }}</label>
-          <div class="input-with-unit">
-            <input
-              type="number"
-              v-model.number="params.amount"
-              min="0"
-              step="100"
-              placeholder="1000"
-            />
-            <span class="unit">{{ t('backtest.yuan') }}</span>
-          </div>
+          <BInputNumber
+            v-model="params.amount"
+            :min="0"
+            :step="100"
+            placeholder="1000"
+            :controls="false"
+          >
+            <template #suffix>{{ t('backtest.yuan') }}</template>
+          </BInputNumber>
         </div>
 
         <div class="param-item">
           <label>初始资金</label>
-          <div class="input-with-unit">
-            <input
-              type="number"
-              v-model.number="params.initialAmount"
-              min="0"
-              step="1000"
-              placeholder="0"
-            />
-            <span class="unit">元</span>
-          </div>
+          <BInputNumber
+            v-model="params.initialAmount"
+            :min="0"
+            :step="1000"
+            placeholder="0"
+            :controls="false"
+          >
+            <template #suffix>元</template>
+          </BInputNumber>
         </div>
       </div>
 
       <div class="param-row">
         <div class="param-item">
           <label>分红方式</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input type="radio" v-model="params.dividendMode" value="reinvest" />
-              <span>红利再投资</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" v-model="params.dividendMode" value="cash" />
-              <span>现金分红</span>
-            </label>
-          </div>
+          <BRadioGroup v-model="params.dividendMode">
+            <BRadio value="reinvest">红利再投资</BRadio>
+            <BRadio value="cash">现金分红</BRadio>
+          </BRadioGroup>
         </div>
 
         <div class="param-item">
           <label>止盈后资金处理</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input type="radio" v-model="params.takeProfitAction" value="cash" />
-              <span>落袋为安 (现金)</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" v-model="params.takeProfitAction" value="monetary" />
-              <span>货币理财 (年化2%)</span>
-            </label>
-          </div>
+          <BRadioGroup v-model="params.takeProfitAction">
+            <BRadio value="cash">落袋为安 (现金)</BRadio>
+            <BRadio value="monetary">货币理财 (年化2%)</BRadio>
+          </BRadioGroup>
         </div>
       </div>
 
       <div class="param-row">
         <div class="param-item">
           <label>止盈率</label>
-          <div class="input-with-unit">
-            <input
-              type="number"
-              v-model.number="params.takeProfitRate"
-              min="0"
-              step="1"
-              placeholder="可选"
-            />
-            <span class="unit">%</span>
-          </div>
+          <BInputNumber
+            v-model="params.takeProfitRate"
+            :min="0"
+            :step="1"
+            placeholder="可选"
+            :controls="false"
+          >
+            <template #suffix>%</template>
+          </BInputNumber>
         </div>
 
         <div class="param-item">
           <label>止损率</label>
-          <div class="input-with-unit">
-            <input
-              type="number"
-              v-model.number="params.stopLossRate"
-              min="0"
-              step="1"
-              placeholder="可选"
-            />
-            <span class="unit">%</span>
-          </div>
+          <BInputNumber
+            v-model="params.stopLossRate"
+            :min="0"
+            :step="1"
+            placeholder="可选"
+            :controls="false"
+          >
+            <template #suffix>%</template>
+          </BInputNumber>
         </div>
       </div>
 
       <div class="param-row">
         <div class="param-item">
           <label>手续费率</label>
-          <div class="input-with-unit">
-            <input
-              type="number"
-              v-model.number="params.feeRate"
-              min="0"
-              max="2"
-              step="0.01"
-              placeholder="0.15"
-            />
-            <span class="unit">%</span>
-          </div>
+          <BInputNumber
+            v-model="params.feeRate"
+            :min="0"
+            :max="2"
+            :step="0.01"
+            placeholder="0.15"
+            :controls="false"
+          >
+            <template #suffix>%</template>
+          </BInputNumber>
         </div>
       </div>
 
       <div class="param-row">
         <div class="param-item">
           <label>{{ t('backtest.startDate') }}</label>
-          <input type="date" v-model="params.startDate" :min="minStartDate" :max="params.endDate" />
+          <BDatePicker v-model="params.startDate" :min="minStartDate" :max="params.endDate" />
           <div v-if="minStartDate" class="date-hint">成立日: {{ minStartDate }}</div>
         </div>
 
         <div class="param-item">
           <label>{{ t('backtest.endDate') }}</label>
-          <input type="date" v-model="params.endDate" :min="params.startDate" :max="today" />
+          <BDatePicker v-model="params.endDate" :min="params.startDate" :max="today" />
         </div>
       </div>
 
@@ -358,6 +329,10 @@ const { t } = useI18n()
 import { useFundBacktest } from '../composables/useFundBacktest'
 import FundSearch from './FundSearch.vue'
 import BButton from './BButton.vue'
+import BInputNumber from './BInputNumber.vue'
+import BRadioGroup from './BRadioGroup.vue'
+import BRadio from './BRadio.vue'
+import BDatePicker from './BDatePicker.vue'
 
 const props = defineProps({
   fundCode: {

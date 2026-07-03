@@ -12,8 +12,11 @@
         </select>
       </div>
       <BButton @click="exportData">{{ t('fund.realtime.exportData') }}</BButton>
-      <label for="import-file" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;cursor:pointer;background:var(--color-success);color:var(--text-inverse);font-weight:700;font-size:14px;">{{ t('fund.realtime.importData') }}</label>
-      <input id="import-file" class="hidden-file" type="file" accept="application/json" @change="importData" />
+      <BFileInput accept="application/json" @change="onImport">
+        <template #trigger="{ trigger }">
+          <span class="import-btn" @click="trigger">{{ t('fund.realtime.importData') }}</span>
+        </template>
+      </BFileInput>
     </div>
 
     <div class="overview-box">
@@ -53,7 +56,7 @@
       <div v-for="g in portfolioGroups" :key="g.id" class="ctab" :class="{active: activeTab === 'group_' + g.id}" @click="activeTab = 'group_' + g.id" @contextmenu.prevent="openGroupContextMenu($event, g.id)"><LucideIcon name="Folder" :size="16" /> {{ g.name }}</div>
       <BButton circle size="small" @click="openAddGroupModal" title="新建分组" icon="FolderPlus" />
       <div v-if="hasRebalanceFunds" class="ctab" :class="{active: activeTab==='rebalance'}" @click="activeTab='rebalance'"><LucideIcon name="Scale" :size="16" /> 再平衡管理</div>
-      <label v-if="activeTab === 'rebalance'" class="threshold-label" @click.stop>≥<input v-model.number="rebalanceThreshold" type="number" min="1" step="1" class="threshold-input" />%</label>
+      <span v-if="activeTab === 'rebalance'" class="threshold-label"><span class="threshold-prefix">≥</span><BInputNumber v-model="rebalanceThreshold" :min="1" :step="1" :controls="false" size="small" style="width:64px" /><span class="threshold-suffix">%</span></span>
       <div v-if="hasDividendFunds" class="ctab" :class="{active: activeTab==='dividend'}" @click="activeTab='dividend'"><LucideIcon name="TrendingDown" :size="16" /> 红利低波</div>
     </div>
 
@@ -177,6 +180,8 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import BButton from './BButton.vue'
 import BCard from './BCard.vue'
+import BInputNumber from './BInputNumber.vue'
+import BFileInput from './BFileInput.vue'
 import { useFundRealtime } from '../composables/useFundRealtime'
 import FundRealtimeModals from './FundRealtimeModals.vue'
 
@@ -223,6 +228,10 @@ const {
   settleTrade, genTxnId, saveTrade, cancelPendingTxn, settlePendingTxnsIfReady,
   saveRefreshMs, updateNowTime, exportData, importData, handleClickOutside,
 } = useFundRealtime(emit)
+
+function onImport(files: FileList | null) {
+  importData({ target: { files } })
+}
 
 const searched = computed(() => funds.value.length > 0)
 </script>

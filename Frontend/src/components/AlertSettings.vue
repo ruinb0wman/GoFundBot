@@ -10,10 +10,7 @@
           <label class="section-label">{{ t('alert.currentRules') }}</label>
           <div v-for="rule in existing" :key="rule.id" class="rule-row">
             <span class="rule-type">{{ typeLabel(rule.alert_type) }} {{ rule.threshold }}%</span>
-            <label class="toggle-label">
-              <input type="checkbox" :checked="rule.enabled" @change="toggleRule(rule)" />
-              <span class="toggle-track"></span>
-            </label>
+            <BSwitch :modelValue="!!rule.enabled" @update:modelValue="v => toggleRule(rule, v)" size="small" />
             <BButton circle size="small" type="danger" icon="Trash2" @click="deleteRule(rule.id)" />
           </div>
         </div>
@@ -26,8 +23,8 @@
               <option value="return_above">{{ t('alert.returnAbove') }}</option>
               <option value="return_below">{{ t('alert.returnBelow') }}</option>
             </select>
-            <input v-model="newThreshold" type="number" step="0.1" min="0.1" max="1000"
-                   :placeholder="t('alert.threshold')" class="form-input" />
+            <BInputNumber v-model="newThreshold" :min="0.1" :max="1000" :step="0.1"
+                          :placeholder="t('alert.threshold')" :controls="false" />
             <BButton type="primary" size="small" @click="addRule" :disabled="!newThreshold">{{ t('alert.addBtn') }}</BButton>
           </div>
         </div>
@@ -38,6 +35,8 @@
 
 <script setup lang="ts">
 import BButton from './BButton.vue'
+import BInputNumber from './BInputNumber.vue'
+import BSwitch from './BSwitch.vue'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAlertStore } from '../stores/alertStore'
@@ -49,7 +48,7 @@ const emit = defineEmits(['close'])
 
 const store = useAlertStore()
 const newType = ref('price_up')
-const newThreshold = ref('')
+const newThreshold = ref<number | null>(null)
 
 const existing = computed(() => store.rulesByFund(props.fundCode))
 
@@ -60,8 +59,8 @@ const typeLabel = (type: string) => {
 
 const close = () => emit('close')
 
-const toggleRule = async (rule: { id: number; enabled: boolean }) => {
-  await store.update(rule.id, { enabled: rule.enabled ? 0 : 1 })
+const toggleRule = async (rule: { id: number }, val: boolean) => {
+  await store.update(rule.id, { enabled: val ? 1 : 0 })
 }
 
 const deleteRule = async (id: number) => {
@@ -70,8 +69,8 @@ const deleteRule = async (id: number) => {
 
 const addRule = async () => {
   if (!newThreshold.value) return
-  await store.create({ fund_code: props.fundCode, alert_type: newType.value, threshold: parseFloat(newThreshold.value) })
-  newThreshold.value = ''
+  await store.create({ fund_code: props.fundCode, alert_type: newType.value, threshold: newThreshold.value })
+  newThreshold.value = null
 }
 
 watch(() => props.visible, (v) => {
@@ -136,29 +135,6 @@ watch(() => props.visible, (v) => {
 
 .rule-type { flex: 1; color: var(--text-primary); }
 
-.toggle-label { display: flex; align-items: center; cursor: pointer; }
-.toggle-label input { display: none; }
-.toggle-track {
-  width: 28px;
-  height: 16px;
-  border-radius: 8px;
-  background: var(--border-default);
-  position: relative;
-  transition: background 0.2s;
-}
-.toggle-track::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform 0.2s;
-}
-.toggle-label input:checked + .toggle-track { background: var(--color-primary); }
-.toggle-label input:checked + .toggle-track::after { transform: translateX(12px); }
 
 .new-rule { border-top: 1px solid var(--border-subtle); padding-top: 12px; }
 
@@ -174,15 +150,5 @@ watch(() => props.visible, (v) => {
   color: var(--text-primary);
 }
 
-.form-input {
-  flex: 1;
-  padding: 6px 8px;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  font-size: 13px;
-  background: var(--bg-card);
-  color: var(--text-primary);
-  width: 80px;
-}
 
 </style>

@@ -111,51 +111,7 @@
   font-weight: 500;
 }
 
-.input-with-unit {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
 
-.param-item input[type="number"],
-.param-item input[type="date"] {
-  flex: 1;
-  padding: 8px 12px;
-  padding-right: 40px;
-  border: 1px solid var(--border-default);
-  border-radius: 4px;
-  font-size: 14px;
-  transition: border-color 0.3s;
-  font-family: inherit;
-  box-sizing: border-box;
-  height: 40px;
-}
-
-.param-item input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
-.param-item .unit {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-tertiary);
-  font-size: 14px;
-  pointer-events: none;
-  background: var(--bg-card);
-  padding: 0 4px;
-  height: 20px;
-  line-height: 20px;
-}
-
-.radio-group {
-  display: flex;
-  gap: 15px;
-  margin-top: 4px;
-  flex-wrap: wrap;
-}
 
 .sub-param {
   margin-top: 10px;
@@ -176,18 +132,6 @@
   color: var(--text-primary);
 }
 
-.radio-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.radio-label input[type="radio"] {
-  margin-right: 6px;
-  cursor: pointer;
-}
 
 .param-actions {
   display: flex;

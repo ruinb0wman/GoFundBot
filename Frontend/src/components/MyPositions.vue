@@ -8,38 +8,37 @@
     <form class="position-form" @submit.prevent="addPosition">
       <div class="field">
         <label>{{ t('fund.position.code') }}</label>
-        <input
-          v-model.trim="form.code"
+        <BInput
+          v-model="form.code"
           :placeholder="t('fund.position.codePlaceholder')"
-          maxlength="6"
+          :maxlength="6"
           @blur="handleCodeBlur"
-          required
         />
       </div>
 
       <div class="field">
         <label>{{ t('fund.position.name') }}</label>
-        <input v-model.trim="form.name" :placeholder="t('fund.position.nameHint')" required />
+        <BInput v-model="form.name" :placeholder="t('fund.position.nameHint')" />
       </div>
 
       <div class="field">
         <label>{{ t('fund.position.purchaseDate') }}</label>
-        <input v-model="form.purchaseDate" type="date" :max="today" @change="handleDateChange" required />
+        <BDatePicker v-model="form.purchaseDate" :max="today" />
       </div>
 
       <div class="field">
         <label>{{ t('fund.position.purchaseDateHint') }}</label>
-        <input v-model="form.purchaseTime" type="time" @change="handleDateChange" required />
+        <BTimePicker v-model="form.purchaseTime" />
       </div>
 
       <div class="field">
         <label>{{ t('fund.position.shares') }}</label>
-        <input v-model.number="form.shares" type="number" min="0" step="0.01" :placeholder="t('fund.position.shares')" required />
+        <BInputNumber v-model="form.shares" :min="0" :step="0.01" :placeholder="t('fund.position.shares')" :controls="false" />
       </div>
 
       <div class="field">
         <label>{{ t('fund.position.costNav') }}</label>
-        <input v-model.number="form.cost" type="number" min="0" step="0.0001" :placeholder="t('fund.position.nameHint')" required />
+        <BInputNumber v-model="form.cost" :min="0" :step="0.0001" :placeholder="t('fund.position.nameHint')" :controls="false" />
       </div>
 
       <button type="submit" :disabled="isAutoFilling">{{ isAutoFilling ? t('fund.position.processing') : t('fund.position.add') }}</button>
@@ -72,28 +71,27 @@
 
         <div class="field" v-if="operationForm.type === 'convert'">
           <label>{{ t('fund.position.targetCode') }}</label>
-          <input
-            v-model.trim="operationForm.targetCode"
-            maxlength="6"
+          <BInput
+            v-model="operationForm.targetCode"
+            :maxlength="6"
             :placeholder="t('fund.position.targetCodePlaceholder')"
             @blur="loadTargetFundName"
-            required
           />
         </div>
 
         <div class="field" v-if="operationForm.type === 'convert'">
           <label>{{ t('fund.position.targetName') }}</label>
-          <input v-model.trim="operationForm.targetName" placeholder="自动填充，可手动修改" required />
+          <BInput v-model="operationForm.targetName" placeholder="自动填充，可手动修改" />
         </div>
 
         <div class="field">
           <label>{{ t('fund.position.amount') }}</label>
-          <input v-model.number="operationForm.amount" type="number" min="0.01" step="0.01" :placeholder="t('fund.position.amountPlaceholder')" required />
+          <BInputNumber v-model="operationForm.amount" :min="0.01" :step="0.01" :placeholder="t('fund.position.amountPlaceholder')" :controls="false" />
         </div>
 
         <div class="field">
           <label>{{ t('fund.position.operationDate') }}</label>
-          <input v-model="operationForm.date" type="date" :max="today" required />
+          <BDatePicker v-model="operationForm.date" :max="today" />
         </div>
 
         <button type="submit" :disabled="operationLoading">{{ operationLoading ? t('fund.position.processing') : t('fund.position.confirmChange') }}</button>
@@ -182,6 +180,10 @@
 
 <script setup>
 import BButton from './BButton.vue'
+import BInput from './BInput.vue'
+import BInputNumber from './BInputNumber.vue'
+import BDatePicker from './BDatePicker.vue'
+import BTimePicker from './BTimePicker.vue'
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useMyPositions } from '../composables/useMyPositions'
