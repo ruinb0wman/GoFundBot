@@ -67,13 +67,7 @@
             :title="t('fund.listItem.alertSettings')"
             icon="Bell"
           />
-          <BButton
-            circle size="small"
-            type="danger"
-            @click.stop="$emit('remove-fund', fund.fund_code)"
-            :title="t('fund.watchlist.remove')"
-            icon="X"
-          />
+
         </template>
       </div>
     </div>

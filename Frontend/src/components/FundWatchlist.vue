@@ -200,7 +200,7 @@ const {
   removeFund, viewFundDetail, addToCompare,
   onDragStart, onDragEnd, onDragOver, onDrop,
   onGroupDragOver, onGroupDrop,
-  openAddGroupModal, openEditGroupModal, closeGroupModal, saveGroup, deleteGroup
+  openAlertSettings, openAddGroupModal, openEditGroupModal, closeGroupModal, saveGroup, deleteGroup
 } = useFundWatchlist(props, emit)
 </script>
 

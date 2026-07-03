@@ -359,6 +359,7 @@ export function useFundWatchlist(
     onDrop,
     onGroupDragOver,
     onGroupDrop,
+    openAlertSettings,
     openAddGroupModal,
     openEditGroupModal,
     closeGroupModal,
