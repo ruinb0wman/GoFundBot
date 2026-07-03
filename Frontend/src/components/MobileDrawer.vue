@@ -5,21 +5,21 @@
         <aside class="drawer-panel">
           <div class="drawer-header">
             <h2>{{ t('common.navigation') }}</h2>
-            <button class="drawer-close" @click="$emit('close')">
+            <BButton circle size="small" @click="$emit('close')">
               <LucideIcon name="X" :size="20" />
-            </button>
+            </BButton>
           </div>
           <nav class="drawer-nav">
-            <button
+            <BButton
+              text
               v-for="item in items"
               :key="item.route"
-              class="drawer-item"
               :class="{ active: item.route === activeRoute }"
               @click="navigate(item.route)"
             >
               <LucideIcon :name="item.icon" :size="18" />
               <span>{{ item.label }}</span>
-            </button>
+            </BButton>
           </nav>
         </aside>
       </div>
@@ -28,6 +28,7 @@
 </template>
 
 <script setup lang="ts">
+import BButton from './BButton.vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'

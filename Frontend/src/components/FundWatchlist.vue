@@ -1,15 +1,14 @@
 <template>
   <div class="watchlist-container">
     <div v-if="showCompareToggle" class="compare-toggle-bar">
-      <button
-        class="btn-compare-toggle"
-        :class="{ active: compareMode }"
+      <BButton
+        :active="compareMode"
         @click="$emit('toggle-compare')"
+        icon="TrendingUp"
       >
-        <span class="toggle-icon"><LucideIcon name="TrendingUp" :size="20" /></span>
-        <span>{{ compareMode ? t('fund.watchlist.exitCompare') : t('fund.watchlist.compareMode') }}</span>
+        {{ compareMode ? t('fund.watchlist.exitCompare') : t('fund.watchlist.compareMode') }}
         <span v-if="compareFunds.length && compareMode" class="compare-count">{{ compareFunds.length }}</span>
-      </button>
+      </BButton>
       <div v-if="compareMode && compareFunds.length > 0" class="compare-selected">
         <div v-for="fund in compareFunds" :key="fund.code" class="compare-tag">
           <span class="tag-name">{{ fund.name }}</span>
@@ -30,36 +29,31 @@
         <span class="count-badge" v-if="totalCount">{{ totalCount }}</span>
       </h2>
       <div class="header-actions">
-        <button class="btn btn-add-group" @click="openAddGroupModal" :title="t('fund.watchlist.newGroup')">
-          <LucideIcon name="FolderPlus" :size="16" />
-        </button>
-        <button
+        <BButton plain @click="openAddGroupModal" :title="t('fund.watchlist.newGroup')" icon="FolderPlus" />
+        <BButton
           v-if="!editMode && totalCount > 0"
-          class="btn btn-edit"
           @click="enterEditMode"
         >
           {{ t('fund.watchlist.edit') }}
-        </button>
+        </BButton>
         <template v-if="editMode">
-          <button
-            class="btn btn-danger"
+          <BButton
+            type="danger"
             :disabled="selectedFunds.length === 0"
             @click="batchDelete"
           >
             {{ selectedFunds.length > 0 ? t('fund.watchlist.groupDelete', { count: selectedFunds.length }) : t('common.delete') }}
-          </button>
-          <button class="btn btn-secondary" @click="exitEditMode">
+          </BButton>
+          <BButton @click="exitEditMode">
             {{ t('fund.watchlist.done') }}
-          </button>
+          </BButton>
         </template>
-        <button
-          class="btn btn-refresh"
+        <BButton
           @click="refreshEstimates"
           :disabled="isRefreshingEstimates || totalCount === 0"
           :title="lastEstimateUpdate ? t('fund.watchlist.estimateUpdated', { time: lastEstimateUpdate }) : t('fund.watchlist.refreshEstimates')"
-        >
-          <span :class="{ 'rotating': isRefreshingEstimates }"><LucideIcon name="RefreshCw" :size="14" /></span>
-        </button>
+          icon="RefreshCw"
+        />
       </div>
     </div>
 
@@ -122,8 +116,8 @@
           <span class="group-name"><LucideIcon name="Folder" :size="14" /> {{ group.name }}</span>
           <span class="group-count">{{ getGroupFunds(group.id).length }}</span>
           <div class="group-actions" v-if="editMode" @click.stop>
-            <button class="btn-icon-sm" @click="openEditGroupModal(group)" :title="t('fund.watchlist.renameGroup')"><LucideIcon name="Pencil" :size="14" /></button>
-            <button class="btn-icon-sm btn-del" @click="deleteGroup(group)" :title="t('fund.watchlist.delete')"><LucideIcon name="Trash2" :size="14" /></button>
+            <BButton circle size="small" @click="openEditGroupModal(group)" :title="t('fund.watchlist.renameGroup')" icon="Pencil" />
+            <BButton circle size="small" type="danger" @click="deleteGroup(group)" :title="t('fund.watchlist.delete')" icon="Trash2" />
           </div>
         </div>
         <div class="group-content" v-show="isGroupExpanded(group.id)">
@@ -166,10 +160,10 @@
           ref="groupNameInput"
         />
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeGroupModal">{{ t('fund.watchlist.cancel') }}</button>
-          <button class="btn btn-primary" @click="saveGroup" :disabled="!groupName.trim()">
+          <BButton @click="closeGroupModal">{{ t('fund.watchlist.cancel') }}</BButton>
+          <BButton type="primary" @click="saveGroup" :disabled="!groupName.trim()">
             {{ editingGroup ? t('fund.watchlist.save') : t('fund.watchlist.create') }}
-          </button>
+          </BButton>
         </div>
       </div>
     </div>
@@ -182,6 +176,7 @@
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useFundWatchlist } from '../composables/useFundWatchlist'
+import BButton from './BButton.vue'
 import FundListItems from './FundListItems.vue'
 import SkeletonCard from './SkeletonCard.vue'
 import AlertSettings from './AlertSettings.vue'

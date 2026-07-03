@@ -9,9 +9,7 @@
       </div>
       <div class="header-right">
         <span v-if="sourcesText" class="sources-tag" :title="sourcesText">{{ sourcesText }}</span>
-        <button class="refresh-btn" @click="resetAndFetch" :disabled="loading" :title="t('flashNews.refresh')">
-          <span :class="{ spinning: loading }"><LucideIcon name="RefreshCw" :size="16" /></span>
-        </button>
+        <BButton circle size="small" icon="RefreshCw" @click="resetAndFetch" :loading="loading" :title="t('flashNews.refresh')" />
       </div>
     </div>
 
@@ -28,7 +26,7 @@
     <div v-else-if="error && !newsList.length" class="error-state">
       <span class="error-icon"><LucideIcon name="TriangleAlert" :size="20" /></span>
       <span class="error-text">{{ error }}</span>
-      <button class="retry-btn" @click="resetAndFetch">{{ t('common.retry') }}</button>
+      <BButton type="danger" size="small" @click="resetAndFetch">{{ t('common.retry') }}</BButton>
     </div>
 
     <!-- 空 -->
@@ -119,6 +117,7 @@
 </template>
 
 <script setup lang="ts">
+import BButton from './BButton.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marketAPI } from '../services/api'
@@ -338,17 +337,7 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-.refresh-btn {
-  width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center;
-  border: none; border-radius: 8px; background: var(--bg-subtle);
-  font-size: 14px; cursor: pointer; transition: all 0.2s;
-  color: var(--text-secondary);
-}
-.refresh-btn:hover { background: var(--bg-hover); }
-.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.spinning { display: inline-block; animation: spin 0.8s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
 
 .skeleton-list { padding: 10px 14px; }
 .skeleton-item { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
@@ -365,11 +354,7 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
   gap: 8px; padding: 40px 20px; color: var(--text-tertiary);
 }
 .error-icon, .empty-icon { display: inline-flex; align-items: center; }
-.retry-btn {
-  margin-top: 8px; padding: 6px 18px; border: none; border-radius: 8px;
-  background: var(--color-primary); color: var(--text-inverse); font-size: 13px; font-weight: 600; cursor: pointer;
-}
-.retry-btn:hover { background: var(--color-primary-hover); }
+
 
 .news-list { flex: 1; overflow-y: auto; padding: 2px 0; }
 .news-list::-webkit-scrollbar { width: 4px; }

@@ -34,17 +34,6 @@
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
-.card {
-  background: var(--bg-card);
-  border-radius: 12px;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-}
-.card-chart { height: 500px; display: flex; flex-direction: column; }
-.card-md { height: 450px; display: flex; flex-direction: column; }
-.card-lg { height: 550px; display: flex; flex-direction: column; }
-.card-full { height: 480px; display: flex; flex-direction: column; }
-.card-sidebar { flex: 1; min-height: 300px; max-height: 480px; display: flex; flex-direction: column; }
 .skeleton-loading { padding: 20px; }
 .skeleton-grid {
   display: grid;
@@ -70,13 +59,7 @@
 }
 .error-icon { display: inline-flex; align-items: center; margin-bottom: 20px; }
 .error p { font-size: 16px; margin-bottom: 20px; }
-.retry-btn {
-  background: var(--bg-gradient); color: white; border: none;
-  padding: 12px 32px; border-radius: 8px; cursor: pointer;
-  font-size: 16px; font-weight: 600; transition: all 0.3s ease;
-}
-.retry-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.retry-btn:active { transform: translateY(0); }
+
 .empty-state {
   text-align: center; padding: 80px 20px; color: var(--text-secondary);
   background: var(--bg-card); border-radius: 12px; margin: 20px 0;

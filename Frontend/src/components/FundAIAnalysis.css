@@ -43,52 +43,6 @@
   align-items: center;
 }
 
-.analyze-btn {
-  background: var(--bg-gradient);
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.9em;
-  transition: all 0.3s ease;
-}
-
-.analyze-btn.mini {
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-  box-shadow: none;
-}
-
-.analyze-btn.mini:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  transform: none;
-}
-
-.close-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-tertiary);
-  font-size: 1.2em;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-}
-
 /* 评分区域 */
 .score-section {
   display: flex;
@@ -492,19 +446,6 @@
 .error p {
   color: var(--color-danger);
   margin: 12px 0;
-}
-
-.retry-btn {
-  background: var(--color-danger);
-  color: white;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.retry-btn:hover {
-  background: var(--color-danger);
 }
 
 /* 流式输出 */

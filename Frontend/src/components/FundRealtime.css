@@ -15,19 +15,10 @@
   margin-bottom: 12px;
   box-shadow: var(--shadow-sm);
 }
-.add-fund-trigger {
-  font-weight: 700;
-}
 .sort-box {
   margin-left: auto;
 }
-.btn {
-  padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;
-}
-.btn-primary { background: var(--color-primary); color: var(--text-inverse); }
 .select-sort { padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 6px; }
-.btn-blue { background: var(--color-primary); color: var(--text-inverse); }
-.btn-green { background: var(--color-success); color: var(--text-inverse); }
 .hidden-file { display: none; }
 
 .overview-box {
@@ -100,7 +91,6 @@
   color: var(--color-primary);
   text-decoration-color: var(--color-primary);
 }
-.btn-del { background: var(--color-danger); color: var(--text-inverse); border: none; padding: 2px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;}
 .c-tags { display: flex; gap: 8px; font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
 .tag { padding: 2px 6px; border-radius: 4px; color: white;}
 .tag.code-tag {
@@ -152,27 +142,6 @@
   cursor: pointer;
 }
 .c-h-pen:hover { text-decoration: underline; text-underline-offset: 3px; }
-.btn-sm {
-  border: none;
-  padding: 6px 14px;
-  border-radius: 999px;
-  cursor: pointer;
-  color: var(--text-inverse);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  transition: all 0.18s ease;
-  box-shadow: var(--shadow-md);
-}
-.btn-sm:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-.btn-sm:active {
-  transform: translateY(0);
-}
-.b-trade { background: linear-gradient(135deg, var(--color-primary-hover) 0%, var(--color-primary) 100%); }
-.b-edit { background: linear-gradient(135deg, var(--bg-hover) 0%, var(--border-default) 100%); margin-left: 8px; }
 
 .c-h-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .grid-box { display: flex; justify-content: space-between; font-size: 12px; }
@@ -292,22 +261,6 @@
   font-size: 12px;
 }
 
-.btn-cancel-txn {
-  padding: 4px 12px;
-  border: 1px solid var(--border-default);
-  border-radius: 4px;
-  background: var(--bg-card);
-  color: var(--text-tertiary);
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
-.btn-cancel-txn:hover {
-  border-color: var(--color-danger);
-  color: var(--color-danger);
-}
-
 /* --- Drag and Drop --- */
 .fund-item-card.dragging {
   opacity: 0.5;
@@ -339,22 +292,6 @@
 .threshold-input:focus {
   outline: none;
   border-color: var(--color-primary);
-}
-
-/* --- Add Group Button --- */
-.btn-add-group {
-  border: 1px dashed var(--border-default);
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  font-size: 14px;
-  padding: 6px 10px;
-  transition: all 0.2s;
-}
-.btn-add-group:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
 }
 
 /* --- Group Assignment Select --- */

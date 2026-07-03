@@ -17,7 +17,7 @@
           <span class="code">{{ currentFundCode }}</span>
           <span class="name" v-if="currentFundName">{{ currentFundName }}</span>
         </div>
-        <button class="btn-change" @click="changeFund">{{ t('backtest.changeFund') }}</button>
+        <BButton plain @click="changeFund">{{ t('backtest.changeFund') }}</BButton>
       </div>
     </div>
 
@@ -187,17 +187,13 @@
       </div>
 
       <div class="param-actions">
-        <button class="btn btn-primary" @click="runBacktest" :disabled="loading">
-          <span v-if="loading">计算中...</span>
-          <span v-else>{{ t('backtest.run') }}</span>
-        </button>
-        <button class="btn btn-strategy" @click="suggestStrategy" :disabled="loading || strategyLoading">
-          <span v-if="strategyLoading">生成中...</span>
-          <span v-else><LucideIcon name="Wand2" :size="14" /> 智能推荐策略</span>
-        </button>
-        <button class="btn btn-secondary" @click="resetParams" :disabled="loading">
-          重置参数
-        </button>
+        <BButton type="primary" @click="runBacktest" :disabled="loading">
+          {{ loading ? '计算中...' : t('backtest.run') }}
+        </BButton>
+        <BButton type="success" @click="suggestStrategy" :disabled="loading || strategyLoading" icon="Wand2">
+          {{ strategyLoading ? '生成中...' : '智能推荐策略' }}
+        </BButton>
+        <BButton @click="resetParams" :disabled="loading">重置参数</BButton>
       </div>
     </div>
 
@@ -214,7 +210,7 @@
           <div class="metric"><span class="mlabel">最大回撤</span><span class="mvalue negative">-{{ strategyResult.recommended.summary.max_drawdown }}%</span></div>
           <div class="metric"><span class="mlabel">夏普比率</span><span class="mvalue">{{ strategyResult.recommended.summary.sharpe_ratio }}</span></div>
         </div>
-        <button class="btn btn-sm" @click="applyStrategyParams">应用此策略参数</button>
+        <BButton size="small" round @click="applyStrategyParams">应用此策略参数</BButton>
       </div>
       <div class="strategy-compare" v-if="strategyResult.strategies.length > 1">
         <div class="section-subtitle">全部策略对比</div>
@@ -345,9 +341,9 @@
             </tbody>
           </table>
           <div class="pagination" v-if="totalPages > 1">
-            <button @click="currentPage--" :disabled="currentPage === 1">上一页</button>
+            <BButton plain @click="currentPage--" :disabled="currentPage === 1">上一页</BButton>
             <span>第 {{ currentPage }} / {{ totalPages }} 页</span>
-            <button @click="currentPage++" :disabled="currentPage === totalPages">下一页</button>
+            <BButton plain @click="currentPage++" :disabled="currentPage === totalPages">下一页</BButton>
           </div>
         </div>
       </div>
@@ -361,6 +357,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useFundBacktest } from '../composables/useFundBacktest'
 import FundSearch from './FundSearch.vue'
+import BButton from './BButton.vue'
 
 const props = defineProps({
   fundCode: {

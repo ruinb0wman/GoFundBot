@@ -3,7 +3,7 @@
     <div class="alert-settings-dialog">
       <div class="dialog-header">
         <h3><LucideIcon name="Bell" :size="18" /> {{ t('alert.settingsTitle', { code: fundCode }) }}</h3>
-        <button class="close-btn" @click="close">&times;</button>
+        <BButton circle size="small" @click="close">&times;</BButton>
       </div>
       <div class="dialog-body">
         <div v-if="existing.length > 0" class="current-rules">
@@ -14,7 +14,7 @@
               <input type="checkbox" :checked="rule.enabled" @change="toggleRule(rule)" />
               <span class="toggle-track"></span>
             </label>
-            <button class="btn-delete" @click="deleteRule(rule.id)">&times;</button>
+            <BButton circle size="small" type="danger" icon="Trash2" @click="deleteRule(rule.id)" />
           </div>
         </div>
         <div class="new-rule">
@@ -28,7 +28,7 @@
             </select>
             <input v-model="newThreshold" type="number" step="0.1" min="0.1" max="1000"
                    :placeholder="t('alert.threshold')" class="form-input" />
-            <button class="btn-add" @click="addRule" :disabled="!newThreshold">{{ t('alert.addBtn') }}</button>
+            <BButton type="primary" size="small" @click="addRule" :disabled="!newThreshold">{{ t('alert.addBtn') }}</BButton>
           </div>
         </div>
       </div>
@@ -37,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+import BButton from './BButton.vue'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAlertStore } from '../stores/alertStore'
@@ -117,15 +118,6 @@ watch(() => props.visible, (v) => {
   color: var(--text-primary);
 }
 
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 22px;
-  cursor: pointer;
-  color: var(--text-tertiary);
-  padding: 0 4px;
-}
-
 .dialog-body { padding: 16px 20px; }
 .section-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-tertiary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 
@@ -168,17 +160,6 @@ watch(() => props.visible, (v) => {
 .toggle-label input:checked + .toggle-track { background: var(--color-primary); }
 .toggle-label input:checked + .toggle-track::after { transform: translateX(12px); }
 
-.btn-delete {
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  font-size: 16px;
-  padding: 0 4px;
-  line-height: 1;
-}
-.btn-delete:hover { color: var(--color-danger); }
-
 .new-rule { border-top: 1px solid var(--border-subtle); padding-top: 12px; }
 
 .form-row { display: flex; gap: 8px; }
@@ -204,16 +185,4 @@ watch(() => props.visible, (v) => {
   width: 80px;
 }
 
-.btn-add {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  font-size: 13px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.btn-add:hover { opacity: 0.9; }
-.btn-add:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

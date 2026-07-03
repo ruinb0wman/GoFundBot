@@ -56,7 +56,7 @@
         <div class="chart-header">
           <h4 class="section-title">{{ t('stockPopup.chart') }}</h4>
           <div class="chart-period-tabs">
-            <button v-for="range in klinePeriods" :key="range.value" :class="['period-btn', { active: klineSelectedRange === range.value }]" @click="setKlineRange(range.value)">{{ range.label }}</button>
+            <BButton v-for="range in klinePeriods" :key="range.value" plain size="small" :class="{ active: klineSelectedRange === range.value }" @click="setKlineRange(range.value)">{{ range.label }}</BButton>
           </div>
         </div>
         <div class="chart-loading" v-if="klineLoading"><div class="loading-spinner"></div><span>{{ t('stockPopup.loadingKline') }}</span></div>
@@ -80,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import BButton from './BButton.vue'
 import { useI18n } from 'vue-i18n'
 import LucideIcon from './LucideIcon.vue'
 import { useStockPopup } from '../composables/useStockPopup'

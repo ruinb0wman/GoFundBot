@@ -14,7 +14,7 @@
             <div class="history-dropdown" @mousedown.prevent>
               <div class="history-header">
                 <span>{{ t('fund.search.history') }}</span>
-                <button class="history-clear-btn" @click="clearHistory">{{ t('fund.search.clear') }}</button>
+                <BButton text size="small" @click="clearHistory">{{ t('fund.search.clear') }}</BButton>
               </div>
               <div
                 v-for="(item, index) in searchHistory"
@@ -24,23 +24,23 @@
               >
                 <span class="history-code">{{ item.code }}</span>
                 <span class="history-name">{{ item.name }}</span>
-                <button class="history-remove" @click.stop="removeFromHistory(item.code)">
-                  <LucideIcon name="X" :size="12" />
-                </button>
+                <BButton text size="small" circle @click.stop="removeFromHistory(item.code)" icon="X" />
               </div>
             </div>
           </template>
         </SearchBar>
-        <button @click="performSearch" class="search-btn">{{ t('fund.search.searchBtn') }}</button>
-        <button
+        <BButton type="primary" @click="performSearch">{{ t('fund.search.searchBtn') }}</BButton>
+        <BButton
+          circle
           @click="updateDatabase"
           :disabled="updating"
-          class="refresh-btn"
           :title="dbStatus.has_cache ? `${dbStatus.count} ${t('fund.search.itemCount')} | ${t('common.updated')}: ${formatDate(dbStatus.last_update)}` : t('fund.search.updateDb')"
         >
-          <span v-if="updating" class="spinner"></span>
-          <span v-else><LucideIcon name="RefreshCw" :size="16" /></span>
-        </button>
+          <template #icon>
+            <span v-if="updating" class="spinner"></span>
+            <LucideIcon v-else name="RefreshCw" :size="16" />
+          </template>
+        </BButton>
       </div>
     </div>
 
@@ -67,6 +67,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { fundAPI } from '../services/api'
 import { useSearchHistory } from '../composables/useSearchHistory'
+import BButton from './BButton.vue'
 
 const { t } = useI18n()
 
@@ -255,50 +256,6 @@ function selectFund(fund: any) {
   flex: 1;
 }
 
-.search-btn {
-  padding: 10px 20px;
-  background: var(--color-primary-hover);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.search-btn:hover {
-  background: color-mix(in srgb, var(--color-primary-hover), black 20%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.35);
-}
-
-.refresh-btn {
-  width: 38px;
-  height: 38px;
-  border: none;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  transition: all 0.3s;
-  flex-shrink: 0;
-  color: var(--text-secondary);
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.25);
-  transform: rotate(180deg);
-}
-
-.refresh-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
 .spinner {
   width: 14px;
   height: 14px;
@@ -393,20 +350,6 @@ function selectFund(fund: any) {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.history-clear-btn {
-  border: none;
-  background: none;
-  color: var(--color-primary);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.history-clear-btn:hover {
-  background: var(--bg-subtle);
-}
-
 .history-item {
   display: flex;
   align-items: center;
@@ -437,24 +380,4 @@ function selectFund(fund: any) {
   white-space: nowrap;
 }
 
-.history-remove {
-  border: none;
-  background: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  opacity: 0;
-  transition: opacity 0.15s;
-  flex-shrink: 0;
-}
-
-.history-item:hover .history-remove {
-  opacity: 1;
-}
-
-.history-remove:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
 </style>

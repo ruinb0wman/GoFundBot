@@ -69,24 +69,6 @@
   gap: 4px;
 }
 
-.chat-header-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--text-primary);
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
-}
-
-.chat-header-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
 /* ── Session list ── */
 .chat-sessions {
   max-height: 160px;
@@ -190,23 +172,6 @@
   gap: 8px;
   max-width: 280px;
   margin: 0 auto;
-}
-
-.suggestion-btn {
-  padding: 8px 16px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-primary);
-  transition: all 0.15s;
-}
-
-.suggestion-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
 }
 
 .message-row {
@@ -345,30 +310,6 @@
 
 .chat-input::placeholder {
   color: var(--text-tertiary);
-}
-
-.chat-send-btn {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.chat-send-btn:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.chat-send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* ── Markdown styling ── */

@@ -11,8 +11,8 @@
         @fund-selected="emit('select-fund', $event)"
       />
       <template #footer>
-        <button class="btn" @click="emit('close-add-fund')">{{ t('fund.realtimeModal.cancel') }}</button>
-        <button class="btn btn-primary" @click="emit('confirm-add-fund')" :disabled="!selectedFunds?.length">{{ t('fund.realtimeModal.confirmAdd') }}</button>
+        <BButton @click="emit('close-add-fund')">{{ t('fund.realtimeModal.cancel') }}</BButton>
+        <BButton type="primary" @click="emit('confirm-add-fund')" :disabled="!selectedFunds?.length">{{ t('fund.realtimeModal.confirmAdd') }}</BButton>
       </template>
     </BaseModal>
 
@@ -56,8 +56,8 @@
         </div>
       </div>
       <template #footer>
-        <button class="elegant-btn-cancel" @click="emit('close-holding')">{{ t('fund.realtimeModal.cancel') }}</button>
-        <button class="elegant-btn-confirm" :class="tradeForm?.type" @click="emit('save-trade')" :disabled="!canSubmitTrade?.()">{{ submitButtonText?.() }}</button>
+        <BButton @click="emit('close-holding')">{{ t('fund.realtimeModal.cancel') }}</BButton>
+        <BButton :type="tradeForm?.type === 'sell' ? 'danger' : 'primary'" @click="emit('save-trade')" :disabled="!canSubmitTrade?.()">{{ submitButtonText?.() }}</BButton>
       </template>
     </BaseModal>
 
@@ -90,8 +90,8 @@
       </template>
       <input :value="groupName" @input="emit('update-group-name', ($event.target as HTMLInputElement).value)" type="text" :placeholder="t('fund.realtimeModal.groupPlaceholder')" class="modal-input group-name-input" @keyup.enter="emit('save-group')" autofocus />
       <template #footer>
-        <button class="btn" @click="emit('close-group')">{{ t('fund.realtimeModal.cancel') }}</button>
-        <button class="btn btn-primary" @click="emit('save-group')" :disabled="!groupName?.trim()">{{ editingGroup ? t('fund.realtimeModal.save') : t('fund.realtimeModal.create') }}</button>
+        <BButton @click="emit('close-group')">{{ t('fund.realtimeModal.cancel') }}</BButton>
+        <BButton type="primary" @click="emit('save-group')" :disabled="!groupName?.trim()">{{ editingGroup ? t('fund.realtimeModal.save') : t('fund.realtimeModal.create') }}</BButton>
       </template>
     </BaseModal>
 
@@ -119,8 +119,8 @@
         </div>
       </div>
       <template #footer>
-        <button class="elegant-btn-cancel" @click="emit('close-edit')">{{ t('fund.realtimeModal.cancel') }}</button>
-        <button class="elegant-btn-confirm buy" @click="emit('save-edit')">{{ t('fund.realtimeModal.saveChanges') }}</button>
+        <BButton @click="emit('close-edit')">{{ t('fund.realtimeModal.cancel') }}</BButton>
+        <BButton type="primary" @click="emit('save-edit')">{{ t('fund.realtimeModal.saveChanges') }}</BButton>
       </template>
     </BaseModal>
   </div>
@@ -128,6 +128,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import BButton from './BButton.vue'
 import BaseModal from './BaseModal.vue'
 import FundSearch from './FundSearch.vue'
 const { t } = useI18n()
@@ -342,41 +343,6 @@ const emit = defineEmits<{
   color: var(--color-warning);
   font-weight: 500;
   font-size: 12px;
-}
-
-.elegant-btn-cancel {
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-  font-weight: bold;
-  padding: 10px 24px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.elegant-btn-cancel:hover { background: var(--bg-hover); }
-
-.elegant-btn-confirm {
-  font-weight: bold;
-  color: var(--text-inverse);
-  border: none;
-  padding: 10px 32px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.2s;
-}
-
-.elegant-btn-confirm.buy { background: var(--color-primary); }
-.elegant-btn-confirm.buy:hover { opacity: 0.9; transform: translateY(-1px); }
-
-.elegant-btn-confirm.sell { background: var(--color-danger); }
-.elegant-btn-confirm.sell:hover { opacity: 0.9; transform: translateY(-1px); }
-
-.elegant-btn-confirm:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-  transform: none;
 }
 
 .trade-history-table {

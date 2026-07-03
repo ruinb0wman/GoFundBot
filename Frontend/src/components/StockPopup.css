@@ -31,9 +31,6 @@
 .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .chart-header .section-title { margin: 0; padding: 0; border: none; }
 .chart-period-tabs { display: flex; gap: 4px; }
-.period-btn { padding: 3px 10px; font-size: 11px; border: 1px solid var(--border-default); border-radius: 4px; background: var(--bg-card); color: var(--text-tertiary); cursor: pointer; transition: all 0.15s; }
-.period-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.period-btn.active { background: var(--color-primary); color: var(--text-inverse); border-color: var(--color-primary); }
 .chart-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--text-tertiary); font-size: 13px; }
 .chart-loading .loading-spinner { width: 20px; height: 20px; border-width: 2px; margin: 0; }
 .chart-error { text-align: center; padding: 20px; color: var(--color-danger); font-size: 13px; }

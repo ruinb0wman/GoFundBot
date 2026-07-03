@@ -7,11 +7,13 @@
         <span class="badge" v-if="data">{{ t('fund.aiAnalyze.analyzed') }}</span>
       </div>
       <div class="header-actions">
-        <button v-if="!loading" @click="analyze" class="analyze-btn" :class="{ 'has-data': data }">
-          <span class="btn-icon"><LucideIcon :name="data ? 'RefreshCw' : 'Sparkles'" :size="16" /></span>
+        <BButton v-if="!loading" type="primary" size="small" @click="analyze">
+          <template #icon>
+            <LucideIcon :name="data ? 'RefreshCw' : 'Sparkles'" :size="16" />
+          </template>
           {{ data ? t('fund.aiAnalyze.retry') : t('fund.aiAnalyze.start') }}
-        </button>
-        <button class="close-btn" @click="$emit('close')" :title="t('common.close')">×</button>
+        </BButton>
+        <BButton text size="small" @click="$emit('close')" :title="t('common.close')">×</BButton>
       </div>
     </div>
 
@@ -44,7 +46,7 @@
     <div v-else-if="error" class="error">
       <span class="error-icon"><LucideIcon name="TriangleAlert" :size="20" /></span>
       <p>{{ error }}</p>
-      <button @click="analyze" class="retry-btn">{{ t('common.retry') }}</button>
+      <BButton type="danger" @click="analyze">{{ t('common.retry') }}</BButton>
     </div>
 
     <div v-else-if="data" class="analysis-content">
@@ -167,6 +169,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useFundAIAnalysis } from '../composables/useFundAIAnalysis'
+import BButton from './BButton.vue'
 
 const { t } = useI18n()
 

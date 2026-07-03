@@ -90,61 +90,6 @@
   background: var(--color-primary-bg);
 }
 
-.refresh-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  margin-left: auto;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-default);
-  cursor: pointer;
-  font-size: 16px;
-  border-radius: 8px;
-  transition: all 0.2s;
-  flex-shrink: 0;
-  color: var(--text-secondary);
-}
-
-.refresh-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-default);
-}
-
-.refresh-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.expand-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 700;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.expand-btn:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
-}
-
-.expand-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 .spinning {
   display: inline-block;
   animation: spin 1s linear infinite;
@@ -319,31 +264,6 @@
   border-top: 1px solid var(--border-default);
 }
 
-.page-btn {
-  min-width: 64px;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.page-btn:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
-}
-
-.page-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
 .page-info {
   min-width: 92px;
   text-align: center;
@@ -370,16 +290,6 @@
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 8px;
-}
-
-.error-state button {
-  margin-top: 12px;
-  padding: 6px 16px;
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
 }
 
 .update-time {

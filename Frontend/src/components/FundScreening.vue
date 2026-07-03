@@ -15,14 +15,13 @@
           </span>
         </div>
         <div class="header-right">
-          <button
-            class="btn-update"
-            @click="openUpdateDialog"
-            :disabled="updateStatus.running"
-            :title="t('fund.screening.updateTask')"
-          >
-            <LucideIcon v-if="updateStatus.running" name="Hourglass" :size="14" />{{ updateStatus.running ? ' ' + t('fund.screening.updating') : '' }}<LucideIcon v-if="!updateStatus.running" name="Download" :size="14" />{{ updateStatus.running ? '' : ' ' + t('fund.screening.updateData') }}
-          </button>
+          <BButton type="primary" :disabled="updateStatus.running" @click="openUpdateDialog" :title="t('fund.screening.updateTask')">
+            <template #icon>
+              <LucideIcon v-if="updateStatus.running" name="Hourglass" :size="14" />
+              <LucideIcon v-else name="Download" :size="14" />
+            </template>
+            {{ updateStatus.running ? t('fund.screening.updating') : t('fund.screening.updateData') }}
+          </BButton>
         </div>
       </div>
     </div>
@@ -35,7 +34,7 @@
             <h3>刷新基金所属板块</h3>
             <p>请选择是否重新构建股票行业字典</p>
           </div>
-          <button class="dialog-close" @click="resolveIndustryDict(false)">×</button>
+          <BButton circle size="small" @click="resolveIndustryDict(false)">×</BButton>
         </div>
         <div class="confirm-body">
           <div class="confirm-option" @click="resolveIndustryDict(true)">
@@ -63,7 +62,7 @@
             <h3>选择更新内容</h3>
             <p>只执行你这次需要的任务，减少不必要的等待。</p>
           </div>
-          <button class="dialog-close" @click="closeUpdateDialog">×</button>
+          <BButton circle size="small" @click="closeUpdateDialog">×</BButton>
         </div>
 
         <div class="task-list">
@@ -91,10 +90,8 @@
         </div>
 
         <div class="dialog-actions">
-          <button class="btn-secondary" @click="closeUpdateDialog">取消</button>
-          <button class="btn-update" :disabled="!hasSelectedUpdateTask" @click="startUpdate">
-            开始更新
-          </button>
+          <BButton @click="closeUpdateDialog">取消</BButton>
+          <BButton type="primary" :disabled="!hasSelectedUpdateTask" @click="startUpdate">开始更新</BButton>
         </div>
       </div>
     </div>
@@ -115,7 +112,7 @@
           :style="{ width: progressPercent + '%' }"
         ></div>
       </div>
-      <button class="btn-stop-inline" @click="stopUpdate"><LucideIcon name="Square" :size="14" /> {{ t('fund.screening.stop') }}</button>
+      <BButton type="warning" size="small" @click="stopUpdate" icon="Square">{{ t('fund.screening.stop') }}</BButton>
     </div>
 
     <!-- 筛选面板 -->
@@ -193,8 +190,8 @@
                 </div>
               </div>
             </div>
-            <button class="btn-query" @click="search(true)"><LucideIcon name="Search" :size="14" /> 查询</button>
-            <button class="btn-reset" @click="resetFilters">清空</button>
+            <BButton type="primary" icon="Search" @click="search(true)">查询</BButton>
+            <BButton @click="resetFilters">清空</BButton>
           </div>
 
           <!-- 已选类型标签 -->
@@ -257,9 +254,10 @@
             <div class="filter-zone" v-if="displaySectorGroups.length">
               <div class="filter-zone-title">
                 行业 / 市场板块
-                <button class="zone-expand-btn" @click="sectorExpanded = !sectorExpanded">
-                  {{ sectorExpanded ? '收起' : '展开全部' }} <LucideIcon :name="sectorExpanded ? 'ChevronUp' : 'ChevronDown'" :size="12" />
-                </button>
+                <BButton text size="small" @click="sectorExpanded = !sectorExpanded">
+                  {{ sectorExpanded ? '收起' : '展开全部' }}
+                  <template #icon><LucideIcon :name="sectorExpanded ? 'ChevronUp' : 'ChevronDown'" :size="12" /></template>
+                </BButton>
               </div>
               <div class="filter-zone-tags">
                 <div class="tag-primary-row">
@@ -383,17 +381,8 @@
           </template>
           <template #actions="{ row }">
             <div class="actions">
-              <button
-                class="btn-action"
-                :class="{ watched: isInWatchlist(row.fund_code) }"
-                @click.stop="toggleWatchlist(row)"
-                :title="isInWatchlist(row.fund_code) ? '取消自选' : '加入自选'"
-              >
-                <LucideIcon name="Star" :size="14" />
-              </button>
-              <button class="btn-action" @click.stop="addToCompare(row)" title="加入对比">
-                <LucideIcon name="LayoutGrid" :size="14" />
-              </button>
+              <BButton circle size="small" :class="{ watched: isInWatchlist(row.fund_code) }" @click.stop="toggleWatchlist(row)" :title="isInWatchlist(row.fund_code) ? '取消自选' : '加入自选'" icon="Star" />
+              <BButton circle size="small" @click.stop="addToCompare(row)" title="加入对比" icon="LayoutGrid" />
             </div>
           </template>
         </vxe-grid>
@@ -401,23 +390,11 @@
 
       <!-- 分页 -->
       <div class="pagination">
-        <button
-          class="page-btn"
-          :disabled="currentPage === 1"
-          @click="changePage(currentPage - 1)"
-        >
-          上一页
-        </button>
+        <BButton size="small" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">上一页</BButton>
         <span class="page-info">
           第 {{ currentPage }} / {{ totalPages }} 页
         </span>
-        <button
-          class="page-btn"
-          :disabled="currentPage === totalPages"
-          @click="changePage(currentPage + 1)"
-        >
-          下一页
-        </button>
+        <BButton size="small" :disabled="currentPage === totalPages" @click="changePage(currentPage + 1)">下一页</BButton>
       </div>
     </div>
 
@@ -443,6 +420,7 @@
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useFundScreening } from '../composables/useFundScreening'
+import BButton from './BButton.vue'
 
 defineOptions({ name: 'FundScreening' })
 const emit = defineEmits(['view-fund', 'add-to-compare'])

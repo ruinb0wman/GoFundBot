@@ -28,14 +28,14 @@
       </div>
 
       <div class="col-compare" v-if="compareMode && !editMode">
-        <button
-          class="btn-compare"
-          :class="{ 'in-compare': isInCompare(fund.fund_code) }"
+        <BButton
+          circle size="small"
+          :type="isInCompare(fund.fund_code) ? 'primary' : 'default'"
           @click.stop="$emit('add-to-compare', { code: fund.fund_code, name: fund.fund_name })"
           :title="isInCompare(fund.fund_code) ? t('fund.listItem.addedToCompare') : t('fund.listItem.addToCompare')"
         >
           <LucideIcon :name="isInCompare(fund.fund_code) ? 'Check' : 'Plus'" :size="14" />
-        </button>
+        </BButton>
       </div>
 
       <div class="col-name" @click="!editMode && !compareMode && $emit('view-fund', fund.fund_code)">
@@ -53,29 +53,27 @@
       </div>
 
       <div class="col-action" v-if="!editMode && !compareMode">
-        <button
+        <BButton
+          circle size="small"
           v-if="addToRealtimeMode"
-          class="btn-icon btn-add-realtime"
           @click.stop="$emit('add-to-realtime', fund)"
           :title="t('fund.listItem.addToRealtime')"
-        >
-          <LucideIcon name="Plus" :size="14" />
-        </button>
+          icon="Plus"
+        />
         <template v-else>
-          <button
-            class="btn-icon btn-alert"
+          <BButton
+            circle size="small"
             @click.stop="$emit('show-alert-settings', fund.fund_code)"
             :title="t('fund.listItem.alertSettings')"
-          >
-            <LucideIcon name="Bell" :size="13" />
-          </button>
-          <button
-            class="btn-icon btn-remove"
+            icon="Bell"
+          />
+          <BButton
+            circle size="small"
+            type="danger"
             @click.stop="$emit('remove-fund', fund.fund_code)"
             :title="t('fund.watchlist.remove')"
-          >
-            <LucideIcon name="X" :size="14" />
-          </button>
+            icon="X"
+          />
         </template>
       </div>
     </div>
@@ -85,6 +83,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import type { DraggingIndex, CompareFund } from '../types'
+import BButton from './BButton.vue'
 
 const { t } = useI18n()
 
@@ -176,18 +175,5 @@ function getChangeClass(change: unknown): string {
 .checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--color-primary); }
 .drag-handle { cursor: grab; color: var(--text-tertiary); font-size: 14px; user-select: none; }
 .drag-handle:active { cursor: grabbing; }
-.btn-compare {
-  width: 22px; height: 22px; border: 2px solid var(--color-primary); border-radius: 50%;
-  background: var(--bg-card); color: var(--color-primary); font-size: 14px; font-weight: bold;
-  cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
-}
-.btn-compare:hover { background: var(--color-primary); color: white; }
-.btn-compare.in-compare { background: var(--color-primary); color: white; }
 .list-item.in-compare { background: var(--color-primary-bg); }
-.btn-icon { width: 22px; height: 22px; border: none; border-radius: 4px; background: transparent; cursor: pointer; color: var(--text-tertiary); display: flex; align-items: center; justify-content: center; }
-.btn-icon:hover { background: var(--color-danger-bg); color: var(--color-danger); }
-.btn-add-realtime { font-size: 16px; font-weight: bold; color: var(--color-success); }
-.btn-add-realtime:hover { background: var(--color-success-bg); color: var(--color-success); }
-.btn-alert { font-size: 14px; }
-.btn-alert:hover { background: var(--color-primary-bg); color: var(--color-primary); }
 </style>

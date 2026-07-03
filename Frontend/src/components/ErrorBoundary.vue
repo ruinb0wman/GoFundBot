@@ -2,12 +2,13 @@
   <div v-if="hasError" class="error-boundary">
     <LucideIcon name="AlertTriangle" :size="24" />
     <p>{{ t('error.renderError') }}</p>
-    <button class="error-retry-btn" @click="retry">{{ t('common.retry') }}</button>
+    <BButton plain @click="retry">{{ t('common.retry') }}</BButton>
   </div>
   <slot v-else />
 </template>
 
 <script setup lang="ts">
+import BButton from './BButton.vue'
 import { ref, onErrorCaptured } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -43,19 +44,4 @@ function retry() {
   font-size: 14px;
 }
 
-.error-retry-btn {
-  padding: 8px 24px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-card);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-
-.error-retry-btn:hover {
-  background: var(--bg-subtle);
-  border-color: var(--color-primary);
-}
 </style>

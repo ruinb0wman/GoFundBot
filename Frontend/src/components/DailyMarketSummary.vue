@@ -6,10 +6,7 @@
         <span class="date">{{ today }}</span>
       </div>
       <div class="header-actions">
-        <button v-if="data && !loading" @click="refresh" class="refresh-btn" :title="t('common.refresh')">
-          <span class="refresh-icon"><LucideIcon name="RefreshCw" :size="16" /></span>
-          <span class="refresh-text">{{ t('dailyMarket.refresh') }}</span>
-        </button>
+        <BButton v-if="data && !loading" type="primary" size="small" icon="RefreshCw" @click="refresh" :title="t('common.refresh')">{{ t('dailyMarket.refresh') }}</BButton>
       </div>
     </div>
 
@@ -57,9 +54,7 @@
       <div class="error-card">
         <div class="error-icon"><LucideIcon name="TriangleAlert" :size="24" /></div>
         <div class="error-message">{{ error }}</div>
-        <button @click="() => fetchData(false)" class="retry-btn">
-          <span><LucideIcon name="RefreshCw" :size="14" /></span> {{ t('dailyMarket.regenerate') }}
-        </button>
+        <BButton type="danger" size="small" @click="() => fetchData(false)">{{ t('dailyMarket.regenerate') }}</BButton>
       </div>
     </div>
 
@@ -115,6 +110,7 @@
 </template>
 
 <script setup>
+import BButton from './BButton.vue'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { fundAPI } from '../services/api'

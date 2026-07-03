@@ -7,22 +7,20 @@
       </div>
       <div class="header-actions">
         <span v-if="updatedAt" class="updated-time">更新 {{ formatDateTime(updatedAt) }}</span>
-        <button class="refresh-btn" :disabled="loading" @click="refreshDashboard">
-          {{ loading ? t('research.refreshing') : t('common.refresh') }}
-        </button>
+        <BButton type="primary" icon="RefreshCw" :disabled="loading" @click="refreshDashboard">{{ loading ? t('research.refreshing') : t('common.refresh') }}</BButton>
       </div>
     </div>
 
     <div class="tab-bar">
-      <button
+      <BButton
         v-for="tab in tabs"
         :key="tab.key"
-        class="tab-btn"
+        text
         :class="{ active: activeTab === tab.key }"
         @click="activeTab = tab.key"
       >
         {{ tab.label }}
-      </button>
+      </BButton>
     </div>
 
     <div v-if="loading" class="state-card">{{ t('research.loading') }}</div>
@@ -326,6 +324,7 @@
 </template>
 
 <script setup>
+import BButton from './BButton.vue'
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useResearchDashboard } from '../composables/useResearchDashboard'

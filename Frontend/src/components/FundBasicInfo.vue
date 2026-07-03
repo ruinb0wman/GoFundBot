@@ -5,16 +5,18 @@
         <div class="title-row">
           <h2>{{ fundInfo.name || t('common.unknown') }}</h2>
           <span class="fund-code">{{ fundCode }}</span>
-          <button
-            class="watchlist-btn"
+          <BButton
+            text
             :class="{ 'in-watchlist': isInWatchlist }"
             @click="toggleWatchlist"
             :disabled="watchlistLoading"
             :title="isInWatchlist ? t('fund.watchlist.remove') : t('fund.watchlist.add')"
           >
-            <span class="star-icon"><LucideIcon name="Star" :size="18" :fill="isInWatchlist ? 'currentColor' : 'none'" /></span>
+            <template #icon>
+              <LucideIcon name="Star" :size="16" :fill="isInWatchlist ? 'currentColor' : 'none'" />
+            </template>
             <span class="btn-text">{{ isInWatchlist ? t('fund.watchlist.alreadyIn') : t('fund.watchlist.starred') }}</span>
-          </button>
+          </BButton>
           <span
             v-if="fundIndustryTag"
             class="industry-tag"
@@ -47,10 +49,9 @@
       </div>
 
       <div class="header-middle-group">
-        <button class="ai-analysis-btn" @click="$emit('trigger-ai-analysis')">
-          <span class="ai-icon"><LucideIcon name="Bot" :size="16" /></span>
+        <BButton type="primary" size="small" icon="Sparkles" @click="$emit('trigger-ai-analysis')">
           <span class="btn-text">{{ t('fund.aiAnalyze.title') }}</span>
-        </button>
+        </BButton>
       </div>
 
       <div class="header-right">
@@ -118,6 +119,7 @@
 </template>
 
 <script setup lang="ts">
+import BButton from './BButton.vue'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { fundAPI, watchlistAPI } from '../services/api'
@@ -344,18 +346,9 @@ function formatMinSubscription(value: unknown): string {
 .title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .title-row h2 { margin: 0; font-size: 24px; font-weight: 600; }
 .fund-code { background: rgba(255, 255, 255, 0.25); padding: 6px 12px; border-radius: 6px; font-size: 14px; font-weight: 500; }
-.watchlist-btn { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 20px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 13px; cursor: pointer; transition: all 0.2s ease; backdrop-filter: blur(10px); }
-.watchlist-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.6); }
-.watchlist-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.watchlist-btn.in-watchlist { background: rgba(255, 215, 0, 0.3); border-color: #ffd700; }
-.watchlist-btn.in-watchlist:hover:not(:disabled) { background: rgba(255, 215, 0, 0.4); }
 .industry-tag { display: inline-flex; align-items: center; max-width: 160px; padding: 6px 12px; border-radius: 20px; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.35); color: #fff; font-size: 13px; font-weight: 600; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(10px); }
-.star-icon { display: inline-flex; align-items: center; color: #ffd700; }
 .btn-text { font-weight: 500; }
 .header-middle-group { flex: 1; display: flex; justify-content: center; align-items: center; }
-.ai-analysis-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 20px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 14px; cursor: pointer; transition: all 0.2s ease; backdrop-filter: blur(10px); }
-.ai-analysis-btn:hover { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.6); }
-.ai-icon { display: inline-flex; align-items: center; }
 .header-right { display: flex; gap: 32px; align-items: flex-start; }
 .change-box, .net-worth-box, .estimate-box { text-align: right; display: flex; flex-direction: column; }
 .change-box .label, .net-worth-box .label, .estimate-box .label { font-size: 12px; opacity: 0.9; margin-bottom: 4px; }

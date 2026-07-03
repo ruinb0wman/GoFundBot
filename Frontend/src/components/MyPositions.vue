@@ -169,7 +169,7 @@
             <td :class="profit(item) >= 0 ? 'up' : 'down'">{{ formatSigned(profit(item)) }}</td>
             <td :class="profitRate(item) >= 0 ? 'up' : 'down'">{{ formatSigned(profitRate(item)) }}%</td>
             <td>
-              <button class="danger" @click="removePosition(item.id)">{{ t('common.delete') }}</button>
+              <BButton type="danger" size="small" @click="removePosition(item.id)">{{ t('common.delete') }}</BButton>
             </td>
           </tr>
         </tbody>
@@ -181,6 +181,7 @@
 </template>
 
 <script setup>
+import BButton from './BButton.vue'
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { useMyPositions } from '../composables/useMyPositions'
@@ -235,7 +236,6 @@ const {
 .positions-table th { color: var(--text-secondary); }
 .positions-table td { color: var(--text-primary); }
 .empty { padding: 18px; text-align: center; color: var(--text-tertiary); background: var(--bg-subtle); border-radius: 8px; }
-.danger { background: var(--color-danger); color: var(--text-inverse); border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
 @media (max-width: 1200px) {
   .position-form { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
   .operation-form { grid-template-columns: repeat(2, minmax(140px, 1fr)); }

@@ -3,14 +3,16 @@
     <div class="section-header">
       <h3><LucideIcon name="TrendingUp" :size="20" /> {{ t('fund.sameType.title') }}</h3>
       <div class="period-tabs">
-        <button
+        <BButton
           v-for="(period, index) in periods"
           :key="index"
-          :class="['period-tab', { active: activePeriod === index }]"
+          plain
+          size="small"
+          :class="{ active: activePeriod === index }"
           @click.stop="activePeriod = index"
         >
           {{ period }}
-        </button>
+        </BButton>
       </div>
     </div>
     <div class="fund-list" v-if="currentFunds.length > 0">
@@ -37,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import BButton from './BButton.vue'
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -91,9 +94,6 @@ function onFundClick(code: string): void {
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; padding-right: var(--header-padding-right, 0); }
 .section-header h3 { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0; }
 .period-tabs { display: flex; gap: 4px; }
-.period-tab { padding: 4px 8px; font-size: 11px; border: 1px solid var(--border-default); border-radius: 4px; background: var(--bg-card); color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
-.period-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.period-tab.active { background: var(--bg-gradient); color: white; border-color: transparent; }
 .fund-list { flex: 1; overflow-y: auto; }
 .fund-item { display: flex; align-items: center; padding: 10px 8px; border-radius: 8px; cursor: pointer; transition: all 0.2s; margin-bottom: 4px; }
 .fund-item:hover { background: var(--bg-page); }

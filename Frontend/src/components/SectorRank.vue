@@ -2,17 +2,14 @@
   <div class="sector-rank-container">
     <div class="section-header">
       <h3><LucideIcon name="Factory" :size="20" /> {{ t('sectorRank.title') }}</h3>
-      <button class="refresh-btn" @click="fetchSectors" :disabled="loading" :title="t('sectorRank.refresh')">
-        <span :class="{ 'spinning': loading }"><LucideIcon name="RefreshCw" :size="16" /></span>
-      </button>
-      <button
-        class="expand-btn"
+      <BButton circle icon="RefreshCw" :loading="loading" @click="fetchSectors" :title="t('sectorRank.refresh')" />
+      <BButton
+        circle
+        icon="Maximize2"
         @click="openSectorModal()"
         :disabled="!sectors.length"
         :title="t('sectorRank.expand')"
-      >
-        <LucideIcon name="Maximize2" :size="16" />
-      </button>
+      />
     </div>
     <div class="filter-panel">
       <div class="market-stats" v-if="sectors.length">
@@ -30,7 +27,7 @@
 
     <div v-else-if="error" class="error-state">
       <span>{{ error }}</span>
-      <button @click="fetchSectors">{{ t('common.retry') }}</button>
+      <BButton type="danger" size="small" @click="fetchSectors">{{ t('common.retry') }}</BButton>
     </div>
 
     <div v-else class="sector-content">
@@ -74,10 +71,10 @@
       <div v-if="!displayedSectors.length" class="empty-filter">{{ t('sectorRank.noMatch') }}</div>
 
       <div v-if="filteredSectors.length > pageSize" class="pagination">
-        <button class="page-btn" @click="currentPage = 1" :disabled="currentPage === 1">{{ t('sectorRank.firstPage') }}</button>
-        <button class="page-btn" @click="currentPage -= 1" :disabled="currentPage === 1">{{ t('sectorRank.prevPage') }}</button>
+        <BButton size="small" @click="currentPage = 1" :disabled="currentPage === 1">{{ t('sectorRank.firstPage') }}</BButton>
+        <BButton size="small" @click="currentPage -= 1" :disabled="currentPage === 1">{{ t('sectorRank.prevPage') }}</BButton>
         <span class="page-info">{{ t('sectorRank.pageInfo', { current: currentPage, total: totalPages }) }}</span>
-        <button class="page-btn" @click="currentPage += 1" :disabled="currentPage === totalPages">{{ t('sectorRank.nextPage') }}</button>
+        <BButton size="small" @click="currentPage += 1" :disabled="currentPage === totalPages">{{ t('sectorRank.nextPage') }}</BButton>
       </div>
     </div>
 
@@ -186,6 +183,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BButton from './BButton.vue'
 import { marketAPI } from '../services/api'
 
 const { t } = useI18n()

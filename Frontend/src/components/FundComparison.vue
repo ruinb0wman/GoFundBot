@@ -7,16 +7,8 @@
         <span class="count-badge" v-if="selectedFunds.length">{{ selectedFunds.length }}/{{ maxFunds }}</span>
       </h2>
       <div class="header-actions" v-if="selectedFunds.length > 0">
-        <button class="btn btn-export" @click="exportComparison">
-          <LucideIcon name="Download" :size="14" /> {{ t('fund.compare.export') }}
-        </button>
-        <button
-          class="btn btn-clear"
-          @click="clearSelection"
-          :disabled="selectedFunds.length === 0"
-        >
-          {{ t('fund.compare.clear') }}
-        </button>
+        <BButton type="primary" icon="Download" @click="exportComparison">{{ t('fund.compare.export') }}</BButton>
+        <BButton @click="clearSelection" :disabled="selectedFunds.length === 0">{{ t('fund.compare.clear') }}</BButton>
       </div>
     </div>
 
@@ -36,7 +28,7 @@
           <span class="tag-color" :style="{ background: fund.color }"></span>
           <span class="tag-name">{{ fund.name }}</span>
           <span class="tag-code">({{ fund.code }})</span>
-          <button class="tag-remove" @click="removeFund(fund.code)">×</button>
+          <BButton circle size="small" @click="removeFund(fund.code)">×</BButton>
         </div>
         <div v-if="selectedFunds.length < maxFunds" class="add-fund-hint">
           <span>{{ t('fund.compare.maxHint', { count: maxFunds - selectedFunds.length }) }}</span>
@@ -186,6 +178,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import LucideIcon from './LucideIcon.vue'
+import BButton from './BButton.vue'
 import { useFundComparison } from '../composables/useFundComparison'
 
 const { t } = useI18n()

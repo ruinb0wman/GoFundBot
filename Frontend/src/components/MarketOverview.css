@@ -41,13 +41,10 @@
 .gold-modal-header h3 { margin: 0; font-size: 16px; color: var(--text-primary); }
 .gold-modal-controls { display: flex; align-items: center; gap: 10px; }
 .days-select { padding: 4px 10px; border: 1px solid var(--border-default); border-radius: 6px; font-size: 12px; background: var(--bg-subtle); color: var(--text-secondary); cursor: pointer; }
-.modal-close-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: var(--bg-subtle); font-size: 16px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
-.modal-close-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .gold-modal-body { padding: 20px; flex: 1; min-height: 320px; }
 .gold-chart { width: 100%; height: 380px; }
 .gold-card.clickable { cursor: pointer; }
 .gold-card.clickable:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.refresh-btn, .toggle-btn { background: none; border: none; cursor: pointer; color: var(--color-primary); }
 .empty-state { text-align: center; color: var(--text-tertiary); padding: 20px; font-size: 0.9em; }
 .chart { height: 100%; width: 100%; }
 .update-tag { font-size: 0.8em; color: var(--text-tertiary); background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; }

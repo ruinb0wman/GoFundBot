@@ -17,7 +17,7 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="Globe" :size="20" /> {{ t('market.indices') }}</h3>
-        <button class="refresh-btn" @click="fetchAll" :disabled="loading"><span :class="{ 'spinning': loading }"><LucideIcon name="RefreshCw" :size="16" /></span></button>
+        <BButton size="small" icon="RefreshCw" :loading="loading" @click="fetchAll" :disabled="loading" />
       </div>
 
       <div class="market-sub-section">
@@ -69,7 +69,7 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="BellRing" :size="20" /> {{ t('market.anomaly') }}</h3>
-        <button class="refresh-btn" @click="fetchAnomalies" :disabled="anomaliesLoading"><span :class="{ spinning: anomaliesLoading }"><LucideIcon name="RefreshCw" :size="16" /></span></button>
+        <BButton size="small" icon="RefreshCw" :loading="anomaliesLoading" @click="fetchAnomalies" :disabled="anomaliesLoading" />
       </div>
       <div v-if="anomaliesLoading" class="anomaly-loading">{{ t('common.loading') }}</div>
       <div v-else-if="anomalies.length === 0" class="anomaly-empty"><LucideIcon name="CheckCircle" :size="16" /> {{ t('alert.anomaly.empty') }}</div>
@@ -93,7 +93,7 @@
                 <option :value="10">{{ t('market.days10') }}</option>
                 <option :value="30">{{ t('market.days30') }}</option>
               </select>
-              <button class="modal-close-btn" @click="closeGoldHistory"><LucideIcon name="X" :size="18" /></button>
+              <BButton circle size="small" @click="closeGoldHistory">×</BButton>
             </div>
           </div>
           <div class="gold-modal-body">
@@ -109,6 +109,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BButton from './BButton.vue'
 import LucideIcon from './LucideIcon.vue'
 import VChart from 'vue-echarts'
 import { use } from "echarts/core"

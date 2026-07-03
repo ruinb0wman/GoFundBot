@@ -19,9 +19,9 @@
         :placeholder="t('logs.searchPlaceholder')"
         @input="onSearchInput"
       />
-      <button class="tb-btn" @click="loadLogs" :disabled="loading">
+      <BButton size="small" @click="loadLogs" :disabled="loading">
         <LucideIcon name="RefreshCw" :size="16" :class="{ spinning: loading }" />
-      </button>
+      </BButton>
     </div>
 
     <div class="stats-row">
@@ -67,13 +67,13 @@
         <VxeColumn field="message" :title="t('logs.message')" min-width="200" show-overflow="tooltip" />
         <VxeColumn :title="t('logs.context')" width="100">
           <template #default="{ row }">
-            <button
+            <BButton
               v-if="row.context || row.module"
-              class="tb-btn tb-btn-sm"
+              size="small"
               @click="expandRow(row)"
             >
               {{ t('logs.view') }}
-            </button>
+            </BButton>
           </template>
         </VxeColumn>
       </VxeTable>
@@ -81,17 +81,17 @@
 
     <div class="pagination-row" v-if="total > limit">
       <span class="page-info">{{ t('logs.total') }} {{ total }} {{ t('logs.items') }}</span>
-      <button class="tb-btn" :disabled="offset <= 0" @click="prevPage">{{ t('logs.prevPage') }}</button>
+      <BButton size="small" :disabled="offset <= 0" @click="prevPage">{{ t('logs.prevPage') }}</BButton>
       <span class="page-num">{{ currentPage }} / {{ maxPage }}</span>
-      <button class="tb-btn" :disabled="offset + limit >= total" @click="nextPage">{{ t('logs.nextPage') }}</button>
+      <BButton size="small" :disabled="offset + limit >= total" @click="nextPage">{{ t('logs.nextPage') }}</BButton>
     </div>
 
     <div class="analysis-section">
       <h3>{{ t('logs.aiAnalysis') }}</h3>
-      <button class="tb-btn tb-btn-primary" @click="runAnalysis" :disabled="analyzing">
+      <BButton type="primary" size="small" @click="runAnalysis" :disabled="analyzing">
         <LucideIcon name="Sparkles" :size="16" />
         {{ analyzing ? t('logs.analyzing') : t('logs.startAnalysis') }}
-      </button>
+      </BButton>
       <div v-if="analyzing" class="analysis-loading">
         {{ t('logs.analyzingLogs') }}
       </div>
@@ -130,13 +130,14 @@
       <div class="modal-card">
         <h4>日志详情</h4>
         <pre>{{ JSON.stringify(detailEntry, null, 2) }}</pre>
-        <button class="tb-btn" @click="detailEntry = null">关闭</button>
+        <BButton size="small" @click="detailEntry = null">关闭</BButton>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import BButton from '../components/BButton.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { VxeTable, VxeColumn } from 'vxe-table'
@@ -274,44 +275,6 @@ onMounted(loadLogs)
 .search-input {
   flex: 1;
   min-width: 160px;
-}
-
-.tb-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  background: var(--bg-card);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 13px;
-  transition: background 0.15s;
-}
-
-.tb-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.tb-btn:hover:not(:disabled) {
-  background: var(--bg-subtle);
-}
-
-.tb-btn-sm {
-  padding: 3px 8px;
-  font-size: 12px;
-}
-
-.tb-btn-primary {
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  border-color: var(--color-primary);
-}
-
-.tb-btn-primary:hover:not(:disabled) {
-  opacity: 0.9;
 }
 
 .stats-row {

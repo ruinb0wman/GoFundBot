@@ -18,56 +18,56 @@
 
     <div v-if="fundDetail" class="dashboard">
       <div class="main-area">
-        <div class="card card-chart">
+        <BCard :body-style="{ height: '500px', display: 'flex', flexDirection: 'column' }">
           <FundChart
             :netWorthTrend="processedNetWorthTrend"
             :acWorthTrend="processedAcWorthTrend"
             :grandTotal="fundDetail.total_return_trend"
           />
-        </div>
+        </BCard>
 
         <div class="grid-2">
-          <div class="card card-md clickable" @click="openModal('ranking')">
+          <BCard class="clickable" :body-style="{ height: '450px', display: 'flex', flexDirection: 'column' }" @click="openModal('ranking')">
             <FundRankingTrend :rateInSimilarType="fundDetail.ranking_trend" :rateInSimilarPercent="fundDetail.ranking_percentage" />
-          </div>
-          <div class="card card-md clickable" @click="openModal('asset')">
+          </BCard>
+          <BCard class="clickable" :body-style="{ height: '450px', display: 'flex', flexDirection: 'column' }" @click="openModal('asset')">
             <FundAssetAllocation :assetAllocation="fundDetail.asset_allocation" />
-          </div>
+          </BCard>
         </div>
 
         <div class="grid-2">
-          <div class="card card-md clickable" @click="openModal('holder')">
+          <BCard class="clickable" :body-style="{ height: '450px', display: 'flex', flexDirection: 'column' }" @click="openModal('holder')">
             <FundHolderStructure :holderStructure="fundDetail.holder_structure" />
-          </div>
-          <div class="card card-md clickable" @click="openModal('scale')">
+          </BCard>
+          <BCard class="clickable" :body-style="{ height: '450px', display: 'flex', flexDirection: 'column' }" @click="openModal('scale')">
             <FundScaleChange :fluctuationScale="fundDetail.scale_fluctuation" />
-          </div>
+          </BCard>
         </div>
 
-        <div class="card card-full clickable" @click="openModal('subscription')">
+        <BCard class="clickable" :body-style="{ height: '480px', display: 'flex', flexDirection: 'column' }" @click="openModal('subscription')">
           <FundSubscription :subscriptionRedemption="fundDetail.subscription_redemption" />
-        </div>
+        </BCard>
       </div>
 
       <div class="sidebar">
-        <div class="card card-sidebar clickable" @click="openModal('portfolio')">
+        <BCard class="clickable" :body-style="{ flex: '1', minHeight: '300px', maxHeight: '480px', display: 'flex', flexDirection: 'column' }" @click="openModal('portfolio')">
           <FundPortfolio :portfolio="fundDetail.portfolio" @stock-click="handleStockClick" />
-        </div>
-        <div class="card card-sidebar clickable" @click="openModal('manager')">
+        </BCard>
+        <BCard class="clickable" :body-style="{ flex: '1', minHeight: '300px', maxHeight: '480px', display: 'flex', flexDirection: 'column' }" @click="openModal('manager')">
           <FundManagerInfo :fundManagers="fundDetail.fund_managers" />
-        </div>
-        <div class="card card-sidebar clickable" @click="openModal('ability')">
+        </BCard>
+        <BCard class="clickable" :body-style="{ flex: '1', minHeight: '300px', maxHeight: '480px', display: 'flex', flexDirection: 'column' }" @click="openModal('ability')">
           <FundAbilityEval :performanceEvaluation="fundDetail.performance_evaluation" />
-        </div>
-        <div class="card card-sidebar clickable" @click="openModal('sametype')">
+        </BCard>
+        <BCard class="clickable" :body-style="{ flex: '1', minHeight: '300px', maxHeight: '480px', display: 'flex', flexDirection: 'column' }" @click="openModal('sametype')">
           <FundSameType :sameTypeFunds="fundDetail.same_type_funds" @fund-select="handleSameTypeFundSelect" />
-        </div>
+        </BCard>
       </div>
     </div>
 
     <div v-if="modalVisible" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
-        <button class="modal-close" @click="closeModal">×</button>
+        <BButton circle size="small" @click="closeModal">×</BButton>
         <div class="modal-body">
           <FundRankingTrend v-if="modalType === 'ranking'" :rateInSimilarType="fundDetail.ranking_trend" :rateInSimilarPercent="fundDetail.ranking_percentage" :isExpanded="true" />
           <FundAssetAllocation v-if="modalType === 'asset'" :assetAllocation="fundDetail.asset_allocation" />
@@ -84,7 +84,7 @@
 
     <div v-if="stockModalVisible" class="modal-overlay" @click.self="closeStockModal">
       <div class="modal-content stock-modal-content">
-        <button class="modal-close" @click="closeStockModal">×</button>
+        <BButton circle size="small" @click="closeStockModal">×</BButton>
         <div class="modal-body">
           <StockPopup :stockData="stockQuoteData" :loading="stockQuoteLoading" :error="stockQuoteError" />
         </div>
@@ -100,7 +100,7 @@
     <div v-else-if="error" class="error">
       <div class="error-icon"><LucideIcon name="TriangleAlert" :size="32" /></div>
       <p>{{ error }}</p>
-      <button @click="retry" class="retry-btn">重试</button>
+      <BButton type="danger" @click="retry">重试</BButton>
     </div>
 
     <div v-else-if="!currentFundCode" class="empty-state">
@@ -111,6 +111,8 @@
 </template>
 
 <script setup lang="ts">
+import BButton from './BButton.vue'
+import BCard from './BCard.vue'
 import LucideIcon from './LucideIcon.vue'
 import FundBasicInfo from './FundBasicInfo.vue'
 import FundChart from './FundChart.vue'

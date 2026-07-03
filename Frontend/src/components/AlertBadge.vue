@@ -8,7 +8,7 @@
       <div v-if="open" class="alert-dropdown">
         <div class="dropdown-header">
           <span class="dropdown-title">{{ t('alert.list') }}</span>
-          <button class="close-btn" @click="close">&times;</button>
+          <BButton circle size="small" @click="close">&times;</BButton>
         </div>
         <div class="dropdown-body">
           <div v-if="store.rules.length === 0" class="empty-state">{{ t('alert.empty') }}</div>
@@ -25,9 +25,9 @@
           </div>
         </div>
         <div class="dropdown-footer">
-          <button class="btn-check" @click="refreshCheck" :disabled="store.loading">
+          <BButton type="primary" size="small" @click="refreshCheck" :disabled="store.loading">
             <LucideIcon name="RefreshCw" :size="14" :class="{ spinning: store.loading }" /> {{ t('alert.check') }}
-          </button>
+          </BButton>
         </div>
       </div>
     </Transition>
@@ -35,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import BButton from './BButton.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAlertStore } from '../stores/alertStore'
@@ -154,7 +155,6 @@ onUnmounted(() => {
 }
 
 .dropdown-title { font-weight: 600; font-size: 14px; color: var(--text-primary); }
-.close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-tertiary); }
 .dropdown-body { flex: 1; overflow-y: auto; padding: 8px; }
 .empty-state { text-align: center; color: var(--text-tertiary); padding: 24px; font-size: 13px; }
 
@@ -206,25 +206,6 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
 }
-
-.btn-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 16px;
-  border: none;
-  border-radius: 6px;
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  font-size: 13px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.btn-check:hover { opacity: 0.9; }
-.btn-check:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.spinning { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 .alert-dropdown-enter-active, .alert-dropdown-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .alert-dropdown-enter-from, .alert-dropdown-leave-to { opacity: 0; transform: translateY(-8px); }

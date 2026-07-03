@@ -3,30 +3,25 @@
     <!-- Header -->
     <div class="chat-header">
       <div class="chat-header-left">
-        <button class="chat-header-btn" @click="chatStore.toggleWideMode()" :title="chatStore.isWideMode ? t('chat.narrowMode') : t('chat.wideMode')">
-          <LucideIcon :name="chatStore.isWideMode ? 'PanelRightClose' : 'PanelRightOpen'" :size="16" />
-        </button>
+        <BButton circle size="small" :icon="chatStore.isWideMode ? 'PanelRightClose' : 'PanelRightOpen'" @click="chatStore.toggleWideMode()" :title="chatStore.isWideMode ? t('chat.narrowMode') : t('chat.wideMode')" />
         <LucideIcon name="Bot" :size="18" />
         <span class="chat-title">{{ t('chat.title') }}</span>
       </div>
       <div class="chat-header-actions">
-        <button class="chat-header-btn" @click="handleNewSession" :title="t('chat.newSession')">
-          <LucideIcon name="Plus" :size="16" />
-        </button>
-        <button class="chat-header-btn" @click="$emit('close')" :title="t('chat.minimize')">
-          <LucideIcon name="Minimize2" :size="16" />
-        </button>
+        <BButton circle size="small" icon="Plus" @click="handleNewSession" :title="t('chat.newSession')" />
+        <BButton circle size="small" icon="Minimize2" @click="$emit('close')" :title="t('chat.minimize')" />
       </div>
     </div>
 
     <!-- Session list (collapsible in narrow, always visible in wide) -->
     <div v-if="showSessions || chatStore.isWideMode" class="chat-sessions">
       <div class="session-list">
-        <button
+        <BButton
           v-for="session in chatStore.sessions"
           :key="session.id"
+          text
           class="session-item"
-          :class="{ active: session.id === chatStore.currentSessionId }"
+          :active="session.id === chatStore.currentSessionId"
           @click="handleSwitchSession(session.id)"
         >
           <LucideIcon name="MessageSquare" :size="14" />
@@ -41,7 +36,7 @@
           >
             <LucideIcon name="Trash2" :size="12" />
           </span>
-        </button>
+        </BButton>
       </div>
     </div>
 
@@ -54,14 +49,14 @@
         <h3>{{ t('chat.welcomeTitle') }}</h3>
         <p>{{ t('chat.welcomeDesc') }}</p>
         <div class="welcome-suggestions">
-          <button
+          <BButton
             v-for="(s, i) in suggestions"
             :key="i"
-            class="suggestion-btn"
+            plain
             @click="sendSuggestion(s.text)"
           >
             {{ s.text }}
-          </button>
+          </BButton>
         </div>
       </div>
 
@@ -127,13 +122,7 @@
           rows="1"
           ref="inputRef"
         />
-        <button
-          class="chat-send-btn"
-          :disabled="chatStore.isStreaming || !inputMessage.trim()"
-          @click="handleSend"
-        >
-          <LucideIcon name="Send" :size="16" />
-        </button>
+        <BButton type="primary" circle icon="Send" @click="handleSend" :disabled="chatStore.isStreaming || !inputMessage.trim()" />
       </div>
     </div>
   </div>
@@ -144,6 +133,7 @@ import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
+import BButton from './BButton.vue'
 import LucideIcon from './LucideIcon.vue'
 
 const { t } = useI18n()
