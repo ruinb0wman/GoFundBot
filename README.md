@@ -318,8 +318,6 @@ MyBot/
 │   │   ├── backtest_routes.py   # 定投回测 (122 行)
 │   │   └── system_routes.py     # 系统/市场 (93 行)
 │   ├── routes_v1/               # API v1 蓝图（渐进迁移）
-│   ├── templates/               # 自定义 Jinja2 模板
-│   │   └── sql_admin/
 │   │   ├── __init__.py
 │   │   └── fund.py
 │   ├── schemas/                 # Pydantic 校验模型
@@ -343,6 +341,8 @@ MyBot/
 │   ├── market_data_service/    # 市场数据服务 (分包)
 │   ├── migrate_db/             # 数据库迁移 (分包)
 │   ├── scripts/                # 质量检查脚本（check_file_length.py）
+│   ├── templates/              # 自定义 Jinja2 模板
+│   │   └── sql_admin/          # SQLite 管理页面模板
 │   └── docs/
 ├── Frontend/                    # Vue 3 + TypeScript 前端
 │   ├── tsconfig.json            # TypeScript 严格模式配置
