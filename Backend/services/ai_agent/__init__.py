@@ -50,7 +50,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_detail",
-                    "description": "获取基金完整详情（基本信息、业绩、持仓、基金经理、风险指标等）",
+                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金完整详情（基本信息、业绩、持仓、基金经理、风险指标等）",
                     "parameters": {
                         "type": "object",
                         "properties": {"code": {"type": "string", "description": "6位基金代码"}},
@@ -62,7 +62,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_estimate",
-                    "description": "获取基金实时估值（盘中估算净值/涨跌幅）",
+                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金实时估值（盘中估算净值/涨跌幅）",
                     "parameters": {
                         "type": "object",
                         "properties": {"code": {"type": "string", "description": "6位基金代码"}},
@@ -74,7 +74,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_nav_history",
-                    "description": "获取基金历史净值数据",
+                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金历史净值数据",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -131,7 +131,13 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_north_flow",
-                    "description": "获取北向资金（沪股通+深股通）实时流向数据",
+                    "description": (
+                        "获取北向资金（沪股通+深股通）流向数据。"
+                        "⚠️ 重要：必须检查 data_status 字段："
+                        "① data_status='unavailable' → 北向资金数据不可用。禁止编造任何资金数值，直接告知用户'北向资金盘中暂无可用数据，建议关注收盘后数据。'并引用 data_note 原文。"
+                        "② data_status='historical' → 数据来自 data_date 的历史记录，回答开头必须注明该日期。"
+                        "③ data_status='realtime' → 可以正常分析。"
+                    ),
                     "parameters": {"type": "object", "properties": {}},
                 },
             },
@@ -147,7 +153,13 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_main_flow",
-                    "description": "获取主力资金流向（超大单/大单/中单/小单净流入）",
+                    "description": (
+                        "获取主力资金流向（超大单/大单/中单/小单净流入）。"
+                        "⚠️ 重要：必须检查 data_status 字段："
+                        "① data_status='unavailable' → 禁止编造数据，告知用户数据不可用。"
+                        "② data_status='historical' → 数据来自 data_date，回答开头必须注明该日期。"
+                        "任何情况下都要引用 data_note 中的提示。"
+                    ),
                     "parameters": {"type": "object", "properties": {}},
                 },
             },
@@ -174,7 +186,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "screen_funds_by_4433",
-                    "description": "使用4433法则筛选基金",
+                    "description": "仅在用户要求筛选基金时调用。使用4433法则筛选基金。不要自动为用户做筛选，除非用户明确要求。",
                     "parameters": {"type": "object", "properties": {}},
                 },
             },
@@ -182,7 +194,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "run_backtest",
-                    "description": "对指定基金运行定投回测模拟",
+                    "description": "仅在用户明确要求做定投回测且提供了6位基金代码时调用。对指定基金运行定投回测模拟。不要主动为用户做回测，除非用户明确要求。",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -203,7 +215,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "suggest_strategy",
-                    "description": "为指定基金推荐最优定投策略",
+                    "description": "仅在用户明确要求推荐策略且提供了6位基金代码时调用。为指定基金推荐最优定投策略。不要主动推荐策略，除非用户明确要求。",
                     "parameters": {
                         "type": "object",
                         "properties": {"fund_code": {"type": "string", "description": "6位基金代码"}},
@@ -243,7 +255,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_holdings",
-                    "description": "获取基金重仓持股列表",
+                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金重仓持股列表",
                     "parameters": {
                         "type": "object",
                         "properties": {"code": {"type": "string", "description": "6位基金代码"}},
@@ -255,7 +267,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_managers",
-                    "description": "获取基金经理信息",
+                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金经理信息",
                     "parameters": {
                         "type": "object",
                         "properties": {"code": {"type": "string", "description": "6位基金代码"}},
