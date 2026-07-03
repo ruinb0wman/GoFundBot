@@ -27,6 +27,7 @@ const router = useRouter()
 const tabs = [
   { name: 'settings-general', icon: 'Settings', label: '通用' },
   { name: 'settings-logs', icon: 'FileText', label: '日志' },
+  { name: 'settings-sqlite-admin', icon: 'Database', label: '数据库管理' },
 ]
 </script>
 
@@ -35,7 +36,7 @@ const tabs = [
   display: flex;
   gap: 0;
   min-height: calc(100vh - 120px);
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
 }

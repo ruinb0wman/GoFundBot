@@ -6,7 +6,7 @@ Three independent services, **start in order**:
 
 1. **DataService** (port 3100) — Node.js/Express/TypeScript data gateway
 2. **Backend** (port 5000) — Flask monolith (business logic, multi-analyst AI pipeline, DB, memory log)
-3. **Frontend** (port 5173) — Vue 3 + Vite, proxies `/api` → backend
+3. **Frontend** (port 5173) — Vue 3 + Vite, proxies `/api`, `/sqlite-admin` → backend
 
 ## Critical data-flow rule
 
@@ -79,6 +79,7 @@ frontend:  npm run lint → npx vue-tsc --noEmit → npm test → npm run build
 - **API docs**: Swagger UI at `/api/docs` via flasgger. `@swag_from` decorators on v1 endpoints.
 - **Config validation**: `config.py:validate()` checks `LLM_API_KEY` and `DATA_SERVICE_BASE_URL` at startup.
 - **Database**: SQLite at `Backend/Data/funds.db`, auto-created on startup.
+- **SQLite admin**: Flask-Admin web UI at `/sqlite-admin` (table browse/CRUD/export/SQL console). Frontend settings page embeds it via iframe. Gated by `ENABLE_SQLITE_ADMIN` env var / `FLASK_DEBUG`.
 - **Analysis memory**: `analysis_memory` table stores past fund analysis decisions; resolve_pending() computes returns and generates LLM reflections for future context injection.
 - **Cache TTLs** (DataService): fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
 - **Frontend Vite** proxies `/api` → `localhost:5000`; production: Flask serves `Frontend/dist/`.
@@ -122,11 +123,13 @@ frontend:  npm run lint → npx vue-tsc --noEmit → npm test → npm run build
 | `DataService/src/` | TypeScript Express app with ProviderChain |
 | `Frontend/src/` | Vue 3 + TypeScript + `<script setup lang="ts">` (全量迁移完成); `composables/` 含 `useSearchHistory` / `useOnlineStatus` / `useBreakpoint` / `useChartResize` / `useNotification` / `useFundRealtime*` (5 文件) / `useFundScreening` / `useFundComparison` 等 17+ composables; `components/` 含 `OfflineBanner` / `ErrorBoundary` / `HamburgerButton` / `MobileDrawer` / `BottomNav` / `AlertBadge` / `AlertSettings` |
 | `Backend/models.py` | SQLAlchemy 模型: AlertRule (告警规则), AnalysisMemory (分析记忆) |
+| `Backend/routes/sqlite_admin.py` | SQLite Web admin (Flask-Admin, 170 行, dev-only) |
 | `Backend/routes/alert_routes.py` | 告警 CRUD + 检查 + 市场异动 API |
 | `Backend/schemas/alert_schemas.py` | Pydantic 校验: AlertRuleCreateSchema / AlertRuleUpdateSchema |
 | `Backend/services/market_alert.py` | 市场异动检测 (指数涨跌 >3%) |
 | `Frontend/src/stores/alertStore.ts` | Pinia store: 告警规则管理 |
 | `Frontend/src/utils/exportUtils.ts` | CSV 导出工具函数 |
+| `Frontend/src/views/SettingsSqliteAdmin.vue` | Settings > 数据库管理 iframe 嵌入组件 (22 行) |
 | `Frontend/src/locales/` | vue-i18n 国际化 (zh-CN / en) |
 | `Frontend/src/components/LocaleSwitcher.vue` | 语言切换按钮 (Header) |
 | `Backend/services/backtest_strategies.py` | 定投策略推荐引擎 (MA/价值平均策略对比) |

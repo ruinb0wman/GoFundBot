@@ -30,6 +30,7 @@ GoFundBot 是一个基于 Python (Flask) 和 Vue 3 构建的智能基金分析�
 ### 🛠 便捷工具
 *   **基金搜索**：支持代码/名称快速搜索（本地缓存优化）。
 *   **自选管理**：一键添加/移除自选基金，随时跟踪关注标的。
+*   **数据库管理**：开发模式下通过 Flask-Admin Web 界面浏览/编辑 SQLite 数据，支持表管理、CSV 导出和 SQL 查询控制台（`ENABLE_SQLITE_ADMIN=true`）。
 *   **一键部署**：提供 Windows 一键启动脚本，开箱即用。
 
 ### 📊 使用方法
@@ -178,6 +179,9 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:8080
 
 # 禁用 akshare 备用数据源（除非同花顺接口异常，否则不要设置）
 # DISABLE_AKSHARE_FALLBACK=1
+
+# SQLite 数据库 Web 管理界面（FLASK_DEBUG=true 时自动启用；显式设为 false 可强制关闭）
+# ENABLE_SQLITE_ADMIN=true
 ```
 
 ### 3. 安装依赖
@@ -308,11 +312,14 @@ MyBot/
 │   ├── routes/                  # API 路由蓝图（模块化拆分）
 │   │   ├── fund_routes/         # 基金详情/搜索/对比 (分包)
 │   │   ├── screening_routes/    # 基金筛选 (分包)
+│   │   ├── sqlite_admin.py      # SQLite Web 管理 (170 行, dev-only)
 │   │   ├── watchlist_routes.py  # 自选基金 (384 行)
 │   │   ├── research_routes.py   # 投研看板 (123 行)
 │   │   ├── backtest_routes.py   # 定投回测 (122 行)
 │   │   └── system_routes.py     # 系统/市场 (93 行)
 │   ├── routes_v1/               # API v1 蓝图（渐进迁移）
+│   ├── templates/               # 自定义 Jinja2 模板
+│   │   └── sql_admin/
 │   │   ├── __init__.py
 │   │   └── fund.py
 │   ├── schemas/                 # Pydantic 校验模型

@@ -9,6 +9,7 @@ import ResearchView from '../views/ResearchView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import SettingsGeneral from '../views/SettingsGeneral.vue'
 import LogsViewer from '../views/LogsViewer.vue'
+import SettingsSqliteAdmin from '../views/SettingsSqliteAdmin.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -71,6 +72,7 @@ const routes: RouteRecordRaw[] = [
       { path: '', redirect: { name: 'settings-general' } },
       { path: 'general', name: 'settings-general', component: SettingsGeneral },
       { path: 'logs', name: 'settings-logs', component: LogsViewer },
+      { path: 'sqlite-admin', name: 'settings-sqlite-admin', component: SettingsSqliteAdmin },
     ],
   },
 ]

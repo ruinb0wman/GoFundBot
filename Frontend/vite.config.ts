@@ -16,6 +16,10 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_FALLBACK_API_BASE || 'http://localhost:5000',
           changeOrigin: true,
         },
+        '/sqlite-admin': {
+          target: env.VITE_FALLBACK_API_BASE || 'http://localhost:5000',
+          changeOrigin: true,
+        },
       },
     },
   }
