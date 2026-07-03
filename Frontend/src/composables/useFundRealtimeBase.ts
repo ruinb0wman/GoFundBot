@@ -111,8 +111,9 @@ export function getHoldingProfitToday(fund, holdings) {
 export function getHoldingProfitTotal(fund, holdings) {
   const h = holdings[fund.code]
   if (!h || !h.share || !h.cost) return 0
-  const stored = h.profit ?? 0
-  return hasFreshEstimate(fund) ? stored + getHoldingProfitToday(fund, holdings) : stored
+  const price = getCurrentPrice(fund)
+  if (!price || !h.cost) return 0
+  return h.share * (price - h.cost)
 }
 
 export function getHoldingPrincipalAmount(fund, holdings) {

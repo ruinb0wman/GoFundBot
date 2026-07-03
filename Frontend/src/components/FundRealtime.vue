@@ -103,7 +103,7 @@
             <div class="grid-box"><div class="g-label">持有份额</div><div class="g-val">{{ holdings[fund.code].share.toFixed(2) }}</div></div>
             <div class="grid-box"><div class="g-label">平均成本</div><div class="g-val">{{ holdings[fund.code].cost.toFixed(4) }}</div></div>
             <div class="grid-box"><div class="g-label">当前市值</div><div class="g-val">¥{{ getHoldingEstimatedAmount(fund).toFixed(2) }}</div></div>
-            <div class="grid-box"><div class="g-label">持仓金额</div><div class="g-val">¥{{ getHoldingAmount(fund).toFixed(2) }}</div></div>
+            <div class="grid-box"><div class="g-label">投入本金</div><div class="g-val">¥{{ getHoldingCostAmount(fund).toFixed(2) }}</div></div>
             <div class="grid-box"><div class="g-label">收益金额</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ getHoldingProfitTotal(fund) >= 0 ? '+' : '' }}¥{{ getHoldingProfitTotal(fund).toFixed(2) }}</div></div>
             <div class="grid-box"><div class="g-label">收益率</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ getHoldingReturnRate(fund) >= 0 ? '+' : '' }}{{ getHoldingReturnRate(fund).toFixed(2) }}%</div></div>
           </div>
@@ -137,7 +137,7 @@
       :trade-form="tradeForm"
       :today-date="todayDate"
       :trade-history-modal="tradeHistoryModal"
-      :trade-records="tradeRecords"
+      :trade-records="tradeHistoryModal?.fund ? getFundTradeRecords(tradeHistoryModal.fund) : []"
       :pending-txns="pendingTxns"
       :show-group-modal="showGroupModal"
       :group-name="groupName"
