@@ -70,12 +70,13 @@
       </template>
       <div class="trade-history-table" v-if="tradeRecords?.length">
         <div class="trade-history-row trade-history-head">
-          <span>{{ t('fund.realtimeModal.type') }}</span><span>{{ t('fund.realtimeModal.time') }}</span><span>{{ t('fund.realtimeModal.amount') }}</span><span>{{ t('fund.realtimeModal.shares') }}</span><span>{{ t('fund.realtimeModal.status') }}</span>
+          <span>{{ t('fund.realtimeModal.type') }}</span><span>{{ t('fund.realtimeModal.time') }}</span><span>{{ t('fund.realtimeModal.amount') }}</span><span>{{ t('fund.realtimeModal.price') }}</span><span>{{ t('fund.realtimeModal.shares') }}</span><span>{{ t('fund.realtimeModal.status') }}</span>
         </div>
         <div class="trade-history-row" v-for="record in tradeRecords" :key="record.id">
           <span class="trade-type" :class="record.type">{{ record.type === 'buy' ? t('fund.realtimeModal.buy') : t('fund.realtimeModal.sell') }}</span>
           <span>{{ record.tradeDate || '-' }}</span>
           <span>¥{{ formatMoney?.(record.amount) }}</span>
+          <span>{{ record.nav != null ? record.nav.toFixed(4) : '-' }}</span>
           <span>{{ formatShare?.(record.share) }}</span>
           <span class="trade-status" :class="record.status">{{ record.status === 'pending' ? t('fund.realtimeModal.pending') : t('fund.realtimeModal.updated') }}</span>
         </div>
@@ -387,7 +388,7 @@ const emit = defineEmits<{
 .trade-history-row {
   min-width: 600px;
   display: grid;
-  grid-template-columns: 72px 1.1fr 1fr 1fr 80px;
+  grid-template-columns: 72px 0.66fr 1fr 1fr 1fr 80px;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;

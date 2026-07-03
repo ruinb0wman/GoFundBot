@@ -525,6 +525,7 @@
   "fund.realtimeModal.type": "类型",
   "fund.realtimeModal.time": "时间",
   "fund.realtimeModal.amount": "金额",
+  "fund.realtimeModal.price": "价格",
   "fund.realtimeModal.shares": "份额",
   "fund.realtimeModal.status": "状态",
   "fund.realtimeModal.buy": "买",

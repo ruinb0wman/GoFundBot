@@ -525,6 +525,7 @@
   "fund.realtimeModal.type": "Type",
   "fund.realtimeModal.time": "Time",
   "fund.realtimeModal.amount": "Amount",
+  "fund.realtimeModal.price": "Price",
   "fund.realtimeModal.shares": "Shares",
   "fund.realtimeModal.status": "Status",
   "fund.realtimeModal.buy": "Buy",
