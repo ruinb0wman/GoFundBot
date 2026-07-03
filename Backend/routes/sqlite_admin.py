@@ -173,7 +173,10 @@ def create_admin(app):
 
 
 def is_enabled(app):
-    if os.environ.get("ENABLE_SQLITE_ADMIN", "").lower() in ("true", "1"):
+    raw = os.environ.get("ENABLE_SQLITE_ADMIN", "").lower()
+    if raw in ("false", "0"):
+        return False
+    if raw in ("true", "1"):
         return True
     if app.debug:
         return True

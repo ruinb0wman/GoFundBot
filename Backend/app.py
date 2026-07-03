@@ -10,6 +10,7 @@ import threading
 import time
 from datetime import datetime
 
+from dotenv import load_dotenv
 from flasgger import Swagger
 from flask import Flask, g, request
 from flask_compress import Compress
@@ -139,6 +140,7 @@ app.register_blueprint(user_portfolio_bp)
 register_v1_blueprints(app)
 
 # === SQLite 管理界面（仅开发模式 / ENABLE_SQLITE_ADMIN=true） ===
+load_dotenv()
 from routes.sqlite_admin import create_admin
 from routes.sqlite_admin import is_enabled as _admin_enabled
 
