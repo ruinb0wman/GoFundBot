@@ -79,8 +79,27 @@ def migrate_db():
 def init_db():
     # 确保 Data 目录存在
     (PROJECT_ROOT / "Data").mkdir(exist_ok=True)
+
     # 创建所有表（新表会被创建，已有表不会被覆盖）
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("数据库表创建/校验完成")
+    except Exception as e:
+        logger.error(f"数据库表创建失败: {e}", exc_info=True)
+        raise
+
+    # 验证表是否都已创建
+    from sqlalchemy import inspect
+
+    inspector = inspect(engine)
+    existing = set(inspector.get_table_names())
+    expected = set(Base.metadata.tables.keys())
+    missing = expected - existing
+    if missing:
+        logger.error(f"数据库缺少以下表: {sorted(missing)}")
+        raise RuntimeError(f"数据库初始化不完整，缺少表: {sorted(missing)}")
+    logger.info(f"数据库表验证通过 ({len(existing)} 张表)")
+
     # 执行数据库迁移
     migrate_db()
 
