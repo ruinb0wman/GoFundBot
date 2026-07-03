@@ -138,6 +138,14 @@ app.register_blueprint(log_bp)
 app.register_blueprint(user_portfolio_bp)
 register_v1_blueprints(app)
 
+# === SQLite 管理界面（仅开发模式 / ENABLE_SQLITE_ADMIN=true） ===
+from routes.sqlite_admin import create_admin
+from routes.sqlite_admin import is_enabled as _admin_enabled
+
+if _admin_enabled(app):
+    create_admin(app)
+    logger.info("SQLite 管理界面已启用 → http://localhost:5000/sqlite-admin")
+
 
 # ============================================================================
 # 初始化
