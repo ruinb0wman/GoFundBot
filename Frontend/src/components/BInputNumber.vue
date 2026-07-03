@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, watch, useSlots } from 'vue'
-import LucideIcon from './LucideIcon.vue'
 
 type BInputNumberSize = 'large' | 'default' | 'small'
 type ControlsPosition = 'default' | 'right'
@@ -96,13 +95,7 @@ const atMax = computed(() => props.modelValue != null && props.modelValue >= pro
 const hasPrefix = computed(() => !!slots.prefix)
 const hasSuffix = computed(() => !!slots.suffix)
 
-const iconSize = computed(() => {
-  switch (props.size) {
-    case 'large': return 18
-    case 'small': return 14
-    default: return 16
-  }
-})
+
 
 const wrapperClasses = computed(() => {
   const cls = ['b-input-number', `b-input-number--${props.size}`]
@@ -199,7 +192,7 @@ defineExpose({ focus, blur })
       :aria-label="'decrease'"
     >
       <slot name="decrease-icon">
-        <LucideIcon name="ChevronDown" :size="iconSize" />
+        <span class="btn-label">−</span>
       </slot>
     </button>
     <div class="b-input-number__input">
@@ -239,7 +232,7 @@ defineExpose({ focus, blur })
           :aria-label="'increase'"
         >
           <slot name="increase-icon">
-            <LucideIcon name="ChevronUp" :size="iconSize" />
+            <span class="btn-label">+</span>
           </slot>
         </button>
         <button
@@ -251,7 +244,7 @@ defineExpose({ focus, blur })
           :aria-label="'decrease'"
         >
           <slot name="decrease-icon">
-            <LucideIcon name="ChevronDown" :size="iconSize" />
+            <span class="btn-label">−</span>
           </slot>
         </button>
       </div>
@@ -266,7 +259,7 @@ defineExpose({ focus, blur })
       :aria-label="'increase'"
     >
       <slot name="increase-icon">
-        <LucideIcon name="ChevronUp" :size="iconSize" />
+        <span class="btn-label">+</span>
       </slot>
     </button>
   </div>
@@ -296,6 +289,20 @@ defineExpose({ focus, blur })
   flex-shrink: 0;
   outline: none;
   font-family: inherit;
+}
+
+.btn-label {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.b-input-number--small .btn-label {
+  font-size: 15px;
+}
+
+.b-input-number--large .btn-label {
+  font-size: 20px;
 }
 
 .b-input-number__decrease:hover:not(:disabled),

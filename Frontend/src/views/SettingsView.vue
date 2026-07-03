@@ -19,16 +19,20 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
-const tabs = [
-  { name: 'settings-general', icon: 'Settings', label: '通用' },
-  { name: 'settings-logs', icon: 'FileText', label: '日志' },
-  { name: 'settings-sqlite-admin', icon: 'Database', label: '数据库管理' },
-]
+const tabs = computed(() => [
+  { name: 'settings-general', icon: 'Settings', label: t('common.settings') },
+  { name: 'settings-logs', icon: 'FileText', label: t('logs.title') },
+  { name: 'settings-anomaly', icon: 'BellRing', label: t('settings.anomalyTab') },
+  { name: 'settings-sqlite-admin', icon: 'Database', label: t('common.database') },
+])
 </script>
 
 <style scoped>

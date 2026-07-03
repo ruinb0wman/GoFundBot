@@ -1,4 +1,7 @@
+import json
+import os
 from datetime import datetime
+from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy import desc
@@ -8,6 +11,7 @@ from core.validation import validate_body
 from database import get_request_db as get_db
 from models import AlertRule
 from schemas.alert_schemas import AlertRuleCreateSchema, AlertRuleUpdateSchema
+from schemas.anomaly_config_schemas import DEFAULTS, AnomalyConfigSchema
 
 logger = get_logger(__name__)
 
@@ -152,3 +156,56 @@ def market_anomaly():
     except Exception as e:
         logger.error(f"市场异动检测失败: {e}")
         return jsonify({"error": "检测失败", "anomalies": []})
+
+
+# ------------------------------------------------------------------
+# Anomaly config (JSON file)
+# ------------------------------------------------------------------
+
+_ANOMALY_CONFIG_PATH = (
+    Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / "Data" / "anomaly_config.json"
+)
+
+
+def _load_anomaly_config() -> dict:
+    if _ANOMALY_CONFIG_PATH.exists():
+        try:
+            with open(_ANOMALY_CONFIG_PATH, encoding="utf-8") as f:
+                data = json.load(f)
+            # Fill missing keys with defaults
+            result = dict(DEFAULTS)
+            result.update({k: v for k, v in data.items() if k in DEFAULTS and isinstance(v, (int, float))})
+            return result
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning(f"读取异动配置失败，使用默认值: {e}")
+    return dict(DEFAULTS)
+
+
+def _save_anomaly_config(config: dict) -> None:
+    _ANOMALY_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(_ANOMALY_CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+
+@alert_bp.route("/anomaly-config", methods=["GET"])
+def get_anomaly_config():
+    """获取异动阈值配置"""
+    return jsonify(_load_anomaly_config())
+
+
+@alert_bp.route("/anomaly-config", methods=["PUT"])
+def update_anomaly_config():
+    """更新异动阈值配置"""
+    data = request.get_json(silent=True) or {}
+    try:
+        validated = AnomalyConfigSchema(**data)
+    except Exception as e:
+        return jsonify({"error": f"参数校验失败: {str(e)}"}), 400
+    _save_anomaly_config(validated.model_dump())
+    return jsonify({"status": "ok", "config": validated.model_dump()})
+
+
+@alert_bp.route("/anomaly-config/defaults", methods=["GET"])
+def get_anomaly_config_defaults():
+    """获取异动阈值默认值"""
+    return jsonify(DEFAULTS)

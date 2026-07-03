@@ -10,6 +10,7 @@ import SettingsView from '../views/SettingsView.vue'
 import SettingsGeneral from '../views/SettingsGeneral.vue'
 import LogsViewer from '../views/LogsViewer.vue'
 import SettingsSqliteAdmin from '../views/SettingsSqliteAdmin.vue'
+import SettingsAnomalyThreshold from '../views/SettingsAnomalyThreshold.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -72,6 +73,7 @@ const routes: RouteRecordRaw[] = [
       { path: '', redirect: { name: 'settings-general' } },
       { path: 'general', name: 'settings-general', component: SettingsGeneral },
       { path: 'logs', name: 'settings-logs', component: LogsViewer },
+      { path: 'anomaly', name: 'settings-anomaly', component: SettingsAnomalyThreshold },
       { path: 'sqlite-admin', name: 'settings-sqlite-admin', component: SettingsSqliteAdmin },
     ],
   },

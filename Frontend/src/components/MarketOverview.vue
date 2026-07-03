@@ -69,7 +69,10 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="BellRing" :size="20" /> {{ t('market.anomaly') }}</h3>
-        <BButton size="small" icon="RefreshCw" :loading="anomaliesLoading" @click="fetchAnomalies" :disabled="anomaliesLoading" />
+        <div class="header-actions">
+          <BButton size="small" icon="RefreshCw" :loading="anomaliesLoading" @click="fetchAnomalies" :disabled="anomaliesLoading" />
+          <BButton size="small" icon="Settings" @click="goToAnomalySettings" />
+        </div>
       </div>
       <div v-if="anomaliesLoading" class="anomaly-loading">{{ t('common.loading') }}</div>
       <div v-else-if="anomalies.length === 0" class="anomaly-empty"><LucideIcon name="CheckCircle" :size="16" /> {{ t('alert.anomaly.empty') }}</div>
@@ -108,6 +111,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BButton from './BButton.vue'
 import LucideIcon from './LucideIcon.vue'
@@ -121,6 +125,11 @@ import { useMarketOverview } from '../composables/useMarketOverview'
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, TitleComponent, LegendComponent, DataZoomComponent])
 
 const { t } = useI18n()
+const router = useRouter()
+
+const goToAnomalySettings = () => {
+  router.push({ name: 'settings-anomaly' })
+}
 
 const props = defineProps({
   showGoldHistory: { type: Boolean, default: true },

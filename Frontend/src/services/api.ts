@@ -131,4 +131,10 @@ export const alertAPI = {
   marketAnomaly() { return api.get('/alerts/market-anomaly') },
 }
 
+export const anomalyConfigAPI = {
+  get() { return api.get('/alerts/anomaly-config') },
+  update(data: Record<string, number>) { return api.put('/alerts/anomaly-config', data) },
+  getDefaults() { return api.get('/alerts/anomaly-config/defaults') },
+}
+
 export default api

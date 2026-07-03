@@ -2,6 +2,7 @@
 .market-section { background: var(--bg-card); border-radius: 12px; padding: 16px; box-shadow: var(--shadow-sm); }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; }
 .section-header h3 { margin: 0; font-size: 1.1em; color: var(--text-primary); }
+.section-header .header-actions { display: flex; gap: 6px; }
 .tab-group { display: flex; gap: 8px; margin-left: 16px; flex: 1; }
 .tab-group span { font-size: 0.85em; color: var(--text-secondary); cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: all 0.2s; user-select: none; }
 .tab-group span:hover { color: var(--color-primary); background: var(--color-primary-bg); }
