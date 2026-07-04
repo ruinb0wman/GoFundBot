@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { ref } from 'vue'
 import { onMounted, onUnmounted } from 'vue'
 import { useFundRealtimeData } from './useFundRealtimeData'
 import { useFundRealtimeTrade } from './useFundRealtimeTrade'
@@ -101,6 +102,8 @@ export function useFundRealtime(emit) {
   const getTrendColorClass3m = (f) => baseGetTrendColorClass3m(f)
   const metricBySort = (f, k) => baseMetricBySort(f, k)
 
+  const showPortfolioAnalysis = ref(false)
+
   return {
     ...data,
     ...trade,
@@ -116,5 +119,6 @@ export function useFundRealtime(emit) {
     getFundTrendSeries, getFundNavByDate, hasExactNavForDate, isTradeDatePending,
     getFundSparklinePoints, getSparklinePath, getSparklineFill,
     getFundSparklinePoints3m, getFundMiniChart3m, getTrendColorClass3m, metricBySort,
+    showPortfolioAnalysis,
   }
 }

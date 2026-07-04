@@ -33,6 +33,18 @@
         <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.todayReturn') }}</div><div class="cell-val" :class="profitTodayClass">{{ todayReturnRate >= 0 ? '+' : '' }}{{ todayReturnRate.toFixed(2) }}%</div></div>
       </div>
       <div v-else class="overview-grid empty-hint">{{ t('fund.realtime.noPosition') }}</div>
+
+      <div class="overview-actions" v-if="hasHoldings" style="margin-top: 10px; display: flex; gap: 8px;">
+        <BButton size="small" @click="showPortfolioAnalysis = !showPortfolioAnalysis">
+          <LucideIcon name="PieChart" :size="14" /> AI 持仓诊断
+        </BButton>
+      </div>
+
+      <PortfolioAIAnalysis
+        v-if="showPortfolioAnalysis"
+        :funds="funds.map(f => ({ code: f.code, share: (holdings[f.code]?.share || 0), cost: (holdings[f.code]?.cost || 0) }))"
+        @close="showPortfolioAnalysis = false"
+      />
     </div>
 
     <div class="pending-txns-bar" v-if="pendingTxns.length">
@@ -182,6 +194,7 @@ import BButton from './BButton.vue'
 import BCard from './BCard.vue'
 import BInputNumber from './BInputNumber.vue'
 import BFileInput from './BFileInput.vue'
+import PortfolioAIAnalysis from './PortfolioAIAnalysis.vue'
 import { useFundRealtime } from '../composables/useFundRealtime'
 import FundRealtimeModals from './FundRealtimeModals.vue'
 
@@ -227,6 +240,7 @@ const {
   getTradeNav, getTradeResultShares, canSubmitTrade, submitButtonText,
   settleTrade, genTxnId, saveTrade, cancelPendingTxn, settlePendingTxnsIfReady,
   saveRefreshMs, updateNowTime, exportData, importData, handleClickOutside,
+  showPortfolioAnalysis,
 } = useFundRealtime(emit)
 
 function onImport(files: FileList | null) {
