@@ -3,7 +3,7 @@ from typing import Any
 from core.logging import get_logger
 from schemas.analysis_schemas import AnalystReport
 
-from .base import BaseAnalyst
+from .base import PARSE_ERROR_NONE, BaseAnalyst
 
 logger = get_logger(__name__)
 
@@ -43,21 +43,13 @@ class BearAnalyst(BaseAnalyst):
 
     def _parse(self, raw: str | None) -> dict[str, Any]:
         if not raw:
-            return self._default_report()
+            return self._llm_failure_report("bear", "看空")
         try:
             json_str = self._extract_json(raw)
             parsed = AnalystReport.model_validate_json(json_str)
-            return parsed.model_dump()
+            result = parsed.model_dump()
+            result["_parse_error"] = PARSE_ERROR_NONE
+            return result
         except Exception as e:
             logger.error(f"看空分析解析失败: {e}")
-            return self._default_report()
-
-    @staticmethod
-    def _default_report() -> dict[str, Any]:
-        return {
-            "analyst_role": "bear",
-            "thesis": "看空分析暂时无法生成",
-            "score": 5,
-            "key_evidence": ["数据不足，无法提供看空论据"],
-            "risk_flags": [],
-        }
+            return self._validation_failure_report("bear", "看空", str(e)[:200])

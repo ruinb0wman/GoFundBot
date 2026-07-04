@@ -6,6 +6,10 @@ from core.logging import get_logger
 
 logger = get_logger(__name__)
 
+PARSE_ERROR_NONE = None
+PARSE_ERROR_LLM_FAILURE = "llm_failure"
+PARSE_ERROR_VALIDATION_FAILURE = "validation_failure"
+
 
 class BaseAnalyst:
     def __init__(self, api_key: str, api_base: str, model: str):
@@ -61,6 +65,28 @@ class BaseAnalyst:
             except json.JSONDecodeError:
                 pos = start + 1
         return raw
+
+    @staticmethod
+    def _llm_failure_report(role: str, label: str) -> dict[str, Any]:
+        return {
+            "analyst_role": role,
+            "thesis": f"LLM 调用异常，{label}分析未完成",
+            "score": 5,
+            "key_evidence": [f"{label}分析师：LLM API 调用失败"],
+            "risk_flags": [],
+            "_parse_error": PARSE_ERROR_LLM_FAILURE,
+        }
+
+    @staticmethod
+    def _validation_failure_report(role: str, label: str, reason: str) -> dict[str, Any]:
+        return {
+            "analyst_role": role,
+            "thesis": f"分析结果解析异常，{label}分析未完成",
+            "score": 5,
+            "key_evidence": [f"LLM 响应解析失败: {reason}"],
+            "risk_flags": [],
+            "_parse_error": PARSE_ERROR_VALIDATION_FAILURE,
+        }
 
     @staticmethod
     def _format_past_context(ctx: str) -> str:

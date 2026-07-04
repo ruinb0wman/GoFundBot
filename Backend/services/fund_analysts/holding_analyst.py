@@ -3,7 +3,7 @@ from typing import Any
 from core.logging import get_logger
 from schemas.analysis_schemas import AnalystReport
 
-from .base import BaseAnalyst
+from .base import PARSE_ERROR_NONE, BaseAnalyst
 
 logger = get_logger(__name__)
 
@@ -37,6 +37,10 @@ class HoldingAnalyst(BaseAnalyst):
         allocation = fund_data.get("asset_allocation", {})
         extra = ""
         stock_codes = portfolio.get("stock_codes", [])
+        if not stock_codes:
+            fund_type = fund_data.get("basic_info", {}).get("fund_type", "")
+            if "联接" in fund_type or "ETF" in fund_type:
+                extra += "## 提示\n该基金为 ETF 联接基金，主要持仓为目标 ETF 份额而非个股，因此无重仓股数据。请基于资产配置数据进行分析。\n"
         if stock_codes:
             lines = []
             for i, s in enumerate(stock_codes[:10], 1):
@@ -66,21 +70,13 @@ class HoldingAnalyst(BaseAnalyst):
 
     def _parse(self, raw: str | None) -> dict[str, Any]:
         if not raw:
-            return self._default_report()
+            return self._llm_failure_report("holding", "持仓")
         try:
             json_str = self._extract_json(raw)
             parsed = AnalystReport.model_validate_json(json_str)
-            return parsed.model_dump()
+            result = parsed.model_dump()
+            result["_parse_error"] = PARSE_ERROR_NONE
+            return result
         except Exception as e:
             logger.error(f"持仓分析解析失败: {e}")
-            return self._default_report()
-
-    @staticmethod
-    def _default_report() -> dict[str, Any]:
-        return {
-            "analyst_role": "holding",
-            "thesis": "持仓分析暂时无法生成",
-            "score": 5,
-            "key_evidence": ["持仓数据不足"],
-            "risk_flags": [],
-        }
+            return self._validation_failure_report("holding", "持仓", str(e)[:200])

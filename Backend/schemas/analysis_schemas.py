@@ -38,6 +38,15 @@ class AnalystReport(BaseModel):
     key_evidence: list[str] = Field(min_length=1)
     risk_flags: list[str] = Field(default_factory=list)
 
+    @field_validator("score", mode="before")
+    @classmethod
+    def round_score(cls, v: object) -> int:
+        if isinstance(v, float):
+            return round(v)
+        if v is None:
+            return 5
+        return int(v)
+
     @field_validator("analyst_role")
     @classmethod
     def check_role(cls, v: str) -> str:
@@ -58,6 +67,15 @@ class FundAnalysisResult(BaseModel):
     risk_factors: list[str] = Field(min_length=1, max_length=10)
     news_intel: list[str] = Field(default_factory=list, max_length=10)
     detailed_report: str = Field(min_length=50)
+
+    @field_validator("sentiment_score", mode="before")
+    @classmethod
+    def round_sentiment_score(cls, v: object) -> int:
+        if isinstance(v, float):
+            return round(v)
+        if v is None:
+            return 50
+        return int(v)
 
     @field_validator("rating")
     @classmethod

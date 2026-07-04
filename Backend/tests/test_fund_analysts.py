@@ -104,12 +104,13 @@ class TestBullAnalyst(unittest.TestCase):
         self.analyst = BullAnalyst(**FAKE_LLM_CONFIG)
 
     def test_default_report_structure(self):
-        report = self.analyst._default_report()
+        report = self.analyst._parse(None)
         self.assertEqual(report["analyst_role"], "bull")
         self.assertIn("score", report)
         self.assertIn("thesis", report)
         self.assertIn("key_evidence", report)
         self.assertIn("risk_flags", report)
+        self.assertEqual(report["_parse_error"], "llm_failure")
 
     def test_parse_valid_json(self):
         raw = json.dumps(
@@ -139,7 +140,8 @@ class TestBullAnalyst(unittest.TestCase):
         raw = json.dumps({"analyst_role": "bull"})
         result = self.analyst._parse(raw)
         self.assertEqual(result["score"], 5)
-        self.assertIn("暂时无法生成", result["thesis"])
+        self.assertIn("解析异常", result["thesis"])
+        self.assertEqual(result["_parse_error"], "validation_failure")
 
 
 class TestBearAnalyst(unittest.TestCase):
@@ -147,10 +149,11 @@ class TestBearAnalyst(unittest.TestCase):
         self.analyst = BearAnalyst(**FAKE_LLM_CONFIG)
 
     def test_default_report_structure(self):
-        report = self.analyst._default_report()
+        report = self.analyst._parse(None)
         self.assertEqual(report["analyst_role"], "bear")
         self.assertIn("score", report)
         self.assertIn("thesis", report)
+        self.assertEqual(report["_parse_error"], "llm_failure")
 
     def test_parse_valid_json(self):
         raw = json.dumps(
@@ -238,9 +241,10 @@ class TestPerformanceAnalyst(unittest.TestCase):
         self.analyst = PerformanceAnalyst(**FAKE_LLM_CONFIG)
 
     def test_default_report_structure(self):
-        report = self.analyst._default_report()
+        report = self.analyst._parse(None)
         self.assertEqual(report["analyst_role"], "performance")
         self.assertIn("score", report)
+        self.assertEqual(report["_parse_error"], "llm_failure")
 
     def test_parse_valid_json(self):
         raw = json.dumps(
@@ -266,8 +270,9 @@ class TestHoldingAnalyst(unittest.TestCase):
         self.analyst = HoldingAnalyst(**FAKE_LLM_CONFIG)
 
     def test_default_report_structure(self):
-        report = self.analyst._default_report()
+        report = self.analyst._parse(None)
         self.assertEqual(report["analyst_role"], "holding")
+        self.assertEqual(report["_parse_error"], "llm_failure")
 
     def test_parse_valid_json(self):
         raw = json.dumps(
@@ -293,8 +298,9 @@ class TestManagerAnalyst(unittest.TestCase):
         self.analyst = ManagerAnalyst(**FAKE_LLM_CONFIG)
 
     def test_default_report_structure(self):
-        report = self.analyst._default_report()
+        report = self.analyst._parse(None)
         self.assertEqual(report["analyst_role"], "manager")
+        self.assertEqual(report["_parse_error"], "llm_failure")
 
     def test_parse_valid_json(self):
         raw = json.dumps(
@@ -320,8 +326,9 @@ class TestMarketContextAnalyst(unittest.TestCase):
         self.analyst = MarketContextAnalyst(**FAKE_LLM_CONFIG)
 
     def test_default_report_structure(self):
-        report = self.analyst._default_report()
+        report = self.analyst._parse(None)
         self.assertEqual(report["analyst_role"], "market")
+        self.assertEqual(report["_parse_error"], "llm_failure")
 
     def test_parse_valid_json(self):
         raw = json.dumps(

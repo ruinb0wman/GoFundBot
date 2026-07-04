@@ -3,7 +3,7 @@ from typing import Any
 from core.logging import get_logger
 from schemas.analysis_schemas import FundAnalysisResult
 
-from .base import BaseAnalyst
+from .base import PARSE_ERROR_LLM_FAILURE, PARSE_ERROR_NONE, PARSE_ERROR_VALIDATION_FAILURE, BaseAnalyst
 
 logger = get_logger(__name__)
 
@@ -76,14 +76,22 @@ class Supervisor(BaseAnalyst):
 
     def _parse(self, raw: str | None) -> dict[str, Any]:
         if not raw:
-            return self._default_result()
+            result = self._default_result()
+            result["_parse_error"] = PARSE_ERROR_LLM_FAILURE
+            return result
         try:
             json_str = self._extract_json(raw)
             parsed = FundAnalysisResult.model_validate_json(json_str)
-            return parsed.model_dump()
+            result = parsed.model_dump()
+            result["_parse_error"] = PARSE_ERROR_NONE
+            return result
         except Exception as e:
             logger.error(f"研究总监解析失败: {e}")
-            return self._default_result()
+            result = self._default_result()
+            result["_parse_error"] = PARSE_ERROR_VALIDATION_FAILURE
+            result["key_evidence"] = [f"LLM 响应解析失败: {str(e)[:200]}"]
+            result["risk_factors"] = ["分析结果解析异常，请重试"]
+            return result
 
     @staticmethod
     def _default_result() -> dict[str, Any]:
@@ -99,7 +107,7 @@ class Supervisor(BaseAnalyst):
                 "market_outlook": "中性",
             },
             "highlights": ["请重新分析"],
-            "risk_factors": ["数据不足导致分析不完整"],
+            "risk_factors": ["LLM 调用异常导致分析不完整"],
             "news_intel": [],
-            "detailed_report": "## 分析未完成\n因数据处理异常，本次分析未能完成。请稍后重试。",
+            "detailed_report": "## 分析未完成\n因 LLM 调用异常，本次分析未能完成。请稍后重试。",
         }
