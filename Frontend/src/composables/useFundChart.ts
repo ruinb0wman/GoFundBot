@@ -225,6 +225,37 @@ export function useFundChart(props) {
     if (activeTab.value === 'performance') {
       const { chartData, useRawValues } = processData()
       const unit = useRawValues ? '' : '%'
+
+      // Build trade marker lookup
+      const tradeByDate = {}
+      for (const t of (props.trades || [])) {
+        if (t.tradeDate) tradeByDate[t.tradeDate] = t
+      }
+
+      const upColor = cssColor('--color-danger', '#ff4d4f')
+      const downColor = cssColor('--color-success', '#52c41a')
+      const bgCard = cssColor('--bg-card', '#fff')
+      const splitColor = cssColor('--border-subtle', '#f0f0f0')
+      const textColor = cssColor('--text-tertiary', '#999')
+
+      const scatterData = []
+      if (chartData.length > 0) {
+        for (const point of chartData) {
+          const dateKey = echarts.format.formatTime('yyyy-MM-dd', point[0])
+          const t = tradeByDate[dateKey]
+          if (t) {
+            scatterData.push({
+              value: [point[0], point[1]],
+              tradeType: t.type,
+              tradeAmount: t.amount || 0,
+              tradeNav: t.nav,
+              tradeDate: t.tradeDate,
+              tradeShare: t.share || 0,
+            })
+          }
+        }
+      }
+
       option.series.push({
         name: '本基金',
         type: 'line',
@@ -240,14 +271,49 @@ export function useFundChart(props) {
         }
       })
 
+      if (scatterData.length > 0) {
+        option.series.push({
+          name: '买卖点',
+          type: 'scatter',
+          data: scatterData,
+          symbol: (_v, params) => params.data?.tradeType === 'sell' ? 'diamond' : 'circle',
+          symbolSize: 10,
+          itemStyle: {
+            color: (p) => p.data?.tradeType === 'buy' ? downColor : upColor,
+            borderColor: bgCard,
+            borderWidth: 2,
+          },
+          z: 3,
+        })
+      }
+
       option.yAxis.axisLabel.formatter = useRawValues ? '{value}' : '{value}%'
 
       option.tooltip.formatter = function (params) {
-        let res = '<div>' + echarts.format.formatTime('yyyy-MM-dd', params[0].value[0]) + '</div>'
-        params.forEach(item => {
-          res += `<div>${item.marker} ${item.seriesName}: ${item.value[1]}${unit}</div>`
-        })
-        return res
+        if (!params?.length) return ''
+        const date = echarts.format.formatTime('yyyy-MM-dd', params[0].value[0])
+        let html = `<div style="font-weight:600;margin-bottom:4px">${date}</div>`
+        for (const p of params) {
+          if (p.seriesName === '本基金') {
+            const val = p.value[1]
+            html += `<div>${p.marker} 净值: ${val}${unit}</div>`
+          }
+        }
+        const t = tradeByDate[date]
+        if (t) {
+          const label = t.type === 'buy' ? '买入' : '卖出'
+          const color = t.type === 'buy' ? downColor : upColor
+          const amt = t.type === 'buy'
+            ? `¥${(t.amount || 0).toFixed(2)}`
+            : `${(t.share || 0).toFixed(2)}份`
+          html += `<div style="margin-top:6px;padding-top:4px;border-top:1px solid ${splitColor}">`
+          html += `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:4px"></span>`
+          html += `<span style="font-weight:700;color:${color}">${label}</span> ${amt}</div>`
+          if (t.tradeNav) {
+            html += `<div style="font-size:11px;color:${textColor}">净值 ${(t.tradeNav || 0).toFixed(4)}</div>`
+          }
+        }
+        return html
       }
     } else if (activeTab.value === 'comparison') {
       const comparisonData = props.grandTotal || []

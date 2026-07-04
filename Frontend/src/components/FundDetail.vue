@@ -23,6 +23,7 @@
             :netWorthTrend="processedNetWorthTrend"
             :acWorthTrend="processedAcWorthTrend"
             :grandTotal="fundDetail.total_return_trend"
+            :trades="tradeRecords"
           />
         </BCard>
 
@@ -136,7 +137,8 @@ const emit = defineEmits(['navigate-to-fund'])
 
 const {
   currentFundCode, fundDetail, loading, error, showAIAnalysis,
-  fundAIAnalysisRef, riskMetrics, processedNetWorthTrend, processedAcWorthTrend,
+  fundAIAnalysisRef, riskMetrics, tradeRecords,
+  processedNetWorthTrend, processedAcWorthTrend,
   modalVisible, modalType, openModal, closeModal,
   stockModalVisible, stockQuoteLoading, stockQuoteData, stockQuoteError,
   handleStockClick, closeStockModal, handleSameTypeFundSelect,

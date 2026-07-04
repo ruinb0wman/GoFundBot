@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { ref, watch, computed } from 'vue'
 import { fundAPI, marketAPI } from '../services/api'
+import { portfolioAPI } from '../services/portfolioApi'
 import { useFundStore } from '../stores/fundStore'
 
 export function useFundDetail(props: any, emit: any) {
@@ -13,6 +14,7 @@ export function useFundDetail(props: any, emit: any) {
   const fundAIAnalysisRef: any = ref(null)
   const showAIAnalysis = ref(false)
   const aiAnalysisData: any = ref(null)
+  const tradeRecords: any = ref([])
   const stockModalVisible = ref(false)
   const stockQuoteLoading = ref(false)
   const stockQuoteData: any = ref(null)
@@ -225,7 +227,10 @@ export function useFundDetail(props: any, emit: any) {
     loading.value = true
     error.value = ''
     try {
-      const data = await fundStore.fetchFund(fundCode)
+      const [data] = await Promise.all([
+        fundStore.fetchFund(fundCode),
+        fetchTradeRecords(fundCode),
+      ])
       fundDetail.value = data
     } catch (err: any) {
       console.error('获取基金详情失败:', err)
@@ -233,6 +238,33 @@ export function useFundDetail(props: any, emit: any) {
       fundDetail.value = null
     } finally {
       loading.value = false
+    }
+  }
+
+  const fetchTradeRecords = async (fundCode: string) => {
+    if (!fundCode) { tradeRecords.value = []; return }
+    try {
+      const response = await portfolioAPI.getTrades(fundCode)
+      const data = response?.data
+      if (Array.isArray(data)) {
+        tradeRecords.value = data.map(r => ({
+          id: r.id,
+          fundCode: r.fund_code,
+          fundName: r.fund_name || r.fund_code,
+          type: r.type,
+          tradeDate: r.trade_date || '',
+          amount: r.amount || 0,
+          share: r.share || 0,
+          nav: r.nav || 0,
+          status: r.status || 'settled',
+          createdAt: r.created_at || '',
+          settledAt: r.settled_at || '',
+        }))
+        return
+      }
+      tradeRecords.value = []
+    } catch {
+      tradeRecords.value = []
     }
   }
 
@@ -248,7 +280,7 @@ export function useFundDetail(props: any, emit: any) {
 
   return {
     currentFundCode, fundDetail, loading, error, showAIAnalysis,
-    fundAIAnalysisRef, aiAnalysisData, riskMetrics,
+    fundAIAnalysisRef, aiAnalysisData, riskMetrics, tradeRecords,
     processedNetWorthTrend, processedAcWorthTrend,
     modalVisible, modalType, openModal, closeModal,
     stockModalVisible, stockQuoteLoading, stockQuoteData, stockQuoteError,

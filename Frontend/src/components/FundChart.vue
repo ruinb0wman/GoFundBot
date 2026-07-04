@@ -86,7 +86,8 @@ import { useFundChart } from '../composables/useFundChart'
 const props = defineProps({
   netWorthTrend: { type: Array, default: () => [] },
   acWorthTrend: { type: Array, default: () => [] },
-  grandTotal: { type: Array, default: () => [] }
+  grandTotal: { type: Array, default: () => [] },
+  trades: { type: Array, default: () => [] }
 })
 
 const {
