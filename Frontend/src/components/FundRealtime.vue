@@ -129,15 +129,8 @@
           </div>
         </div>
         <div class="c-chart">
-          <svg v-if="getFundMiniChart3m(fund).points.length > 1" viewBox="0 0 110 64" preserveAspectRatio="none" class="c-svg">
-            <line class="c-axis" x1="20" y1="28" x2="106" y2="28"></line>
-            <line class="c-axis" x1="20" y1="4" x2="20" y2="28"></line>
-            <line v-for="tick in getFundMiniChart3m(fund).yTicks" :key="`grid-${fund.code}-${tick.y}`" class="c-grid" x1="20" :y1="tick.y" x2="106" :y2="tick.y"></line>
-            <path class="c-fill" :class="getFundMiniChart3m(fund).trendUp ? 'up' : 'down'" :d="getSparklineFill(getFundMiniChart3m(fund).points, 48)"></path>
-            <path class="c-line" :class="getFundMiniChart3m(fund).trendUp ? 'up' : 'down'" :d="getSparklinePath(getFundMiniChart3m(fund).points)"></path>
-            <text v-for="tick in getFundMiniChart3m(fund).yTicks" :key="`y-${fund.code}-${tick.y}`" class="c-y-label" x="18" :y="tick.y + 1" text-anchor="end">{{ tick.label }}</text>
-            <text v-for="tick in getFundMiniChart3m(fund).xTicks" :key="`x-${fund.code}-${tick.x}`" class="c-x-label" :x="tick.x" y="55" text-anchor="middle">{{ tick.label }}</text>
-          </svg>
+          <div v-if="getFundTrendSeries(fund).length >= 2" :ref="el => setChartRef(fund.code, el as HTMLDivElement)" class="c-echart-inner"></div>
+          <div v-else class="spark-empty">暂无3月趋势</div>
         </div>
         <div class="c-time" v-if="fund.gztime">数据更新时间: {{ fund.gztime }}</div>
       </div>
@@ -197,7 +190,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, watch, nextTick } from 'vue'
+import { useFundMiniChart } from '../composables/useFundMiniChart'
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import BButton from './BButton.vue'
@@ -258,6 +252,19 @@ function onImport(files: FileList | null) {
 }
 
 const searched = computed(() => funds.value.length > 0)
+
+const { setChartRef, updateChart: updateMiniChart, echartThemeName } = useFundMiniChart()
+
+function refreshAllCharts() {
+  nextTick(() => {
+    for (const fund of displayFunds.value) {
+      updateMiniChart(fund.code, getFundTrendSeries(fund), getFundTradeRecords(fund))
+    }
+  })
+}
+
+onMounted(refreshAllCharts)
+watch([displayFunds, echartThemeName], refreshAllCharts, { deep: true })
 </script>
 
 <style src="./FundRealtime.css" scoped></style>
