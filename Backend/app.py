@@ -24,7 +24,7 @@ from core.cache_headers import apply_cache_headers
 from core.cors_config import parse_cors_origins
 from core.logging import get_logger, init_logging
 from core.metrics import http_request_duration_seconds, http_requests_total
-from database import SessionLocal, init_db
+from database import SessionLocal, init_db, shutdown_db
 from models import DataFetchTask
 
 logger = get_logger(__name__)
@@ -247,6 +247,7 @@ def _graceful_shutdown():
             remaining = deadline - time.time()
             if remaining > 0:
                 thread.join(timeout=remaining)
+    shutdown_db()
     logger.info("优雅关闭完成")
 
 

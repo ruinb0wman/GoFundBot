@@ -1,3 +1,7 @@
+import shutil
+import threading
+import time
+from datetime import datetime
 from pathlib import Path
 
 from flask import g
@@ -15,11 +19,14 @@ BACKEND_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = BACKEND_DIR
 # 数据库路径：PROJECT_ROOT / Data / funds.db
 DATABASE_PATH = PROJECT_ROOT / "Data" / "funds.db"
+DATABASE_BACKUP_DIR = PROJECT_ROOT / "Data" / "backups"
 
 # 构造 SQLite URL
 DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
+_WAL_CHECKPOINT_INTERVAL = 1800  # 30 分钟
 
 
 @event.listens_for(engine, "connect")
@@ -31,6 +38,88 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def checkpoint_wal():
+    """强制执行 WAL checkpoint (TRUNCATE)，将已提交数据写入主数据库文件。"""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
+            conn.commit()
+        logger.debug("WAL checkpoint 完成")
+    except Exception as e:
+        logger.warning(f"WAL checkpoint 失败: {e}")
+
+
+def create_backup():
+    """启动前创建数据库快照备份，保留最近 7 份。"""
+    if not DATABASE_PATH.exists():
+        logger.info("数据库文件不存在，跳过备份")
+        return False
+
+    DATABASE_BACKUP_DIR.mkdir(exist_ok=True)
+    checkpoint_wal()
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = DATABASE_BACKUP_DIR / f"funds_{ts}.db"
+
+    try:
+        shutil.copy2(DATABASE_PATH, backup_path)
+        logger.info(f"数据库备份已创建: {backup_path.name}")
+    except Exception as e:
+        logger.warning(f"数据库备份失败: {e}")
+        return False
+
+    backups = sorted(DATABASE_BACKUP_DIR.glob("funds_*.db"))
+    while len(backups) > 7:
+        old = backups.pop(0)
+        try:
+            old.unlink()
+        except Exception as e:
+            logger.warning(f"删除旧备份失败 {old.name}: {e}")
+    return True
+
+
+def log_table_stats():
+    """记录各表行数，便于排查数据丢失。"""
+    from sqlalchemy import inspect as sa_inspect
+
+    try:
+        inspector = sa_inspect(engine)
+        table_names = inspector.get_table_names()
+        stats = []
+        with engine.connect() as conn:
+            for table in sorted(table_names):
+                try:
+                    result = conn.execute(text(f"SELECT COUNT(*) FROM [{table}]"))
+                    count = result.scalar() or 0
+                    stats.append(f"{table}={count}")
+                except Exception:
+                    stats.append(f"{table}=ERR")
+        logger.info(f"数据库行数统计: [{', '.join(stats)}]")
+    except Exception as e:
+        logger.warning(f"数据库行数统计失败: {e}")
+
+
+def shutdown_db():
+    """关闭时 checkpoint + dispose，确保数据完整写入主文件。"""
+    checkpoint_wal()
+    try:
+        engine.dispose()
+        logger.info("数据库引擎已关闭")
+    except Exception as e:
+        logger.warning(f"关闭数据库引擎失败: {e}")
+
+
+def _periodic_checkpoint_loop():
+    while True:
+        time.sleep(_WAL_CHECKPOINT_INTERVAL)
+        checkpoint_wal()
+
+
+def start_periodic_checkpoint():
+    t = threading.Thread(target=_periodic_checkpoint_loop, daemon=True, name="wal-checkpoint")
+    t.start()
+    logger.info("WAL 定期检查点已启动（每 30 分钟）")
 
 
 def migrate_db():
@@ -76,9 +165,26 @@ def migrate_db():
             logger.warning(f"Migration cleanup for fund_nav_history: {e}")
 
 
+def _check_integrity():
+    """运行 SQLite integrity_check 并记录结果。"""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA integrity_check"))
+            rows = result.fetchall()
+            if len(rows) == 1 and rows[0][0] == "ok":
+                logger.info("数据库完整性检查通过")
+            else:
+                logger.warning(f"数据库完整性检查异常: {rows}")
+    except Exception as e:
+        logger.warning(f"数据库完整性检查失败: {e}")
+
+
 def init_db():
     # 确保 Data 目录存在
     (PROJECT_ROOT / "Data").mkdir(exist_ok=True)
+
+    # 启动前创建备份（先 checkpoint 保证一致性）
+    create_backup()
 
     # 创建所有表（新表会被创建，已有表不会被覆盖）
     try:
@@ -102,6 +208,11 @@ def init_db():
 
     # 执行数据库迁移
     migrate_db()
+
+    # 完整性检查 + 行数统计
+    _check_integrity()
+    log_table_stats()
+    start_periodic_checkpoint()
 
 
 def get_request_db() -> Session:
