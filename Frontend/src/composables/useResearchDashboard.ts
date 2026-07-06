@@ -1,6 +1,8 @@
 // @ts-nocheck
+import Decimal from 'decimal.js'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { researchAPI } from '../services/api'
+import { fmtPercent, fmtNumber, fmtAmountYi } from '../utils/number'
 
 export function useResearchDashboard(emit: (event: string, ...args: any[]) => void) {
   const loading = ref(false)
@@ -117,18 +119,9 @@ export function useResearchDashboard(emit: (event: string, ...args: any[]) => vo
   const industryTop3m = computed(() => industryPerformance.value.top_3m || [])
   const industryTop1y = computed(() => industryPerformance.value.top_1y || [])
 
-  const formatPercent = (value: any) => {
-    if (value === null || value === undefined || value === '') return '--'
-    const num = Number(value)
-    if (!Number.isFinite(num)) return '--'
-    return `${num > 0 ? '+' : ''}${num.toFixed(2)}%`
-  }
+  const formatPercent = (value: any) => fmtPercent(value)
 
-  const formatNumber = (value: any) => {
-    if (value === null || value === undefined || value === '') return '--'
-    const num = Number(value)
-    return Number.isFinite(num) ? num.toFixed(2) : '--'
-  }
+  const formatNumber = (value: any) => fmtNumber(value, 2)
 
   const displayFundName = (name: string, maxLength = 10) => {
     const text = String(name || '')
@@ -141,11 +134,7 @@ export function useResearchDashboard(emit: (event: string, ...args: any[]) => vo
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN')
   }
 
-  const formatAmountYi = (value: any) => {
-    const num = Number(value)
-    if (!Number.isFinite(num)) return '--'
-    return `${(num / 100000000).toFixed(2)}亿`
-  }
+  const formatAmountYi = (value: any) => fmtAmountYi(value)
 
   const returnClass = (value: any) => {
     const num = Number(value)

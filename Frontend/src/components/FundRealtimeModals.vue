@@ -47,7 +47,7 @@
           />
         </div>
         <div class="trade-nav-derived" v-if="getTradeNav?.() > 0">
-          <span>{{ t('fund.realtimeModal.refNav') }} ¥{{ (getTradeNav?.() ?? 0).toFixed(4) }}</span>
+          <span>{{ t('fund.realtimeModal.refNav') }} ¥{{ fmtNumber(getTradeNav?.() ?? 0, 4) }}</span>
           <span class="nav-date-hint" v-if="tradeForm?.tradeDate === todayDate">{{ t('fund.realtimeModal.navHint') }}</span>
         </div>
         <div class="form-group elegant-input-group">
@@ -79,7 +79,7 @@
           <span class="trade-type" :class="record.type">{{ record.type === 'buy' ? t('fund.realtimeModal.buy') : t('fund.realtimeModal.sell') }}</span>
           <span>{{ record.tradeDate || '-' }}</span>
           <span>¥{{ formatMoney?.(record.amount) }}</span>
-          <span>{{ record.nav != null ? record.nav.toFixed(4) : '-' }}</span>
+          <span>{{ record.nav != null ? fmtNumber(record.nav, 4) : '-' }}</span>
           <span>{{ formatShare?.(record.share) }}</span>
           <span class="trade-status" :class="record.status">{{ record.status === 'pending' ? t('fund.realtimeModal.pending') : t('fund.realtimeModal.updated') }}</span>
         </div>
@@ -135,6 +135,7 @@ import BButton from './BButton.vue'
 import BaseModal from './BaseModal.vue'
 import BDatePicker from './BDatePicker.vue'
 import FundSearch from './FundSearch.vue'
+import { fmtNumber } from '../utils/number'
 const { t } = useI18n()
 defineOptions({ name: 'FundRealtimeModals' })
 

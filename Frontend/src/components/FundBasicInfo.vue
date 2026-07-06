@@ -30,19 +30,19 @@
           <div class="risk-item">
             <span class="risk-label">{{ t('fund.detail.sharpe1y') }}</span>
             <span class="risk-value" :class="getSharpeClass(riskMetrics.sharpe_ratio_1y)">
-              {{ riskMetrics.sharpe_ratio_1y || '--' }}
+              {{ fmtNumber(riskMetrics.sharpe_ratio_1y, 2) }}
             </span>
           </div>
           <div class="risk-item">
             <span class="risk-label">{{ t('fund.detail.maxDrawdown1y') }}</span>
             <span class="risk-value negative">
-              {{ riskMetrics.max_drawdown_1y ? '-' + riskMetrics.max_drawdown_1y + '%' : '--' }}
+              {{ riskMetrics.max_drawdown_1y != null ? '-' + fmtNumber(riskMetrics.max_drawdown_1y, 2) + '%' : '--' }}
             </span>
           </div>
           <div class="risk-item">
             <span class="risk-label">{{ t('fund.detail.volatility1y') }}</span>
             <span class="risk-value">
-              {{ riskMetrics.volatility_1y ? riskMetrics.volatility_1y + '%' : '--' }}
+              {{ riskMetrics.volatility_1y != null ? fmtNumber(riskMetrics.volatility_1y, 2) + '%' : '--' }}
             </span>
           </div>
         </div>
@@ -124,6 +124,8 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { fundAPI, watchlistAPI } from '../services/api'
 import { useFundStore } from '../stores/fundStore'
+import { fmtNumber } from '../utils/number'
+import Decimal from 'decimal.js'
 
 const { t } = useI18n()
 
@@ -165,7 +167,7 @@ const displayChange = computed(() => {
   if (value === null || value === undefined || value === '') return '--'
   const num = parseFloat(value)
   if (isNaN(num)) return '--'
-  return (num > 0 ? '+' : '') + num.toFixed(2) + '%'
+  return (num > 0 ? '+' : '') + new Decimal(num).toFixed(2) + '%'
 })
 
 const fundIndustryTag = computed(() => {
@@ -246,7 +248,7 @@ function processFundData(data: Record<string, any>): void {
   if (trend.length >= 2) {
     const latest = parseFloat(trend[trend.length - 1]?.net_worth)
     const previous = parseFloat(trend[trend.length - 2]?.net_worth)
-    if (latest > 0 && previous > 0) actualChange = ((latest - previous) / previous * 100)
+    if (latest > 0 && previous > 0) actualChange = new Decimal(latest).minus(previous).div(previous).mul(100).toNumber()
   }
   const extractDate = (value: unknown): string => {
     const s = String(value || '')
@@ -266,7 +268,7 @@ function processFundData(data: Record<string, any>): void {
   const officialNav = parseFloat(officialNavValue)
   let estimateChange = realtime.estimate_change
   if (estimateDate && navDate && estimateDate > navDate && estimateNav > 0 && officialNav > 0) {
-    estimateChange = ((estimateNav - officialNav) / officialNav * 100)
+    estimateChange = new Decimal(estimateNav).minus(officialNav).div(officialNav).mul(100).toNumber()
   }
   fundInfo.value = {
     ...data,
@@ -322,7 +324,7 @@ function formatTime(timeStr: unknown): string { return timeStr ? String(timeStr)
 function formatRate(value: unknown): string {
   if (value === null || value === undefined || value === '') return '--'
   const num = parseFloat(String(value))
-  return isNaN(num) ? '--' : num + '%'
+  return isNaN(num) ? '--' : new Decimal(num).toFixed(2) + '%'
 }
 
 function formatMinSubscription(value: unknown): string {

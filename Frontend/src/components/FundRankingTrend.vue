@@ -31,7 +31,7 @@
                 <td class="rank-value">{{ item.rank }}/{{ item.total_funds }}</td>
                 <td>{{ item.total_funds }}</td>
                 <td :class="getPercentClass((1 - item.rank / item.total_funds) * 100)">
-                  {{ ((1 - item.rank / item.total_funds) * 100).toFixed(2) }}%
+                  {{ defeatPercent(item.rank, item.total_funds) }}
                 </td>
               </tr>
             </tbody>
@@ -48,6 +48,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Decimal from 'decimal.js'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 
@@ -158,6 +159,11 @@ const getPercentClass = (defeatPercent: number) => {
   return 'normal'
 }
 
+const defeatPercent = (rank: number, totalFunds: number): string => {
+  if (!totalFunds) return '0.00%'
+  return new Decimal(1).minus(Decimal.div(rank, totalFunds)).mul(100).toFixed(2) + '%'
+}
+
 const initRankingChart = () => {
   if (!rankingChartEl.value || !hasRankingData.value) return
 
@@ -175,7 +181,7 @@ const initRankingChart = () => {
       formatter: (params: any) => {
         const dataIndex = params[0].dataIndex
         const item = filteredData.value[dataIndex]
-        const defeated = ((1 - item.rank / item.total_funds) * 100).toFixed(2);
+        const defeated = defeatPercent(item.rank, item.total_funds);
         return `
           <div style="font-weight: bold; margin-bottom: 8px;">${item.dateFormatted}</div>
           <div>排名: <strong>${item.rank}/${item.total_funds}</strong></div>

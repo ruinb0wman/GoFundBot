@@ -1,4 +1,5 @@
 // @ts-nocheck
+import Decimal from 'decimal.js'
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
@@ -226,13 +227,13 @@ export function useStockPopup(props: any) {
     return map[ex] || ex.toUpperCase()
   })
 
-  const formatPrice = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; return num.toFixed(2) }
-  const formatChange = (val: any) => { const num = parseFloat(val); if (isNaN(num)) return '--'; return (num > 0 ? '+' : '') + num.toFixed(2) }
-  const formatPercent = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; return (num > 0 ? '+' : '') + num.toFixed(2) + '%' }
-  const formatVolume = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; if (num >= 10000) return (num / 10000).toFixed(2) + ' 万手'; return num.toFixed(0) + ' 手' }
-  const formatAmount = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; if (num >= 100000000) return (num / 100000000).toFixed(2) + ' 亿'; if (num >= 10000) return (num / 10000).toFixed(2) + ' 万'; return num.toFixed(2) }
-  const formatPE = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; return num.toFixed(2) }
-  const formatMarketCap = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; if (num >= 100000000) return (num / 100000000).toFixed(2) + ' 亿'; if (num >= 10000) return (num / 10000).toFixed(2) + ' 万'; return num.toFixed(2) }
+  const formatPrice = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; return new Decimal(num).toFixed(2) }
+  const formatChange = (val: any) => { const num = parseFloat(val); if (isNaN(num)) return '--'; return (num > 0 ? '+' : '') + new Decimal(num).toFixed(2) }
+  const formatPercent = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; return (num > 0 ? '+' : '') + new Decimal(num).toFixed(2) + '%' }
+  const formatVolume = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; if (num >= 10000) return new Decimal(num).div(10000).toFixed(2) + ' 万手'; return new Decimal(num).toFixed(0) + ' 手' }
+  const formatAmount = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; if (num >= 100000000) return new Decimal(num).div(100000000).toFixed(2) + ' 亿'; if (num >= 10000) return new Decimal(num).div(10000).toFixed(2) + ' 万'; return new Decimal(num).toFixed(2) }
+  const formatPE = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; return new Decimal(num).toFixed(2) }
+  const formatMarketCap = (val: any) => { const num = parseFloat(val); if (isNaN(num) || num === 0) return '--'; if (num >= 100000000) return new Decimal(num).div(100000000).toFixed(2) + ' 亿'; if (num >= 10000) return new Decimal(num).div(10000).toFixed(2) + ' 万'; return new Decimal(num).toFixed(2) }
 
   return {
     klineChartEl, klineLoading, klineError, klinePeriods, klineSelectedRange,

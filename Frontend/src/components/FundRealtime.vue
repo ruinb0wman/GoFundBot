@@ -25,12 +25,12 @@
         <div class="meta-info">{{ t('fund.realtime.dataDisclaimer') }} {{ nowTime }}</div>
       </div>
       <div class="overview-grid" v-if="hasHoldings">
-        <div class="overview-cell purple"><div class="cell-label">{{ t('fund.realtime.totalMarket') }}</div><div class="cell-val">¥{{ totalAsset.toFixed(2) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.totalCost') }}</div><div class="cell-val">¥{{ totalCost.toFixed(2) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.totalProfit') }}</div><div class="cell-val" :class="profitTotalClass">{{ totalProfitTotal >= 0 ? '+' : '' }}¥{{ totalProfitTotal.toFixed(2) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.returnRate') }}</div><div class="cell-val" :class="profitTotalClass">{{ totalReturnRate >= 0 ? '+' : '' }}{{ totalReturnRate.toFixed(2) }}%</div></div>
-        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.todayProfit') }}</div><div class="cell-val" :class="profitTodayClass">{{ totalProfitToday >= 0 ? '+' : '' }}¥{{ totalProfitToday.toFixed(2) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.todayReturn') }}</div><div class="cell-val" :class="profitTodayClass">{{ todayReturnRate >= 0 ? '+' : '' }}{{ todayReturnRate.toFixed(2) }}%</div></div>
+        <div class="overview-cell purple"><div class="cell-label">{{ t('fund.realtime.totalMarket') }}</div><div class="cell-val">¥{{ fmtMoney(totalAsset) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.totalCost') }}</div><div class="cell-val">¥{{ fmtMoney(totalCost) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.totalProfit') }}</div><div class="cell-val" :class="profitTotalClass">{{ totalProfitTotal >= 0 ? '+' : '' }}¥{{ fmtMoney(totalProfitTotal) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.returnRate') }}</div><div class="cell-val" :class="profitTotalClass">{{ fmtPercent(totalReturnRate) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.todayProfit') }}</div><div class="cell-val" :class="profitTodayClass">{{ totalProfitToday >= 0 ? '+' : '' }}¥{{ fmtMoney(totalProfitToday) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.todayReturn') }}</div><div class="cell-val" :class="profitTodayClass">{{ fmtPercent(todayReturnRate) }}</div></div>
       </div>
       <div v-else class="overview-grid empty-hint">{{ t('fund.realtime.noPosition') }}</div>
 
@@ -56,7 +56,7 @@
         <div class="pending-item" v-for="txn in pendingTxns" :key="txn.id">
           <span class="p-type" :class="txn.type">{{ txn.type === 'buy' ? t('fund.realtime.buy') : t('fund.realtime.sell') }}</span>
           <span class="p-name">{{ txn.fundName }}</span>
-          <span class="p-val">{{ txn.type === 'buy' ? '¥' + txn.inputValue.toFixed(2) : txn.inputValue.toFixed(2) + ' 份' }}</span>
+          <span class="p-val">{{ txn.type === 'buy' ? '¥' + fmtMoney(txn.inputValue) : fmtNumber(txn.inputValue) + ' 份' }}</span>
           <span class="p-date">{{ t('fund.realtime.tradeDate') }} {{ txn.tradeDate }}</span>
           <BButton size="small" @click="cancelPendingTxn(txn.id)">{{ t('fund.realtime.cancel') }}</BButton>
         </div>
@@ -101,7 +101,7 @@
             <div class="hero-sub">单位净值 {{ fund.dwjz || '-' }}</div>
           </div>
           <div class="hero-metric" v-if="holdings[fund.code]">
-            <div class="hero-chip" :class="getHoldingProfitTodayClass(fund)">{{ getHoldingProfitToday(fund) >= 0 ? '+' : '' }}¥{{ getHoldingProfitToday(fund).toFixed(2) }}</div>
+            <div class="hero-chip" :class="getHoldingProfitTodayClass(fund)">{{ getHoldingProfitToday(fund) >= 0 ? '+' : '' }}¥{{ fmtMoney(getHoldingProfitToday(fund)) }}</div>
             <div class="hero-label">{{ getPriceStatusLabel(fund) }}盈亏</div>
             <div class="hero-sub">{{ hasFreshEstimate(fund) ? '估算值' : '最新净值' }} {{ formatGsz(fund) }}</div>
           </div>
@@ -115,12 +115,12 @@
             </div>
           </div>
           <div class="c-h-grid" v-if="holdings[fund.code]">
-            <div class="grid-box"><div class="g-label">持有份额</div><div class="g-val">{{ holdings[fund.code].share.toFixed(2) }}</div></div>
-            <div class="grid-box"><div class="g-label">平均成本</div><div class="g-val">{{ holdings[fund.code].cost.toFixed(4) }}</div></div>
-            <div class="grid-box"><div class="g-label">当前市值</div><div class="g-val">¥{{ getHoldingEstimatedAmount(fund).toFixed(2) }}</div></div>
-            <div class="grid-box"><div class="g-label">投入本金</div><div class="g-val">¥{{ getHoldingCostAmount(fund).toFixed(2) }}</div></div>
-            <div class="grid-box"><div class="g-label">收益金额</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ getHoldingProfitTotal(fund) >= 0 ? '+' : '' }}¥{{ getHoldingProfitTotal(fund).toFixed(2) }}</div></div>
-            <div class="grid-box"><div class="g-label">收益率</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ getHoldingReturnRate(fund) >= 0 ? '+' : '' }}{{ getHoldingReturnRate(fund).toFixed(2) }}%</div></div>
+            <div class="grid-box"><div class="g-label">持有份额</div><div class="g-val">{{ fmtNumber(holdings[fund.code].share) }}</div></div>
+            <div class="grid-box"><div class="g-label">平均成本</div><div class="g-val">{{ fmtNumber(holdings[fund.code].cost, 4) }}</div></div>
+            <div class="grid-box"><div class="g-label">当前市值</div><div class="g-val">¥{{ fmtMoney(getHoldingEstimatedAmount(fund)) }}</div></div>
+            <div class="grid-box"><div class="g-label">投入本金</div><div class="g-val">¥{{ fmtMoney(getHoldingCostAmount(fund)) }}</div></div>
+            <div class="grid-box"><div class="g-label">收益金额</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ getHoldingProfitTotal(fund) >= 0 ? '+' : '' }}¥{{ fmtMoney(getHoldingProfitTotal(fund)) }}</div></div>
+            <div class="grid-box"><div class="g-label">收益率</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ fmtPercent(getHoldingReturnRate(fund)) }}</div></div>
           </div>
           <div v-else class="c-h-grid">
             <div class="grid-box" style="grid-column: 1 / -1; text-align: center; color: var(--text-tertiary);">
@@ -201,6 +201,7 @@ import BFileInput from './BFileInput.vue'
 import PortfolioAIAnalysis from './PortfolioAIAnalysis.vue'
 import { useFundRealtime } from '../composables/useFundRealtime'
 import FundRealtimeModals from './FundRealtimeModals.vue'
+import { fmtMoney, fmtPercent, fmtNumber } from '../utils/number'
 
 defineOptions({ name: 'FundRealtime' })
 const emit = defineEmits(['view-detail'])

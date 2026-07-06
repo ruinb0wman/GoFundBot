@@ -1,7 +1,9 @@
+import Decimal from 'decimal.js'
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
 import { backtestAPI, fundAPI } from '../services/api'
+import { returnClass as getReturnClass } from '../utils/number'
 
 export function useFundBacktest(props: { fundCode: string }) {
   const chartEl = ref<HTMLElement | null>(null)
@@ -200,18 +202,13 @@ export function useFundBacktest(props: { fundCode: string }) {
 
   const formatMoney = (value: any) => {
     if (value === null || value === undefined) return '0.00'
-    return Number(value).toFixed(2)
+    return new Decimal(value).toFixed(2)
   }
 
   const formatReturn = (value: any) => {
     if (value === null || value === undefined) return '0.00'
     const num = Number(value)
-    return (num >= 0 ? '+' : '') + num.toFixed(2)
-  }
-
-  const getReturnClass = (value: any) => {
-    if (value === null || value === undefined) return ''
-    return Number(value) >= 0 ? 'positive' : 'negative'
+    return (num >= 0 ? '+' : '') + new Decimal(num).toFixed(2)
   }
 
   const initChart = () => {
@@ -322,7 +319,7 @@ export function useFundBacktest(props: { fundCode: string }) {
         name: yAxisName,
         axisLabel: {
           formatter: chartType.value === 'value'
-            ? (value: number) => (value / 1000).toFixed(1) + 'k'
+            ? (value: number) => new Decimal(value).div(1000).toFixed(1) + 'k'
             : '{value}%'
         }
       },

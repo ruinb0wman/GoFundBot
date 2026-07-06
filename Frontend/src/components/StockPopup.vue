@@ -64,11 +64,11 @@
         <div class="chart-wrapper" v-else-if="filteredKlineData.length > 0">
           <div ref="klineChartEl" class="kline-chart"></div>
           <div class="chart-summary" v-if="klineSummary">
-            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.rangeChange') }}</span><span class="summary-value" :class="klineSummary.changePercent >= 0 ? 'up' : 'down'">{{ klineSummary.changePercent >= 0 ? '+' : '' }}{{ klineSummary.changePercent.toFixed(2) }}%</span></div>
-            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.startPrice') }}</span><span class="summary-value">{{ klineSummary.startPrice.toFixed(2) }}</span></div>
-            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.latestPrice') }}</span><span class="summary-value">{{ klineSummary.endPrice.toFixed(2) }}</span></div>
-            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.high') }}</span><span class="summary-value high">{{ klineSummary.high.toFixed(2) }}</span></div>
-            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.low') }}</span><span class="summary-value low">{{ klineSummary.low.toFixed(2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.rangeChange') }}</span><span class="summary-value" :class="klineSummary.changePercent >= 0 ? 'up' : 'down'">{{ klineSummary.changePercent >= 0 ? '+' : '' }}{{ fmtNumber(klineSummary.changePercent, 2) }}%</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.startPrice') }}</span><span class="summary-value">{{ fmtNumber(klineSummary.startPrice, 2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.latestPrice') }}</span><span class="summary-value">{{ fmtNumber(klineSummary.endPrice, 2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.high') }}</span><span class="summary-value high">{{ fmtNumber(klineSummary.high, 2) }}</span></div>
+            <div class="summary-item"><span class="summary-label">{{ t('stockPopup.low') }}</span><span class="summary-value low">{{ fmtNumber(klineSummary.low, 2) }}</span></div>
           </div>
         </div>
         <div class="chart-empty" v-else-if="!klineLoading && !klineError"><span>{{ t('stockPopup.emptyHistory') }}</span></div>
@@ -84,6 +84,7 @@ import BButton from './BButton.vue'
 import { useI18n } from 'vue-i18n'
 import LucideIcon from './LucideIcon.vue'
 import { useStockPopup } from '../composables/useStockPopup'
+import { fmtNumber } from '../utils/number'
 
 const { t } = useI18n()
 

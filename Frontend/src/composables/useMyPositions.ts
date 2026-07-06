@@ -1,5 +1,6 @@
 // @ts-nocheck
 /* eslint-disable max-lines */
+import Decimal from 'decimal.js'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
@@ -170,24 +171,24 @@ export function useMyPositions() {
         return
       }
       if (operationForm.type === 'add') {
-        const addShares = amount / sourceNav
-        const oldCost = source.cost * source.shares
+        const addShares = new Decimal(amount).div(sourceNav).toNumber()
+        const oldCost = new Decimal(source.cost).mul(source.shares).toNumber()
         const newCost = oldCost + amount
         const newShares = source.shares + addShares
-        source.shares = Number(newShares.toFixed(6))
-        source.cost = Number((newCost / newShares).toFixed(6))
+        source.shares = Number(new Decimal(newShares).toFixed(6))
+        source.cost = Number(new Decimal(newCost).div(newShares).toFixed(6))
         source.purchaseDate = operationForm.date
         source.purchaseTime = '21:00'
-        operationText.value = `加仓完成：增加 ${addShares.toFixed(2)} 份。`
+        operationText.value = `加仓完成：增加 ${new Decimal(addShares).toFixed(2)} 份。`
       }
       if (operationForm.type === 'reduce') {
-        const reduceShares = amount / sourceNav
+        const reduceShares = new Decimal(amount).div(sourceNav).toNumber()
         if (reduceShares >= source.shares) {
           operationText.value = '减仓金额过大，超过当前持有份额。'
           return
         }
-        source.shares = Number((source.shares - reduceShares).toFixed(6))
-        operationText.value = `减仓完成：减少 ${reduceShares.toFixed(2)} 份。`
+        source.shares = Number(new Decimal(source.shares - reduceShares).toFixed(6))
+        operationText.value = `减仓完成：减少 ${new Decimal(reduceShares).toFixed(2)} 份。`
       }
       if (operationForm.type === 'convert') {
         const targetCode = normalizeFundCode(operationForm.targetCode)
@@ -196,7 +197,7 @@ export function useMyPositions() {
           operationText.value = '请填写有效的目标基金代码与名称。'
           return
         }
-        const reduceShares = amount / sourceNav
+        const reduceShares = new Decimal(amount).div(sourceNav).toNumber()
         if (reduceShares > source.shares) {
           operationText.value = '转换金额过大，超过当前持有份额。'
           return
@@ -206,18 +207,18 @@ export function useMyPositions() {
           operationText.value = '无法获取目标基金净值。若要转换到新基金，请在晚间净值更新后再试；若目标基金已在持仓中，可先添加目标持仓后再转换。'
           return
         }
-        source.shares = Number((source.shares - reduceShares).toFixed(6))
+        source.shares = Number(new Decimal(source.shares - reduceShares).toFixed(6))
         if (source.shares <= 0.000001) {
           positions.value = positions.value.filter(item => item.id !== source.id)
         }
-        const addShares = amount / targetNav
+        const addShares = new Decimal(amount).div(targetNav).toNumber()
         const existingTarget = positions.value.find(item => normalizeFundCode(item.code) === targetCode)
         if (existingTarget) {
-          const oldCost = existingTarget.cost * existingTarget.shares
+          const oldCost = new Decimal(existingTarget.cost).mul(existingTarget.shares).toNumber()
           const newShares = existingTarget.shares + addShares
           const newCost = oldCost + amount
-          existingTarget.shares = Number(newShares.toFixed(6))
-          existingTarget.cost = Number((newCost / newShares).toFixed(6))
+          existingTarget.shares = Number(new Decimal(newShares).toFixed(6))
+          existingTarget.cost = Number(new Decimal(newCost).div(newShares).toFixed(6))
         } else {
           positions.value.unshift({
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -225,11 +226,11 @@ export function useMyPositions() {
             name: operationForm.targetName,
             purchaseDate: operationForm.date,
             purchaseTime: '21:00',
-            shares: Number(addShares.toFixed(6)),
-            cost: Number(targetNav.toFixed(6))
+            shares: Number(new Decimal(addShares).toFixed(6)),
+            cost: Number(new Decimal(targetNav).toFixed(6))
           })
         }
-        operationText.value = `转换完成：卖出 ${source.code} 金额 ¥${amount.toFixed(2)}，买入 ${targetCode}。`
+        operationText.value = `转换完成：卖出 ${source.code} 金额 ¥${new Decimal(amount).toFixed(2)}，买入 ${targetCode}。`
       }
       await Promise.all([refreshRealtimeQuotes(), loadHistoryForPositions()])
       syncToApi()
@@ -571,7 +572,7 @@ export function useMyPositions() {
     renderCharts()
   }
 
-  const formatNumber = (value, digit = 2) => Number(value || 0).toFixed(digit)
+  const formatNumber = (value, digit = 2) => new Decimal(value || 0).toFixed(digit)
   const formatSigned = value => `${value >= 0 ? '+' : ''}${formatNumber(value, 2)}`
 
   useDebouncedWatch([quoteMap, historyMap], () => renderCharts(), 300, { deep: true })

@@ -1,10 +1,15 @@
 // @ts-nocheck
+import Decimal from 'decimal.js'
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
 import { fundAPI } from '../services/api'
 import { exportToCSV } from '../utils/exportUtils'
 import { translate } from '../locales/index'
+import {
+  calcReturn, fmtPercent, fmtNumber, fmtDrawdown,
+  isZero, sharpeClass, scoreClass
+} from '../utils/number'
 
 export function useFundComparison(props: any, emit: any) {
   const chartEl = ref<HTMLElement | null>(null)
@@ -68,8 +73,9 @@ export function useFundComparison(props: any, emit: any) {
       for (const item of sortedData) {
         if (item.x >= targetTime) { closest = item; break }
       }
-      if (closest.y === 0) return null
-      return ((latestValue - closest.y) / closest.y * 100).toFixed(2)
+      if (isZero(closest.y)) return null
+      const result = calcReturn(closest.y, latestValue)
+      return result !== null ? result.toFixed(2) : null
     }
 
     return {
@@ -92,7 +98,7 @@ export function useFundComparison(props: any, emit: any) {
     if (scaleData.series && scaleData.series.length > 0) {
       const latestItem = scaleData.series[scaleData.series.length - 1]
       fund.scale = latestItem && latestItem.y !== undefined && latestItem.y !== null
-        ? latestItem.y.toFixed(2) + '亿' : '--'
+        ? new Decimal(latestItem.y).toFixed(2) + '亿' : '--'
     }
     fund.riskMetrics = data.risk_metrics || {}
     fund.dataSource = data.data_source || 'unknown'
@@ -260,45 +266,31 @@ export function useFundComparison(props: any, emit: any) {
     return ''
   }
 
-  const getScoreClass = (score: any) => {
-    if (!score) return ''
-    if (score >= 80) return 'score-high'
-    if (score >= 60) return 'score-mid'
-    return 'score-low'
-  }
-
   const formatReturn = (value: any) => {
-    if (value === null || value === undefined) return '--'
-    const num = parseFloat(value)
-    return (num >= 0 ? '+' : '') + value + '%'
+    return fmtPercent(value, { sign: true, fallback: '--' })
   }
 
   const formatDrawdown = (value: any) => {
-    if (value === null || value === undefined) return '--'
-    return '-' + value.toFixed(2) + '%'
+    return fmtDrawdown(value)
   }
 
   const formatSharpe = (value: any) => {
-    if (value === null || value === undefined) return '--'
-    return value.toFixed(2)
+    return fmtNumber(value, 2)
   }
 
   const formatVolatility = (value: any) => {
     if (value === null || value === undefined) return '--'
-    return value.toFixed(2) + '%'
-  }
-
-  const getSharpeClass = (value: any) => {
-    if (value === null || value === undefined) return ''
-    if (value >= 1) return 'positive'
-    if (value >= 0) return ''
-    return 'negative'
+    return new Decimal(value).toFixed(2) + '%'
   }
 
   const getEvalScore = (fund: any, index: number) => {
     if (!fund.evaluation?.data || !fund.evaluation.data[index]) return '--'
-    return fund.evaluation.data[index].toFixed(1)
+    return new Decimal(fund.evaluation.data[index]).toFixed(1)
   }
+
+  const getSharpeClass = (value: any) => sharpeClass(value)
+
+  const getScoreClass = (value: any) => scoreClass(value)
 
   watch(() => props.compareFunds, async (newFunds: any) => {
     if (!newFunds || newFunds.length === 0) {

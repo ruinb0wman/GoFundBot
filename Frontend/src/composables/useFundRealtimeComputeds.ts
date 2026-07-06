@@ -1,4 +1,5 @@
 // @ts-nocheck
+import Decimal from 'decimal.js'
 import { computed } from 'vue'
 import { metricBySort, getHoldingEstimatedAmount, getHoldingProfitToday, getHoldingProfitTotal, getPreviousPrice, getValueClass } from './useFundRealtimeBase'
 
@@ -150,14 +151,14 @@ export function useFundRealtimeComputeds({
   })
 
   const totalReturnRate = computed(() => {
-    const principal = totalAsset.value - totalProfitTotal.value
-    if (!principal) return 0
-    return (totalProfitTotal.value / principal) * 100
+    const principal = new Decimal(totalAsset.value).minus(totalProfitTotal.value)
+    if (principal.isZero()) return 0
+    return new Decimal(totalProfitTotal.value).div(principal).mul(100).toNumber()
   })
 
   const todayReturnRate = computed(() => {
     if (!totalPreviousAsset.value) return 0
-    return (totalProfitToday.value / totalPreviousAsset.value) * 100
+    return new Decimal(totalProfitToday.value).div(totalPreviousAsset.value).mul(100).toNumber()
   })
 
   const profitTodayClass = computed(() => getValueClass(totalProfitToday.value))

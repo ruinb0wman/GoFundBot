@@ -1,4 +1,5 @@
 // @ts-nocheck
+import Decimal from 'decimal.js'
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { fundAPI } from '../services/api'
 import { portfolioAPI } from '../services/portfolioApi'
@@ -63,7 +64,7 @@ export function useFundRealtimeData(emit, extra = {}) {
       if (!h || !h.share || !nd || hasFreshEstimate(fund)) return
       if (h.profit_nav_date && h.profit_nav_date >= nd) return
       nh[fund.code] = {
-        ...h, profit: parseFloat(((h.profit ?? 0) + getHoldingProfitToday(fund, holdings.value)).toFixed(2)),
+        ...h, profit: new Decimal(h.profit ?? 0).plus(getHoldingProfitToday(fund, holdings.value)).toNumber(),
         profit_nav_date: nd,
       }; changed = true
     })

@@ -3,6 +3,10 @@ import { ref, watch, computed } from 'vue'
 import { fundAPI, marketAPI } from '../services/api'
 import { portfolioAPI } from '../services/portfolioApi'
 import { useFundStore } from '../stores/fundStore'
+import {
+  calcMaxDrawdown, calcDailyReturns, calcAnnualReturn,
+  calcVolatility, calcSharpe
+} from '../utils/number'
 
 export function useFundDetail(props: any, emit: any) {
   const currentFundCode = ref(props.fundCode)
@@ -87,58 +91,23 @@ export function useFundDetail(props: any, emit: any) {
         return periodValues
       }
 
-      const calcMaxDrawdown = (periodValues: number[]) => {
-        if (periodValues.length < 2) return null
-        let peak = periodValues[0]
-        let maxDrawdown = 0
-        for (const value of periodValues) {
-          if (value > peak) peak = value
-          const drawdown = (peak - value) / peak * 100
-          if (drawdown > maxDrawdown) maxDrawdown = drawdown
-        }
-        return maxDrawdown.toFixed(2)
-      }
-
-      const calcDailyReturns = (periodValues: number[]) => {
-        if (periodValues.length < 2) return []
-        const returns = []
-        for (let i = 1; i < periodValues.length; i++) {
-          if (periodValues[i - 1] !== 0) returns.push((periodValues[i] - periodValues[i - 1]) / periodValues[i - 1])
-        }
-        return returns
-      }
-
-      const calcAnnualReturn = (periodValues: number[], tradingDays: number) => {
-        if (periodValues.length < 2 || periodValues[0] === 0 || tradingDays <= 0) return null
-        const totalReturn = (periodValues[periodValues.length - 1] - periodValues[0]) / periodValues[0]
-        return (Math.pow(1 + totalReturn, 252 / tradingDays) - 1) * 100
-      }
-
-      const calcVolatility = (dailyReturns: number[]) => {
-        if (dailyReturns.length < 10) return null
-        const mean = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length
-        const variance = dailyReturns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / dailyReturns.length
-        return Math.sqrt(variance) * Math.sqrt(252) * 100
-      }
-
-      const calcSharpeRatio = (annualReturn: any, volatility: any) => {
-        if (!annualReturn || !volatility || parseFloat(volatility) === 0) return null
-        return ((parseFloat(annualReturn) - 2.0) / parseFloat(volatility))
-      }
-
       const values1y = getDataForPeriod(12)
       const maxDrawdown1y = calcMaxDrawdown(values1y)
       const dailyReturns1y = calcDailyReturns(values1y)
-      const annualReturn1y = calcAnnualReturn(values1y, values1y.length)
+      const annualReturn1y = values1y.length >= 2
+        ? calcAnnualReturn(values1y[0], values1y[values1y.length - 1], values1y.length)
+        : null
       const volatility1y = calcVolatility(dailyReturns1y)
-      const sharpe1y = calcSharpeRatio(annualReturn1y, volatility1y)
+      const sharpe1y = calcSharpe(annualReturn1y, volatility1y)
 
       const values3y = getDataForPeriod(36)
       const maxDrawdown3y = calcMaxDrawdown(values3y)
       const dailyReturns3y = calcDailyReturns(values3y)
-      const annualReturn3y = calcAnnualReturn(values3y, values3y.length)
+      const annualReturn3y = values3y.length >= 2
+        ? calcAnnualReturn(values3y[0], values3y[values3y.length - 1], values3y.length)
+        : null
       const volatility3y = calcVolatility(dailyReturns3y)
-      const sharpe3y = calcSharpeRatio(annualReturn3y, volatility3y)
+      const sharpe3y = calcSharpe(annualReturn3y, volatility3y)
 
       return {
         sharpe_ratio_1y: sharpe1y, sharpe_ratio_3y: sharpe3y,

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import Decimal from 'decimal.js'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
@@ -109,9 +110,10 @@ export function useFundChart(props) {
 
     const startVal = filtered[0][1]
     const endVal = filtered[filtered.length - 1][1]
-    fundChange.value = startVal !== 0 ? ((endVal - startVal) / startVal * 100).toFixed(2) : '0.00'
+    const s = new Decimal(startVal)
+    fundChange.value = s.isZero() ? '0.00' : new Decimal(endVal).minus(startVal).div(s).mul(100).toFixed(2)
 
-    const toPercent = (val) => startVal !== 0 ? parseFloat(((val - startVal) / startVal * 100).toFixed(4)) : 0
+    const toPercent = (val) => s.isZero() ? 0 : new Decimal(val).minus(startVal).div(s).mul(100).toNumber()
     const percentTrend = filtered.map(item => [item[0], toPercent(item[1])])
 
     const pctValues = percentTrend.map(p => p[1])
@@ -136,7 +138,7 @@ export function useFundChart(props) {
         runningPeakIndex = i
       }
 
-      const dd = (runningPeakValue - val) / runningPeakValue
+      const dd = new Decimal(runningPeakValue).minus(val).div(runningPeakValue).toNumber()
       if (dd > curMaxdd) {
         curMaxdd = dd
         globalPeakIndex = runningPeakIndex
@@ -161,7 +163,7 @@ export function useFundChart(props) {
     const days = recoveryDate ? Math.ceil((recoveryDate - peakDate) / (1000 * 3600 * 24)) : null
 
     const ddInfo = {
-      val: (curMaxdd * 100).toFixed(2),
+      val: new Decimal(curMaxdd).mul(100).toFixed(2),
       peakDate,
       valleyDate,
       recoveryDate,

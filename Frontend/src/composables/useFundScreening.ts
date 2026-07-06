@@ -1,8 +1,10 @@
 /* eslint-disable max-lines */
+import Decimal from 'decimal.js'
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { screeningAPI, watchlistAPI, fundAPI } from '../services/api'
 import { useWatchlistStore } from '../stores/watchlistStore'
 import { translate } from '../locales/index'
+import { fmtNumber, returnClass as calcReturnClass } from '../utils/number'
 
 export function useFundScreening(emit) {
     const dbStatus = ref({
@@ -834,15 +836,13 @@ export function useFundScreening(emit) {
         if (value === null || value === undefined) return '--'
         const num = Number(value)
         if (!Number.isFinite(num)) return '--'
-        if (isNegative) return `-${num.toFixed(2)}%`
+        const formatted = new Decimal(num).toFixed(2)
+        if (isNegative) return `-${formatted}%`
         const prefix = num > 0 ? '+' : ''
-        return `${prefix}${num.toFixed(2)}%`
+        return `${prefix}${formatted}%`
     }
 
-    const formatNumber = (value) => {
-        if (value === null || value === undefined) return '--'
-        return value.toFixed(2)
-    }
+    const formatNumber = (value) => fmtNumber(value, 2)
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '--'
@@ -850,10 +850,7 @@ export function useFundScreening(emit) {
         return date.toLocaleString('zh-CN')
     }
 
-    const getReturnClass = (value) => {
-        if (value === null || value === undefined) return ''
-        return value > 0 ? 'positive' : value < 0 ? 'negative' : ''
-    }
+    const getReturnClass = (value) => calcReturnClass(value)
 
     const getSharpeClass = (value) => {
         if (value === null || value === undefined) return ''

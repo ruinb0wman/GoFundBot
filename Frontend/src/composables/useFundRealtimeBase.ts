@@ -1,9 +1,9 @@
 // @ts-nocheck
 
-// ==================== Pure utility functions ====================
+import Decimal from 'decimal.js'
+import { fmtMoney, fmtChange, fmtNumber } from '../utils/number'
 
-// Note: computed properties from useFundRealtimeBase have been
-// moved to useFundRealtimeComputeds.ts
+// ==================== Pure utility functions ====================
 
 export function getValueClass(val) {
   const num = typeof val === 'number' ? val : parseFloat(val)
@@ -25,13 +25,11 @@ export function getChangeClass(val) {
 
 export function formatGsz(fund) {
   const price = getCurrentPrice(fund)
-  return price ? price.toFixed(4) : '-'
+  return price ? new Decimal(price).toFixed(4) : '-'
 }
 
 export function formatChange(val) {
-  const num = typeof val === 'number' ? val : parseFloat(val)
-  if (isNaN(num)) return '-'
-  return (num >= 0 ? '+' : '') + num.toFixed(2) + '%'
+  return fmtChange(val)
 }
 
 export function getDateText(value) {
@@ -84,20 +82,20 @@ export function getPreviousPrice(fund) {
 export function getHoldingAmount(fund, holdings) {
   const h = holdings[fund.code]
   if (!h || !h.share) return 0
-  return h.share * getLatestPublishedPrice(fund)
+  return new Decimal(h.share).mul(getLatestPublishedPrice(fund)).toNumber()
 }
 
 export function getHoldingCostAmount(fund, holdings) {
   const h = holdings[fund.code]
   if (!h || !h.share || !h.cost) return 0
-  return h.share * h.cost
+  return new Decimal(h.share).mul(h.cost).toNumber()
 }
 
 export function getHoldingEstimatedAmount(fund, holdings) {
   const h = holdings[fund.code]
   if (!h || !h.share) return 0
   const nav = getCurrentPrice(fund)
-  return h.share * nav
+  return new Decimal(h.share).mul(nav).toNumber()
 }
 
 export function getHoldingProfitToday(fund, holdings) {
@@ -105,7 +103,7 @@ export function getHoldingProfitToday(fund, holdings) {
   if (!h || !h.share) return 0
   const gsz = getCurrentPrice(fund)
   const dwjz = getPreviousPrice(fund)
-  return h.share * (gsz - dwjz)
+  return new Decimal(h.share).mul(new Decimal(gsz).minus(dwjz)).toNumber()
 }
 
 export function getHoldingProfitTotal(fund, holdings) {
@@ -113,17 +111,20 @@ export function getHoldingProfitTotal(fund, holdings) {
   if (!h || !h.share || !h.cost) return 0
   const price = getCurrentPrice(fund)
   if (!price || !h.cost) return 0
-  return h.share * (price - h.cost)
+  return new Decimal(h.share).mul(new Decimal(price).minus(h.cost)).toNumber()
 }
 
 export function getHoldingPrincipalAmount(fund, holdings) {
-  return getHoldingAmount(fund, holdings) - getHoldingProfitTotal(fund, holdings)
+  const amount = getHoldingAmount(fund, holdings)
+  const profit = getHoldingProfitTotal(fund, holdings)
+  return new Decimal(amount).minus(profit).toNumber()
 }
 
 export function getHoldingReturnRate(fund, holdings) {
   const principal = getHoldingPrincipalAmount(fund, holdings)
   if (!principal) return 0
-  return (getHoldingProfitTotal(fund, holdings) / principal) * 100
+  const profit = getHoldingProfitTotal(fund, holdings)
+  return new Decimal(profit).div(principal).mul(100).toNumber()
 }
 
 export function getHoldingProfitTodayClass(fund, holdings) {
@@ -138,17 +139,15 @@ export function calculateShare(amount, nav) {
   const a = parseFloat(amount)
   const n = parseFloat(nav)
   if (isNaN(a) || isNaN(n) || n <= 0) return 0
-  return a / n
+  return new Decimal(a).div(n).toNumber()
 }
 
 export function formatMoney(value) {
-  const num = Number(value)
-  return Number.isFinite(num) ? num.toFixed(2) : '0.00'
+  return fmtMoney(value) || '0.00'
 }
 
 export function formatShare(value) {
-  const num = Number(value)
-  return Number.isFinite(num) ? num.toFixed(2) : '0.00'
+  return fmtMoney(value) || '0.00'
 }
 
 export function genTxnId() {
@@ -227,10 +226,10 @@ export function mapFundDetailToRealtime(detail, fallbackCode) {
     && Number.isFinite(estimatedNav)
     && Number.isFinite(baseOfficialNav)
     && baseOfficialNav > 0
-      ? ((estimatedNav - baseOfficialNav) / baseOfficialNav) * 100
+      ? new Decimal(estimatedNav).minus(baseOfficialNav).div(baseOfficialNav).mul(100).toNumber()
       : null
   const officialChange = latestOfficialNav && previousTrendNav?.nav
-    ? ((latestOfficialNav.nav - previousTrendNav.nav) / previousTrendNav.nav) * 100
+    ? new Decimal(latestOfficialNav.nav).minus(previousTrendNav.nav).div(previousTrendNav.nav).mul(100).toNumber()
     : null
   return {
     code: realtime.fund_code || basic.fund_code || fallbackCode,
