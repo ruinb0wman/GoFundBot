@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { portfolioAPI } from '../services/portfolioApi'
 import {
   getFundNavByDate, getCurrentPrice, getDateText, hasExactNavForDate,
@@ -297,6 +297,8 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
     }
   }
 
+  watch(funds, settlePendingTxnsIfReady)
+
   // ==================== Init ====================
 
   onMounted(async () => {
@@ -334,6 +336,7 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
         }
       }
     } catch { /* API not available */ }
+    settlePendingTxnsIfReady()
   })
 
   return {
