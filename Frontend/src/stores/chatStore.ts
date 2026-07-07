@@ -102,6 +102,7 @@ export const useChatStore = defineStore('chat', {
 
     async switchSession(sessionId: number) {
       this.currentSessionId = sessionId
+      this.isStreaming = false
       this.messages = []
       this.streamingContent = ''
       this.activeToolCalls = []
@@ -163,12 +164,14 @@ export const useChatStore = defineStore('chat', {
             existing.durationMs = tool.duration_ms
           }
         },
-        onDone: () => {
+        onDone: async () => {
           this.finalizeStream()
+          await this.refreshSessions()
         },
-        onError: (error: string) => {
+        onError: async (error: string) => {
           this.streamingContent = error
           this.finalizeStream()
+          await this.refreshSessions()
         },
       })
     },
@@ -185,6 +188,15 @@ export const useChatStore = defineStore('chat', {
       this.isStreaming = false
       this.streamingContent = ''
       this.activeToolCalls = []
+    },
+
+    async refreshSessions() {
+      try {
+        const result = await chatAPI.getSessions()
+        this.sessions = result.data || []
+      } catch {
+        // ignore
+      }
     },
 
     toggleOpen() {

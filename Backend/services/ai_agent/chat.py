@@ -22,7 +22,7 @@ class ChatMixin:
 
         if not self.is_available():
             yield 'event: error\ndata: {"message":"AI 服务未配置，请检查 LLM_API_KEY 环境变量"}\n\n'
-            yield "event: done\ndata: [DONE]\n\n"
+            yield 'event: done\ndata: {"status":"done"}\n\n'
             return
 
         client = OpenAI(api_key=self._api_key, base_url=self._api_base)
@@ -162,4 +162,4 @@ class ChatMixin:
         else:
             yield 'event: error\ndata: {"message":"对话超过最大工具调用次数，请简化问题重试"}\n\n'
 
-        yield "event: done\ndata: [DONE]\n\n"
+        yield 'event: done\ndata: {"status":"done"}\n\n'
