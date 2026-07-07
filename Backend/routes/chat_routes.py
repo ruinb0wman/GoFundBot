@@ -132,6 +132,7 @@ def chat():
     data = request.get_json() or {}
     session_id = data.get("session_id")
     user_message = data.get("message", "").strip()
+    preferred_skill = data.get("skill")
 
     if not user_message:
         return jsonify({"error": "消息不能为空"}), 400
@@ -177,7 +178,7 @@ def chat():
         session_id_val = session_id
 
         try:
-            for event in agent.chat(openai_messages):
+            for event in agent.chat(openai_messages, skill_name=preferred_skill):
                 yield event
 
                 if event.startswith("event: token"):

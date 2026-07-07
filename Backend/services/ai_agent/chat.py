@@ -6,6 +6,8 @@ from typing import Any
 
 from core.logging import get_logger
 
+from .skills import SKILL_MAP
+
 logger = get_logger(__name__)
 
 
@@ -13,11 +15,11 @@ class ChatMixin:
     """Mixin providing the chat/ReAct loop method.
 
     Mixed into AIAgent so it has access to self._api_key, self._api_base,
-    self._model, self.is_available(), self._get_tools(), self._execute_tool(),
-    self.MAX_TOOL_ITERATIONS, and self.TOOL_TIMEOUT.
+    self._model, self.is_available(), self._get_tools_for_skill(),
+    self._execute_tool(), self.MAX_TOOL_ITERATIONS, and self.TOOL_TIMEOUT.
     """
 
-    def chat(self, messages: list[dict[str, Any]]) -> Generator[str, None, None]:
+    def chat(self, messages: list[dict[str, Any]], skill_name: str | None = None) -> Generator[str, None, None]:
         from openai import OpenAI
 
         if not self.is_available():
@@ -27,34 +29,12 @@ class ChatMixin:
 
         client = OpenAI(api_key=self._api_key, base_url=self._api_base)
 
-        system_prompt = """你是一位基金研究助手，你的用户是个人基金投资者。
+        user_message = messages[-1].get("content", "") if messages else ""
+        skill_name, system_prompt = self.route_skill(user_message, skill_name)
+        skill = SKILL_MAP.get(skill_name)
+        tools = self._get_tools_for_skill(skill_name)
 
-## 你的角色
-
-你的工作是为个人投资者查数据、理逻辑、讲市场。你不是投资顾问，不替用户做买卖决策，而是帮用户把"功课"做够的助手。
-
-## 职责范围
-
-- 你可以查基金数据、市场行情、板块资金、新闻快讯等
-- 你需要把不同数据源的信息串起来，帮用户看清全局
-- 用户问"XX基金怎么样"时，给出有依据的研究判断
-- 用户问"XX是多少/查一下"时，直接回报数据即可
-- 用户问"你怎么看/怎么样"时，给出你的分析判断，并明确指出哪些是客观数据、哪些是你的观点
-- 用户问某个方向时，不要替用户扩展他没问到的方向
-
-## 数据守则
-
-1. 所有数据必须来自工具调用，不凭记忆编造
-2. 基金代码、股票代码必须由用户提供，不猜测不编造
-3. 工具返回空或报错时如实告知，不要用无关数据填补
-4. 多个无依赖的工具可以同时调用以节省时间
-
-## 回答要求
-
-1. 用中文，简洁清晰，面对个人投资者，少用生僻术语
-2. 回答直接针对用户的问题——用户问什么就答什么
-3. 用户提到具体基金时，只分析该基金，不主动引入其他基金
-4. 涉及风险时给出提示，但说清楚哪些是数据、哪些是你的判断"""
+        yield f"event: skill_selected\ndata: {json.dumps({'name': skill_name, 'description': skill.description if skill else ''}, ensure_ascii=False)}\n\n"
 
         openai_messages = [{"role": "system", "content": system_prompt}]
         for msg in messages:
@@ -70,7 +50,7 @@ class ChatMixin:
                 response = client.chat.completions.create(
                     model=self._model,
                     messages=openai_messages,
-                    tools=self._get_tools(),
+                    tools=tools,
                     tool_choice="auto",
                     temperature=0.3,
                     max_tokens=4096,

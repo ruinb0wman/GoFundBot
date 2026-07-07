@@ -9,6 +9,7 @@ from typing import Any
 from core.logging import get_logger
 
 from .chat import ChatMixin
+from .skills import SKILL_MAP, SkillRouter
 from .tool_handlers import ToolHandlersMixin
 
 logger = get_logger(__name__)
@@ -28,9 +29,14 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
         self._api_key = os.getenv("LLM_API_KEY", "")
         self._api_base = os.getenv("LLM_API_BASE", "https://api.siliconflow.cn/v1")
         self._model = os.getenv("LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        self._skill_router = SkillRouter(self._api_key, self._api_base, self._model)
 
     def is_available(self) -> bool:
         return bool(self._api_key)
+
+    def route_skill(self, message: str, preferred: str | None = None) -> tuple[str, str]:
+        skill = self._skill_router.route(message, preferred)
+        return skill.name, skill.system_prompt
 
     def _get_tools(self) -> list[dict[str, Any]]:
         return [
@@ -109,7 +115,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_hot_sectors",
-                    "description": "获取热门行业板块排行（申万/同花顺行业分类，如电力设备、半导体、医药生物、银行、汽车等）。注意：不含概念/主题板块（如新能源、AI等），那些需使用 get_concept_sectors。",
+                    "description": "获取热门行业板块实时行情（申万/同花顺分类），返回板块涨跌幅、领涨股、成交额等。不含概念板块，概念板块请用 get_concept_sectors。",
                     "parameters": {
                         "type": "object",
                         "properties": {"limit": {"type": "integer", "description": "返回板块数量，默认10"}},
@@ -120,7 +126,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_concept_sectors",
-                    "description": "获取东方财富概念板块排行（涨跌幅排序）。概念板块如：新能源、人工智能、低空经济、碳中和、人形机器人、华为概念等。注意与 get_hot_sectors（行业板块）的区别——行业板块是申万/同花顺分类，概念板块是东方财富主题概念分类。当用户询问概念/主题板块行情时使用此工具。",
+                    "description": "获取东方财富概念板块实时行情，返回板块涨跌幅、指数点位、主力资金净流入等。",
                     "parameters": {
                         "type": "object",
                         "properties": {"limit": {"type": "integer", "description": "返回板块数量，默认10，最大50"}},
@@ -279,7 +285,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_funds_by_industry",
-                    "description": "根据行业/主题标签查找相关基金。适用于用户询问某类基金（如新能源、医药、半导体、白酒、军工等）。返回基金代码、名称和行业标签信息。",
+                    "description": "根据行业/主题关键词查找相关基金，返回基金代码、名称和行业标签信息。仅在用户已明确提及具体行业/主题名称时调用。",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -292,7 +298,22 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_industry_performance",
+                    "description": "获取各行业板块的多周期业绩汇总——各行业中位收益（3月/6月/1年/3年）、正收益基金占比、基金数量。按收益排名预排序（top_3m / top_1y / weak_3m）。用于识别持续走强或走弱的行业趋势，与当日涨跌幅快照（get_hot_sectors）互补。",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            },
         ]
+
+    def _get_tools_for_skill(self, skill_name: str) -> list[dict[str, Any]]:
+        all_tools = self._get_tools()
+        skill = SKILL_MAP.get(skill_name)
+        if not skill:
+            return all_tools
+        return [t for t in all_tools if t["function"]["name"] in skill.tool_names]
 
     def _execute_tool(self, name: str, args: dict[str, Any]) -> tuple[Any, float]:
         """Execute a tool and return (result, duration_ms)."""
@@ -331,6 +352,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
             "get_fund_holdings": self._tool_get_fund_holdings,
             "get_fund_managers": self._tool_get_fund_managers,
             "get_funds_by_industry": self._tool_get_funds_by_industry,
+            "get_industry_performance": self._tool_get_industry_performance,
         }
         handler = handlers.get(name)
         if not handler:

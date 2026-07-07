@@ -23,17 +23,23 @@ export interface ChatMessageDto {
   created_time: string | null
 }
 
+export interface SkillInfo {
+  name: string
+  description: string
+}
+
 export interface ChatCallbacks {
   onToken: (token: string, full: string) => void
   onToolStart: (tool: ToolCallInfo) => void
   onToolEnd: (tool: { name: string; duration_ms: number }) => void
+  onSkillSelected: (skill: SkillInfo) => void
   onDone: () => void
   onError: (error: string) => void
 }
 
 export const chatAPI = {
-  async sendMessage(sessionId: number | null, message: string, callbacks: ChatCallbacks) {
-    const body = JSON.stringify({ session_id: sessionId, message })
+  async sendMessage(sessionId: number | null, message: string, callbacks: ChatCallbacks, skill?: string) {
+    const body = JSON.stringify({ session_id: sessionId, message, skill })
 
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -108,6 +114,12 @@ export const chatAPI = {
           callbacks.onToolEnd({
             name: parsed.name,
             duration_ms: parsed.duration_ms || 0,
+          })
+          break
+        case 'skill_selected':
+          callbacks.onSkillSelected({
+            name: parsed.name || '',
+            description: parsed.description || '',
           })
           break
         case 'error':

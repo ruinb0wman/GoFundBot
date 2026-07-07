@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from core.logging import get_logger
+from services.helpers import _json_loads
 
 logger = get_logger(__name__)
 
@@ -263,6 +264,17 @@ class ToolHandlersMixin:
             tags = db.query(FundIndustryTag).filter(or_(*conditions)).limit(50).all()
             seen_codes: set[str] = set()
 
+            def _parse_returns(basic):
+                if not basic or not basic.performance_json:
+                    return {}
+                perf = _json_loads(basic.performance_json, {})
+                return {
+                    "return_1m": perf.get("1_month_return"),
+                    "return_3m": perf.get("3_month_return"),
+                    "return_6m": perf.get("6_month_return"),
+                    "return_1y": perf.get("1_year_return"),
+                }
+
             funds: list[dict] = []
             if tags:
                 codes = [t.fund_code for t in tags]
@@ -279,6 +291,7 @@ class ToolHandlersMixin:
                             "fund_type": basic.fund_type if basic else None,
                             "industry_tag": tag.industry_tag,
                             "industry_ratio": tag.industry_ratio,
+                            **_parse_returns(basic),
                         }
                     )
 
@@ -295,6 +308,7 @@ class ToolHandlersMixin:
                             "fund_type": f.fund_type,
                             "industry_tag": None,
                             "industry_ratio": None,
+                            **_parse_returns(f),
                         }
                     )
 
@@ -306,5 +320,15 @@ class ToolHandlersMixin:
                     }
 
             return {"funds": funds, "total": len(funds)}
+        finally:
+            db.close()
+
+    def _tool_get_industry_performance(self) -> Any:
+        from database import SessionLocal
+        from services.fund_industry.performance import _industry_performance_payload
+
+        db = SessionLocal()
+        try:
+            return _industry_performance_payload(db)
         finally:
             db.close()

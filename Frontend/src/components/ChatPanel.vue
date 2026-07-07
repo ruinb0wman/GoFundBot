@@ -103,6 +103,35 @@
         <div ref="scrollAnchor" />
       </div>
 
+      <!-- Skill bar -->
+      <div class="chat-skill-bar" v-if="!chatStore.isStreaming" @click.stop>
+        <span class="skill-label">{{ t('chat.skillLabel') }}</span>
+        <div class="skill-dropdown-wrapper" @click="showSkillPicker = !showSkillPicker">
+          <span class="skill-current" :class="{ 'skill-auto': !chatStore.currentSkill }">
+            {{ currentSkillLabel }}
+          </span>
+          <LucideIcon name="ChevronDown" :size="12" />
+          <div v-if="showSkillPicker" class="skill-dropdown-menu">
+            <div
+              v-for="opt in chatStore.skillOptions"
+              :key="opt.name"
+              class="skill-dropdown-item"
+              :class="{ active: (chatStore.selectedSkill || null) === opt.name || (!chatStore.selectedSkill && opt.name === 'auto') }"
+              @click.stop="selectSkill(opt.name)"
+            >
+              {{ opt.label }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skill badge during streaming -->
+      <div class="chat-skill-bar chat-skill-bar--streaming" v-else-if="chatStore.currentSkill">
+        <span class="skill-label">{{ t('chat.skillLabel') }}</span>
+        <span class="skill-current">{{ currentSkillLabel }}</span>
+        <span class="skill-badge-dot" />
+      </div>
+
       <!-- Input -->
       <div class="chat-input-area">
         <button
@@ -129,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
@@ -146,9 +175,51 @@ const messagesRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const scrollAnchor = ref<HTMLElement | null>(null)
 const showSessions = ref(false)
+const showSkillPicker = ref(false)
 const hasRunningToolCall = computed(() =>
   chatStore.activeToolCalls.some(t => t.status === 'running')
 )
+
+const currentSkillLabel = computed(() => {
+  if (!chatStore.currentSkill) return t('chat.skillAuto')
+  const opt = chatStore.skillOptions.find(s => s.name === chatStore.currentSkill)
+  return opt ? opt.label : t('chat.skillAuto')
+})
+
+const skillSuggestions = computed(() => {
+  const skill = chatStore.currentSkill
+  if (skill === 'market_overview') return [
+    { text: t('chat.suggMarket1') },
+    { text: t('chat.suggMarket2') },
+    { text: t('chat.suggMarket3') },
+  ]
+  if (skill === 'fund_analysis') return [
+    { text: t('chat.suggFund1') },
+    { text: t('chat.suggFund2') },
+    { text: t('chat.suggFund3') },
+  ]
+  if (skill === 'fund_screening') return [
+    { text: t('chat.suggScreen1') },
+    { text: t('chat.suggScreen2') },
+    { text: t('chat.suggScreen3') },
+  ]
+  if (skill === 'news_briefing') return [
+    { text: t('chat.suggNews1') },
+    { text: t('chat.suggNews2') },
+    { text: t('chat.suggNews3') },
+  ]
+  if (skill === 'investment_strategy') return [
+    { text: t('chat.suggStrategy1') },
+    { text: t('chat.suggStrategy2') },
+    { text: t('chat.suggStrategy3') },
+  ]
+  return [
+    { text: t('chat.suggestion1') },
+    { text: t('chat.suggestion2') },
+    { text: t('chat.suggestion3') },
+    { text: t('chat.suggestion4') },
+  ]
+})
 
 const toolLabels = computed((): Record<string, string> => ({
   search_funds: t('chat.tool.searchFunds'),
@@ -173,16 +244,23 @@ const toolLabels = computed((): Record<string, string> => ({
   get_fund_managers: t('chat.tool.getFundManagers'),
 }))
 
-const suggestions = computed(() => [
-  { text: t('chat.suggestion1') },
-  { text: t('chat.suggestion2') },
-  { text: t('chat.suggestion3') },
-  { text: t('chat.suggestion4') },
-])
+const suggestions = computed(() => skillSuggestions.value)
+
+function onClickOutside(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (!target.closest('.chat-skill-bar')) {
+    showSkillPicker.value = false
+  }
+}
 
 onMounted(() => {
   chatStore.init()
   inputRef.value?.focus()
+  document.addEventListener('click', onClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onClickOutside)
 })
 
 watch(
@@ -226,6 +304,15 @@ async function handleNewSession() {
 async function handleSwitchSession(id: number) {
   await chatStore.switchSession(id)
   showSessions.value = false
+}
+
+function selectSkill(name: string) {
+  showSkillPicker.value = false
+  if (name === 'auto') {
+    chatStore.selectSkill(null)
+  } else {
+    chatStore.selectSkill(name)
+  }
 }
 
 function renderMarkdown(text: string): string {

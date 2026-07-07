@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { chatAPI, type ChatSessionDto, type ChatMessageDto, type ToolCallInfo } from '../services/chatApi'
+import { chatAPI, type ChatSessionDto, type ChatMessageDto, type ToolCallInfo, type SkillInfo } from '../services/chatApi'
 
 export interface DisplayMessage {
   id: string
@@ -26,6 +26,16 @@ export const useChatStore = defineStore('chat', {
     isOpen: false,
     isWideMode: false,
     initialized: false,
+    currentSkill: null as string | null,
+    selectedSkill: null as string | null,
+    skillOptions: [
+      { name: 'auto', label: '自动' },
+      { name: 'fund_analysis', label: '基金分析' },
+      { name: 'market_overview', label: '市场概览' },
+      { name: 'news_briefing', label: '快讯新闻' },
+      { name: 'fund_screening', label: '基金筛选' },
+      { name: 'investment_strategy', label: '定投策略' },
+    ] as { name: string; label: string }[],
   }),
 
   getters: {
@@ -145,6 +155,9 @@ export const useChatStore = defineStore('chat', {
       this.isStreaming = true
       this.streamingContent = ''
       this.activeToolCalls = []
+      this.currentSkill = null
+
+      const skillParam = this.selectedSkill && this.selectedSkill !== 'auto' ? this.selectedSkill : undefined
 
       await chatAPI.sendMessage(this.currentSessionId, message, {
         onToken: (token: string, full: string) => {
@@ -164,6 +177,9 @@ export const useChatStore = defineStore('chat', {
             existing.durationMs = tool.duration_ms
           }
         },
+        onSkillSelected: (skill: SkillInfo) => {
+          this.currentSkill = skill.name
+        },
         onDone: async () => {
           this.finalizeStream()
           await this.refreshSessions()
@@ -173,7 +189,7 @@ export const useChatStore = defineStore('chat', {
           this.finalizeStream()
           await this.refreshSessions()
         },
-      })
+      }, skillParam)
     },
 
     finalizeStream() {
@@ -212,6 +228,13 @@ export const useChatStore = defineStore('chat', {
 
     toggleWideMode() {
       this.isWideMode = !this.isWideMode
+    },
+
+    selectSkill(name: string | null) {
+      this.selectedSkill = name
+      if (name) {
+        this.currentSkill = name
+      }
     },
   },
 })
