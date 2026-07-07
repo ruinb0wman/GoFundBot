@@ -50,7 +50,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_detail",
-                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金完整详情（基本信息、业绩、持仓、基金经理、风险指标等）",
+                    "description": "获取基金完整详情：基本信息、业绩、持仓、基金经理、风险指标等",
                     "parameters": {
                         "type": "object",
                         "properties": {"code": {"type": "string", "description": "6位基金代码"}},
@@ -62,7 +62,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_estimate",
-                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金实时估值（盘中估算净值/涨跌幅）",
+                    "description": "获取基金实时估值（盘中估算净值/涨跌幅）",
                     "parameters": {
                         "type": "object",
                         "properties": {"code": {"type": "string", "description": "6位基金代码"}},
@@ -74,7 +74,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_nav_history",
-                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金历史净值数据",
+                    "description": "获取基金历史净值数据",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -186,7 +186,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "screen_funds_by_4433",
-                    "description": "仅在用户要求筛选基金时调用。使用4433法则筛选基金。不要自动为用户做筛选，除非用户明确要求。",
+                    "description": "按4433法则筛选符合条件的基金",
                     "parameters": {"type": "object", "properties": {}},
                 },
             },
@@ -194,7 +194,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "run_backtest",
-                    "description": "仅在用户明确要求做定投回测且提供了6位基金代码时调用。对指定基金运行定投回测模拟。不要主动为用户做回测，除非用户明确要求。",
+                    "description": "对指定基金运行定投回测模拟，对比不同周期和金额的收益表现",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -215,7 +215,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "suggest_strategy",
-                    "description": "仅在用户明确要求推荐策略且提供了6位基金代码时调用。为指定基金推荐最优定投策略。不要主动推荐策略，除非用户明确要求。",
+                    "description": "为指定基金推荐最优定投策略（MA均线/价值平均等方案对比）",
                     "parameters": {
                         "type": "object",
                         "properties": {"fund_code": {"type": "string", "description": "6位基金代码"}},
@@ -255,7 +255,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_holdings",
-                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金重仓持股列表",
+                    "description": "获取基金重仓持股列表",
                     "parameters": {
                         "type": "object",
                         "properties": {"code": {"type": "string", "description": "6位基金代码"}},
@@ -267,7 +267,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
                 "type": "function",
                 "function": {
                     "name": "get_fund_managers",
-                    "description": "仅在用户消息中明确提供了6位基金代码时调用。获取基金经理信息",
+                    "description": "获取基金经理信息",
                     "parameters": {
                         "type": "object",
                         "properties": {"code": {"type": "string", "description": "6位基金代码"}},
