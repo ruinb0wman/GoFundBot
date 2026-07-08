@@ -35,6 +35,7 @@ logger = get_logger(__name__)
 # ============================================================================
 
 app = Flask(__name__, static_folder="static", static_url_path="")
+app.secret_key = "dev-secret-key"
 CORS(app, origins=parse_cors_origins())
 Compress(app)
 
