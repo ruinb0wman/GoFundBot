@@ -15,7 +15,7 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs, extr
   const tradeRecords = ref([])
   const tradeHistoryModal = ref({ open: false, fund: null })
   const adjustmentModal = ref({ open: false, fund: null })
-  const adjustmentForm = ref({ tradeDate: todayDate.value, amount: '', note: '' })
+  const adjustmentForm = ref({ tradeDate: todayDate.value, amount: '', note: '', subtype: 'fee', share: '' })
   const showPending = ref(false)
 
   const upsertTradeRecord = (record) => {
@@ -94,7 +94,7 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs, extr
 
   const openAdjustmentModal = (fund) => {
     adjustmentModal.value = { open: true, fund }
-    adjustmentForm.value = { tradeDate: todayDate.value, amount: '', note: '' }
+    adjustmentForm.value = { tradeDate: todayDate.value, amount: '', note: '', subtype: 'fee', share: '' }
   }
 
   const closeAdjustmentModal = () => {
@@ -106,13 +106,14 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs, extr
     if (!fund) return
     const amount = parseFloat(adjustmentForm.value.amount)
     if (!amount || amount <= 0) return
+    const subtype = adjustmentForm.value.subtype || 'fee'
     const txnId = genTxnId()
-    upsertTradeRecord({
+    const record = {
       id: txnId,
       txnId,
       fundCode: fund.code,
       fundName: fund.name || fund.code,
-      type: 'adjustment',
+      type: subtype,
       tradeDate: adjustmentForm.value.tradeDate,
       amount,
       share: 0,
@@ -121,7 +122,15 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs, extr
       createdAt: new Date().toISOString(),
       settledAt: new Date().toISOString(),
       note: adjustmentForm.value.note || '',
-    })
+    }
+    if (subtype === 'dividend') {
+      const share = parseFloat(adjustmentForm.value.share)
+      if (share > 0) {
+        record.share = share
+        record.nav = amount / share
+      }
+    }
+    upsertTradeRecord(record)
     closeAdjustmentModal()
     if (typeof refreshHoldings === 'function') refreshHoldings()
   }

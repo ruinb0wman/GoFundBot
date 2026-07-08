@@ -1,7 +1,7 @@
 // @ts-nocheck
 import Decimal from 'decimal.js'
 import { computed } from 'vue'
-import { metricBySort, getHoldingEstimatedAmount, getHoldingProfitToday, getHoldingProfitTotal, getPreviousPrice, getValueClass } from './useFundRealtimeBase'
+import { metricBySort, getHoldingEstimatedAmount, getHoldingProfitToday, getHoldingProfitTotal, getHoldingProfitBeforeFee, getHoldingFee, getPreviousPrice, getValueClass } from './useFundRealtimeBase'
 
 export function useFundRealtimeComputeds({
   funds, holdings, fundOrder, sortBy, activeTab,
@@ -151,9 +151,8 @@ export function useFundRealtimeComputeds({
   })
 
   const totalReturnRate = computed(() => {
-    const principal = new Decimal(totalAsset.value).minus(totalProfitTotal.value)
-    if (principal.isZero()) return 0
-    return new Decimal(totalProfitTotal.value).div(principal).mul(100).toNumber()
+    if (totalCost.value === 0) return 0
+    return new Decimal(totalProfitTotal.value).div(totalCost.value).mul(100).toNumber()
   })
 
   const todayReturnRate = computed(() => {
@@ -161,6 +160,33 @@ export function useFundRealtimeComputeds({
     return new Decimal(totalProfitToday.value).div(totalPreviousAsset.value).mul(100).toNumber()
   })
 
+  const totalProfitBeforeFee = computed(() => {
+    const scope = displayFunds.value
+    let total = 0
+    scope.forEach(fund => {
+      const h = holdings.value[fund.code]
+      if (h && h.share && h.cost) {
+        total += getHoldingProfitBeforeFee(fund, holdings.value)
+      }
+    })
+    return total
+  })
+
+  const totalFee = computed(() => {
+    const scope = displayFunds.value
+    let total = 0
+    scope.forEach(fund => {
+      total += getHoldingFee(fund, holdings.value)
+    })
+    return total
+  })
+
+  const totalReturnRateBeforeFee = computed(() => {
+    if (totalCost.value === 0) return 0
+    return new Decimal(totalProfitBeforeFee.value).div(totalCost.value).mul(100).toNumber()
+  })
+
+  const profitBeforeFeeClass = computed(() => getValueClass(totalProfitBeforeFee.value))
   const profitTodayClass = computed(() => getValueClass(totalProfitToday.value))
   const profitTotalClass = computed(() => getValueClass(totalProfitTotal.value))
 
@@ -168,6 +194,8 @@ export function useFundRealtimeComputeds({
     isTradingTime, sortedFunds, displayFunds, emptyTitle, emptyHint,
     hasHoldings, hasRebalanceFunds, hasDividendFunds,
     totalAsset, totalProfitToday, totalPreviousAsset, totalProfitTotal,
-    totalCost, totalReturnRate, todayReturnRate, profitTodayClass, profitTotalClass,
+    totalProfitBeforeFee, totalFee, totalReturnRateBeforeFee,
+    totalCost, totalReturnRate, todayReturnRate,
+    profitBeforeFeeClass, profitTodayClass, profitTotalClass,
   }
 }

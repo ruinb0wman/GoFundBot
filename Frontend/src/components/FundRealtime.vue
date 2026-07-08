@@ -27,8 +27,10 @@
       <div class="overview-grid" v-if="hasHoldings">
         <div class="overview-cell purple"><div class="cell-label">{{ t('fund.realtime.totalMarket') }}</div><div class="cell-val">¥{{ fmtMoney(totalAsset) }}</div></div>
         <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.totalCost') }}</div><div class="cell-val">¥{{ fmtMoney(totalCost) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.totalProfit') }}</div><div class="cell-val" :class="profitTotalClass">{{ totalProfitTotal >= 0 ? '+' : '' }}¥{{ fmtMoney(totalProfitTotal) }}</div></div>
-        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.returnRate') }}</div><div class="cell-val" :class="profitTotalClass">{{ fmtPercent(totalReturnRate) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.grossProfit') }}</div><div class="cell-val" :class="profitBeforeFeeClass">{{ totalProfitBeforeFee >= 0 ? '+' : '' }}¥{{ fmtMoney(totalProfitBeforeFee) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.totalFee') }}</div><div class="cell-val down">-¥{{ fmtMoney(totalFee) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.netProfit') }}</div><div class="cell-val" :class="profitTotalClass">{{ totalProfitTotal >= 0 ? '+' : '' }}¥{{ fmtMoney(totalProfitTotal) }}</div></div>
+        <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.netReturnRate') }}</div><div class="cell-val" :class="profitTotalClass">{{ fmtPercent(totalReturnRate) }}</div></div>
         <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.todayProfit') }}</div><div class="cell-val" :class="profitTodayClass">{{ totalProfitToday >= 0 ? '+' : '' }}¥{{ fmtMoney(totalProfitToday) }}</div></div>
         <div class="overview-cell"><div class="cell-label">{{ t('fund.realtime.todayReturn') }}</div><div class="cell-val" :class="profitTodayClass">{{ fmtPercent(todayReturnRate) }}</div></div>
       </div>
@@ -114,13 +116,16 @@
               <BButton v-if="holdings[fund.code]" size="small" round @click.stop="openAdjustmentModal(fund)">修正</BButton>
             </div>
           </div>
-          <div class="c-h-grid" v-if="holdings[fund.code]">
-            <div class="grid-box"><div class="g-label">持有份额</div><div class="g-val">{{ fmtNumber(holdings[fund.code].share) }}</div></div>
-            <div class="grid-box"><div class="g-label">平均成本</div><div class="g-val">{{ fmtNumber(holdings[fund.code].cost, 4) }}</div></div>
-            <div class="grid-box"><div class="g-label">当前市值</div><div class="g-val">¥{{ fmtMoney(getHoldingEstimatedAmount(fund)) }}</div></div>
-            <div class="grid-box"><div class="g-label">投入本金</div><div class="g-val">¥{{ fmtMoney(getHoldingCostAmount(fund)) }}</div></div>
-            <div class="grid-box"><div class="g-label">收益金额</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ getHoldingProfitTotal(fund) >= 0 ? '+' : '' }}¥{{ fmtMoney(getHoldingProfitTotal(fund)) }}</div></div>
-            <div class="grid-box"><div class="g-label">收益率</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ fmtPercent(getHoldingReturnRate(fund)) }}</div></div>
+      <div class="c-h-grid" v-if="holdings[fund.code]">
+            <div class="grid-box"><div class="g-label">{{ t('fund.realtime.holdShare') }}</div><div class="g-val">{{ fmtNumber(holdings[fund.code].share) }}</div></div>
+            <div class="grid-box"><div class="g-label">{{ t('fund.realtime.avgCost') }}</div><div class="g-val">{{ fmtNumber(holdings[fund.code].cost, 4) }}</div></div>
+            <div class="grid-box"><div class="g-label">{{ t('fund.realtime.marketValue') }}</div><div class="g-val">¥{{ fmtMoney(getHoldingEstimatedAmount(fund)) }}</div></div>
+            <div class="grid-box"><div class="g-label">{{ t('fund.realtime.principal') }}</div><div class="g-val">¥{{ fmtMoney(getHoldingCostAmount(fund)) }}</div></div>
+            <div class="grid-box"><div class="g-label">{{ t('fund.realtime.fee') }}</div><div class="g-val down">-¥{{ fmtMoney(getHoldingFee(fund)) }}</div></div>
+            <div class="grid-box"><div class="g-label">{{ t('fund.realtime.grossProfit') }}</div><div class="g-val" :class="getHoldingProfitBeforeFeeClass(fund)">{{ getHoldingProfitBeforeFee(fund) >= 0 ? '+' : '' }}¥{{ fmtMoney(getHoldingProfitBeforeFee(fund)) }}</div></div>
+            <div class="grid-box"><div class="g-label">{{ t('fund.realtime.grossReturnRate') }}</div><div class="g-val" :class="getHoldingProfitBeforeFeeClass(fund)">{{ fmtPercent(getHoldingReturnRateBeforeFee(fund)) }}</div></div>
+            <div class="grid-box"><div class="g-label">{{ t('fund.realtime.netProfit') }}</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ getHoldingProfitTotal(fund) >= 0 ? '+' : '' }}¥{{ fmtMoney(getHoldingProfitTotal(fund)) }}</div></div>
+            <div class="grid-box"><div class="g-label">{{ t('fund.realtime.netReturnRate') }}</div><div class="g-val" :class="getHoldingProfitTotalClass(fund)">{{ fmtPercent(getHoldingReturnRate(fund)) }}</div></div>
           </div>
           <div v-else class="c-h-grid">
             <div class="grid-box" style="grid-column: 1 / -1; text-align: center; color: var(--text-tertiary);">
@@ -186,6 +191,8 @@
       @update-adjustment-date="(d) => adjustmentForm.tradeDate = d"
       @update-adjustment-amount="(v) => adjustmentForm.amount = v"
       @update-adjustment-note="(n) => adjustmentForm.note = n"
+      @update-adjustment-subtype="(v) => adjustmentForm.subtype = v"
+      @update-adjustment-share="(v) => adjustmentForm.share = v"
     />
   </div>
 </template>
@@ -221,13 +228,15 @@ const {
   isTradingTime, sortedFunds, displayFunds, emptyTitle, emptyHint,
   hasHoldings, hasRebalanceFunds, hasDividendFunds,
   totalAsset, totalProfitToday, totalPreviousAsset, totalProfitTotal,
-  totalCost, totalReturnRate, todayReturnRate, profitTodayClass, profitTotalClass,
+  totalProfitBeforeFee, totalFee, totalReturnRateBeforeFee,
+  totalCost, totalReturnRate, todayReturnRate, profitBeforeFeeClass, profitTodayClass, profitTotalClass,
   getChangeClass, formatGsz, formatChange, getDateText, hasFreshEstimate,
   getCurrentPrice, getLatestPublishedPrice, getPriceStatusLabel, getPreviousPrice,
   getHoldingCostAmount, getHoldingEstimatedAmount,
   getHoldingProfitToday, getHoldingProfitTotal,
-  getHoldingReturnRate,
-  getHoldingProfitTodayClass, getHoldingProfitTotalClass,
+  getHoldingProfitBeforeFee, getHoldingProfitBeforeFeeClass, getHoldingFee,
+  getHoldingReturnRate, getHoldingReturnRateBeforeFee,
+  getHoldingProfitTodayClass, getHoldingProfitTotalClass, getValueClass,
   calculateShare, formatMoney, formatShare,
   buildTradeRecord, upsertTradeRecord, removeTradeRecordByTxnId,
   getTradeStatusText, getLegacyPendingRecord, getFundTradeRecords,

@@ -81,7 +81,8 @@
           <span>{{ t('fund.realtimeModal.type') }}</span><span>{{ t('fund.realtimeModal.time') }}</span><span>{{ t('fund.realtimeModal.amount') }}</span><span>{{ t('fund.realtimeModal.price') }}</span><span>{{ t('fund.realtimeModal.shares') }}</span><span>{{ t('fund.realtimeModal.status') }}</span>
         </div>
         <div class="trade-history-row" v-for="record in filteredRecords" :key="record.id">
-          <span v-if="record.type === 'adjustment'" class="trade-type adjustment">{{ t('fund.realtimeModal.adjustment') }}</span>
+          <span v-if="record.type === 'fee'" class="trade-type fee">{{ t('fund.realtimeModal.fee') }}</span>
+          <span v-else-if="record.type === 'dividend'" class="trade-type dividend">{{ t('fund.realtimeModal.dividend') }}</span>
           <span v-else class="trade-type" :class="record.type">{{ record.type === 'buy' ? t('fund.realtimeModal.buy') : t('fund.realtimeModal.sell') }}</span>
           <span>{{ record.tradeDate || '-' }}</span>
           <span>¥{{ formatMoney?.(record.amount) }}</span>
@@ -122,10 +123,23 @@
           />
         </div>
         <div class="form-group elegant-input-group">
-          <label>{{ t('fund.realtimeModal.adjustmentAmount') }}</label>
+          <label>{{ t('fund.realtimeModal.adjustmentType') }}</label>
+          <div class="trade-toggle">
+            <div class="trade-toggle-btn fee" :class="{ active: adjustmentForm?.subtype === 'fee' }" @click="emit('update-adjustment-subtype', 'fee')">{{ t('fund.realtimeModal.fee') }}</div>
+            <div class="trade-toggle-btn dividend" :class="{ active: adjustmentForm?.subtype === 'dividend' }" @click="emit('update-adjustment-subtype', 'dividend')">{{ t('fund.realtimeModal.dividend') }}</div>
+          </div>
+        </div>
+        <div class="form-group elegant-input-group">
+          <label>{{ adjustmentForm?.subtype === 'dividend' ? t('fund.realtimeModal.dividendAmount') : t('fund.realtimeModal.adjustmentAmount') }}</label>
           <div class="input-wrapper">
             <span class="prefix">¥</span>
             <input :value="adjustmentForm?.amount" @input="emit('update-adjustment-amount', ($event.target as HTMLInputElement).value)" type="number" step="any" min="0" :placeholder="t('fund.realtimeModal.adjustmentExpense')" class="modal-input no-border highlight" />
+          </div>
+        </div>
+        <div v-if="adjustmentForm?.subtype === 'dividend'" class="form-group elegant-input-group">
+          <label>{{ t('fund.realtimeModal.dividendShares') }}</label>
+          <div class="input-wrapper">
+            <input :value="adjustmentForm?.share" @input="emit('update-adjustment-share', ($event.target as HTMLInputElement).value)" type="number" step="any" min="0" :placeholder="t('fund.realtimeModal.dividendSharesPlaceholder')" class="modal-input no-border highlight" />
           </div>
         </div>
         <div class="form-group elegant-input-group">
@@ -197,12 +211,14 @@ const emit = defineEmits<{
   (e: 'update-adjustment-date', date: string): void
   (e: 'update-adjustment-amount', v: string): void
   (e: 'update-adjustment-note', v: string): void
+  (e: 'update-adjustment-subtype', v: string): void
+  (e: 'update-adjustment-share', v: string): void
 }>()
 
 const filteredRecords = computed(() => {
   if (historyTab.value === 'all') return props.tradeRecords
   if (historyTab.value === 'trade') return props.tradeRecords.filter(r => r.type === 'buy' || r.type === 'sell')
-  if (historyTab.value === 'adjust') return props.tradeRecords.filter(r => r.type === 'adjustment')
+  if (historyTab.value === 'adjust') return props.tradeRecords.filter(r => r.type === 'fee' || r.type === 'dividend')
   return props.tradeRecords
 })
 </script>
@@ -417,7 +433,8 @@ const filteredRecords = computed(() => {
 
 .trade-type.buy { color: var(--color-danger); background: var(--color-danger-bg); }
 .trade-type.sell { color: var(--color-success); background: var(--color-success-bg); }
-.trade-type.adjustment { color: var(--color-primary); background: var(--color-primary-bg); }
+.trade-type.fee { color: var(--color-primary); background: var(--color-primary-bg); }
+.trade-type.dividend { color: var(--color-success); background: var(--color-success-bg); }
 
 .history-tabs {
   display: flex;

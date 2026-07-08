@@ -53,6 +53,8 @@ def migrate_database():
         else:
             print("fund_screening_rank table already exists.")
 
+        migrate_adjustment_to_fee(conn)
+
         conn.commit()
         print("Migration completed successfully!")
 
@@ -61,6 +63,26 @@ def migrate_database():
         conn.rollback()
     finally:
         conn.close()
+
+
+def migrate_adjustment_to_fee(conn=None):
+    """Convert old 'adjustment' trade records to 'fee' type."""
+    if conn is None:
+        if not os.path.exists(DB_PATH):
+            print(f"Database not found at {DB_PATH}")
+            return
+        conn = sqlite3.connect(DB_PATH)
+        own_conn = True
+    else:
+        own_conn = False
+
+    cursor = conn.cursor()
+    cursor.execute("UPDATE user_trade_record SET type = 'fee' WHERE type = 'adjustment'")
+    updated = cursor.rowcount
+    if own_conn:
+        conn.commit()
+        conn.close()
+    print(f"已将 {updated} 条 adjustment 记录迁移为 fee")
 
 
 def clean_dirty_data():

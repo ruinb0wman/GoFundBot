@@ -418,7 +418,7 @@ class UserTradeRecord(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     fund_code = Column(String(6), nullable=False, index=True)
     fund_name = Column(String(100))
-    type = Column(String(10), nullable=False)  # buy / sell / adjustment
+    type = Column(String(10), nullable=False)  # buy / sell / fee / dividend
     trade_date = Column(String(10))
     amount = Column(Float, default=0)
     share = Column(Float, default=0)

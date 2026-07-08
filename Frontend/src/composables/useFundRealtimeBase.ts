@@ -1,7 +1,7 @@
 // @ts-nocheck
 
 import Decimal from 'decimal.js'
-import { fmtMoney, fmtChange, fmtNumber } from '../utils/number'
+import { fmtMoney, fmtChange, fmtNumber, fmtPercent as baseFmtPercent } from '../utils/number'
 
 // ==================== Pure utility functions ====================
 
@@ -106,7 +106,7 @@ export function getHoldingProfitToday(fund, holdings) {
   return new Decimal(h.share).mul(new Decimal(gsz).minus(dwjz)).toNumber()
 }
 
-export function getHoldingProfitTotal(fund, holdings) {
+export function getHoldingProfitBeforeFee(fund, holdings) {
   const h = holdings[fund.code]
   if (!h || !h.share || !h.cost) return 0
   const price = getCurrentPrice(fund)
@@ -114,10 +114,32 @@ export function getHoldingProfitTotal(fund, holdings) {
   return new Decimal(h.share).mul(new Decimal(price).minus(h.cost)).toNumber()
 }
 
+export function getHoldingFee(fund, holdings) {
+  const h = holdings[fund.code]
+  return h?.total_fee || 0
+}
+
+export function getHoldingReturnRateBeforeFee(fund, holdings) {
+  const h = holdings[fund.code]
+  if (!h || !h.share || !h.cost) return 0
+  const profit = getHoldingProfitBeforeFee(fund, holdings)
+  return new Decimal(profit).div(h.share * h.cost).mul(100).toNumber()
+}
+
+export function getHoldingProfitTotal(fund, holdings) {
+  const h = holdings[fund.code]
+  if (!h || !h.share || !h.cost) return 0
+  const price = getCurrentPrice(fund)
+  if (!price || !h.cost) return 0
+  const profit = new Decimal(h.share).mul(new Decimal(price).minus(h.cost)).toNumber()
+  const fee = h.total_fee || 0
+  return new Decimal(profit).minus(fee).toNumber()
+}
+
 export function getHoldingPrincipalAmount(fund, holdings) {
-  const amount = getHoldingAmount(fund, holdings)
-  const profit = getHoldingProfitTotal(fund, holdings)
-  return new Decimal(amount).minus(profit).toNumber()
+  const h = holdings[fund.code]
+  if (!h || !h.share || !h.cost) return 0
+  return new Decimal(h.share).mul(h.cost).toNumber()
 }
 
 export function getHoldingReturnRate(fund, holdings) {
@@ -133,6 +155,10 @@ export function getHoldingProfitTodayClass(fund, holdings) {
 
 export function getHoldingProfitTotalClass(fund, holdings) {
   return getValueClass(getHoldingProfitTotal(fund, holdings))
+}
+
+export function getHoldingProfitBeforeFeeClass(fund, holdings) {
+  return getValueClass(getHoldingProfitBeforeFee(fund, holdings))
 }
 
 export function calculateShare(amount, nav) {

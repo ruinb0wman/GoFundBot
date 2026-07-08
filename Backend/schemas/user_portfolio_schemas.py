@@ -36,7 +36,7 @@ class TradeRecordCreateSchema(BaseModel):
 
     fund_code: str
     fund_name: str = ""
-    type: str  # buy / sell
+    type: str  # buy / sell / fee / dividend
     trade_date: str = ""
     amount: float = 0
     share: float = 0
@@ -56,8 +56,8 @@ class TradeRecordCreateSchema(BaseModel):
     @field_validator("type")
     @classmethod
     def check_type(cls, v: str) -> str:
-        if v not in ("buy", "sell", "adjustment"):
-            raise ValueError("type 必须为 buy、sell 或 adjustment")
+        if v not in ("buy", "sell", "fee", "dividend"):
+            raise ValueError("type 必须为 buy、sell、fee 或 dividend")
         return v
 
 

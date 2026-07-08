@@ -18,7 +18,11 @@ import {
   getHoldingEstimatedAmount as baseGetHoldingEstimatedAmount,
   getHoldingProfitToday as baseGetHoldingProfitToday,
   getHoldingProfitTotal as baseGetHoldingProfitTotal,
+  getHoldingProfitBeforeFee as baseGetHoldingProfitBeforeFee,
+  getHoldingProfitBeforeFeeClass as baseGetHoldingProfitBeforeFeeClass,
+  getHoldingFee as baseGetHoldingFee,
   getHoldingReturnRate as baseGetHoldingReturnRate,
+  getHoldingReturnRateBeforeFee as baseGetHoldingReturnRateBeforeFee,
   getHoldingProfitTodayClass as baseGetHoldingProfitTodayClass,
   getHoldingProfitTotalClass as baseGetHoldingProfitTotalClass,
   calculateShare as baseCalculateShare,
@@ -41,6 +45,7 @@ import {
   getFundMiniChart3m as baseGetFundMiniChart3m,
   getTrendColorClass3m as baseGetTrendColorClass3m,
   metricBySort as baseMetricBySort,
+  getValueClass as baseGetValueClass,
 } from './useFundRealtimeBase'
 
 export function useFundRealtime(emit) {
@@ -65,8 +70,12 @@ export function useFundRealtime(emit) {
   // we auto-bind holdings.value so the pure 2-arg signatures still work.
   const getHoldingProfitToday = (fund) => baseGetHoldingProfitToday(fund, data.holdings.value)
   const getHoldingProfitTotal = (fund) => baseGetHoldingProfitTotal(fund, data.holdings.value)
+  const getHoldingProfitBeforeFee = (fund) => baseGetHoldingProfitBeforeFee(fund, data.holdings.value)
+  const getHoldingProfitBeforeFeeClass = (fund) => baseGetHoldingProfitBeforeFeeClass(fund, data.holdings.value)
+  const getHoldingFee = (fund) => baseGetHoldingFee(fund, data.holdings.value)
   const getHoldingEstimatedAmount = (fund) => baseGetHoldingEstimatedAmount(fund, data.holdings.value)
   const getHoldingReturnRate = (fund) => baseGetHoldingReturnRate(fund, data.holdings.value)
+  const getHoldingReturnRateBeforeFee = (fund) => baseGetHoldingReturnRateBeforeFee(fund, data.holdings.value)
   const getHoldingProfitTodayClass = (fund) => baseGetHoldingProfitTodayClass(fund, data.holdings.value)
   const getHoldingProfitTotalClass = (fund) => baseGetHoldingProfitTotalClass(fund, data.holdings.value)
   const getHoldingCostAmount = (fund) => baseGetHoldingCostAmount(fund, data.holdings.value)
@@ -99,6 +108,7 @@ export function useFundRealtime(emit) {
   const getFundMiniChart3m = (f) => baseGetFundMiniChart3m(f)
   const getTrendColorClass3m = (f) => baseGetTrendColorClass3m(f)
   const metricBySort = (f, k) => baseMetricBySort(f, k)
+  const getValueClass = (v) => baseGetValueClass(v)
 
   const showPortfolioAnalysis = ref(false)
 
@@ -109,14 +119,14 @@ export function useFundRealtime(emit) {
     getChangeClass, formatGsz, formatChange, getDateText, hasFreshEstimate,
     getCurrentPrice, getLatestPublishedPrice, getPriceStatusLabel, getPreviousPrice,
     getHoldingCostAmount, getHoldingEstimatedAmount,
-    getHoldingProfitToday, getHoldingProfitTotal,
-    getHoldingReturnRate, getHoldingProfitTodayClass, getHoldingProfitTotalClass,
+    getHoldingProfitToday, getHoldingProfitTotal, getHoldingProfitBeforeFee, getHoldingProfitBeforeFeeClass, getHoldingFee,
+    getHoldingReturnRate, getHoldingReturnRateBeforeFee, getHoldingProfitTodayClass, getHoldingProfitTotalClass,
     calculateShare, formatMoney, formatShare,
     buildTradeRecord, getTradeStatusText, genTxnId,
     mapPortfolioHoldings, mapFundDetailToRealtime, parseTrendPoint,
     getFundTrendSeries, getFundNavByDate, hasExactNavForDate, isTradeDatePending,
     getFundSparklinePoints, getSparklinePath, getSparklineFill,
     getFundSparklinePoints3m, getFundMiniChart3m, getTrendColorClass3m, metricBySort,
-    showPortfolioAnalysis,
+    getValueClass, showPortfolioAnalysis,
   }
 }

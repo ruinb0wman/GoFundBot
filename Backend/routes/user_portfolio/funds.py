@@ -174,7 +174,7 @@ def list_holdings():
     for t in trades:
         code = t.fund_code
         if code not in result:
-            result[code] = {"share": 0, "buy_amount": 0, "buy_shares": 0, "buy_date": ""}
+            result[code] = {"share": 0, "buy_amount": 0, "buy_shares": 0, "buy_date": "", "total_fee": 0}
         r = result[code]
         if t.type == "buy":
             r["buy_amount"] += t.amount
@@ -184,8 +184,12 @@ def list_holdings():
                 r["buy_date"] = t.trade_date
         elif t.type == "sell":
             r["share"] -= t.share
-        elif t.type == "adjustment":
+        elif t.type == "dividend":
             r["buy_amount"] += t.amount
+            r["buy_shares"] += t.share
+            r["share"] += t.share
+        elif t.type == "fee":
+            r["total_fee"] += t.amount
 
     for code, r in result.items():
         r["cost"] = round(r["buy_amount"] / r["buy_shares"], 4) if r["buy_shares"] > 0 else 0
