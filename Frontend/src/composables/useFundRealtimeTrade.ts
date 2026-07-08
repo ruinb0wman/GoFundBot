@@ -21,23 +21,32 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
     const idx = tradeRecords.value.findIndex(r => r.id === record.id || (record.txnId && r.txnId === record.txnId))
     if (idx >= 0) {
       const next = [...tradeRecords.value]
-      next[idx] = { ...next[idx], ...record }
+      const existing = next[idx]
+      next[idx] = { ...existing, ...record }
       tradeRecords.value = next
+      if (existing.dbId) {
+        portfolioAPI.updateTrade(existing.dbId, {
+          status: record.status,
+          settled_at: record.settledAt || '',
+        }).catch(() => {})
+      }
     } else {
       tradeRecords.value = [record, ...tradeRecords.value]
+      portfolioAPI.addTrade({
+        fund_code: record.fundCode,
+        fund_name: record.fundName,
+        type: record.type,
+        trade_date: record.tradeDate,
+        amount: record.amount,
+        share: record.share,
+        nav: record.nav,
+        status: record.status || 'settled',
+        txn_id: record.txnId || record.id || '',
+        settled_at: record.settledAt || '',
+      }).then(res => {
+        if (res?.data?.id) record.dbId = res.data.id
+      }).catch(() => {})
     }
-    portfolioAPI.addTrade({
-      fund_code: record.fundCode,
-      fund_name: record.fundName,
-      type: record.type,
-      trade_date: record.tradeDate,
-      amount: record.amount,
-      share: record.share,
-      nav: record.nav,
-      status: record.status || 'settled',
-      txn_id: record.txnId || record.id || '',
-      settled_at: record.settledAt || '',
-    }).catch(() => {})
   }
 
   const removeTradeRecordByTxnId = (txnId) => {
@@ -329,7 +338,7 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
             fundName: r.fund_name || r.fund_code,
             type: r.type,
             tradeDate: r.trade_date || '',
-            inputValue: r.amount || 0,
+            inputValue: r.type === 'sell' ? (r.share || 0) : (r.amount || 0),
             nav: r.nav || 0,
             createdAt: r.created_at || '',
           }))
