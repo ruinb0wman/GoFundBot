@@ -28,7 +28,20 @@ logger = get_logger(__name__)
 def list_groups():
     db = get_db()
     items = db.query(UserPortfolioGroup).order_by(UserPortfolioGroup.sort_order).all()
-    return jsonify([{"id": g.id, "name": g.name, "sort_order": g.sort_order} for g in items])
+    return jsonify(
+        [
+            {
+                "id": g.id,
+                "name": g.name,
+                "sort_order": g.sort_order,
+                "rebalance_enabled": g.rebalance_enabled or 0,
+                "rebalance_target": g.rebalance_target,
+                "rebalance_upper": g.rebalance_upper,
+                "rebalance_lower": g.rebalance_lower,
+            }
+            for g in items
+        ]
+    )
 
 
 @user_portfolio_bp.route("/groups", methods=["POST"])
@@ -38,7 +51,14 @@ def create_group():
     db = get_db()
     try:
         max_order = db.query(UserPortfolioGroup).count()
-        g = UserPortfolioGroup(name=data["name"], sort_order=max_order)
+        g = UserPortfolioGroup(
+            name=data["name"],
+            sort_order=max_order,
+            rebalance_enabled=data.get("rebalance_enabled", 0),
+            rebalance_target=data.get("rebalance_target"),
+            rebalance_upper=data.get("rebalance_upper"),
+            rebalance_lower=data.get("rebalance_lower"),
+        )
         db.add(g)
         db.commit()
         return jsonify({"status": "ok", "id": g.id}), 201
@@ -58,6 +78,14 @@ def update_group(group_id):
     try:
         if "name" in data and data["name"] is not None:
             g.name = data["name"]
+        if "rebalance_enabled" in data and data["rebalance_enabled"] is not None:
+            g.rebalance_enabled = data["rebalance_enabled"]
+        if "rebalance_target" in data:
+            g.rebalance_target = data["rebalance_target"]
+        if "rebalance_upper" in data:
+            g.rebalance_upper = data["rebalance_upper"]
+        if "rebalance_lower" in data:
+            g.rebalance_lower = data["rebalance_lower"]
         g.updated_time = datetime.now()
         db.commit()
         return jsonify({"status": "ok"})

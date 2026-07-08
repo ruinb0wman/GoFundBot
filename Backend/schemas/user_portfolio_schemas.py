@@ -78,6 +78,10 @@ class PortfolioGroupCreateSchema(BaseModel):
     model_config = {"extra": "ignore"}
 
     name: str
+    rebalance_enabled: int = 0
+    rebalance_target: float | None = None
+    rebalance_upper: float | None = None
+    rebalance_lower: float | None = None
 
     @field_validator("name")
     @classmethod
@@ -89,11 +93,29 @@ class PortfolioGroupCreateSchema(BaseModel):
             raise ValueError("分组名称不能超过 20 个字符")
         return v
 
+    @field_validator("rebalance_enabled")
+    @classmethod
+    def check_rebalance_enabled(cls, v: int) -> int:
+        if v not in (0, 1):
+            raise ValueError("rebalance_enabled 必须为 0 或 1")
+        return v
+
+    @field_validator("rebalance_target", "rebalance_upper", "rebalance_lower")
+    @classmethod
+    def check_rebalance_threshold(cls, v: float | None) -> float | None:
+        if v is not None and (v <= 0 or v > 100):
+            raise ValueError("再平衡阈值必须在 0 到 100 之间")
+        return v
+
 
 class PortfolioGroupUpdateSchema(BaseModel):
     model_config = {"extra": "ignore"}
 
     name: str | None = None
+    rebalance_enabled: int | None = None
+    rebalance_target: float | None = None
+    rebalance_upper: float | None = None
+    rebalance_lower: float | None = None
 
     @field_validator("name")
     @classmethod
@@ -104,6 +126,20 @@ class PortfolioGroupUpdateSchema(BaseModel):
                 raise ValueError("分组名称不能为空")
             if len(v) > 20:
                 raise ValueError("分组名称不能超过 20 个字符")
+        return v
+
+    @field_validator("rebalance_enabled")
+    @classmethod
+    def check_rebalance_enabled(cls, v: int | None) -> int | None:
+        if v is not None and v not in (0, 1):
+            raise ValueError("rebalance_enabled 必须为 0 或 1")
+        return v
+
+    @field_validator("rebalance_target", "rebalance_upper", "rebalance_lower")
+    @classmethod
+    def check_rebalance_threshold(cls, v: float | None) -> float | None:
+        if v is not None and (v <= 0 or v > 100):
+            raise ValueError("再平衡阈值必须在 0 到 100 之间")
         return v
 
 

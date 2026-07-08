@@ -29,7 +29,9 @@ export const portfolioAPI = {
 
   // ── Groups ──
   getGroups() { return api.get('/user/portfolio/groups') },
-  createGroup(name: string) { return api.post('/user/portfolio/groups', { name }) },
+  createGroup(name: string, rebalance?: Record<string, unknown>) {
+    return api.post('/user/portfolio/groups', { name, ...rebalance })
+  },
   updateGroup(id: number, data: Record<string, unknown>) { return api.put(`/user/portfolio/groups/${id}`, data) },
   deleteGroup(id: number) { return api.delete(`/user/portfolio/groups/${id}`) },
 

@@ -98,7 +98,7 @@
       <div class="trade-history-empty" v-else>{{ t('fund.realtimeModal.noRecords') }}</div>
     </BaseModal>
 
-    <BaseModal :visible="showGroupModal" width="360" height="auto" @close="emit('close-group')">
+    <BaseModal :visible="showGroupModal" width="420" height="auto" @close="emit('close-group')">
       <template #header>
         <h3 style="margin:0">{{ editingGroup ? t('fund.realtimeModal.renameGroup') : t('fund.realtimeModal.newGroup') }}</h3>
       </template>
@@ -110,6 +110,44 @@
           autofocus
           @keydown="(e) => e.key === 'Enter' && emit('save-group')"
         />
+      </div>
+      <div class="rebalance-section">
+        <div class="rebalance-header">
+          <span>{{ t('fund.realtimeModal.rebalanceSettings') }}</span>
+          <BSwitch :modelValue="rebalanceForm?.enabled" @update:modelValue="emit('update-rebalance', 'enabled', $event)" />
+        </div>
+        <div v-if="rebalanceForm?.enabled" class="rebalance-fields">
+          <div class="form-group elegant-input-group">
+            <label>{{ t('fund.realtimeModal.rebalanceTarget') }}</label>
+            <BInputNumber
+              :modelValue="rebalanceForm?.target"
+              @update:modelValue="emit('update-rebalance', 'target', $event)"
+              :min="1" :max="100" :controls="false"
+            >
+              <template #suffix>%</template>
+            </BInputNumber>
+          </div>
+          <div class="form-group elegant-input-group">
+            <label>{{ t('fund.realtimeModal.rebalanceUpper') }}</label>
+            <BInputNumber
+              :modelValue="rebalanceForm?.upper"
+              @update:modelValue="emit('update-rebalance', 'upper', $event)"
+              :min="1" :max="100" :controls="false"
+            >
+              <template #suffix>%</template>
+            </BInputNumber>
+          </div>
+          <div class="form-group elegant-input-group">
+            <label>{{ t('fund.realtimeModal.rebalanceLower') }}</label>
+            <BInputNumber
+              :modelValue="rebalanceForm?.lower"
+              @update:modelValue="emit('update-rebalance', 'lower', $event)"
+              :min="0" :max="100" :controls="false"
+            >
+              <template #suffix>%</template>
+            </BInputNumber>
+          </div>
+        </div>
       </div>
       <template #footer>
         <BButton @click="emit('close-group')">{{ t('fund.realtimeModal.cancel') }}</BButton>
@@ -188,6 +226,7 @@ import BaseModal from './BaseModal.vue'
 import BDatePicker from './BDatePicker.vue'
 import BInput from './BInput.vue'
 import BInputNumber from './BInputNumber.vue'
+import BSwitch from './BSwitch.vue'
 import FundSearch from './FundSearch.vue'
 import { fmtNumber } from '../utils/number'
 const { t } = useI18n()
@@ -207,6 +246,7 @@ const props = defineProps<{
   showGroupModal: boolean
   groupName: string
   editingGroup: any
+  rebalanceForm: any
   adjustmentModal: any
   adjustmentForm: any
   holdings: any
@@ -231,6 +271,7 @@ const emit = defineEmits<{
   (e: 'close-group'): void
   (e: 'update-group-name', name: string): void
   (e: 'save-group'): void
+  (e: 'update-rebalance', field: string, value: any): void
   (e: 'close-adjustment'): void
   (e: 'save-adjustment'): void
   (e: 'update-adjustment-date', date: string): void
@@ -461,5 +502,33 @@ const filteredRecords = computed(() => {
 
 .set-holding-form {
   padding-top: 2px;
+}
+
+.rebalance-section {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+
+.rebalance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rebalance-fields {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default);
+}
+
+.rebalance-fields .form-group {
+  margin-bottom: 10px;
 }
 </style>

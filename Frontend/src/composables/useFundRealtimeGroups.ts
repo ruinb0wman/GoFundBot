@@ -9,6 +9,7 @@ export function useFundRealtimeGroups() {
   const showGroupModal = ref(false)
   const editingGroup = ref(null)
   const groupName = ref('')
+  const rebalanceForm = ref({ enabled: false, target: null, upper: null, lower: null })
   const contextMenu = ref({ show: false, x: 0, y: 0, groupId: null })
 
   onMounted(async () => {
@@ -25,6 +26,7 @@ export function useFundRealtimeGroups() {
   const openAddGroupModal = () => {
     editingGroup.value = null
     groupName.value = ''
+    rebalanceForm.value = { enabled: false, target: null, upper: null, lower: null }
     showGroupModal.value = true
     nextTick(() => {
       const input = document.querySelector('.group-name-input')
@@ -35,6 +37,12 @@ export function useFundRealtimeGroups() {
   const openEditGroupModal = (group) => {
     editingGroup.value = group
     groupName.value = group.name
+    rebalanceForm.value = {
+      enabled: !!group.rebalance_enabled,
+      target: group.rebalance_target ?? null,
+      upper: group.rebalance_upper ?? null,
+      lower: group.rebalance_lower ?? null,
+    }
     showGroupModal.value = true
     nextTick(() => {
       const input = document.querySelector('.group-name-input')
@@ -54,15 +62,42 @@ export function useFundRealtimeGroups() {
     if (editingGroup.value) {
       const id = editingGroup.value.id
       const idx = portfolioGroups.value.findIndex(g => g.id === id)
-      if (idx !== -1) portfolioGroups.value[idx].name = name
-      try { await portfolioAPI.updateGroup(id, { name })
+      if (idx !== -1) {
+        portfolioGroups.value[idx] = {
+          ...portfolioGroups.value[idx],
+          name,
+          rebalance_enabled: rebalanceForm.value.enabled ? 1 : 0,
+          rebalance_target: rebalanceForm.value.target,
+          rebalance_upper: rebalanceForm.value.upper,
+          rebalance_lower: rebalanceForm.value.lower,
+        }
+      }
+      try {
+        await portfolioAPI.updateGroup(id, {
+          name,
+          rebalance_enabled: rebalanceForm.value.enabled ? 1 : 0,
+          rebalance_target: rebalanceForm.value.target,
+          rebalance_upper: rebalanceForm.value.upper,
+          rebalance_lower: rebalanceForm.value.lower,
+        })
       } catch { /* fallback */ }
     } else {
       const localId = 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)
-      const newGroup = { id: localId, name }
+      const newGroup = {
+        id: localId, name,
+        rebalance_enabled: rebalanceForm.value.enabled ? 1 : 0,
+        rebalance_target: rebalanceForm.value.target,
+        rebalance_upper: rebalanceForm.value.upper,
+        rebalance_lower: rebalanceForm.value.lower,
+      }
       portfolioGroups.value.push(newGroup)
       try {
-        const res = await portfolioAPI.createGroup(name)
+        const res = await portfolioAPI.createGroup(name, {
+          rebalance_enabled: rebalanceForm.value.enabled ? 1 : 0,
+          rebalance_target: rebalanceForm.value.target,
+          rebalance_upper: rebalanceForm.value.upper,
+          rebalance_lower: rebalanceForm.value.lower,
+        })
         if (res?.data?.id) newGroup.id = res.data.id
       } catch { /* fallback */ }
     }
@@ -139,7 +174,7 @@ export function useFundRealtimeGroups() {
   }
 
   return {
-    portfolioGroups, fundGroupMap, showGroupModal, editingGroup, groupName, contextMenu,
+    portfolioGroups, fundGroupMap, showGroupModal, editingGroup, groupName, rebalanceForm, contextMenu,
     openAddGroupModal, openEditGroupModal, closeGroupModal, saveGroup, deleteGroup,
     assignFundToGroup, openGroupContextMenu, closeContextMenu, renameGroupFromMenu, deleteGroupFromMenu,
   }

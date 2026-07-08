@@ -21,7 +21,7 @@
 
     <div class="overview-box">
       <div class="overview-head">
-        <div class="title-with-icon"><LucideIcon name="BarChart3" :size="18" /> {{ t('fund.realtime.overview') }}<span v-if="activeTab.startsWith('group_')" class="scope-tag">{{ portfolioGroups.find(g => 'group_' + g.id === activeTab)?.name || '' }}</span><span v-else-if="activeTab==='rebalance'" class="scope-tag">{{ t('fund.realtime.rebalance') }}</span><span v-else-if="activeTab==='dividend'" class="scope-tag">{{ t('fund.realtime.dividendLowVol') }}</span></div>
+        <div class="title-with-icon"><LucideIcon name="BarChart3" :size="18" /> {{ t('fund.realtime.overview') }}<span v-if="activeTab.startsWith('group_')" class="scope-tag">{{ portfolioGroups.find(g => 'group_' + g.id === activeTab)?.name || '' }}</span><span v-else-if="activeTab==='dividend'" class="scope-tag">{{ t('fund.realtime.dividendLowVol') }}</span></div>
         <div class="meta-info">{{ t('fund.realtime.dataDisclaimer') }} {{ nowTime }}</div>
       </div>
       <div class="overview-grid" v-if="hasHoldings">
@@ -67,10 +67,13 @@
 
     <div class="content-tabs">
       <div class="ctab" :class="{active: activeTab==='all'}" @click="activeTab='all'"><LucideIcon name="Briefcase" :size="16" /> 基金持仓</div>
-      <div v-for="g in portfolioGroups" :key="g.id" class="ctab" :class="{active: activeTab === 'group_' + g.id}" @click="activeTab = 'group_' + g.id" @contextmenu.prevent="openGroupContextMenu($event, g.id)"><LucideIcon name="Folder" :size="16" /> {{ g.name }}</div>
+      <div v-for="g in portfolioGroups" :key="g.id" class="ctab" :class="{active: activeTab === 'group_' + g.id}" @click="activeTab = 'group_' + g.id" @contextmenu.prevent="openGroupContextMenu($event, g.id)">
+        <LucideIcon name="Folder" :size="16" /> {{ g.name }}
+        <span v-if="g.rebalance_enabled && groupRebalanceWarningCount[g.id]" class="rebalance-badge" :title="rebalanceTooltip(g.id)">
+          <LucideIcon name="TriangleAlert" :size="12" />
+        </span>
+      </div>
       <BButton circle size="small" @click="openAddGroupModal" title="新建分组" icon="FolderPlus" />
-      <div class="ctab" :class="{active: activeTab==='rebalance'}" @click="activeTab='rebalance'"><LucideIcon name="Scale" :size="16" /> 再平衡管理</div>
-      <span v-if="activeTab === 'rebalance'" class="threshold-label"><span class="threshold-prefix">≥</span><BInputNumber v-model="rebalanceThreshold" :min="1" :step="1" :controls="false" size="small" style="width:64px" /><span class="threshold-suffix">%</span></span>
       <div v-if="hasDividendFunds" class="ctab" :class="{active: activeTab==='dividend'}" @click="activeTab='dividend'"><LucideIcon name="TrendingDown" :size="16" /> 红利低波</div>
     </div>
 
@@ -165,6 +168,7 @@
       :show-group-modal="showGroupModal"
       :group-name="groupName"
       :editing-group="editingGroup"
+      :rebalance-form="rebalanceForm"
       :holdings="holdings"
       :funds="funds"
       :get-trade-nav="getTradeNav"
@@ -186,6 +190,8 @@
       @close-group="closeGroupModal"
       @save-group="saveGroup"
       @update-group-name="(n) => groupName = n"
+      @update-rebalance="(field, val) => rebalanceForm[field] = val"
+      @open-add-group="openAddGroupModal"
       @close-adjustment="closeAdjustmentModal"
       @save-adjustment="saveAdjustment"
       @update-adjustment-date="(d) => adjustmentForm.tradeDate = d"
@@ -223,10 +229,9 @@ const {
   pendingTxns, tradeRecords, tradeHistoryModal, showPending,
   adjustmentModal, adjustmentForm,
   dragIndex, dragOverIndex, fundOrder, portfolioGroups, fundGroupMap,
-  showGroupModal, editingGroup, groupName, contextMenu,
-  rebalanceThreshold,
+  showGroupModal, editingGroup, groupName, rebalanceForm, contextMenu,
   isTradingTime, sortedFunds, displayFunds, emptyTitle, emptyHint,
-  hasHoldings, hasRebalanceFunds, hasDividendFunds,
+  hasHoldings, hasDividendFunds, groupRebalanceWarningCount, rebalanceTooltip,
   totalAsset, totalProfitToday, totalPreviousAsset, totalProfitTotal,
   totalProfitBeforeFee, totalFee, totalReturnRateBeforeFee,
   totalCost, totalReturnRate, todayReturnRate, profitBeforeFeeClass, profitTodayClass, profitTotalClass,

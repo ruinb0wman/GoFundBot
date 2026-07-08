@@ -494,7 +494,6 @@
   "fund.realtime.tradeDate": "Trade Date",
   "fund.realtime.cancel": "Cancel",
   "fund.realtime.holdings": "Holdings",
-  "fund.realtime.rebalance": "Rebalance",
   "fund.realtime.dividendLowVol": "Dividend Low Vol",
   "fund.realtime.rename": "Rename",
   "fund.realtime.deleteGroup": "Delete Group",
@@ -580,6 +579,10 @@
   "fund.realtimeModal.adjustmentNote": "Note",
   "fund.realtimeModal.adjustmentNotePlaceholder": "Optional note",
   "fund.realtimeModal.saveAdjustment": "Save",
+  "fund.realtimeModal.rebalanceSettings": "Rebalance Settings",
+  "fund.realtimeModal.rebalanceTarget": "Target Allocation (per fund)",
+  "fund.realtimeModal.rebalanceUpper": "Upper Threshold",
+  "fund.realtimeModal.rebalanceLower": "Lower Threshold",
 
   "market.title": "Market Overview",
   "market.realtimeData": "Market Realtime Data",

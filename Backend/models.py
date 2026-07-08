@@ -437,6 +437,10 @@ class UserPortfolioGroup(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False)
     sort_order = Column(Integer, default=0)
+    rebalance_enabled = Column(Integer, default=0)
+    rebalance_target = Column(Float, nullable=True)
+    rebalance_upper = Column(Float, nullable=True)
+    rebalance_lower = Column(Float, nullable=True)
     created_time = Column(DateTime, default=datetime.now)
     updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

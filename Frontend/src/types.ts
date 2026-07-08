@@ -70,3 +70,18 @@ export interface FundAnalysisResult {
   detailed_report: string
   analyst_reports?: AnalystReport[]
 }
+
+export interface PortfolioGroupRebalance {
+  enabled: boolean
+  target: number | null
+  upper: number | null
+  lower: number | null
+}
+
+export interface RebalanceWarning {
+  fundCode: string
+  fundName: string
+  ratio: number
+  threshold: number
+  type: 'upper' | 'lower'
+}

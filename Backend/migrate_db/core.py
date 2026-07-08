@@ -55,6 +55,19 @@ def migrate_database():
 
         migrate_adjustment_to_fee(conn)
 
+        print("Checking user_portfolio_group table for rebalance columns...")
+        cursor.execute("PRAGMA table_info(user_portfolio_group)")
+        group_columns = [row[1] for row in cursor.fetchall()]
+        for col_name, col_type in [
+            ("rebalance_enabled", "INTEGER DEFAULT 0"),
+            ("rebalance_target", "FLOAT"),
+            ("rebalance_upper", "FLOAT"),
+            ("rebalance_lower", "FLOAT"),
+        ]:
+            if col_name not in group_columns:
+                print(f"Adding column {col_name} to user_portfolio_group...")
+                cursor.execute(f"ALTER TABLE user_portfolio_group ADD COLUMN {col_name} {col_type}")
+
         conn.commit()
         print("Migration completed successfully!")
 

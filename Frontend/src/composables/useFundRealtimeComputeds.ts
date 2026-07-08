@@ -5,7 +5,7 @@ import { metricBySort, getHoldingEstimatedAmount, getHoldingProfitToday, getHold
 
 export function useFundRealtimeComputeds({
   funds, holdings, fundOrder, sortBy, activeTab,
-  portfolioGroups, fundGroupMap, rebalanceThreshold
+  portfolioGroups, fundGroupMap
 }) {
   const isTradingTime = computed(() => {
     const now = new Date()
@@ -39,16 +39,6 @@ export function useFundRealtimeComputeds({
       const groupId = activeTab.value.replace('group_', '')
       return sortedFunds.value.filter(f => fundGroupMap.value[f.code] === groupId)
     }
-    if (activeTab.value === 'rebalance') {
-      return sortedFunds.value.filter(f => {
-        const h = holdings.value[f.code]
-        if (!h || !h.share) return false
-        const amount = getHoldingEstimatedAmount(f, holdings.value)
-        if (!amount) return false
-        const diffRatio = Math.abs(getHoldingProfitTotal(f, holdings.value) / amount)
-        return diffRatio >= rebalanceThreshold.value / 100
-      })
-    }
     if (activeTab.value === 'dividend') {
       return sortedFunds.value.filter(f => /红利|低波|价值|股息|高股息/.test(f.name || ''))
     }
@@ -60,14 +50,12 @@ export function useFundRealtimeComputeds({
       const g = portfolioGroups.value.find(g => 'group_' + g.id === activeTab.value)
       return g ? `"${g.name}" 分组暂无基金` : '暂无基金'
     }
-    if (activeTab.value === 'rebalance') return '暂无需要再平衡的基金'
     if (activeTab.value === 'dividend') return '暂无匹配"红利低波"主题的基金'
     return '暂无基金'
   })
 
   const emptyHint = computed(() => {
     if (activeTab.value.startsWith('group_')) return '将基金分配到该分组即可在此查看'
-    if (activeTab.value === 'rebalance') return `当前持仓波动处于 ±${rebalanceThreshold.value}% 以内`
     if (activeTab.value === 'dividend') return '请添加名称包含"红利 / 低波 / 股息"等关键词基金'
     return '点击添加基金后，搜索基金名称或代码即可加入持仓列表'
   })
@@ -76,19 +64,72 @@ export function useFundRealtimeComputeds({
     return displayFunds.value.some(f => holdings.value[f.code] && holdings.value[f.code].share)
   })
 
-  const hasRebalanceFunds = computed(() => {
-    return funds.value.some(f => {
-      const h = holdings.value[f.code]
-      if (!h || !h.share) return false
-      const amount = getHoldingEstimatedAmount(f, holdings.value)
-      if (!amount) return false
-      return Math.abs(getHoldingProfitTotal(f, holdings.value) / amount) >= rebalanceThreshold.value / 100
-    })
-  })
-
   const hasDividendFunds = computed(() => {
     return funds.value.some(f => /红利|低波|价值|股息|高股息/.test(f.name || ''))
   })
+
+  const groupRebalanceStatus = computed(() => {
+    const result = {}
+    for (const group of portfolioGroups.value) {
+      if (!group.rebalance_enabled) continue
+      const target = group.rebalance_target
+      const upper = group.rebalance_upper
+      const lower = group.rebalance_lower
+      if (!target || !upper || lower === null || lower === undefined) continue
+
+      const groupFunds = funds.value.filter(f => {
+        const gid = fundGroupMap.value[f.code]
+        return gid !== undefined && gid !== null && String(gid) === String(group.id)
+      })
+      if (groupFunds.length === 0) continue
+
+      let totalValue = 0
+      const fundValues = {}
+      for (const f of groupFunds) {
+        const val = getHoldingEstimatedAmount(f, holdings.value)
+        fundValues[f.code] = val
+        totalValue += val
+      }
+      if (totalValue === 0) continue
+
+      const upperWarnings = []
+      const lowerWarnings = []
+      for (const f of groupFunds) {
+        const ratio = (fundValues[f.code] / totalValue) * 100
+        if (ratio >= upper) {
+          upperWarnings.push({ fundCode: f.code, fundName: f.name, ratio, threshold: upper, type: 'upper' })
+        } else if (ratio <= lower) {
+          lowerWarnings.push({ fundCode: f.code, fundName: f.name, ratio, threshold: lower, type: 'lower' })
+        }
+      }
+
+      if (upperWarnings.length > 0 || lowerWarnings.length > 0) {
+        result[group.id] = { upperWarnings, lowerWarnings }
+      }
+    }
+    return result
+  })
+
+  const groupRebalanceWarningCount = computed(() => {
+    const counts = {}
+    for (const [groupId, status] of Object.entries(groupRebalanceStatus.value)) {
+      counts[groupId] = status.upperWarnings.length + status.lowerWarnings.length
+    }
+    return counts
+  })
+
+  function rebalanceTooltip(groupId) {
+    const status = groupRebalanceStatus.value[groupId]
+    if (!status) return ''
+    const lines = []
+    for (const w of status.upperWarnings) {
+      lines.push(`${w.fundName} 超上限 (${w.ratio.toFixed(1)}% > ${w.threshold}%)`)
+    }
+    for (const w of status.lowerWarnings) {
+      lines.push(`${w.fundName} 低于下限 (${w.ratio.toFixed(1)}% < ${w.threshold}%)`)
+    }
+    return lines.join('\n')
+  }
 
   const totalAsset = computed(() => {
     const scope = displayFunds.value
@@ -192,7 +233,8 @@ export function useFundRealtimeComputeds({
 
   return {
     isTradingTime, sortedFunds, displayFunds, emptyTitle, emptyHint,
-    hasHoldings, hasRebalanceFunds, hasDividendFunds,
+    hasHoldings, hasDividendFunds,
+    groupRebalanceStatus, groupRebalanceWarningCount, rebalanceTooltip,
     totalAsset, totalProfitToday, totalPreviousAsset, totalProfitTotal,
     totalProfitBeforeFee, totalFee, totalReturnRateBeforeFee,
     totalCost, totalReturnRate, todayReturnRate,

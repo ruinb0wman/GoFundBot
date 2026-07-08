@@ -494,7 +494,6 @@
   "fund.realtime.tradeDate": "交易日",
   "fund.realtime.cancel": "取消",
   "fund.realtime.holdings": "基金持仓",
-  "fund.realtime.rebalance": "再平衡管理",
   "fund.realtime.dividendLowVol": "红利低波",
   "fund.realtime.rename": "重命名",
   "fund.realtime.deleteGroup": "删除分组",
@@ -580,6 +579,10 @@
   "fund.realtimeModal.adjustmentNote": "备注",
   "fund.realtimeModal.adjustmentNotePlaceholder": "可选备注",
   "fund.realtimeModal.saveAdjustment": "保存调整",
+  "fund.realtimeModal.rebalanceSettings": "再平衡设置",
+  "fund.realtimeModal.rebalanceTarget": "目标占比（每只基金）",
+  "fund.realtimeModal.rebalanceUpper": "上限阈值",
+  "fund.realtimeModal.rebalanceLower": "下限阈值",
 
   "market.title": "市场概览",
   "market.realtimeData": "市场实时数据",

@@ -36,11 +36,9 @@ export function useFundRealtimeData(emit, extra = {}) {
   const fundOrder = ref([])
   const dragIndex = ref(null)
   const dragOverIndex = ref(null)
-  const rebalanceThreshold = ref(8)
-
   const base = useFundRealtimeComputeds({
     funds, holdings, fundOrder, sortBy, activeTab,
-    portfolioGroups, fundGroupMap, rebalanceThreshold,
+    portfolioGroups, fundGroupMap,
   })
 
   const isSelected = (code) => selectedFunds.value.some(f => f.CODE === code)
@@ -276,9 +274,6 @@ export function useFundRealtimeData(emit, extra = {}) {
     else if (funds.value.length) fundOrder.value = funds.value.map(f => f.code)
     const ss = localStorage.getItem('realtime_sort_by'); if (ss) sortBy.value = ss
     const su = localStorage.getItem('gofundbot_user'); if (su) username.value = su
-    const st = parseInt(localStorage.getItem('realtime_rebalance_threshold') || '8', 10)
-    if (st >= 1) rebalanceThreshold.value = st
-
     startRefreshTimer(); updateNowTime()
     timeTimer.value = setInterval(updateNowTime, 60000)
     document.addEventListener('mousedown', handleClickOutside)
@@ -299,11 +294,9 @@ export function useFundRealtimeData(emit, extra = {}) {
   })
 
   watch(sortBy, (v) => localStorage.setItem('realtime_sort_by', v))
-  watch([base.hasRebalanceFunds, base.hasDividendFunds], ([r, d]) => {
-    if (activeTab.value === 'rebalance' && !r) activeTab.value = 'all'
+  watch(base.hasDividendFunds, (d) => {
     if (activeTab.value === 'dividend' && !d) activeTab.value = 'all'
   })
-  watch(rebalanceThreshold, (v) => localStorage.setItem('realtime_rebalance_threshold', String(v)))
 
   return {
     funds, holdings, collapsedCodes, refreshing, refreshMs,
@@ -311,7 +304,7 @@ export function useFundRealtimeData(emit, extra = {}) {
     addFundModalOpen, username, nowTime, sortBy, activeTab,
     dropdownRef, searchPanelRef, searchTimeoutRef, refreshTimer,
     timeTimer, searchLoading, todayDate,
-    fundOrder, dragIndex, dragOverIndex, rebalanceThreshold,
+    fundOrder, dragIndex, dragOverIndex,
     portfolioGroups, fundGroupMap,
     ...base,
     isSelected,
