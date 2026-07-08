@@ -8,7 +8,6 @@ from core.validation import validate_body
 from database import get_request_db as get_db
 from models import (
     UserFundGroupMap,
-    UserFundHolding,
     UserFundPortfolio,
     UserPortfolioGroup,
     UserPosition,
@@ -46,21 +45,6 @@ def migrate_from_localstorage():
                     fund_type=f.get("type") or f.get("fund_type", ""),
                     fund_data_json=json.dumps(f, ensure_ascii=False) if isinstance(f, dict) else None,
                     sort_order=so,
-                )
-            )
-
-        holdings = data.get("holdings", {})
-        for code, h in holdings.items():
-            if db.query(UserFundHolding).filter(UserFundHolding.fund_code == code).first():
-                continue
-            db.add(
-                UserFundHolding(
-                    fund_code=code,
-                    share=h.get("share", 0),
-                    cost=h.get("cost", 0),
-                    buy_date=h.get("buy_date", ""),
-                    profit=h.get("profit", 0),
-                    profit_nav_date=h.get("profit_nav_date", ""),
                 )
             )
 
@@ -161,7 +145,6 @@ def export_all():
     db = get_db()
 
     funds = db.query(UserFundPortfolio).order_by(UserFundPortfolio.sort_order).all()
-    holdings = db.query(UserFundHolding).all()
     trades = db.query(UserTradeRecord).order_by(desc(UserTradeRecord.created_time)).all()
     groups = db.query(UserPortfolioGroup).order_by(UserPortfolioGroup.sort_order).all()
     group_map = db.query(UserFundGroupMap).all()
@@ -178,16 +161,6 @@ def export_all():
             }
             for f in funds
         ],
-        "holdings": {
-            h.fund_code: {
-                "share": h.share,
-                "cost": h.cost,
-                "buy_date": h.buy_date,
-                "profit": h.profit,
-                "profit_nav_date": h.profit_nav_date,
-            }
-            for h in holdings
-        },
         "tradeRecords": [
             {
                 "id": t.id,

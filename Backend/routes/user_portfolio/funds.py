@@ -1,17 +1,15 @@
 import json
-from datetime import datetime
 
 from flask import jsonify, request
 
 from core.logging import get_logger
 from core.validation import validate_body
 from database import get_request_db as get_db
-from models import UserFundGroupMap, UserFundHolding, UserFundPortfolio
+from models import UserFundGroupMap, UserFundPortfolio, UserTradeRecord
 from schemas.user_portfolio_schemas import (
     FundPortfolioBatchCreateSchema,
     FundPortfolioCreateSchema,
     FundPortfolioReorderSchema,
-    HoldingUpsertSchema,
 )
 
 from . import user_portfolio_bp
@@ -159,91 +157,41 @@ def update_all_funds():
 
 
 # ──────────────────────────────────────────────
-# Holdings
+# Holdings (computed from trade records)
 # ──────────────────────────────────────────────
 
 
 @user_portfolio_bp.route("/holdings", methods=["GET"])
 def list_holdings():
     db = get_db()
-    items = db.query(UserFundHolding).all()
+    as_of = request.args.get("as_of")
+    query = db.query(UserTradeRecord).filter(UserTradeRecord.status == "settled")
+    if as_of:
+        query = query.filter(UserTradeRecord.trade_date <= as_of)
+    trades = query.order_by(UserTradeRecord.trade_date).all()
+
     result = {}
-    for h in items:
-        result[h.fund_code] = {
-            "share": h.share,
-            "cost": h.cost,
-            "buy_date": h.buy_date or "",
-            "profit": h.profit,
-            "profit_nav_date": h.profit_nav_date or "",
-        }
+    for t in trades:
+        code = t.fund_code
+        if code not in result:
+            result[code] = {"share": 0, "buy_amount": 0, "buy_shares": 0, "buy_date": ""}
+        r = result[code]
+        if t.type == "buy":
+            r["buy_amount"] += t.amount
+            r["buy_shares"] += t.share
+            r["share"] += t.share
+            if not r["buy_date"] or (t.trade_date and t.trade_date < r["buy_date"]):
+                r["buy_date"] = t.trade_date
+        elif t.type == "sell":
+            r["share"] -= t.share
+        elif t.type == "adjustment":
+            r["buy_amount"] += t.amount
+
+    for code, r in result.items():
+        r["cost"] = round(r["buy_amount"] / r["buy_shares"], 4) if r["buy_shares"] > 0 else 0
+        if r["share"] <= 0.001:
+            r["share"] = 0
+            r["cost"] = 0
+        del r["buy_amount"], r["buy_shares"]
+
     return jsonify(result)
-
-
-@user_portfolio_bp.route("/holdings/<fund_code>", methods=["PUT"])
-@validate_body(HoldingUpsertSchema)
-def upsert_holding(fund_code):
-    data = request.get_json()
-    db = get_db()
-    try:
-        existing = db.query(UserFundHolding).filter(UserFundHolding.fund_code == fund_code).first()
-        if existing:
-            existing.share = data.get("share", existing.share)
-            existing.cost = data.get("cost", existing.cost)
-            existing.buy_date = data.get("buy_date", existing.buy_date)
-            existing.profit = data.get("profit", existing.profit)
-            existing.profit_nav_date = data.get("profit_nav_date", existing.profit_nav_date)
-            existing.updated_time = datetime.now()
-        else:
-            h = UserFundHolding(
-                fund_code=fund_code,
-                share=data.get("share", 0),
-                cost=data.get("cost", 0),
-                buy_date=data.get("buy_date", ""),
-                profit=data.get("profit", 0),
-                profit_nav_date=data.get("profit_nav_date", ""),
-            )
-            db.add(h)
-        db.commit()
-        return jsonify({"status": "ok"})
-    except Exception as e:
-        db.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
-@user_portfolio_bp.route("/holdings/<fund_code>", methods=["DELETE"])
-def delete_holding(fund_code):
-    db = get_db()
-    item = db.query(UserFundHolding).filter(UserFundHolding.fund_code == fund_code).first()
-    if not item:
-        return jsonify({"error": "持仓不存在"}), 404
-    try:
-        db.delete(item)
-        db.commit()
-        return jsonify({"status": "ok"})
-    except Exception as e:
-        db.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
-@user_portfolio_bp.route("/holdings", methods=["PUT"])
-def replace_all_holdings():
-    data = request.get_json(silent=True) or {}
-    holdings = data.get("holdings", {})
-    db = get_db()
-    try:
-        db.query(UserFundHolding).delete()
-        for code, h in holdings.items():
-            item = UserFundHolding(
-                fund_code=code,
-                share=h.get("share", 0),
-                cost=h.get("cost", 0),
-                buy_date=h.get("buy_date", ""),
-                profit=h.get("profit", 0),
-                profit_nav_date=h.get("profit_nav_date", ""),
-            )
-            db.add(item)
-        db.commit()
-        return jsonify({"status": "ok"})
-    except Exception as e:
-        db.rollback()
-        return jsonify({"error": str(e)}), 500

@@ -9,11 +9,11 @@ export const portfolioAPI = {
   reorderFunds(codes: string[]) { return api.put('/user/portfolio/funds/reorder', { fund_codes: codes }) },
   updateAllFunds(funds: Record<string, unknown>[]) { return api.put('/user/portfolio/funds/all', { funds }) },
 
-  // ── Holdings ──
-  getHoldings() { return api.get('/user/portfolio/holdings') },
-  upsertHolding(code: string, data: Record<string, unknown>) { return api.put(`/user/portfolio/holdings/${code}`, data) },
-  deleteHolding(code: string) { return api.delete(`/user/portfolio/holdings/${code}`) },
-  replaceAllHoldings(holdings: Record<string, unknown>) { return api.put('/user/portfolio/holdings', { holdings }) },
+  // ── Holdings (computed from trade records) ──
+  getHoldings(asOf?: string) {
+    const params = asOf ? { as_of: asOf } : {}
+    return api.get('/user/portfolio/holdings', { params })
+  },
 
   // ── Trade Records ──
   getTrades(fundCode?: string) {

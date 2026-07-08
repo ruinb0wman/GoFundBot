@@ -1,5 +1,4 @@
 // @ts-nocheck
-import Decimal from 'decimal.js'
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { fundAPI } from '../services/api'
 import { portfolioAPI } from '../services/portfolioApi'
@@ -7,7 +6,7 @@ import { useFundStore } from '../stores/fundStore'
 import {
   getDateText, getCurrentPrice, getLatestPublishedPrice, getPreviousPrice,
   getHoldingProfitToday, getHoldingEstimatedAmount, getHoldingProfitTotal,
-  getHoldingAmount, mapFundDetailToRealtime, hasFreshEstimate,
+  mapFundDetailToRealtime, hasFreshEstimate,
 } from './useFundRealtimeBase'
 import { useFundRealtimeComputeds } from './useFundRealtimeComputeds'
 
@@ -43,33 +42,6 @@ export function useFundRealtimeData(emit, extra = {}) {
     funds, holdings, fundOrder, sortBy, activeTab,
     portfolioGroups, fundGroupMap, rebalanceThreshold,
   })
-
-  const ensureProfitNavDates = (fundList = funds.value) => {
-    let changed = false
-    const nh = { ...holdings.value }
-    fundList.forEach(fund => {
-      const h = nh[fund.code]; const nd = getDateText(fund?.jzrq)
-      if (h && h.share && nd && !h.profit_nav_date) {
-        nh[fund.code] = { ...h, profit_nav_date: nd }; changed = true
-      }
-    })
-    if (changed) holdings.value = nh
-  }
-
-  const settleOfficialNavProfits = (fundList = funds.value) => {
-    let changed = false
-    const nh = { ...holdings.value }
-    fundList.forEach(fund => {
-      const h = nh[fund.code]; const nd = getDateText(fund?.jzrq)
-      if (!h || !h.share || !nd || hasFreshEstimate(fund)) return
-      if (h.profit_nav_date && h.profit_nav_date >= nd) return
-      nh[fund.code] = {
-        ...h, profit: new Decimal(h.profit ?? 0).plus(getHoldingProfitToday(fund, holdings.value)).toNumber(),
-        profit_nav_date: nd,
-      }; changed = true
-    })
-    if (changed) holdings.value = nh
-  }
 
   const isSelected = (code) => selectedFunds.value.some(f => f.CODE === code)
 
@@ -208,21 +180,12 @@ export function useFundRealtimeData(emit, extra = {}) {
     if (refreshing.value || !funds.value.length) return
     refreshing.value = true
     try {
-      ensureProfitNavDates(funds.value)
       const updated = []
       for (const fund of funds.value) {
         const fresh = await fetchFundData(fund.code)
         updated.push(fresh || fund)
       }
       funds.value = updated
-      settleOfficialNavProfits(updated)
-      updated.forEach(fund => {
-        const h = holdings.value[fund.code]
-        if (h) portfolioAPI.upsertHolding(fund.code, {
-          share: h.share, cost: h.cost, buy_date: h.buy_date || '',
-          profit: h.profit ?? 0, profit_nav_date: h.profit_nav_date || '',
-        }).catch(() => {})
-      })
     } catch (e) { console.error('刷新失败', e)
     } finally { refreshing.value = false; updateNowTime() }
   }
@@ -304,8 +267,6 @@ export function useFundRealtimeData(emit, extra = {}) {
       if (data && typeof data === 'object') holdings.value = data
     } catch { console.warn('加载持仓数据失败') }
 
-    ensureProfitNavDates(funds.value)
-
     const savedMs = parseInt(localStorage.getItem('realtime_refresh_ms') || '180000', 10)
     if (Number.isFinite(savedMs) && savedMs >= 5000) refreshMs.value = savedMs
     const sc = JSON.parse(localStorage.getItem('realtime_collapsed') || '[]')
@@ -322,6 +283,14 @@ export function useFundRealtimeData(emit, extra = {}) {
     timeTimer.value = setInterval(updateNowTime, 60000)
     document.addEventListener('mousedown', handleClickOutside)
   })
+
+  const refreshHoldings = async () => {
+    try {
+      const res = await portfolioAPI.getHoldings()
+      const data = res?.data
+      if (data && typeof data === 'object') holdings.value = data
+    } catch { console.warn('刷新持仓失败') }
+  }
 
   onUnmounted(() => {
     if (refreshTimer.value) clearInterval(refreshTimer.value)
@@ -345,11 +314,11 @@ export function useFundRealtimeData(emit, extra = {}) {
     fundOrder, dragIndex, dragOverIndex, rebalanceThreshold,
     portfolioGroups, fundGroupMap,
     ...base,
-    ensureProfitNavDates, settleOfficialNavProfits, isSelected,
+    isSelected,
     openAddFundModal, closeAddFundModal, selectFundForAdd, toggleSelectFund,
     toggleCollapse, performSearch, fetchFundData, addFundToRealtime,
     pickSearchCandidate, confirmAddFund, batchAddFunds,
-    refreshAll, startRefreshTimer, removeFund, openFundDetail,
+    refreshAll, refreshHoldings, startRefreshTimer, removeFund, openFundDetail,
     onDragStart, onDragOver, onDragEnd,
     saveRefreshMs, updateNowTime, exportData, importData, handleClickOutside,
   }

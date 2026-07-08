@@ -410,22 +410,6 @@ class UserFundPortfolio(Base):
     updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
-class UserFundHolding(Base):
-    """用户基金持仓（对应前端 realtime_holdings）"""
-
-    __tablename__ = "user_fund_holding"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    fund_code = Column(String(6), unique=True, nullable=False, index=True)
-    share = Column(Float, default=0)
-    cost = Column(Float, default=0)
-    buy_date = Column(String(10))
-    profit = Column(Float, default=0)
-    profit_nav_date = Column(String(10))
-    created_time = Column(DateTime, default=datetime.now)
-    updated_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-
-
 class UserTradeRecord(Base):
     """用户交易记录（含挂起交易，对应前端 realtime_trade_records + realtime_pending_txns）"""
 
@@ -434,7 +418,7 @@ class UserTradeRecord(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     fund_code = Column(String(6), nullable=False, index=True)
     fund_name = Column(String(100))
-    type = Column(String(10), nullable=False)  # buy / sell
+    type = Column(String(10), nullable=False)  # buy / sell / adjustment
     trade_date = Column(String(10))
     amount = Column(Float, default=0)
     share = Column(Float, default=0)

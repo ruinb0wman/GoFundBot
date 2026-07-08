@@ -67,20 +67,26 @@
     <BaseModal :visible="tradeHistoryModal?.open" width="680" height="auto" @close="emit('close-trade-history')">
       <template #header>
         <div>
-          <div class="modal-kicker">{{ t('fund.realtimeModal.tradeHistory') }}</div>
+          <div class="modal-kicker">{{ t('fund.realtimeModal.holdingRecords') }}</div>
           <h3 style="margin:0">{{ tradeHistoryModal.fund?.name }} <span class="fund-code-sm">#{{ tradeHistoryModal.fund?.code }}</span></h3>
         </div>
       </template>
-      <div class="trade-history-table" v-if="tradeRecords?.length">
+      <div class="history-tabs">
+        <div class="history-tab" :class="{ active: historyTab === 'all' }" @click="historyTab = 'all'">{{ t('fund.realtimeModal.tabAll') }}</div>
+        <div class="history-tab" :class="{ active: historyTab === 'trade' }" @click="historyTab = 'trade'">{{ t('fund.realtimeModal.tabTrade') }}</div>
+        <div class="history-tab" :class="{ active: historyTab === 'adjust' }" @click="historyTab = 'adjust'">{{ t('fund.realtimeModal.tabAdjust') }}</div>
+      </div>
+      <div class="trade-history-table" v-if="filteredRecords.length">
         <div class="trade-history-row trade-history-head">
           <span>{{ t('fund.realtimeModal.type') }}</span><span>{{ t('fund.realtimeModal.time') }}</span><span>{{ t('fund.realtimeModal.amount') }}</span><span>{{ t('fund.realtimeModal.price') }}</span><span>{{ t('fund.realtimeModal.shares') }}</span><span>{{ t('fund.realtimeModal.status') }}</span>
         </div>
-        <div class="trade-history-row" v-for="record in tradeRecords" :key="record.id">
-          <span class="trade-type" :class="record.type">{{ record.type === 'buy' ? t('fund.realtimeModal.buy') : t('fund.realtimeModal.sell') }}</span>
+        <div class="trade-history-row" v-for="record in filteredRecords" :key="record.id">
+          <span v-if="record.type === 'adjustment'" class="trade-type adjustment">{{ t('fund.realtimeModal.adjustment') }}</span>
+          <span v-else class="trade-type" :class="record.type">{{ record.type === 'buy' ? t('fund.realtimeModal.buy') : t('fund.realtimeModal.sell') }}</span>
           <span>{{ record.tradeDate || '-' }}</span>
           <span>¥{{ formatMoney?.(record.amount) }}</span>
-          <span>{{ record.nav != null ? fmtNumber(record.nav, 4) : '-' }}</span>
-          <span>{{ formatShare?.(record.share) }}</span>
+          <span>{{ record.nav != null && record.nav > 0 ? fmtNumber(record.nav, 4) : '-' }}</span>
+          <span>{{ record.share > 0 ? formatShare?.(record.share) : '-' }}</span>
           <span class="trade-status" :class="record.status">{{ record.status === 'pending' ? t('fund.realtimeModal.pending') : t('fund.realtimeModal.updated') }}</span>
         </div>
       </div>
@@ -98,38 +104,47 @@
       </template>
     </BaseModal>
 
-    <BaseModal :visible="showEditModal" width="560" height="auto" @close="emit('close-edit')">
+    <BaseModal :visible="adjustmentModal?.open" width="560" height="auto" @close="emit('close-adjustment')">
       <template #header>
         <div>
-          <div class="modal-kicker">{{ editForm?.fund ? (holdings?.[editForm.fund.code] ? t('fund.realtimeModal.editPosition') : t('fund.realtimeModal.setPosition')) : t('fund.realtimeModal.setPosition') }}</div>
-          <h3 style="margin:0">{{ editForm?.fund?.name }} <span class="fund-code-sm">#{{ editForm?.fund?.code }}</span></h3>
+          <div class="modal-kicker">{{ t('fund.realtimeModal.adjustment') }}</div>
+          <h3 style="margin:0">{{ adjustmentModal.fund?.name }} <span class="fund-code-sm">#{{ adjustmentModal.fund?.code }}</span></h3>
         </div>
       </template>
       <div class="set-holding-form">
         <div class="form-group elegant-input-group">
-          <label>{{ t('fund.realtimeModal.holdAmount') }}</label>
+          <label>{{ t('fund.realtimeModal.tradeDate') }}</label>
+          <BDatePicker
+            :modelValue="adjustmentForm?.tradeDate"
+            @update:modelValue="emit('update-adjustment-date', $event)"
+            :max="todayDate"
+            class="modal-date"
+          />
+        </div>
+        <div class="form-group elegant-input-group">
+          <label>{{ t('fund.realtimeModal.adjustmentAmount') }}</label>
           <div class="input-wrapper">
             <span class="prefix">¥</span>
-            <input :value="editForm?.amount" @input="emit('update-edit-amount', ($event.target as HTMLInputElement).value)" type="number" step="any" :placeholder="t('fund.realtimeModal.holdAmountPlaceholder')" class="modal-input no-border highlight" />
+            <input :value="adjustmentForm?.amount" @input="emit('update-adjustment-amount', ($event.target as HTMLInputElement).value)" type="number" step="any" min="0" :placeholder="t('fund.realtimeModal.adjustmentExpense')" class="modal-input no-border highlight" />
           </div>
         </div>
         <div class="form-group elegant-input-group">
-          <label>{{ t('fund.realtimeModal.holdProfit') }}</label>
+          <label>{{ t('fund.realtimeModal.adjustmentNote') }}</label>
           <div class="input-wrapper">
-            <span class="prefix">¥</span>
-            <input :value="editForm?.profit" @input="emit('update-edit-profit', ($event.target as HTMLInputElement).value)" type="number" step="any" placeholder="0" class="modal-input no-border" />
+            <input :value="adjustmentForm?.note" @input="emit('update-adjustment-note', ($event.target as HTMLInputElement).value)" type="text" :placeholder="t('fund.realtimeModal.adjustmentNotePlaceholder')" class="modal-input no-border" />
           </div>
         </div>
       </div>
       <template #footer>
-        <BButton @click="emit('close-edit')">{{ t('fund.realtimeModal.cancel') }}</BButton>
-        <BButton type="primary" @click="emit('save-edit')">{{ t('fund.realtimeModal.saveChanges') }}</BButton>
+        <BButton @click="emit('close-adjustment')">{{ t('fund.realtimeModal.cancel') }}</BButton>
+        <BButton type="primary" @click="emit('save-adjustment')">{{ t('fund.realtimeModal.saveAdjustment') }}</BButton>
       </template>
     </BaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BButton from './BButton.vue'
 import BaseModal from './BaseModal.vue'
@@ -138,6 +153,8 @@ import FundSearch from './FundSearch.vue'
 import { fmtNumber } from '../utils/number'
 const { t } = useI18n()
 defineOptions({ name: 'FundRealtimeModals' })
+
+const historyTab = ref('all')
 
 const props = defineProps<{
   addFundModalOpen: boolean
@@ -151,8 +168,8 @@ const props = defineProps<{
   showGroupModal: boolean
   groupName: string
   editingGroup: any
-  showEditModal: boolean
-  editForm: any
+  adjustmentModal: any
+  adjustmentForm: any
   holdings: any
   funds: any[]
   getTradeNav?: () => number
@@ -175,11 +192,19 @@ const emit = defineEmits<{
   (e: 'close-group'): void
   (e: 'update-group-name', name: string): void
   (e: 'save-group'): void
-  (e: 'close-edit'): void
-  (e: 'update-edit-amount', v: string): void
-  (e: 'update-edit-profit', v: string): void
-  (e: 'save-edit'): void
+  (e: 'close-adjustment'): void
+  (e: 'save-adjustment'): void
+  (e: 'update-adjustment-date', date: string): void
+  (e: 'update-adjustment-amount', v: string): void
+  (e: 'update-adjustment-note', v: string): void
 }>()
+
+const filteredRecords = computed(() => {
+  if (historyTab.value === 'all') return props.tradeRecords
+  if (historyTab.value === 'trade') return props.tradeRecords.filter(r => r.type === 'buy' || r.type === 'sell')
+  if (historyTab.value === 'adjust') return props.tradeRecords.filter(r => r.type === 'adjustment')
+  return props.tradeRecords
+})
 </script>
 
 <style scoped>
@@ -392,6 +417,36 @@ const emit = defineEmits<{
 
 .trade-type.buy { color: var(--color-danger); background: var(--color-danger-bg); }
 .trade-type.sell { color: var(--color-success); background: var(--color-success-bg); }
+.trade-type.adjustment { color: var(--color-primary); background: var(--color-primary-bg); }
+
+.history-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 3px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.history-tab {
+  flex: 1;
+  text-align: center;
+  padding: 7px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.history-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
 
 .trade-status.settled { color: var(--color-primary); background: var(--color-primary-bg); }
 .trade-status.pending { color: var(--color-warning); background: var(--color-warning-bg); }

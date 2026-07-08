@@ -3,19 +3,20 @@ import { ref, onMounted, watch } from 'vue'
 import { portfolioAPI } from '../services/portfolioApi'
 import {
   getFundNavByDate, getCurrentPrice, getDateText, hasExactNavForDate,
-  getHoldingAmount, getHoldingProfitTotal, hasFreshEstimate,
+  getHoldingProfitTotal, hasFreshEstimate,
   getFundTrendSeries, buildTradeRecord, genTxnId,
 } from './useFundRealtimeBase'
 
-export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
+export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs, extra = {}) {
+  const { refreshHoldings } = extra
   const holdingModal = ref({ open: false, fund: null })
   const tradeForm = ref({ type: 'buy', inputValue: '', tradeDate: todayDate.value })
   const pendingTxns = ref([])
   const tradeRecords = ref([])
   const tradeHistoryModal = ref({ open: false, fund: null })
+  const adjustmentModal = ref({ open: false, fund: null })
+  const adjustmentForm = ref({ tradeDate: todayDate.value, amount: '', note: '' })
   const showPending = ref(false)
-  const showEditModal = ref(false)
-  const editForm = ref({ fund: null, amount: '', profit: 0 })
 
   const upsertTradeRecord = (record) => {
     const idx = tradeRecords.value.findIndex(r => r.id === record.id || (record.txnId && r.txnId === record.txnId))
@@ -91,48 +92,38 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
     tradeForm.value.type = type
   }
 
-  const openEditModal = (fund) => {
-    const h = holdings.value[fund.code]
-    const currentNav = getCurrentPrice(fund) || parseFloat(fund.dwjz) || 1
-    let defaultProfit = 0
-    if (h) {
-      defaultProfit = getHoldingProfitTotal(fund, holdings.value)
-    }
-    editForm.value = {
-      fund,
-      amount: h ? getHoldingAmount(fund, holdings.value).toFixed(2) : '',
-      profit: parseFloat(defaultProfit.toFixed(2))
-    }
-    showEditModal.value = true
+  const openAdjustmentModal = (fund) => {
+    adjustmentModal.value = { open: true, fund }
+    adjustmentForm.value = { tradeDate: todayDate.value, amount: '', note: '' }
   }
 
-  const closeEditModal = () => {
-    showEditModal.value = false
-    editForm.value = { fund: null, amount: '', profit: 0 }
+  const closeAdjustmentModal = () => {
+    adjustmentModal.value = { open: false, fund: null }
   }
 
-  const saveEdit = () => {
-    const fund = editForm.value.fund
+  const saveAdjustment = () => {
+    const fund = adjustmentModal.value.fund
     if (!fund) return
-    const amount = parseFloat(editForm.value.amount)
-    const profit = parseFloat(editForm.value.profit) || 0
-    const nav = parseFloat(fund.dwjz) || getCurrentPrice(fund) || 1
-    if (!amount || !nav || nav <= 0) {
-      closeEditModal()
-      return
-    }
-    const share = amount / nav
-    const newHoldings = { ...holdings.value }
-    newHoldings[fund.code] = {
-      share,
-      cost: nav,
-      buy_date: fund.jzrq || todayDate.value,
-      profit: parseFloat(profit.toFixed(2)),
-      profit_nav_date: getDateText(fund.jzrq) || todayDate.value
-    }
-    holdings.value = newHoldings
-    portfolioAPI.upsertHolding(fund.code, newHoldings[fund.code]).catch(() => {})
-    closeEditModal()
+    const amount = parseFloat(adjustmentForm.value.amount)
+    if (!amount || amount <= 0) return
+    const txnId = genTxnId()
+    upsertTradeRecord({
+      id: txnId,
+      txnId,
+      fundCode: fund.code,
+      fundName: fund.name || fund.code,
+      type: 'adjustment',
+      tradeDate: adjustmentForm.value.tradeDate,
+      amount,
+      share: 0,
+      nav: 0,
+      status: 'settled',
+      createdAt: new Date().toISOString(),
+      settledAt: new Date().toISOString(),
+      note: adjustmentForm.value.note || '',
+    })
+    closeAdjustmentModal()
+    if (typeof refreshHoldings === 'function') refreshHoldings()
   }
 
   const closeHoldingModal = () => {
@@ -145,7 +136,6 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
     const newHoldings = { ...holdings.value }
     delete newHoldings[fund.code]
     holdings.value = newHoldings
-    portfolioAPI.deleteHolding(fund.code).catch(() => {})
     closeHoldingModal()
   }
 
@@ -233,9 +223,6 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
       }
       upsertTradeRecord(record)
     }
-    portfolioAPI.upsertHolding(fund.code, newHoldings[fund.code] || {
-      share: 0, cost: 0, buy_date: '', profit: 0, profit_nav_date: ''
-    }).catch(() => {})
   }
 
   const saveTrade = () => {
@@ -350,11 +337,12 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs) {
 
   return {
     holdingModal, tradeForm, pendingTxns, tradeRecords, tradeHistoryModal, showPending,
-    showEditModal, editForm,
+    adjustmentModal, adjustmentForm,
     upsertTradeRecord, removeTradeRecordByTxnId,
     getFundTradeRecords, getLegacyPendingRecord,
     openHoldingModal, openTradeHistory, closeTradeHistory, openTradeModal,
-    openEditModal, closeEditModal, saveEdit, closeHoldingModal, clearHolding,
+    openAdjustmentModal, closeAdjustmentModal, saveAdjustment,
+    closeHoldingModal, clearHolding,
     getTradeNav, getTradeResultShares, canSubmitTrade, submitButtonText,
     settleTrade, saveTrade, cancelPendingTxn, settlePendingTxnsIfReady,
   }

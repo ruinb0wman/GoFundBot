@@ -31,16 +31,6 @@ class FundPortfolioReorderSchema(BaseModel):
     fund_codes: list[str]
 
 
-class HoldingUpsertSchema(BaseModel):
-    model_config = {"extra": "ignore"}
-
-    share: float = 0
-    cost: float = 0
-    buy_date: str = ""
-    profit: float = 0
-    profit_nav_date: str = ""
-
-
 class TradeRecordCreateSchema(BaseModel):
     model_config = {"extra": "ignore"}
 
@@ -66,8 +56,8 @@ class TradeRecordCreateSchema(BaseModel):
     @field_validator("type")
     @classmethod
     def check_type(cls, v: str) -> str:
-        if v not in ("buy", "sell"):
-            raise ValueError("type 必须为 buy 或 sell")
+        if v not in ("buy", "sell", "adjustment"):
+            raise ValueError("type 必须为 buy、sell 或 adjustment")
         return v
 
 
@@ -157,7 +147,6 @@ class MigratePayloadSchema(BaseModel):
     model_config = {"extra": "ignore"}
 
     funds: list[dict] = []
-    holdings: dict = {}
     tradeRecords: list[dict] = []
     pendingTxns: list[dict] = []
     fundOrder: list[str] = []

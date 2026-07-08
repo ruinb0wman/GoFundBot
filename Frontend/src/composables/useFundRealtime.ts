@@ -14,12 +14,10 @@ import {
   getLatestPublishedPrice as baseGetLatestPublishedPrice,
   getPriceStatusLabel as baseGetPriceStatusLabel,
   getPreviousPrice as baseGetPreviousPrice,
-  getHoldingAmount as baseGetHoldingAmount,
   getHoldingCostAmount as baseGetHoldingCostAmount,
   getHoldingEstimatedAmount as baseGetHoldingEstimatedAmount,
   getHoldingProfitToday as baseGetHoldingProfitToday,
   getHoldingProfitTotal as baseGetHoldingProfitTotal,
-  getHoldingPrincipalAmount as baseGetHoldingPrincipalAmount,
   getHoldingReturnRate as baseGetHoldingReturnRate,
   getHoldingProfitTodayClass as baseGetHoldingProfitTodayClass,
   getHoldingProfitTotalClass as baseGetHoldingProfitTotalClass,
@@ -51,7 +49,9 @@ export function useFundRealtime(emit) {
     portfolioGroups: groups.portfolioGroups,
     fundGroupMap: groups.fundGroupMap,
   })
-  const trade = useFundRealtimeTrade(data.funds, data.holdings, data.todayDate, data.refreshMs)
+  const trade = useFundRealtimeTrade(data.funds, data.holdings, data.todayDate, data.refreshMs, {
+    refreshHoldings: data.refreshHoldings,
+  })
 
   onMounted(() => {
     document.addEventListener('click', groups.closeContextMenu)
@@ -66,12 +66,10 @@ export function useFundRealtime(emit) {
   const getHoldingProfitToday = (fund) => baseGetHoldingProfitToday(fund, data.holdings.value)
   const getHoldingProfitTotal = (fund) => baseGetHoldingProfitTotal(fund, data.holdings.value)
   const getHoldingEstimatedAmount = (fund) => baseGetHoldingEstimatedAmount(fund, data.holdings.value)
-  const getHoldingAmount = (fund) => baseGetHoldingAmount(fund, data.holdings.value)
   const getHoldingReturnRate = (fund) => baseGetHoldingReturnRate(fund, data.holdings.value)
   const getHoldingProfitTodayClass = (fund) => baseGetHoldingProfitTodayClass(fund, data.holdings.value)
   const getHoldingProfitTotalClass = (fund) => baseGetHoldingProfitTotalClass(fund, data.holdings.value)
   const getHoldingCostAmount = (fund) => baseGetHoldingCostAmount(fund, data.holdings.value)
-  const getHoldingPrincipalAmount = (fund) => baseGetHoldingPrincipalAmount(fund, data.holdings.value)
   const calculateShare = (amount, nav) => baseCalculateShare(amount, nav)
   const formatMoney = (v) => baseFormatMoney(v)
   const formatShare = (v) => baseFormatShare(v)
@@ -110,8 +108,8 @@ export function useFundRealtime(emit) {
     ...groups,
     getChangeClass, formatGsz, formatChange, getDateText, hasFreshEstimate,
     getCurrentPrice, getLatestPublishedPrice, getPriceStatusLabel, getPreviousPrice,
-    getHoldingAmount, getHoldingCostAmount, getHoldingEstimatedAmount,
-    getHoldingProfitToday, getHoldingProfitTotal, getHoldingPrincipalAmount,
+    getHoldingCostAmount, getHoldingEstimatedAmount,
+    getHoldingProfitToday, getHoldingProfitTotal,
     getHoldingReturnRate, getHoldingProfitTodayClass, getHoldingProfitTotalClass,
     calculateShare, formatMoney, formatShare,
     buildTradeRecord, getTradeStatusText, genTxnId,

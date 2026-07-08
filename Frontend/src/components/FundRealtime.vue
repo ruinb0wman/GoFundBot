@@ -111,7 +111,7 @@
             <span class="c-h-title"><LucideIcon name="Briefcase" :size="14" /> 持仓信息<BButton text size="small" @click.stop="openTradeHistory(fund)" icon="FileText">{{ getFundTradeRecords(fund).length }}笔</BButton></span>
             <div class="c-h-actions">
               <BButton type="primary" size="small" round @click.stop="openTradeModal(fund, 'buy')">买卖</BButton>
-              <BButton v-if="holdings[fund.code]" size="small" round @click.stop="openEditModal(fund)">修改</BButton>
+              <BButton v-if="holdings[fund.code]" size="small" round @click.stop="openAdjustmentModal(fund)">修正</BButton>
             </div>
           </div>
           <div class="c-h-grid" v-if="holdings[fund.code]">
@@ -160,8 +160,6 @@
       :show-group-modal="showGroupModal"
       :group-name="groupName"
       :editing-group="editingGroup"
-      :show-edit-modal="showEditModal"
-      :edit-form="editForm"
       :holdings="holdings"
       :funds="funds"
       :get-trade-nav="getTradeNav"
@@ -169,6 +167,8 @@
       :submit-button-text="submitButtonText"
       :format-money="formatMoney"
       :format-share="formatShare"
+      :adjustment-modal="adjustmentModal"
+      :adjustment-form="adjustmentForm"
       @close-add-fund="closeAddFundModal"
       @select-fund="selectFundForAdd"
       @confirm-add-fund="confirmAddFund"
@@ -181,10 +181,11 @@
       @close-group="closeGroupModal"
       @save-group="saveGroup"
       @update-group-name="(n) => groupName = n"
-      @close-edit="closeEditModal"
-      @save-edit="saveEdit"
-      @update-edit-amount="(v) => editForm.amount = v"
-      @update-edit-profit="(v) => editForm.profit = v"
+      @close-adjustment="closeAdjustmentModal"
+      @save-adjustment="saveAdjustment"
+      @update-adjustment-date="(d) => adjustmentForm.tradeDate = d"
+      @update-adjustment-amount="(v) => adjustmentForm.amount = v"
+      @update-adjustment-note="(n) => adjustmentForm.note = n"
     />
   </div>
 </template>
@@ -213,18 +214,19 @@ const {
   dropdownRef, searchPanelRef, searchTimeoutRef, refreshTimer,
   timeTimer, todayDate, holdingModal, tradeForm,
   pendingTxns, tradeRecords, tradeHistoryModal, showPending,
+  adjustmentModal, adjustmentForm,
   dragIndex, dragOverIndex, fundOrder, portfolioGroups, fundGroupMap,
   showGroupModal, editingGroup, groupName, contextMenu,
-  rebalanceThreshold, showEditModal, editForm,
+  rebalanceThreshold,
   isTradingTime, sortedFunds, displayFunds, emptyTitle, emptyHint,
   hasHoldings, hasRebalanceFunds, hasDividendFunds,
   totalAsset, totalProfitToday, totalPreviousAsset, totalProfitTotal,
   totalCost, totalReturnRate, todayReturnRate, profitTodayClass, profitTotalClass,
   getChangeClass, formatGsz, formatChange, getDateText, hasFreshEstimate,
   getCurrentPrice, getLatestPublishedPrice, getPriceStatusLabel, getPreviousPrice,
-  getHoldingAmount, getHoldingCostAmount, getHoldingEstimatedAmount,
-  getHoldingProfitToday, getHoldingProfitTotal, getHoldingPrincipalAmount,
-  getHoldingReturnRate, ensureProfitNavDates, settleOfficialNavProfits,
+  getHoldingCostAmount, getHoldingEstimatedAmount,
+  getHoldingProfitToday, getHoldingProfitTotal,
+  getHoldingReturnRate,
   getHoldingProfitTodayClass, getHoldingProfitTotalClass,
   calculateShare, formatMoney, formatShare,
   buildTradeRecord, upsertTradeRecord, removeTradeRecordByTxnId,
@@ -241,7 +243,8 @@ const {
   closeGroupModal, saveGroup, deleteGroup, assignFundToGroup,
   openGroupContextMenu, closeContextMenu, renameGroupFromMenu, deleteGroupFromMenu,
   openHoldingModal, openTradeHistory, closeTradeHistory, openTradeModal,
-  openEditModal, closeEditModal, saveEdit, closeHoldingModal, clearHolding,
+  openAdjustmentModal, closeAdjustmentModal, saveAdjustment,
+  closeHoldingModal, clearHolding,
   getTradeNav, getTradeResultShares, canSubmitTrade, submitButtonText,
   settleTrade, genTxnId, saveTrade, cancelPendingTxn, settlePendingTxnsIfReady,
   saveRefreshMs, updateNowTime, exportData, importData, handleClickOutside,
