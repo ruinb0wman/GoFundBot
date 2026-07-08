@@ -69,7 +69,7 @@
       <div class="ctab" :class="{active: activeTab==='all'}" @click="activeTab='all'"><LucideIcon name="Briefcase" :size="16" /> 基金持仓</div>
       <div v-for="g in portfolioGroups" :key="g.id" class="ctab" :class="{active: activeTab === 'group_' + g.id}" @click="activeTab = 'group_' + g.id" @contextmenu.prevent="openGroupContextMenu($event, g.id)"><LucideIcon name="Folder" :size="16" /> {{ g.name }}</div>
       <BButton circle size="small" @click="openAddGroupModal" title="新建分组" icon="FolderPlus" />
-      <div v-if="hasRebalanceFunds" class="ctab" :class="{active: activeTab==='rebalance'}" @click="activeTab='rebalance'"><LucideIcon name="Scale" :size="16" /> 再平衡管理</div>
+      <div class="ctab" :class="{active: activeTab==='rebalance'}" @click="activeTab='rebalance'"><LucideIcon name="Scale" :size="16" /> 再平衡管理</div>
       <span v-if="activeTab === 'rebalance'" class="threshold-label"><span class="threshold-prefix">≥</span><BInputNumber v-model="rebalanceThreshold" :min="1" :step="1" :controls="false" size="small" style="width:64px" /><span class="threshold-suffix">%</span></span>
       <div v-if="hasDividendFunds" class="ctab" :class="{active: activeTab==='dividend'}" @click="activeTab='dividend'"><LucideIcon name="TrendingDown" :size="16" /> 红利低波</div>
     </div>

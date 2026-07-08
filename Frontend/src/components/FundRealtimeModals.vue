@@ -52,10 +52,14 @@
         </div>
         <div class="form-group elegant-input-group">
           <label>{{ tradeForm?.type === 'buy' ? t('fund.realtimeModal.increaseAmount') : t('fund.realtimeModal.decreaseShares') }}</label>
-          <div class="input-wrapper">
-            <span class="prefix">{{ tradeForm?.type === 'buy' ? '¥' : '' }}</span>
-            <input :value="tradeForm?.inputValue" @input="emit('update-trade-value', ($event.target as HTMLInputElement).value)" type="number" step="any" :placeholder="tradeForm?.type === 'buy' ? t('fund.realtimeModal.increaseAmountPlaceholder') : t('fund.realtimeModal.decreaseSharesPlaceholder')" class="modal-input no-border highlight" />
-          </div>
+          <BInputNumber
+            :modelValue="tradeForm?.inputValue"
+            @update:modelValue="emit('update-trade-value', $event)"
+            :placeholder="tradeForm?.type === 'buy' ? t('fund.realtimeModal.increaseAmountPlaceholder') : t('fund.realtimeModal.decreaseSharesPlaceholder')"
+            :controls="false"
+          >
+            <template #prefix v-if="tradeForm?.type === 'buy'">¥</template>
+          </BInputNumber>
         </div>
       </div>
       <template #footer>
@@ -98,7 +102,15 @@
       <template #header>
         <h3 style="margin:0">{{ editingGroup ? t('fund.realtimeModal.renameGroup') : t('fund.realtimeModal.newGroup') }}</h3>
       </template>
-      <input :value="groupName" @input="emit('update-group-name', ($event.target as HTMLInputElement).value)" type="text" :placeholder="t('fund.realtimeModal.groupPlaceholder')" class="modal-input group-name-input" @keyup.enter="emit('save-group')" autofocus />
+      <div style="margin-bottom:12px">
+        <BInput
+          :modelValue="groupName"
+          @update:modelValue="emit('update-group-name', $event)"
+          :placeholder="t('fund.realtimeModal.groupPlaceholder')"
+          autofocus
+          @keydown="(e) => e.key === 'Enter' && emit('save-group')"
+        />
+      </div>
       <template #footer>
         <BButton @click="emit('close-group')">{{ t('fund.realtimeModal.cancel') }}</BButton>
         <BButton type="primary" @click="emit('save-group')" :disabled="!groupName?.trim()">{{ editingGroup ? t('fund.realtimeModal.save') : t('fund.realtimeModal.create') }}</BButton>
@@ -131,22 +143,33 @@
         </div>
         <div class="form-group elegant-input-group">
           <label>{{ adjustmentForm?.subtype === 'dividend' ? t('fund.realtimeModal.dividendAmount') : t('fund.realtimeModal.adjustmentAmount') }}</label>
-          <div class="input-wrapper">
-            <span class="prefix">¥</span>
-            <input :value="adjustmentForm?.amount" @input="emit('update-adjustment-amount', ($event.target as HTMLInputElement).value)" type="number" step="any" min="0" :placeholder="t('fund.realtimeModal.adjustmentExpense')" class="modal-input no-border highlight" />
-          </div>
+          <BInputNumber
+            :modelValue="adjustmentForm?.amount"
+            @update:modelValue="emit('update-adjustment-amount', $event)"
+            :placeholder="t('fund.realtimeModal.adjustmentExpense')"
+            :controls="false"
+            :min="0"
+          >
+            <template #prefix>¥</template>
+          </BInputNumber>
         </div>
         <div v-if="adjustmentForm?.subtype === 'dividend'" class="form-group elegant-input-group">
           <label>{{ t('fund.realtimeModal.dividendShares') }}</label>
-          <div class="input-wrapper">
-            <input :value="adjustmentForm?.share" @input="emit('update-adjustment-share', ($event.target as HTMLInputElement).value)" type="number" step="any" min="0" :placeholder="t('fund.realtimeModal.dividendSharesPlaceholder')" class="modal-input no-border highlight" />
-          </div>
+          <BInputNumber
+            :modelValue="adjustmentForm?.share"
+            @update:modelValue="emit('update-adjustment-share', $event)"
+            :placeholder="t('fund.realtimeModal.dividendSharesPlaceholder')"
+            :controls="false"
+            :min="0"
+          />
         </div>
         <div class="form-group elegant-input-group">
           <label>{{ t('fund.realtimeModal.adjustmentNote') }}</label>
-          <div class="input-wrapper">
-            <input :value="adjustmentForm?.note" @input="emit('update-adjustment-note', ($event.target as HTMLInputElement).value)" type="text" :placeholder="t('fund.realtimeModal.adjustmentNotePlaceholder')" class="modal-input no-border" />
-          </div>
+          <BInput
+            :modelValue="adjustmentForm?.note"
+            @update:modelValue="emit('update-adjustment-note', $event)"
+            :placeholder="t('fund.realtimeModal.adjustmentNotePlaceholder')"
+          />
         </div>
       </div>
       <template #footer>
@@ -163,6 +186,8 @@ import { useI18n } from 'vue-i18n'
 import BButton from './BButton.vue'
 import BaseModal from './BaseModal.vue'
 import BDatePicker from './BDatePicker.vue'
+import BInput from './BInput.vue'
+import BInputNumber from './BInputNumber.vue'
 import FundSearch from './FundSearch.vue'
 import { fmtNumber } from '../utils/number'
 const { t } = useI18n()
@@ -326,47 +351,6 @@ const filteredRecords = computed(() => {
   display: block;
 }
 
-.elegant-input-group .input-wrapper {
-  display: flex;
-  align-items: center;
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  padding: 0 14px;
-  transition: all 0.25s;
-  min-height: 48px;
-}
-
-.elegant-input-group .input-wrapper:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-bg);
-  background: var(--bg-card);
-}
-
-.elegant-input-group .prefix {
-  color: var(--text-tertiary);
-  font-size: 16px;
-  margin-right: 8px;
-  font-weight: 800;
-}
-
-.elegant-input-group .modal-input.no-border {
-  border: none;
-  outline: none;
-  box-shadow: none;
-  font-size: 15px;
-  padding: 12px 0;
-  flex: 1;
-  background: transparent;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.elegant-input-group .modal-input.highlight {
-  font-weight: bold;
-  color: var(--text-primary);
-  font-size: 16px;
-}
 
 .modal-date {
   width: 100%;
@@ -473,10 +457,6 @@ const filteredRecords = computed(() => {
   text-align: center;
   color: var(--text-tertiary);
   font-size: 14px;
-}
-
-.group-name-input {
-  margin-bottom: 12px;
 }
 
 .set-holding-form {

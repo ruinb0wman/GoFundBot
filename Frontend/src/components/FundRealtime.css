@@ -55,7 +55,7 @@
 .overview-cell.purple .cell-val { color: var(--text-inverse); }
 .cell-val.flat { color: var(--color-primary); }
 
-.content-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.content-tabs { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
 .ctab { padding: 6px 12px; background: var(--bg-subtle); border-radius: 16px; font-size: 14px; cursor: pointer; }
 .ctab.active { background: var(--bg-card); color: var(--color-primary); font-weight: bold; }
 
