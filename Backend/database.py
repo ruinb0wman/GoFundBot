@@ -1,6 +1,7 @@
 import shutil
 import threading
 import time
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 
@@ -101,13 +102,18 @@ def log_table_stats():
 
 
 def shutdown_db():
-    """关闭时 checkpoint + dispose，确保数据完整写入主文件。"""
+    """关闭时 checkpoint + dispose + 清理 WAL/SHM 残留。"""
     checkpoint_wal()
     try:
         engine.dispose()
         logger.info("数据库引擎已关闭")
     except Exception as e:
         logger.warning(f"关闭数据库引擎失败: {e}")
+    for suffix in (".db-shm", ".db-wal"):
+        f = DATABASE_PATH.with_suffix(suffix)
+        if f.exists():
+            with suppress(OSError):
+                f.unlink()
 
 
 def _periodic_checkpoint_loop():
@@ -179,9 +185,29 @@ def _check_integrity():
         logger.warning(f"数据库完整性检查失败: {e}")
 
 
+def _recover_stale_wal():
+    """检测上次非正常退出留下的 WAL/SHM 文件，尝试 checkopoint 恢复。"""
+    wal = DATABASE_PATH.with_suffix(".db-wal")
+    shm = DATABASE_PATH.with_suffix(".db-shm")
+    if not wal.exists() and not shm.exists():
+        return
+    logger.warning("检测到非正常退出残留的 WAL/SHM 文件，尝试恢复...")
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
+            conn.commit()
+        logger.info("WAL 恢复成功")
+    except Exception as e:
+        logger.error(f"WAL 恢复失败 ({e})，已损坏，请手动从备份恢复")
+        raise RuntimeError("数据库文件损坏，无法自动恢复。检查 backups/ 目录中的备份文件。")
+
+
 def init_db():
     # 确保 Data 目录存在
     (PROJECT_ROOT / "Data").mkdir(exist_ok=True)
+
+    # 启动前检测并恢复残留 WAL（防止上一次崩溃导致数据丢失）
+    _recover_stale_wal()
 
     # 启动前创建备份（先 checkpoint 保证一致性）
     create_backup()

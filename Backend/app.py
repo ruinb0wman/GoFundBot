@@ -3,7 +3,7 @@ GoFundBot Backend — 精简入口模块
 Flask 应用初始化、Blueprint 注册、中间件、启动/关闭钩子。
 """
 
-import atexit
+import os
 import signal
 import sys
 import threading
@@ -230,31 +230,28 @@ preload_services()
 
 
 # ============================================================================
-# 优雅关闭
+# 优雅关闭 — 信号直达 shutdown_db，不等待线程，屏蔽重复信号
 # ============================================================================
 
-_shutdown_flag = threading.Event()
+
+def _shutdown_safe():
+    try:
+        shutdown_db()
+        logger.info("优雅关闭完成")
+    except Exception as e:
+        logger.error(f"shutdown_db 失败: {e}")
 
 
-def _graceful_shutdown():
-    if _shutdown_flag.is_set():
-        return
-    _shutdown_flag.set()
-    logger.info("收到关闭信号，开始优雅退出...")
-    timeout = 10
-    deadline = time.time() + timeout
-    for thread in threading.enumerate():
-        if thread is not threading.main_thread() and thread.is_alive():
-            remaining = deadline - time.time()
-            if remaining > 0:
-                thread.join(timeout=remaining)
-    shutdown_db()
-    logger.info("优雅关闭完成")
+def _handle_signals(signum, frame):
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    logger.info(f"收到关闭信号 (signal={signum})，正在安全关闭...")
+    _shutdown_safe()
+    os._exit(0)
 
 
-atexit.register(_graceful_shutdown)
-signal.signal(signal.SIGTERM, lambda s, f: sys.exit(0))
-signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
+signal.signal(signal.SIGINT, _handle_signals)
+signal.signal(signal.SIGTERM, _handle_signals)
 
 
 # ============================================================================
@@ -277,4 +274,4 @@ if __name__ == "__main__":
     try:
         app.run(debug=False, host="0.0.0.0", port=5000, threaded=True)
     finally:
-        _graceful_shutdown()
+        _shutdown_safe()
