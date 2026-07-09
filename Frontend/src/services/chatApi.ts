@@ -1,4 +1,5 @@
 import { db } from '../db'
+import type { LLMConfig } from '../composables/useLLMConfig'
 
 export interface ToolCallInfo {
   name: string
@@ -38,8 +39,8 @@ export interface ChatCallbacks {
 }
 
 export const chatAPI = {
-  async sendMessage(messages: { role: string; content: string }[], callbacks: ChatCallbacks, skill?: string) {
-    const body = JSON.stringify({ messages, skill })
+  async sendMessage(messages: { role: string; content: string }[], callbacks: ChatCallbacks, skill?: string, llmConfig?: LLMConfig) {
+    const body = JSON.stringify({ messages, skill, llmConfig })
 
     const response = await fetch('/api/chat', {
       method: 'POST',

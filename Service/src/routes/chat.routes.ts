@@ -8,9 +8,10 @@ export const chatRouter = Router();
 chatRouter.post(
   '/',
   asyncHandler(async (req, res) => {
-    const { messages, skill } = req.body as {
+    const { messages, skill, llmConfig } = req.body as {
       messages?: Array<{ role: string; content: string }>;
       skill?: string;
+      llmConfig?: { apiKey?: string; apiBase?: string; model?: string };
     };
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -27,7 +28,7 @@ chatRouter.post(
     req.on('close', () => { closed = true; });
 
     try {
-      for await (const event of chat(messages, skill)) {
+      for await (const event of chat(messages, skill, llmConfig)) {
         if (closed) break;
         res.write(`event: ${event.event}\ndata: ${event.data}\n\n`);
       }

@@ -8,6 +8,7 @@ import PortfolioView from '../views/PortfolioView.vue'
 import ResearchView from '../views/ResearchView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import SettingsGeneral from '../views/SettingsGeneral.vue'
+import SettingsLLM from '../views/SettingsLLM.vue'
 import LogsViewer from '../views/LogsViewer.vue'
 import SettingsSqliteAdmin from '../views/SettingsSqliteAdmin.vue'
 import SettingsAnomalyThreshold from '../views/SettingsAnomalyThreshold.vue'
@@ -69,13 +70,14 @@ const routes: RouteRecordRaw[] = [
     path: '/settings',
     component: SettingsView,
     meta: { rightbar: false },
-    children: [
-      { path: '', redirect: { name: 'settings-general' } },
-      { path: 'general', name: 'settings-general', component: SettingsGeneral },
-      { path: 'logs', name: 'settings-logs', component: LogsViewer },
-      { path: 'anomaly', name: 'settings-anomaly', component: SettingsAnomalyThreshold },
-      { path: 'sqlite-admin', name: 'settings-sqlite-admin', component: SettingsSqliteAdmin },
-    ],
+      children: [
+        { path: '', redirect: { name: 'settings-general' } },
+        { path: 'general', name: 'settings-general', component: SettingsGeneral },
+        { path: 'llm', name: 'settings-llm', component: SettingsLLM },
+        { path: 'logs', name: 'settings-logs', component: LogsViewer },
+        { path: 'anomaly', name: 'settings-anomaly', component: SettingsAnomalyThreshold },
+        { path: 'sqlite-admin', name: 'settings-sqlite-admin', component: SettingsSqliteAdmin },
+      ],
   },
 ]
 

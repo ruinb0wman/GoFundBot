@@ -737,5 +737,18 @@
   "settings.anomaly.resetDefaults": "Reset Defaults",
   "settings.anomaly.saved": "Settings saved",
   "settings.anomaly.saveFailed": "Save failed",
-  "settings.anomaly.inputRequired": "Please enter a valid number"
+  "settings.anomaly.inputRequired": "Please enter a valid number",
+
+  "settings.llmTab": "AI Config",
+  "settings.llm.title": "AI Service Configuration",
+  "settings.llm.apiKey": "API Key",
+  "settings.llm.apiKeyPlaceholder": "Enter your API Key (starts with sk-)",
+  "settings.llm.apiBase": "API Base URL",
+  "settings.llm.apiBasePlaceholder": "https://api.siliconflow.cn/v1",
+  "settings.llm.model": "Model",
+  "settings.llm.modelPlaceholder": "Qwen/Qwen2.5-7B-Instruct",
+  "settings.llm.saved": "Configuration saved",
+  "settings.llm.showKey": "Show",
+  "settings.llm.hideKey": "Hide",
+  "settings.llm.notConfigured": "Please configure AI service key in settings before use"
 }

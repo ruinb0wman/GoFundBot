@@ -68,13 +68,14 @@ function buildToolsParam(skillName: string) {
 export async function* chat(
   messages: Array<{ role: string; content: string }>,
   skillName?: string,
+  llmConfig?: { apiKey?: string; apiBase?: string; model?: string },
 ): AsyncGenerator<ChatStreamEvent> {
-  const apiKey = process.env.LLM_API_KEY || '';
-  const apiBase = process.env.LLM_API_BASE || 'https://api.siliconflow.cn/v1';
-  const model = process.env.LLM_MODEL || 'opencode/deepseek-v4-pro';
+  const apiKey = llmConfig?.apiKey || '';
+  const apiBase = llmConfig?.apiBase || 'https://api.siliconflow.cn/v1';
+  const model = llmConfig?.model || 'Qwen/Qwen2.5-7B-Instruct';
 
   if (!apiKey) {
-    yield { event: 'error', data: JSON.stringify({ message: 'AI 服务未配置，请检查 LLM_API_KEY 环境变量' }) };
+    yield { event: 'error', data: JSON.stringify({ message: 'AI 服务未配置，请在设置中配置 AI 服务密钥' }) };
     yield { event: 'done', data: JSON.stringify({ status: 'done' }) };
     return;
   }

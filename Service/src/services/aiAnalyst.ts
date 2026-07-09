@@ -70,11 +70,15 @@ export interface FundAnalysisResult {
   supervisor: SupervisorOutput | null;
 }
 
-function getClient(): OpenAI {
-  const apiKey = process.env.LLM_API_KEY;
-  const apiBase = process.env.LLM_API_BASE || 'https://api.siliconflow.cn/v1';
-  const model = process.env.LLM_MODEL || 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B';
-  return new OpenAI({ apiKey, baseURL: apiBase });
+export interface LLMConfig {
+  apiKey: string;
+  apiBase?: string;
+  model?: string;
+}
+
+function getClient(config: LLMConfig): OpenAI {
+  const apiBase = config.apiBase || 'https://api.siliconflow.cn/v1';
+  return new OpenAI({ apiKey: config.apiKey, baseURL: apiBase });
 }
 
 async function callAnalyst(
@@ -82,13 +86,15 @@ async function callAnalyst(
   systemPrompt: string,
   fundInfo: string,
   extra: string,
+  llmConfig: LLMConfig,
 ): Promise<AnalystReport> {
-  const client = getClient();
+  const client = getClient(llmConfig);
+  const model = llmConfig.model || 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B';
   const userPrompt = `基金信息：\n${fundInfo}\n\n详细数据：\n${extra}\n\n请进行分析并输出JSON。`;
 
   try {
     const response = await client.chat.completions.create({
-      model: process.env.LLM_MODEL || 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -126,8 +132,10 @@ async function callAnalyst(
 async function callSupervisor(
   reports: AnalystReport[],
   fundInfo: string,
+  llmConfig: LLMConfig,
 ): Promise<SupervisorOutput | null> {
-  const client = getClient();
+  const client = getClient(llmConfig);
+  const model = llmConfig.model || 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B';
   const reportsStr = reports
     .map(
       (r) =>
@@ -139,7 +147,7 @@ async function callSupervisor(
 
   try {
     const response = await client.chat.completions.create({
-      model: process.env.LLM_MODEL || 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+      model,
       messages: [
         { role: 'system', content: SUPERVISOR_PROMPT },
         { role: 'user', content: userPrompt },
@@ -159,7 +167,8 @@ async function callSupervisor(
   }
 }
 
-export async function analyzeFund(input: AnalystInput): Promise<FundAnalysisResult> {
+export async function analyzeFund(input: AnalystInput, llmConfig?: LLMConfig): Promise<FundAnalysisResult> {
+  const config = llmConfig || { apiKey: '', apiBase: 'https://api.siliconflow.cn/v1' };
   const fundInfo =
     `代码：${input.fundCode}\n名称：${input.fundName}\n类型：${input.fundType ?? '未知'}`;
 
@@ -183,15 +192,15 @@ export async function analyzeFund(input: AnalystInput): Promise<FundAnalysisResu
     input.marketContext ?? `行业标签：${input.industryTag ?? '未知'}`;
 
   const [perfReport, holdingReport, managerReport, marketReport] = await Promise.all([
-    callAnalyst('performance', PERFORMANCE_PROMPT, fundInfo, perfExtra),
-    callAnalyst('holding', HOLDING_PROMPT, fundInfo, holdingExtra),
-    callAnalyst('manager', MANAGER_PROMPT, fundInfo, managerExtra),
-    callAnalyst('market', MARKET_PROMPT, fundInfo, marketExtra),
+    callAnalyst('performance', PERFORMANCE_PROMPT, fundInfo, perfExtra, config),
+    callAnalyst('holding', HOLDING_PROMPT, fundInfo, holdingExtra, config),
+    callAnalyst('manager', MANAGER_PROMPT, fundInfo, managerExtra, config),
+    callAnalyst('market', MARKET_PROMPT, fundInfo, marketExtra, config),
   ]);
 
   const reports = [perfReport, holdingReport, managerReport, marketReport];
 
-  const supervisor = await callSupervisor(reports, fundInfo);
+  const supervisor = await callSupervisor(reports, fundInfo, config);
 
   return {
     fund_code: input.fundCode,
@@ -203,7 +212,9 @@ export async function analyzeFund(input: AnalystInput): Promise<FundAnalysisResu
 
 export async function* analyzeFundStream(
   input: AnalystInput,
+  llmConfig?: LLMConfig,
 ): AsyncGenerator<{ stage: string; content: string }> {
+  const config = llmConfig || { apiKey: '', apiBase: 'https://api.siliconflow.cn/v1' };
   yield { stage: 'start', content: `开始分析 ${input.fundName}` };
 
   yield { stage: 'stage', content: 'performance分析师工作中...' };
@@ -213,32 +224,32 @@ export async function* analyzeFundStream(
     ? JSON.stringify(input.riskMetrics, null, 2)
     : '暂无风险数据';
 
-  const perfReport = await callAnalyst('performance', PERFORMANCE_PROMPT, fundInfo, perfExtra);
+  const perfReport = await callAnalyst('performance', PERFORMANCE_PROMPT, fundInfo, perfExtra, config);
   yield { stage: 'token', content: JSON.stringify(perfReport) };
 
   yield { stage: 'stage', content: 'holding分析师工作中...' };
   const holdingExtra = input.holdings
     ? JSON.stringify(input.holdings)
     : '暂无持仓数据';
-  const holdingReport = await callAnalyst('holding', HOLDING_PROMPT, fundInfo, holdingExtra);
+  const holdingReport = await callAnalyst('holding', HOLDING_PROMPT, fundInfo, holdingExtra, config);
   yield { stage: 'token', content: JSON.stringify(holdingReport) };
 
   yield { stage: 'stage', content: 'manager分析师工作中...' };
   const managerExtra = input.managers
     ? JSON.stringify(input.managers)
     : '暂无经理信息';
-  const managerReport = await callAnalyst('manager', MANAGER_PROMPT, fundInfo, managerExtra);
+  const managerReport = await callAnalyst('manager', MANAGER_PROMPT, fundInfo, managerExtra, config);
   yield { stage: 'token', content: JSON.stringify(managerReport) };
 
   yield { stage: 'stage', content: 'market分析师工作中...' };
   const marketExtra =
     input.marketContext ?? `行业标签：${input.industryTag ?? '未知'}`;
-  const marketReport = await callAnalyst('market', MARKET_PROMPT, fundInfo, marketExtra);
+  const marketReport = await callAnalyst('market', MARKET_PROMPT, fundInfo, marketExtra, config);
   yield { stage: 'token', content: JSON.stringify(marketReport) };
 
   yield { stage: 'stage', content: '总监合成最终报告...' };
   const reports = [perfReport, holdingReport, managerReport, marketReport];
-  const supervisor = await callSupervisor(reports, fundInfo);
+  const supervisor = await callSupervisor(reports, fundInfo, config);
   yield { stage: 'result', content: JSON.stringify(supervisor) };
 
   yield { stage: 'done', content: '' };

@@ -224,6 +224,7 @@ fundLegacyRouter.get(
   '/:code/analyze',
   asyncHandler(async (req, res) => {
     const code = String(req.params.code);
+    const llmConfig = req.body?.llmConfig;
     const detailResult = await getFundDetail(code);
     const detail = detailResult.data;
     if (!detail) {
@@ -256,7 +257,7 @@ fundLegacyRouter.get(
       industryTag: '',
     };
 
-    const result = await analyzeFund(input);
+    const result = await analyzeFund(input, llmConfig);
     sendSuccess(res, result);
   }),
 );
@@ -265,6 +266,7 @@ fundLegacyRouter.post(
   '/:code/analyze/stream',
   asyncHandler(async (req, res) => {
     const code = String(req.params.code);
+    const llmConfig = req.body?.llmConfig;
     const detailResult = await getFundDetail(code);
     const detail = detailResult.data;
     if (!detail) {
@@ -303,7 +305,7 @@ fundLegacyRouter.post(
     res.setHeader('X-Accel-Buffering', 'no');
 
     try {
-      for await (const event of analyzeFundStream(input)) {
+      for await (const event of analyzeFundStream(input, llmConfig)) {
         res.write(`event: ${event.stage}\ndata: ${event.content}\n\n`);
       }
     } catch (err) {

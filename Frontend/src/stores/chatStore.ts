@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { chatAPI, type ChatSessionDto, type ChatMessageDto, type ToolCallInfo, type SkillInfo } from '../services/chatApi'
 import { db } from '../db'
+import { useLLMConfig } from '../composables/useLLMConfig'
 
 export interface DisplayMessage {
   id: string
@@ -225,7 +226,7 @@ export const useChatStore = defineStore('chat', {
           }
           await this.refreshSessions()
         },
-      }, skillParam)
+      }, skillParam, useLLMConfig().config.value)
     },
 
     finalizeStream() {

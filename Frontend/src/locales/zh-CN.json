@@ -737,5 +737,18 @@
   "settings.anomaly.resetDefaults": "恢复默认值",
   "settings.anomaly.saved": "设置已保存",
   "settings.anomaly.saveFailed": "保存失败",
-  "settings.anomaly.inputRequired": "请输入有效数值"
+  "settings.anomaly.inputRequired": "请输入有效数值",
+
+  "settings.llmTab": "AI 配置",
+  "settings.llm.title": "AI 服务配置",
+  "settings.llm.apiKey": "API 密钥",
+  "settings.llm.apiKeyPlaceholder": "输入你的 API Key（以 sk- 开头）",
+  "settings.llm.apiBase": "API 地址",
+  "settings.llm.apiBasePlaceholder": "https://api.siliconflow.cn/v1",
+  "settings.llm.model": "模型",
+  "settings.llm.modelPlaceholder": "Qwen/Qwen2.5-7B-Instruct",
+  "settings.llm.saved": "配置已保存",
+  "settings.llm.showKey": "显示",
+  "settings.llm.hideKey": "隐藏",
+  "settings.llm.notConfigured": "请在设置中配置 AI 服务密钥后再使用"
 }
