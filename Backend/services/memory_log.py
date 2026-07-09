@@ -100,7 +100,7 @@ class AnalysisMemoryLog:
                     sign = "+" if r.actual_return >= 0 else ""
                     parts.append(f"- 近一月实际收益：{sign}{r.actual_return:.2f}%")
                 if r.reflection:
-                    parts.append(f"- 事后反思：{r.reflection}")
+                    parts.append(f"- 事后反思：{(r.reflection or '')[:300]}")
             return "\n".join(parts)
         finally:
             db.close()

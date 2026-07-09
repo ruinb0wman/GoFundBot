@@ -155,7 +155,7 @@ def chat():
 
         # Load message history (last 30 messages for context)
         history = (
-            db.query(ChatMessage).filter(ChatMessage.session_id == session_id).order_by(ChatMessage.id).limit(30).all()
+            db.query(ChatMessage).filter(ChatMessage.session_id == session_id).order_by(ChatMessage.id).limit(20).all()
         )
 
         openai_messages = []

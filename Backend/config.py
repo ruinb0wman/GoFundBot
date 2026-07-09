@@ -24,7 +24,7 @@ class Config:
     # === AI 分析配置（当前主用：通过 ai_service.py 读取） ===
     llm_api_key: str | None = None
     llm_api_base: str = "https://api.siliconflow.cn/v1"
-    llm_model: str = "Qwen/Qwen2.5-7B-Instruct"
+    llm_model: str = "opencode/deepseek-v4-pro"
 
     # === Gemini / OpenAI 备选配置 ===
     gemini_api_key: str | None = None
@@ -80,7 +80,7 @@ class Config:
         return cls(
             llm_api_key=os.getenv("LLM_API_KEY"),
             llm_api_base=os.getenv("LLM_API_BASE", "https://api.siliconflow.cn/v1"),
-            llm_model=os.getenv("LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct"),
+            llm_model=os.getenv("LLM_MODEL", "opencode/deepseek-v4-pro"),
             gemini_api_key=os.getenv("GEMINI_API_KEY"),
             gemini_model=os.getenv("GEMINI_MODEL", "gemini-3-flash-preview"),
             gemini_model_fallback=os.getenv("GEMINI_MODEL_FALLBACK", "gemini-2.5-flash"),

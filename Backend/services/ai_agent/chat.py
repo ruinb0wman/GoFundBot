@@ -19,6 +19,26 @@ class ChatMixin:
     self._execute_tool(), self.MAX_TOOL_ITERATIONS, and self.TOOL_TIMEOUT.
     """
 
+    @staticmethod
+    def _trim_messages(messages: list[dict[str, Any]], max_tokens: int = 0) -> None:
+        from .token_utils import estimate_messages_tokens, get_max_context_tokens
+
+        if max_tokens == 0:
+            max_tokens = get_max_context_tokens()
+        dropped = 0
+        while estimate_messages_tokens(messages) > max_tokens and len(messages) > 1:
+            skip = 1 if messages and messages[0].get("role") == "system" else 0
+            if len(messages) <= skip + 1:
+                break
+            messages.pop(skip)
+            dropped += 1
+        if dropped:
+            logger.warning(
+                "Context window trimming: dropped %d oldest messages (%d tokens remaining)",
+                dropped,
+                estimate_messages_tokens(messages),
+            )
+
     def chat(self, messages: list[dict[str, Any]], skill_name: str | None = None) -> Generator[str, None, None]:
         from openai import OpenAI
 
@@ -41,6 +61,8 @@ class ChatMixin:
             role = msg.get("role", "user")
             content = msg.get("content", "")
             openai_messages.append({"role": role, "content": content})
+
+        self._trim_messages(openai_messages)
 
         iter_count = 0
         while iter_count < self.MAX_TOOL_ITERATIONS:
@@ -93,6 +115,8 @@ class ChatMixin:
                     yield f"event: tool_end\ndata: {json.dumps({'name': name, 'tool_call_id': tc.id, 'duration_ms': round(duration_ms, 1)}, ensure_ascii=False)}\n\n"
 
                     result_str = json.dumps(result, ensure_ascii=False) if not isinstance(result, str) else result
+                    if len(result_str) > 4000:
+                        result_str = result_str[:4000] + "... (truncated)"
                     openai_messages.append(
                         {
                             "role": "tool",
@@ -101,11 +125,11 @@ class ChatMixin:
                         }
                     )
 
-                    if len(result_str) > 8000:
-                        result_str = result_str[:8000] + "... (truncated)"
+                self._trim_messages(openai_messages)
             else:
                 content = message.content or ""
                 full_content = ""
+                self._trim_messages(openai_messages)
                 try:
                     stream = client.chat.completions.create(
                         model=self._model,

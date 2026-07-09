@@ -46,7 +46,7 @@ class AIService:
         self.llm = None
         self._api_key = os.getenv("LLM_API_KEY", "")
         self._api_base = os.getenv("LLM_API_BASE", "https://api.siliconflow.cn/v1")
-        self._model = os.getenv("LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        self._model = os.getenv("LLM_MODEL", "opencode/deepseek-v4-pro")
 
     def is_available(self) -> bool:
         """检查 AI 服务是否可用"""

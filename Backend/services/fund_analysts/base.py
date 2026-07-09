@@ -19,6 +19,25 @@ class BaseAnalyst:
 
     def _call_llm(self, prompt: str, system_prompt: str, temperature: float = 0.3) -> str | None:
         try:
+            from services.ai_agent.token_utils import estimate_tokens, get_max_context_tokens
+
+            max_tokens = get_max_context_tokens()
+            total_est = estimate_tokens(system_prompt) + estimate_tokens(prompt)
+            if total_est > max_tokens:
+                max_prompt = len(prompt)
+                while (
+                    estimate_tokens(prompt[:max_prompt]) > max_tokens - estimate_tokens(system_prompt)
+                    and max_prompt > 100
+                ):
+                    max_prompt = int(max_prompt * 0.8)
+                prompt = prompt[:max_prompt] + "\n\n... (context truncated due to length)"
+                logger.warning(
+                    "%s: Context truncated from ~%d to ~%d tokens",
+                    self.__class__.__name__,
+                    total_est,
+                    estimate_tokens(system_prompt) + estimate_tokens(prompt),
+                )
+
             from openai import OpenAI
 
             client = OpenAI(api_key=self._api_key, base_url=self._api_base)

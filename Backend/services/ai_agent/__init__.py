@@ -28,7 +28,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
     def __init__(self):
         self._api_key = os.getenv("LLM_API_KEY", "")
         self._api_base = os.getenv("LLM_API_BASE", "https://api.siliconflow.cn/v1")
-        self._model = os.getenv("LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        self._model = os.getenv("LLM_MODEL", "opencode/deepseek-v4-pro")
         self._skill_router = SkillRouter(self._api_key, self._api_base, self._model)
 
     def is_available(self) -> bool:
