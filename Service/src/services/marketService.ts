@@ -278,7 +278,7 @@ export async function getGlobalIndices(): Promise<ServiceResult<GlobalIndexListD
   return toServiceResult(result);
 }
 
-async function fetchGoldRealtime(): Promise<Record<string, any>> {
+export async function fetchGoldRealtime(): Promise<Record<string, any>> {
   const cached = cache.get<Record<string, any>>('gold:realtime');
   if (cached) return cached.value;
 

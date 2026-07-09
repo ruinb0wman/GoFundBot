@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { chatAPI, type ChatSessionDto, type ChatMessageDto, type ToolCallInfo, type SkillInfo } from '../services/chatApi'
+import { db } from '../db'
 
 export interface DisplayMessage {
   id: string
@@ -70,14 +71,10 @@ export const useChatStore = defineStore('chat', {
     async init() {
       if (this.initialized) return
       this.initialized = true
-      try {
-        const result = await chatAPI.getSessions()
-        this.sessions = result.data || []
-        if (this.sessions.length > 0) {
-          await this.switchSession(this.sessions[0].id)
-        }
-      } catch {
-        // no sessions yet
+      const result = await chatAPI.getSessions()
+      this.sessions = result.data || []
+      if (this.sessions.length > 0) {
+        await this.switchSession(this.sessions[0].id)
       }
     },
 
@@ -138,20 +135,34 @@ export const useChatStore = defineStore('chat', {
     async sendMessage(message: string) {
       if (this.isStreaming || !message.trim()) return
 
-      // Ensure we have a session
       if (!this.currentSessionId) {
         const session = await this.createSession()
         if (!session) return
       }
 
-      // Add user message
+      const conversationMessages: { role: string; content: string }[] = [
+        ...this.messages.map(m => ({ role: m.role, content: m.content })),
+        { role: 'user', content: message },
+      ]
+
       this.messages.push({
         id: `user-${Date.now()}`,
         role: 'user',
         content: message,
       })
 
-      // Start streaming
+      if (this.currentSessionId) {
+        await db.chatMessages.add({
+          sessionId: this.currentSessionId,
+          role: 'user',
+          content: message,
+          toolName: null,
+          toolParamsJson: null,
+          createdAt: Date.now(),
+        })
+        await db.chatSessions.update(this.currentSessionId, { updatedAt: Date.now() })
+      }
+
       this.isStreaming = true
       this.streamingContent = ''
       this.activeToolCalls = []
@@ -159,7 +170,7 @@ export const useChatStore = defineStore('chat', {
 
       const skillParam = this.selectedSkill && this.selectedSkill !== 'auto' ? this.selectedSkill : undefined
 
-      await chatAPI.sendMessage(this.currentSessionId, message, {
+      await chatAPI.sendMessage(conversationMessages, {
         onToken: (token: string, full: string) => {
           this.streamingContent = full
         },
@@ -182,11 +193,36 @@ export const useChatStore = defineStore('chat', {
         },
         onDone: async () => {
           this.finalizeStream()
+          if (this.currentSessionId) {
+            const streamingMsg = this.messages.find(m => m.id === '__streaming__' || m.role === 'assistant')
+            if (streamingMsg && streamingMsg.content) {
+              await db.chatMessages.add({
+                sessionId: this.currentSessionId,
+                role: 'assistant',
+                content: streamingMsg.content,
+                toolName: null,
+                toolParamsJson: null,
+                createdAt: Date.now(),
+              })
+              await db.chatSessions.update(this.currentSessionId, { updatedAt: Date.now() })
+            }
+          }
           await this.refreshSessions()
         },
         onError: async (error: string) => {
           this.streamingContent = error
           this.finalizeStream()
+          if (this.currentSessionId) {
+            await db.chatMessages.add({
+              sessionId: this.currentSessionId,
+              role: 'assistant',
+              content: error,
+              toolName: null,
+              toolParamsJson: null,
+              createdAt: Date.now(),
+            })
+            await db.chatSessions.update(this.currentSessionId, { updatedAt: Date.now() })
+          }
           await this.refreshSessions()
         },
       }, skillParam)
@@ -207,12 +243,8 @@ export const useChatStore = defineStore('chat', {
     },
 
     async refreshSessions() {
-      try {
-        const result = await chatAPI.getSessions()
-        this.sessions = result.data || []
-      } catch {
-        // ignore
-      }
+      const result = await chatAPI.getSessions()
+      this.sessions = result.data || []
     },
 
     toggleOpen() {

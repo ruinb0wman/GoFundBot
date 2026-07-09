@@ -1,4 +1,4 @@
-import api from './api'
+import { db } from '../db'
 
 export interface ToolCallInfo {
   name: string
@@ -38,8 +38,8 @@ export interface ChatCallbacks {
 }
 
 export const chatAPI = {
-  async sendMessage(sessionId: number | null, message: string, callbacks: ChatCallbacks, skill?: string) {
-    const body = JSON.stringify({ session_id: sessionId, message, skill })
+  async sendMessage(messages: { role: string; content: string }[], callbacks: ChatCallbacks, skill?: string) {
+    const body = JSON.stringify({ messages, skill })
 
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -87,7 +87,6 @@ export const chatAPI = {
       }
     }
 
-    // Handle any remaining data in buffer
     if (pendingEvent && pendingData) {
       this._handleEvent(pendingEvent, pendingData, callbacks)
     }
@@ -135,25 +134,53 @@ export const chatAPI = {
   },
 
   async getSessions() {
-    const response = await api.get('/chat/sessions')
-    return response.data as { data: ChatSessionDto[] }
+    const sessions = await db.chatSessions
+      .orderBy('updatedAt')
+      .reverse()
+      .toArray()
+    return {
+      data: sessions.map(s => ({
+        id: s.id!,
+        title: s.title,
+        created_time: null,
+        updated_time: null,
+      })),
+    }
   },
 
   async createSession() {
-    const response = await api.post('/chat/sessions')
-    return response.data as { data: ChatSessionDto }
+    const id = await db.chatSessions.add({
+      title: '新对话',
+      updatedAt: Date.now(),
+    })
+    return {
+      data: { id, title: '新对话', created_time: null, updated_time: null },
+    }
   },
 
   async deleteSession(sessionId: number) {
-    await api.delete(`/chat/sessions/${sessionId}`)
+    await db.chatSessions.delete(sessionId)
+    await db.chatMessages.where({ sessionId }).delete()
   },
 
   async updateSessionTitle(sessionId: number, title: string) {
-    await api.patch(`/chat/sessions/${sessionId}`, { title })
+    await db.chatSessions.update(sessionId, { title, updatedAt: Date.now() })
   },
 
   async getMessages(sessionId: number) {
-    const response = await api.get(`/chat/sessions/${sessionId}/messages`)
-    return response.data as { data: ChatMessageDto[] }
+    const messages = await db.chatMessages
+      .where({ sessionId })
+      .sortBy('createdAt')
+    return {
+      data: messages.map(m => ({
+        id: m.id!,
+        session_id: m.sessionId,
+        role: m.role,
+        content: m.content,
+        tool_name: m.toolName,
+        tool_params_json: m.toolParamsJson,
+        created_time: null,
+      })),
+    }
   },
 }

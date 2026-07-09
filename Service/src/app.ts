@@ -16,6 +16,7 @@ import { researchRouter } from './routes/research.routes.js';
 import { screeningRouter } from './routes/screening.routes.js';
 import { stockRouter } from './routes/stock.routes.js';
 import { systemRouter } from './routes/system.routes.js';
+import { chatRouter } from './routes/chat.routes.js';
 
 export function createApp() {
   const app = express();
@@ -49,6 +50,7 @@ export function createApp() {
   app.use('/api/screening', screeningRouter);
   app.use('/api/research', researchRouter);
   app.use('/api', systemRouter);
+  app.use('/api/chat', chatRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
