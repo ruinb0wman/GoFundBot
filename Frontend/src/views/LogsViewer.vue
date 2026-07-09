@@ -2,8 +2,8 @@
   <div class="logs-page">
     <div class="logs-toolbar">
       <select v-model="source" class="tb-select" @change="loadLogs">
-        <option value="backend">Backend</option>
-        <option value="dataservice">DataService</option>
+        <option value="scripts">Backend</option>
+        <option value="service">DataService</option>
         <option value="frontend">Frontend</option>
       </select>
       <BDatePicker v-model="dateStr" class="tb-input" @change="loadLogs" />

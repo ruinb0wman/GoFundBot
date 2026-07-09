@@ -14,11 +14,11 @@ repos:
     hooks:
       - id: ruff
         name: ruff lint (Backend)
-        files: ^Backend/
+        files: ^Scripts/
         args: [--fix]
       - id: ruff-format
         name: ruff format (Backend)
-        files: ^Backend/
+        files: ^Scripts/
 
   - repo: local
     hooks:

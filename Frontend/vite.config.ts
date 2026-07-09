@@ -13,11 +13,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: env.VITE_FALLBACK_API_BASE || 'http://localhost:5000',
-          changeOrigin: true,
-        },
-        '/sqlite-admin': {
-          target: env.VITE_FALLBACK_API_BASE || 'http://localhost:5000',
+          target: env.VITE_FALLBACK_API_BASE || 'http://localhost:3100',
           changeOrigin: true,
         },
       },

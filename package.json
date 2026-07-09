@@ -1,0 +1,17 @@
+{
+  "name": "gofundbot",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n svc,fe -c blue,green \"npm run dev:service\" \"npm run dev:frontend\"",
+    "dev:service": "cd Service && npm run dev",
+    "dev:frontend": "cd Frontend && npm run dev --host",
+    "build": "cd Frontend && npm run build",
+    "install:all": "cd Service && npm install && cd ../Frontend && npm install",
+    "test": "cd Service && npm test && cd ../Frontend && npx vue-tsc --noEmit && npm test",
+    "test:service": "cd Service && npm test",
+    "test:frontend": "cd Frontend && npx vue-tsc --noEmit && npm test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

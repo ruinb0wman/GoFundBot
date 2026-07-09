@@ -81,13 +81,13 @@ ECharts 主题已注册 `gofund-light`/`gofund-dark`。但部分组件 scoped st
 **现状**: 无告警模型/端点/UI。
 
 **阶段 3a — 后端模型** ✓checkpoint
-- 新建 `Backend/models/alert.py` — `AlertRule` 表 (SQLAlchemy)
+- 新建 `Scripts/models/alert.py` — `AlertRule` 表 (SQLAlchemy)
   - 字段: `id`, `fund_code`, `type` (price_up/price_down/return_above/return_below), `threshold`, `enabled`, `created_at`
 - 在 `database.py` 注册模型; auto-create on startup
-- **恢复验证**: `Backend/models/alert.py` 存在; `AlertRule.__table__` 可 create
+- **恢复验证**: `Scripts/models/alert.py` 存在; `AlertRule.__table__` 可 create
 
 **阶段 3b — 后端 API** ✓checkpoint
-- 新建 `Backend/routes/alert_routes.py` (blueprint: `/api/alerts`)
+- 新建 `Scripts/routes/alert_routes.py` (blueprint: `/api/alerts`)
   - `GET /api/alerts` — 列出当前告警规则
   - `POST /api/alerts` — 创建告警规则 (validate_body)
   - `PUT /api/alerts/<id>` — 更新/启停规则
@@ -160,7 +160,7 @@ ECharts 主题已注册 `gofund-light`/`gofund-dark`。但部分组件 scoped st
 前端 `Backtest.vue` 调用 `POST /api/backtest/fixed-investment`。
 
 **阶段 6a — 策略推荐引擎** ✓checkpoint
-- 新建 `Backend/services/backtest_strategies.py`
+- 新建 `Scripts/services/backtest_strategies.py`
   - `suggest_optimal_plan(nav_dict, dates)` — 基于历史数据推荐最优策略
     - 均线策略: 净值低于 N 日均线时加仓, 高于时减仓
     - 估值策略: 基于 PE/PB 百分位的定投倍率
@@ -204,7 +204,7 @@ ECharts 主题已注册 `gofund-light`/`gofund-dark`。但部分组件 scoped st
 - **恢复验证**: Header 可见语言切换器
 
 **阶段 7d — 后端错误消息** ✓checkpoint (可选)
-- `Backend/core/errors.py` 错误消息多语言化
+- `Scripts/core/errors.py` 错误消息多语言化
 - 根据 `Accept-Language` 请求头返回对应语言
 - **恢复验证**: `curl -H "Accept-Language: en"` 返回英文错误消息
 

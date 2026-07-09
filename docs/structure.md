@@ -24,14 +24,14 @@ flowchart LR
         VUE[Vue 3 App<br/>Pinia + Router + i18n]
     end
 
-    subgraph 业务层_Backend
+    subgraph 业务层_Scripts
         FLASK[Flask App<br/>端口 5000<br/>threaded=True]
         BP[13 个 Blueprint<br/>路由注册]
-        SVC[服务层<br/>DataServiceClient / AIService / ...]
+        SVC[服务层<br/>ServiceClient / AIService / ...]
         DB[(SQLite<br/>funds.db)]
     end
 
-    subgraph 数据网关_DataService
+    subgraph 数据网关_Service
         EXP[Express App<br/>端口 3100]
         PC[ProviderChain<br/>多数据源迭代]
         CACHE[(内存缓存<br/>30s ~ 7d TTL)]
@@ -291,7 +291,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph 核心服务
-        DSC[data_service_client.py<br/>DataService HTTP 客户端]
+        DSC[data_service_client.py<br/>Service HTTP 客户端]
         DSLM[data_service_legacy_mapper.py<br/>响应格式映射]
         ES[estimate_service.py<br/>实时估值管理]
         AS[ai_service.py<br/>AI 分析编排]
@@ -329,7 +329,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph config_配置
-        C[config.py<br/>Config 单例<br/>LLM / DataService / Search 密钥]
+        C[config.py<br/>Config 单例<br/>LLM / Service / Search 密钥]
         C -->|启动时校验| VALIDATE[validate()]
     end
 
@@ -472,7 +472,7 @@ sequenceDiagram
     participant U as 用户浏览器
     participant FE as 前端 Vue
     participant BE as 后端 Flask
-    participant DS as DataService Express
+    participant DS as Service Express
     participant PC as ProviderChain
     participant EXT as 外部数据源
 
@@ -511,7 +511,7 @@ sequenceDiagram
         Note over BE: 6 项质量检查<br/>1. fund_code<br/>2. fund_name<br/>3. estimate 不缺失<br/>4. net_worth_trend 有数据<br/>5. portfolio 有股票<br/>6. risk_metrics 有值
 
         alt 质量通过
-            BE-->>FE: 返回 DataService 数据
+            BE-->>FE: 返回 Service 数据
         else 质量未通过 && source=auto
             BE->>BE: 回退 legacy FundAPI
             BE-->>FE: 返回 legacy 数据
@@ -724,16 +724,16 @@ erDiagram
 
 | 文件路径 | 行数 | 作用 |
 |----------|------|------|
-| `Backend/app.py` | 278 | Flask 应用入口，Blueprint 注册，中间件 |
-| `Backend/ai_service.py` | 550 | AI 分析编排器 |
-| `Backend/services/data_service_client.py` | 277 | DataService HTTP 客户端 |
-| `Backend/services/memory_log.py` | 183 | 分析记忆日志与 LLM 反射 |
-| `Backend/services/fund_analysts/orchestrator.py` | 99 | 多分析师并行编排 |
-| `Backend/services/fund_analysts/supervisor.py` | 105 | 合成报告 Supervisor |
-| `Backend/models.py` | 530+ | SQLAlchemy 数据模型 |
-| `DataService/src/app.ts` | 77 | Express 应用配置 |
-| `DataService/src/services/fundService.ts` | 545 | 基金数据服务（ProviderChain 调度） |
-| `DataService/src/core/providerChain.ts` | 64 | ProviderChain 迭代理器 |
+| `Scripts/app.py` | 278 | Flask 应用入口，Blueprint 注册，中间件 |
+| `Scripts/ai_service.py` | 550 | AI 分析编排器 |
+| `Scripts/services/data_service_client.py` | 277 | Service HTTP 客户端 |
+| `Scripts/services/memory_log.py` | 183 | 分析记忆日志与 LLM 反射 |
+| `Scripts/services/fund_analysts/orchestrator.py` | 99 | 多分析师并行编排 |
+| `Scripts/services/fund_analysts/supervisor.py` | 105 | 合成报告 Supervisor |
+| `Scripts/models.py` | 530+ | SQLAlchemy 数据模型 |
+| `Service/src/app.ts` | 77 | Express 应用配置 |
+| `Service/src/services/fundService.ts` | 545 | 基金数据服务（ProviderChain 调度） |
+| `Service/src/core/providerChain.ts` | 64 | ProviderChain 迭代理器 |
 | `Frontend/src/App.vue` | 111 | 应用壳布局 |
 | `Frontend/src/router/index.ts` | 86 | 7 条路由配置 |
 | `Frontend/src/services/api.ts` | 134 | Axios API 客户端 |

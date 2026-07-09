@@ -1,28 +1,28 @@
 services:
   data-service:
     build:
-      context: DataService
+      context: Service
       dockerfile: Dockerfile
     container_name: gofund-data-service
     ports:
       - "3100:3100"
     env_file:
-      - DataService/.env
+      - Service/.env
     restart: unless-stopped
     networks:
       - gofund-network
 
   backend:
     build:
-      context: Backend
+      context: Scripts
       dockerfile: Dockerfile
     container_name: gofundbot
     ports:
       - "5000:5000"
     volumes:
-      - ./Backend/Data:/app/Data
+      - ./Scripts/Data:/app/Data
     env_file:
-      - Backend/.env
+      - Scripts/.env
     environment:
       DATA_SERVICE_BASE_URL: http://data-service:3100/api
     depends_on:

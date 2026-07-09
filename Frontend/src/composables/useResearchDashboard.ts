@@ -37,16 +37,17 @@ export function useResearchDashboard(emit: (event: string, ...args: any[]) => vo
     error.value = ''
     try {
       const res = await researchAPI.getDashboard({ limit: 5, etf_limit: 80 })
-      dashboard.value = res.data || {}
+      dashboard.value = res.data?.data || res.data || {}
       industryTaskStatus.value = dashboard.value.industry_performance_task || dashboard.value.industry_performance?.task_status || {}
       if (!dashboard.value.industry_performance || !(dashboard.value.industry_performance.items || []).length) {
         try {
           const industryRes = await researchAPI.getIndustryPerformance()
+          const industryData = industryRes.data?.data || industryRes.data || {}
           dashboard.value = {
             ...dashboard.value,
-            industry_performance: industryRes.data || {}
+            industry_performance: industryData
           }
-          industryTaskStatus.value = industryRes.data?.task_status || industryTaskStatus.value
+          industryTaskStatus.value = industryData.task_status || industryTaskStatus.value
         } catch (industryErr) {
           console.warn('行业表现加载失败:', industryErr)
         }
@@ -64,16 +65,17 @@ export function useResearchDashboard(emit: (event: string, ...args: any[]) => vo
     industryPollTimer = setInterval(async () => {
       try {
         const res = await researchAPI.getIndustryPerformance()
+        const industryData = res.data?.data || res.data || {}
         dashboard.value = {
           ...dashboard.value,
-          industry_performance: res.data || {}
+          industry_performance: industryData
         }
-        industryTaskStatus.value = res.data?.task_status || {}
+        industryTaskStatus.value = industryData.task_status || {}
         if (!industryTaskStatus.value.running) {
           clearInterval(industryPollTimer)
           industryPollTimer = null
           await loadDashboard()
-          const itemCount = res.data?.items?.length || res.data?.summary?.total || 0
+          const itemCount = industryData.items?.length || industryData.summary?.total || 0
           showToastNotification(`板块行情汇总完成，共 ${itemCount} 个板块`)
         }
       } catch (err) {
@@ -91,10 +93,11 @@ export function useResearchDashboard(emit: (event: string, ...args: any[]) => vo
     error.value = ''
     try {
       const res = await researchAPI.rebuildIndustryPerformance()
-      industryTaskStatus.value = res.data?.task_status || { running: true, message: '后台汇总板块行情...' }
+      const rebuildData = res.data?.data || res.data || {}
+      industryTaskStatus.value = rebuildData.task_status || { running: true, message: '后台汇总板块行情...' }
       dashboard.value = {
         ...dashboard.value,
-        industry_performance: res.data?.data || dashboard.value.industry_performance || {}
+        industry_performance: rebuildData.data || dashboard.value.industry_performance || {}
       }
       pollIndustryPerformance()
     } catch (err) {

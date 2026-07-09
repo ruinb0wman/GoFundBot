@@ -1,10 +1,10 @@
-# Section 7: DataService Migration Wrap-up — Execution Plan
+# Section 7: Service Migration Wrap-up — Execution Plan
 
 > 创建: 2026-06-29 | 关联文档: `docs/优化与待完善功能清单.md §7`
 
 ## 现状基线
 
-DataService 在文档撰写后已获得大量实现。Section 7 中列出的 6 个"缺失" provider 方法中有 6 个现已存在（7.2 部分完成）。计划聚焦于文档撰写后仍未实现的剩余桩代码及清理工作。
+Service 在文档撰写后已获得大量实现。Section 7 中列出的 6 个"缺失" provider 方法中有 6 个现已存在（7.2 部分完成）。计划聚焦于文档撰写后仍未实现的剩余桩代码及清理工作。
 
 | 检查清单项 | 现状 | 桩代码位置 |
 |-----------|------|-----------|
@@ -19,7 +19,7 @@ DataService 在文档撰写后已获得大量实现。Section 7 中列出的 6 �
 
 ## Phase 1: EastMoney Fund rankHistory + dividends 实现
 
-**前置条件:** DataService 可构建、测试可运行。已有 `eastmoneyRequest.ts` 及 `fetchJson`/`fetchText` 工具函数。
+**前置条件:** Service 可构建、测试可运行。已有 `eastmoneyRequest.ts` 及 `fetchJson`/`fetchText` 工具函数。
 
 ### 任务
 
@@ -143,7 +143,7 @@ async quotes(symbols: string[]): Promise<MarketQuoteDto[]> {
 
 #### 3a — 基金 rankHistory 链路添加 eastmoney 后备
 
-**文件:** `DataService/src/services/fundService.ts`
+**文件:** `Service/src/services/fundService.ts`
 
 **现状 (line 167):**
 ```typescript
@@ -157,7 +157,7 @@ const chain = new ProviderChain<FundProvider>([stockSdkFundProvider, eastmoneyFu
 
 #### 3b — 基金 dividends 链路添加 eastmoney 后备
 
-**文件:** `DataService/src/services/fundService.ts`
+**文件:** `Service/src/services/fundService.ts`
 
 **现状 (line 180):**
 ```typescript
@@ -171,13 +171,13 @@ const chain = new ProviderChain<FundProvider>([stockSdkFundProvider, eastmoneyFu
 
 #### 3c — 市场 quotes 链路添加 eastmoney 后备
 
-**文件:** `DataService/src/services/marketService.ts`
+**文件:** `Service/src/services/marketService.ts`
 
 将 `eastmoneyMarketProvider` 在 `stockSdkMarketProvider` 之后加入 ProviderChain 中（不影响第二位的 akshare 桩代码 — Phase 4 中处理）。
 
 #### 3d — 市场 kline 链路添加 eastmoney 后备
 
-**文件:** `DataService/src/services/marketService.ts`
+**文件:** `Service/src/services/marketService.ts`
 
 同上，将 `eastmoneyMarketProvider` 加入 kline ProviderChain。
 
@@ -201,7 +201,7 @@ const chain = new ProviderChain<FundProvider>([stockSdkFundProvider, eastmoneyFu
 
 #### 4a — 从 marketService ProviderChain 中移除 AkShareMarketProvider
 
-**文件:** `DataService/src/services/marketService.ts`
+**文件:** `Service/src/services/marketService.ts`
 
 将 `akshareMarketProvider` 从所有 ProviderChain 定义中移除。market 链路变为：
 ```
@@ -210,16 +210,16 @@ stock-sdk → eastmoney
 
 #### 4b — 删除 AkShareMarketProvider 桩代码文件
 
-**文件:** `DataService/src/providers/akshare/akshareMarketProvider.ts`
+**文件:** `Service/src/providers/akshare/akshareMarketProvider.ts`
 
 检查 marketService 或 index.ts 中是否还有 import 残留，一并清理。
 
-#### 4c — 清理 Backend akshare 残留引用
+#### 4c — 清理 Scripts akshare 残留引用
 
-- `Backend/services/market_data.py` (标记为 `# DEPRECATED:`) — 暂不删除（6.2 延期），但确认不再有活跃调用路径
+- `Scripts/services/market_data.py` (标记为 `# DEPRECATED:`) — 暂不删除（6.2 延期），但确认不再有活跃调用路径
 - 检查 akshare 是否仍作为 market routes 的最终后备被引用
 
-#### 4d — 更新 DataService index.ts 中的 provider 注册
+#### 4d — 更新 Service index.ts 中的 provider 注册
 
 从 provider registry 中移除 `akshareMarketProvider` 导出。
 
@@ -244,7 +244,7 @@ stock-sdk → eastmoney
 
 #### 5a — 验证检查清单 7.1 的实际完整性
 
-**文件:** `Backend/routes/fund_routes.py:95-105`、`Backend/routes/fund_routes.py:62-92`
+**文件:** `Scripts/routes/fund_routes.py:95-105`、`Scripts/routes/fund_routes.py:62-92`
 
 `_validate_data_service_fund_quality()` 所检查的项目：
 - `basic_info.fund_code` / `fund_name` ← 已在 ✓
@@ -283,17 +283,17 @@ checks_passed = checks_total - len(issues)
 completeness_score = int(checks_passed / checks_total * 100)
 ```
 
-#### 5d — 在质量门禁中提高 `auto` 模式下对 DataService 的接受度
+#### 5d — 在质量门禁中提高 `auto` 模式下对 Service 的接受度
 
-**文件:** `Backend/routes/fund_routes.py:440-466`
+**文件:** `Scripts/routes/fund_routes.py:440-466`
 
 当前仅在所有检查项全部通过时才使用 data_service。可调整为允许关键字段（basic_info、estimate、nav、performance、portfolio）全部就绪即视为满足条件，非必要字段可缺失。
 
 ### 验证检查清单
 
-- [ ] `python -m pytest Backend/tests/test_data_service_client.py -v` 通过（如有适配）
+- [ ] `python -m pytest Scripts/tests/test_data_service_client.py -v` 通过（如有适配）
 - [ ] 实际请求中 `_data_source.completeness_score` > 85
-- [ ] `source=auto` 在 DataService 启动时质量门禁通过（而非回退至 legacy）
+- [ ] `source=auto` 在 Service 启动时质量门禁通过（而非回退至 legacy）
 - [ ] `source=legacy` 仍可正常工作（回归）
 
 **回滚:** 还原 `fund_routes.py` 中的变更。
@@ -308,7 +308,7 @@ completeness_score = int(checks_passed / checks_total * 100)
 
 #### 6a — 全服务端到端冒烟测试
 
-1. 三服务全量启动（`DataService` → `Backend` → `Frontend`）
+1. 三服务全量启动（`Service` → `Scripts` → `Frontend`）
 2. 测试基金详情页：使用代码 `000001` 发起 `/api/fund/000001?source=data_service`
    - 验证所有 16 个 section 返回数据（`failedSections` 为空或仅非关键字段缺失）
 3. 测试市场页面：`/api/market/overview`、`/api/market/sectors`、`/api/market/index`
@@ -319,11 +319,11 @@ completeness_score = int(checks_passed / checks_total * 100)
 
 #### 6b — 更新默认 `FUND_DEFAULT_SOURCE`
 
-在 `Backend/.env.example` 中添加注释：
+在 `Scripts/.env.example` 中添加注释：
 ```ini
 # 数据源模式（默认: data_service）
-# data_service — 全量通过 DataService
-# auto — DataService 优先，质量不达标时回退 legacy
+# data_service — 全量通过 Service
+# auto — Service 优先，质量不达标时回退 legacy
 # legacy — 旧 fund_api.py 路径
 FUND_DEFAULT_SOURCE=data_service
 ```
@@ -342,8 +342,8 @@ source = os.environ.get("FUND_DEFAULT_SOURCE", "data_service").strip().lower()
 ### 验证检查清单
 
 - [ ] `source=legacy` 仍可正常工作（降级路径）
-- [ ] `source=data_service` 在无 DataService 运行时正确报错、不回退
-- [ ] `source=auto` 在 DataService 启动时使用 data_service、不可用时回退并正常降级
+- [ ] `source=data_service` 在无 Service 运行时正确报错、不回退
+- [ ] `source=auto` 在 Service 启动时使用 data_service、不可用时回退并正常降级
 - [ ] 前端在无额外 source 参数请求 `/api/fund/000001` 时正确使用 `data_service`
 - [ ] CI 通过：ruff lint、ruff format --check、python unittest、vitest、vue-tsc
 
@@ -360,7 +360,7 @@ source = os.environ.get("FUND_DEFAULT_SOURCE", "data_service").strip().lower()
 | Phase 1 之后 | `curl localhost:3100/api/funds/000001/rank-history` → 应返回数据 |
 | Phase 2 之后 | `curl localhost:3100/api/market/quotes?symbols=sh000001` → 应返回数据 |
 | Phase 3 之后 | `curl localhost:3100/api/funds/000001/detail` → failedSections 不应含 rankHistory/dividends |
-| Phase 4 之后 | `rg akshareMarketProvider DataService/src/` → 不应有结果 |
+| Phase 4 之后 | `rg akshareMarketProvider Service/src/` → 不应有结果 |
 | Phase 5 之后 | `curl "localhost:5000/api/fund/000001?source=data_service"` → `_data_source.completeness_score` > 85 |
 | Phase 6 之后 | `curl localhost:5000/api/fund/000001` (无 source 参数) → 默认使用 data_service |
 
@@ -368,14 +368,14 @@ source = os.environ.get("FUND_DEFAULT_SOURCE", "data_service").strip().lower()
 
 | 文件 | Phases | 变更类型 |
 |------|--------|---------|
-| `DataService/src/providers/eastmoney/eastmoneyFundProvider.ts` | 1 | 新增 2 个方法 |
-| `DataService/src/providers/eastmoney/eastmoneyMarketProvider.ts` | 2 | 新增 2 个方法 |
-| `DataService/src/services/fundService.ts` | 3 | ProviderChain 添加 eastmoney |
-| `DataService/src/services/marketService.ts` | 3, 4 | ProviderChain 变更、移除 akshare |
-| `DataService/src/providers/akshare/akshareMarketProvider.ts` | 4 | **删除** |
-| `DataService/src/providers/index.ts` (或 registry) | 4 | 移除 import |
-| `Backend/routes/fund_routes.py` | 5, 6 | 质量校验、默认值 |
-| `Backend/.env.example` | 6 | 默认值注释 |
+| `Service/src/providers/eastmoney/eastmoneyFundProvider.ts` | 1 | 新增 2 个方法 |
+| `Service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | 2 | 新增 2 个方法 |
+| `Service/src/services/fundService.ts` | 3 | ProviderChain 添加 eastmoney |
+| `Service/src/services/marketService.ts` | 3, 4 | ProviderChain 变更、移除 akshare |
+| `Service/src/providers/akshare/akshareMarketProvider.ts` | 4 | **删除** |
+| `Service/src/providers/index.ts` (或 registry) | 4 | 移除 import |
+| `Scripts/routes/fund_routes.py` | 5, 6 | 质量校验、默认值 |
+| `Scripts/.env.example` | 6 | 默认值注释 |
 | `README.md` | 6 | 文档同步 |
 | `AGENTS.md` | 6 | 文档同步 |
 | `docs/优化与待完善功能清单.md` | 6 | 标记完成 |

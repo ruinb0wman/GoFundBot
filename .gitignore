@@ -6,10 +6,10 @@ __pycache__/
 *.env
 .env
 Frontend/dist/
-Backend/static/
+Scripts/static/
 *.bak
 *.tmp
-Backend/Data
+Scripts/Data
 .agents/
 .claude/
 .codegraph/

@@ -31,20 +31,20 @@ Phase 4 [✅] 收尾验证 + 文档更新
 
 ## Phase 0 — CI Pipeline 补齐 (5.1)
 
-**目标**: 创建 `.github/workflows/ci.yml` 三段矩阵流水线（Backend / DataService / Frontend）
+**目标**: 创建 `.github/workflows/ci.yml` 三段矩阵流水线（Scripts / Service / Frontend）
 
 ### 0.1 创建 `.github/workflows/ci.yml`
 
-Backend job:
+Scripts job:
 - Python 3.11
-- `pip install -r Backend/requirements.txt`
-- `ruff check Backend/`
-- `ruff format Backend/ --check`
-- `python -m unittest discover -s Backend/tests -v`
+- `pip install -r Scripts/requirements.txt`
+- `ruff check Scripts/`
+- `ruff format Scripts/ --check`
+- `python -m unittest discover -s Scripts/tests -v`
 
-DataService job:
+Service job:
 - Node 20
-- `cd DataService && npm ci`
+- `cd Service && npm ci`
 - `npm run typecheck`
 - `npm test`
 
@@ -242,12 +242,12 @@ npm install --save-dev @types/node
 ### 4.1 全量回归测试
 
 ```bash
-# Backend
-ruff check Backend/ && ruff format Backend/ --check
-python -m unittest discover -s Backend/tests -v
+# Scripts
+ruff check Scripts/ && ruff format Scripts/ --check
+python -m unittest discover -s Scripts/tests -v
 
-# DataService
-cd DataService && npm run typecheck && npm test
+# Service
+cd Service && npm run typecheck && npm test
 
 # Frontend
 cd Frontend && vue-tsc --noEmit && npm test && npm run build
@@ -308,7 +308,7 @@ cd Frontend && vue-tsc --noEmit && npm test && npm run build
 | `.vue` → `<script setup lang="ts">` | 38 | 重构 |
 | 总涉及文件 | **~55** | |
 
-> 6.2 遗留模块下线延后至 Section 7 DataService 迁移收尾完成后独立执行。
+> 6.2 遗留模块下线延后至 Section 7 Service 迁移收尾完成后独立执行。
 
 ---
 
@@ -338,7 +338,7 @@ cd Frontend && vue-tsc --noEmit && npm test && npm run build
 | Frontend `vue-tsc --noEmit` | ✅ 通过 (有预存 `any` 警告，非本次引入) |
 | Frontend `npm test` | ✅ 24/24 通过 |
 | Frontend `npm run build` | ✅ 构建成功 |
-| DataService `npm run typecheck` | ✅ 通过 |
-| DataService `npm test` | ✅ 67/67 通过 |
+| Service `npm run typecheck` | ✅ 通过 |
+| Service `npm test` | ✅ 67/67 通过 |
 | `.github/workflows/ci.yml` 已创建 | ✅ |
 | `docs/优化与待完善功能清单.md` 已更新 | ✅ |

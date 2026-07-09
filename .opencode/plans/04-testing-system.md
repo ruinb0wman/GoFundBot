@@ -1,8 +1,8 @@
 # 4. 测试体系 — 执行计划
 
-> 基线状态：Backend 仅 1 个测试文件 (5 条 `_build_portfolio_industry_tag` 用例)，DataService/Frontend 零测试
+> 基线状态：Scripts 仅 1 个测试文件 (5 条 `_build_portfolio_industry_tag` 用例)，Service/Frontend 零测试
 > 目标：每层覆盖核心路径，中断可恢复
-> 测试框架：Backend = `unittest` (已用)；DataService = Vitest；Frontend = Vitest + @vue/test-utils
+> 测试框架：Scripts = `unittest` (已用)；Service = Vitest；Frontend = Vitest + @vue/test-utils
 
 ---
 
@@ -10,9 +10,9 @@
 
 ```
 Phase 0  [🔲] 基础设施准备
-Phase 1  [🔲] Backend 单元测试扩展
-Phase 2A [🔲] DataService 核心层测试
-Phase 2B [🔲] DataService 路由/Provider 测试
+Phase 1  [🔲] Scripts 单元测试扩展
+Phase 2A [🔲] Service 核心层测试
+Phase 2B [🔲] Service 路由/Provider 测试
 Phase 3A [🔲] Frontend Stores + Composables 测试
 Phase 3B [🔲] Frontend 关键组件测试
 Phase 4  [🔲] 集成/契约测试
@@ -28,8 +28,8 @@ Phase 5  [🔲] 收尾：覆盖率报告 + 文档
 ### 0.1 安装依赖
 
 ```bash
-# DataService
-cd DataService && npm install --save-dev vitest
+# Service
+cd Service && npm install --save-dev vitest
 
 # Frontend
 cd Frontend && npm install --save-dev vitest @vue/test-utils jsdom
@@ -37,20 +37,20 @@ cd Frontend && npm install --save-dev vitest @vue/test-utils jsdom
 
 ### 0.2 配置文件
 
-- `DataService/vitest.config.ts` — 指向 `src/`，ts 路径别名
+- `Service/vitest.config.ts` — 指向 `src/`，ts 路径别名
 - `Frontend/vitest.config.js` — jsdom 环境，`@` → `src/` 别名
 - `Frontend/src/__tests__/setup.js` — 全局 mock（router、echarts、axios）
-- `Backend/tests/__init__.py` — 空文件确保包导入（若缺失）
+- `Scripts/tests/__init__.py` — 空文件确保包导入（若缺失）
 
 ### 0.3 package.json scripts 补充
 
-- DataService: `"test": "vitest run"`, `"test:watch": "vitest"`
+- Service: `"test": "vitest run"`, `"test:watch": "vitest"`
 - Frontend: `"test": "vitest run"`, `"test:watch": "vitest"`
 
 ### CHECKPOINT-0 ✅
 
 ```
-cd DataService && npx vitest --version
+cd Service && npx vitest --version
 cd Frontend && npx vitest --version
 python -c "import unittest; print('ok')"
 ```
@@ -58,18 +58,18 @@ python -c "import unittest; print('ok')"
 
 ---
 
-## Phase 1 — Backend 单元测试扩展
+## Phase 1 — Scripts 单元测试扩展
 
 > 在现有 `unittest` 基础上扩建，不改框架。每个子任务完成后可独立运行验证。
 
-### 1.1 `Backend/tests/test_schemas.py` (P0)
+### 1.1 `Scripts/tests/test_schemas.py` (P0)
 覆盖 schemas/ 下所有 Pydantic 模型的正向/负向校验：
 - `watchlist_schemas.py`: `AddWatchlistSchema`, `BatchDeleteSchema`, `ReorderSchema`, `MoveFundSchema`, `CreateGroupSchema`
 - `screening_schemas.py`: `ScreeningQuerySchema` 等
 
 用例数预估：~12
 
-### 1.2 `Backend/tests/test_cache_headers.py` (P1)
+### 1.2 `Scripts/tests/test_cache_headers.py` (P1)
 覆盖 `core/cache_headers.py`：
 - GET 请求命中各路径前缀返回正确 `Cache-Control`
 - POST 请求不设置缓存头
@@ -77,15 +77,15 @@ python -c "import unittest; print('ok')"
 
 用例数预估：~8
 
-### 1.3 `Backend/tests/test_data_service_client.py` (P1)
+### 1.3 `Scripts/tests/test_data_service_client.py` (P1)
 覆盖 `services/data_service_client.py`：
-- 各 DataService URL 拼接正确
+- 各 Service URL 拼接正确
 - 超时/连接失败 → 正确异常类型
 - `get_fund_detail` / `get_fund_nav_history` 等参数透传
 
 用例数预估：~10
 
-### 1.4 `Backend/tests/test_watchlist_db.py` (P0)
+### 1.4 `Scripts/tests/test_watchlist_db.py` (P0)
 覆盖 `routes/watchlist_routes.py` 中的 DB 操作（需要 `setUp` 建临时 SQLite）：
 - 添加/删除/分页查询自选
 - 分组 CRUD
@@ -93,15 +93,15 @@ python -c "import unittest; print('ok')"
 
 用例数预估：~10
 
-### 1.5 `Backend/tests/test_screening_engine.py` (P1)
-覆盖 `services/screening_engine.py` 核心筛选逻辑（mock DataService client）：
+### 1.5 `Scripts/tests/test_screening_engine.py` (P1)
+覆盖 `services/screening_engine.py` 核心筛选逻辑（mock Service client）：
 - 单一类型筛选 → 返回正确字段
 - 分页参数透传
 - 无结果处理
 
 用例数预估：~6
 
-### 1.6 `Backend/tests/test_fund_industry_classification.py` (补充)
+### 1.6 `Scripts/tests/test_fund_industry_classification.py` (补充)
 现有 5 条测试，补充：
 - ETF 联接无持仓 → 名称主题识别
 - 全部美股持仓 → market_region 识别
@@ -114,16 +114,16 @@ python -c "import unittest; print('ok')"
 ### CHECKPOINT-1 ✅
 
 ```bash
-python -m unittest discover -s Backend/tests -v
+python -m unittest discover -s Scripts/tests -v
 ```
 
 预期：≥50 条用例全部通过，无 ERROR/FAIL。
 
 ---
 
-## Phase 2A — DataService 核心层测试
+## Phase 2A — Service 核心层测试
 
-### 2A.1 `DataService/src/__tests__/core/cache.test.ts`
+### 2A.1 `Service/src/__tests__/core/cache.test.ts`
 覆盖 `core/cache.ts`：
 - `set` + `get` 命中/过期
 - `cacheThrough` 加载器调用次数（只调 1 次）
@@ -133,7 +133,7 @@ python -m unittest discover -s Backend/tests -v
 
 用例数预估：~10
 
-### 2A.2 `DataService/src/__tests__/core/errors.test.ts`
+### 2A.2 `Service/src/__tests__/core/errors.test.ts`
 覆盖 `core/errors.ts`：
 - `AppError` 构造 + 属性
 - `assertCode` 合法/非法输入
@@ -144,7 +144,7 @@ python -m unittest discover -s Backend/tests -v
 
 用例数预估：~12
 
-### 2A.3 `DataService/src/__tests__/core/response.test.ts`
+### 2A.3 `Service/src/__tests__/core/response.test.ts`
 覆盖 `core/response.ts`（sendSuccess / sendFailure）：
 - 200 成功 JSON 结构
 - 4xx/5xx 错误 JSON 结构
@@ -155,22 +155,22 @@ python -m unittest discover -s Backend/tests -v
 ### CHECKPOINT-2A ✅
 
 ```bash
-cd DataService && npx vitest run src/__tests__/core/
+cd Service && npx vitest run src/__tests__/core/
 ```
 
 预期：~28 用例全绿。
 
 ---
 
-## Phase 2B — DataService 路由/Provider 测试
+## Phase 2B — Service 路由/Provider 测试
 
-### 2B.1 `DataService/src/__tests__/routes/health.test.ts`
+### 2B.1 `Service/src/__tests__/routes/health.test.ts`
 - `GET /api/health` → 200 + cache stats
 - `GET /api/health/ready` → 200
 
 用例数预估：~3
 
-### 2B.2 `DataService/src/__tests__/routes/fund.test.ts`
+### 2B.2 `Service/src/__tests__/routes/fund.test.ts`
 Mock ProviderChain，测试：
 - `GET /api/fund/:code` → 200 + 完整字段
 - `GET /api/fund/:code/nav-history` 带日期参数
@@ -179,7 +179,7 @@ Mock ProviderChain，测试：
 
 用例数预估：~8
 
-### 2B.3 `DataService/src/__tests__/providers/provider-chain.test.ts`
+### 2B.3 `Service/src/__tests__/providers/provider-chain.test.ts`
 覆盖 `providers/ProviderChain.ts`：
 - 第一 provider 成功 → 不调第二
 - 第一失败 → fallback 到第二
@@ -191,7 +191,7 @@ Mock ProviderChain，测试：
 ### CHECKPOINT-2B ✅
 
 ```bash
-cd DataService && npx vitest run
+cd Service && npx vitest run
 ```
 
 预期：~47 用例全绿。
@@ -281,24 +281,24 @@ cd Frontend && npx vitest run
 
 ## Phase 4 — 集成/契约测试
 
-> 测试 Backend ↔ DataService 之间的关键 API 契约。
+> 测试 Scripts ↔ Service 之间的关键 API 契约。
 
-### 4.1 `Backend/tests/test_contract_fund_detail.py`
-启动 Backend (Flask test client) + mock DataService 响应：
+### 4.1 `Scripts/tests/test_contract_fund_detail.py`
+启动 Scripts (Flask test client) + mock Service 响应：
 - `/api/fund/<code>` → 返回结构与 schema 一致
-- DataService 返回 null 字段 → Backend 正确 fallback
-- DataService 超时 → Backend 返回 504
+- Service 返回 null 字段 → Scripts 正确 fallback
+- Service 超时 → Scripts 返回 504
 
 用例数预估：~8
 
-### 4.2 `Backend/tests/test_contract_watchlist.py`
+### 4.2 `Scripts/tests/test_contract_watchlist.py`
 - 完整 CRUD 流程（添加→查询→删除→查询空）
 - 分页：page=2 page_size=5 → 正确 offset
 - 批量删除边界
 
 用例数预估：~6
 
-### 4.3 `Backend/tests/test_contract_screening.py`
+### 4.3 `Scripts/tests/test_contract_screening.py`
 - `/api/screening/funds` POST 请求 → 正确参数透传
 - 空结果 → 200 + items=[]
 
@@ -307,7 +307,7 @@ cd Frontend && npx vitest run
 ### CHECKPOINT-4 ✅
 
 ```bash
-python -m unittest discover -s Backend/tests -v
+python -m unittest discover -s Scripts/tests -v
 ```
 
 预期：~68 用例全绿。
@@ -318,15 +318,15 @@ python -m unittest discover -s Backend/tests -v
 
 ### 5.1 覆盖率配置
 
-- Backend: `pip install coverage && coverage run -m unittest discover -s Backend/tests`
-- DataService: vitest 内置覆盖率（`--coverage`，需 `@vitest/coverage-v8`）
+- Scripts: `pip install coverage && coverage run -m unittest discover -s Scripts/tests`
+- Service: vitest 内置覆盖率（`--coverage`，需 `@vitest/coverage-v8`）
 - Frontend: 同上
 
 ### 5.2 更新 AGENTS.md
 
 在 Testing 小节填入：
 - 各层测试命令
-- 覆盖率目标（建议 Backend ≥40%, DataService ≥50%, Frontend ≥30% 起步）
+- 覆盖率目标（建议 Scripts ≥40%, Service ≥50%, Frontend ≥30% 起步）
 
 ### 5.3 更新优化清单
 
@@ -335,10 +335,10 @@ python -m unittest discover -s Backend/tests -v
 ### CHECKPOINT-5 ✅
 
 ```bash
-# Backend
-cd Backend && coverage run -m unittest discover -s tests -v && coverage report --omit="tests/*"
-# DataService
-cd DataService && npx vitest run --coverage
+# Scripts
+cd Scripts && coverage run -m unittest discover -s tests -v && coverage report --omit="tests/*"
+# Service
+cd Service && npx vitest run --coverage
 # Frontend
 cd Frontend && npx vitest run --coverage
 ```
@@ -351,7 +351,7 @@ cd Frontend && npx vitest run --coverage
 |----------|----------|
 | Phase 0 中途 | 重新跑 0.1 三条安装命令（幂等），继续到 CHECKPOINT-0 |
 | Phase 1 中途 | 已完成子任务的文件不受影响；继续下一个 1.x |
-| Phase 2A/2B | DataService 测试互不依赖；从 CHECKPOINT-2A/2B 的上一个 CHECKPOINT 起始 |
+| Phase 2A/2B | Service 测试互不依赖；从 CHECKPOINT-2A/2B 的上一个 CHECKPOINT 起始 |
 | Phase 3A/3B | 同理；从上一个通过的 CHECKPOINT 继续 |
 | Phase 4 | 先确认 Phase 1 全绿，再逐一跑 4.1/4.2/4.3 |
 | Phase 5 | 只依赖以上所有测试存在 |
@@ -364,9 +364,9 @@ cd Frontend && npx vitest run --coverage
 
 | 层级 | 文件数 | 用例数 |
 |------|--------|--------|
-| Backend 单元 | 6 | ~54 |
-| DataService 核心 | 3 | ~28 |
-| DataService 路由/Provider | 3 | ~19 |
+| Scripts 单元 | 6 | ~54 |
+| Service 核心 | 3 | ~28 |
+| Service 路由/Provider | 3 | ~19 |
 | Frontend Stores/Composables | 5 | ~31 |
 | Frontend 组件 | 3 | ~15 |
 | 集成/契约 | 3 | ~18 |
