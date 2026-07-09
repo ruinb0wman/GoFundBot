@@ -242,7 +242,7 @@ export function useMarketOverview(props: any) {
     if (!pct) return ''
     const val = parseFloat(pct)
     if (isNaN(val) || val === 0) return ''
-    return pct.startsWith('-') ? 'down' : 'up'
+    return String(pct).startsWith('-') ? 'down' : 'up'
   }
 
   const navigateToIndex = (item: any) => {
