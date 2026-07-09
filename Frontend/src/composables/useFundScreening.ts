@@ -686,15 +686,16 @@ export function useFundScreening(emit) {
             const cleanFilters = buildFilterParams()
 
             const res = await screeningAPI.query({
-                filters: cleanFilters,
+                ...cleanFilters,
                 sort_by: sortBy.value,
                 sort_order: sortOrder.value,
                 page: currentPage.value,
                 page_size: pageSize.value
             })
 
-            results.value = res.data.data || []
-            totalCount.value = res.data.total || 0
+            const responseData = res.data.data || {}
+            results.value = responseData.funds || []
+            totalCount.value = responseData.total || 0
 
             if (!quickTypeFilter.value) {
                 const types = new Set()
