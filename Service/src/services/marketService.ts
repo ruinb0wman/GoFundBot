@@ -1,7 +1,7 @@
-import { cacheThrough, ttl } from '../core/cache.js';
+import { cache, cacheThrough, ttl } from '../core/cache.js';
 import { AppError, assertCode } from '../core/errors.js';
 import { ProviderChain } from '../core/providerChain.js';
-import { runFetchMarket } from './pythonRunner.js';
+import { runFetchMarket, runPython } from './pythonRunner.js';
 import type { ServiceResult } from '../types/common.js';
 import { StockSdkMarketProvider } from '../providers/stock-sdk/stockSdkMarketProvider.js';
 import { EastMoneyMarketProvider } from '../providers/eastmoney/eastmoneyMarketProvider.js';
@@ -278,6 +278,71 @@ export async function getGlobalIndices(): Promise<ServiceResult<GlobalIndexListD
   return toServiceResult(result);
 }
 
+async function fetchGoldRealtime(): Promise<Record<string, any>> {
+  const cached = cache.get<Record<string, any>>('gold:realtime');
+  if (cached) return cached.value;
+
+  try {
+    const url = new URL('https://api.jijinhao.com/quoteCenter/realTime.htm');
+    url.searchParams.set('codes', 'JO_71,JO_92233,JO_92232');
+    url.searchParams.set('_', String(Date.now()));
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        'accept': '*/*',
+        'referer': 'https://quote.cngold.org/gjs/gjhj.html',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const text = await response.text();
+    const json = JSON.parse(text.replace('var quote_json = ', ''));
+
+    const codeMap: Record<string, string> = {
+      'JO_71': '黄金T+D',
+      'JO_92233': '国际黄金',
+      'JO_92232': '国际白银',
+    };
+
+    const codes = ['JO_71', 'JO_92233', 'JO_92232'];
+    const result: any[] = [];
+
+    for (const code of codes) {
+      const d = json[code];
+      if (!d) continue;
+      const to2 = (v: any) => Math.round((v || 0) * 100) / 100;
+      result.push({
+        name: d.showName || codeMap[code] || code,
+        price: to2(d.q63),
+        change: to2(d.q70),
+        change_pct: `${to2(d.q80)}%`,
+        open: to2(d.q1),
+        high: to2(d.q3),
+        low: to2(d.q4),
+        prev_close: to2(d.q2),
+        update_time: d.time ? new Date(d.time).toISOString() : '',
+        unit: d.unit || '',
+      });
+    }
+
+    const data = {
+      success: true,
+      data: result,
+      update_time: new Date().toISOString(),
+    };
+    cache.set('gold:realtime', data, ttl.goldRealtime);
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      data: [],
+      update_time: new Date().toISOString(),
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 export async function getMarketSectorsFromAkshare(limit = 90): Promise<any[]> {
   const result = await runFetchMarket<{ sectors: any[] }>('sector');
   const sectors = result.sectors ?? [];
@@ -293,21 +358,31 @@ export async function getMarketOverview(): Promise<Record<string, unknown>> {
   const updateTime = new Date().toISOString();
 
   let indices: any[] = [];
-  let gold: any[] = [];
+  let aVolume: Record<string, any> = { success: false, data: [], update_time: updateTime };
 
-  try {
-    const result = await runFetchMarket<{ indices: any[]; gold: any[]; sectors: any[] }>('all');
-    indices = result.indices ?? [];
-    gold = result.gold ?? [];
-  } catch {
-    // akshare 失败时使用空数据
+  const [indicesResult, goldResult, volumeResult] = await Promise.allSettled([
+    runFetchMarket<{ indices: any[] }>('index'),
+    fetchGoldRealtime(),
+    runPython<any[]>('fetch_volume.py', { timeoutMs: 30_000 }),
+  ]);
+
+  if (indicesResult.status === 'fulfilled') {
+    indices = indicesResult.value.indices ?? [];
+  }
+
+  const goldRealtime = goldResult.status === 'fulfilled'
+    ? goldResult.value
+    : { success: false, data: [], update_time: updateTime };
+
+  if (volumeResult.status === 'fulfilled') {
+    aVolume = { success: true, data: volumeResult.value, update_time: updateTime };
   }
 
   return {
     success: true,
     market_index: { success: true, data: indices },
-    gold_realtime: { success: gold.length > 0, data: gold },
-    a_volume_7days: { success: false, data: [] },
+    gold_realtime: goldRealtime,
+    a_volume_7days: aVolume,
     update_time: updateTime,
   };
 }
