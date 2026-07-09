@@ -200,7 +200,7 @@ const fetchNews = async (page = 1, append = false) => {
   try {
     const response = await marketAPI.getFlashNews(PAGE_SIZE, page)
     if (response.data.success) {
-      const incoming = response.data.data || []
+      const incoming = response.data.data?.items || []
 
       if (page === 1) {
         const currentKeys = new Set(incoming.map((n: any) => n.publish_time + n.title?.slice(0, 20)))

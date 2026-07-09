@@ -36,11 +36,11 @@ export const useMarketStore = defineStore('market', {
     },
     async fetchFlashNews(count = 30, page = 1) {
       const res = await marketAPI.getFlashNews(count, page)
-      this.flashNews = (res.data as { news?: NewsItem[] })?.news || []
+      this.flashNews = (res.data as { data?: { items?: NewsItem[] } })?.data?.items || []
     },
     async fetchSectors(limit = 90) {
       const res = await marketAPI.getSectorRank(limit)
-      this.sectors = (res.data as SectorItem[]) || []
+      this.sectors = ((res.data as { data?: { items?: SectorItem[] } })?.data?.items || []) as SectorItem[]
     },
   },
 })

@@ -39,14 +39,16 @@ export function useFundWatchlist(
     return s
   }
 
-  const totalCount = computed(() => watchlist.value.length)
+  const _watchlist = computed(() => Array.isArray(watchlist.value) ? watchlist.value : [])
+
+  const totalCount = computed(() => _watchlist.value.length)
 
   const ungroupedFunds = computed(() =>
-    watchlist.value.filter(f => !f.group_id)
+    _watchlist.value.filter(f => !f.group_id)
   )
 
   const getGroupFunds = (groupId) => {
-    return watchlist.value.filter(f => f.group_id === groupId)
+    return _watchlist.value.filter(f => f.group_id === groupId)
   }
 
   const isGroupExpanded = (groupId) => {
@@ -59,8 +61,8 @@ export function useFundWatchlist(
     loading.value = true
     try {
       await watchlistStore.fetch(true)
-      watchlist.value = watchlistStore.funds
-      groups.value = watchlistStore.groups
+      watchlist.value = Array.isArray(watchlistStore.funds) ? watchlistStore.funds : []
+      groups.value = Array.isArray(watchlistStore.groups) ? watchlistStore.groups : []
       if (isInitialLoad.value) {
         expandedGroups.value = [null, ...groups.value.map(g => g.id)]
         isInitialLoad.value = false
@@ -82,8 +84,8 @@ export function useFundWatchlist(
     isRefreshingEstimates.value = true
     try {
       await watchlistStore.refreshEstimates()
-      watchlist.value = watchlistStore.funds
-      groups.value = watchlistStore.groups
+      watchlist.value = Array.isArray(watchlistStore.funds) ? watchlistStore.funds : []
+      groups.value = Array.isArray(watchlistStore.groups) ? watchlistStore.groups : []
       lastEstimateUpdate.value = new Date().toLocaleTimeString()
     } catch (error) {
       console.error('刷新估值失败:', error)

@@ -7,7 +7,7 @@ const api: AxiosInstance = axios.create({
   timeout: 600000,
 })
 
-const FALLBACK_API_BASE = import.meta.env.VITE_FALLBACK_API_BASE || 'http://localhost:5000/api'
+const FALLBACK_API_BASE = import.meta.env.VITE_FALLBACK_API_BASE || 'http://localhost:3100/api'
 
 const localBackendApi: AxiosInstance = axios.create({
   baseURL: FALLBACK_API_BASE,
@@ -97,19 +97,19 @@ export const backtestAPI = {
 
 export const marketAPI = {
   getOverview() { return api.get('/market/overview') },
-  getFlashNews(count = 30, page = 1) { return api.get(`/market/news?count=${count}&page=${page}`) },
+  getFlashNews(count = 30, page = 1) { return api.get(`/news/flash?count=${count}&page=${page}`) },
   getSectorRank(limit = 90) { return api.get(`/market/sectors?limit=${limit}`) },
-  getMarketIndex() { return api.get('/market/index') },
+  getMarketIndex() { return api.get('/market/indices') },
   getGoldRealtime() { return api.get('/market/gold/realtime') },
   getGoldHistory(days = 10) { return api.get(`/market/gold/history?days=${days}`) },
   getSilverHistory(days = 10) { return api.get(`/market/silver/history?days=${days}`) },
   getVolumeWeekly() { return api.get('/market/volume') },
   getSSE30min() { return api.get('/market/sse') },
   getIndicesIntraday() { return api.get('/market/indices/intraday') },
-  getStockQuote(code: string) { return api.get(`/stock/${code}/quote`) },
-  getStockKline(code: string, params: Record<string, unknown> = {}) { return api.get(`/stock/${code}/kline`, { params }) },
+  getStockQuote(code: string) { return api.get(`/stocks/${code}/reference`) },
+  getStockKline(code: string, params: Record<string, unknown> = {}) { return api.get(`/market/kline/${code}`, { params }) },
   getIndexDetail(code: string) { return api.get(`/market/index/${code}/detail`) },
-  getIndexKline(code: string, params: Record<string, unknown> = {}) { return api.get(`/market/index/${code}/kline`, { params }) },
+  getIndexKline(code: string, params: Record<string, unknown> = {}) { return api.get(`/market/kline/${code}`, { params }) },
 }
 
 export const researchAPI = {
