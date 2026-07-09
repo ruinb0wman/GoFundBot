@@ -55,7 +55,7 @@
           <FundPortfolio :portfolio="fundDetail.portfolio" @stock-click="handleStockClick" />
         </BCard>
         <BCard class="clickable" :body-style="{ flex: '1', minHeight: '300px', maxHeight: '480px', display: 'flex', flexDirection: 'column' }" @click="openModal('manager')">
-          <FundManagerInfo :fundManagers="fundDetail.fund_managers" />
+          <FundManagerInfo :managers="fundDetail.fund_managers" />
         </BCard>
         <BCard class="clickable" :body-style="{ flex: '1', minHeight: '300px', maxHeight: '480px', display: 'flex', flexDirection: 'column' }" @click="openModal('ability')">
           <FundAbilityEval :performanceEvaluation="fundDetail.performance_evaluation" />
@@ -75,7 +75,7 @@
           <FundHolderStructure v-if="modalType === 'holder'" :holderStructure="fundDetail.holder_structure" />
           <FundScaleChange v-if="modalType === 'scale'" :fluctuationScale="fundDetail.scale_fluctuation" />
           <FundPortfolio v-if="modalType === 'portfolio'" :portfolio="fundDetail.portfolio" @stock-click="handleStockClick" />
-          <FundManagerInfo v-if="modalType === 'manager'" :fundManagers="fundDetail.fund_managers" />
+          <FundManagerInfo v-if="modalType === 'manager'" :managers="fundDetail.fund_managers" />
           <FundAbilityEval v-if="modalType === 'ability'" :performanceEvaluation="fundDetail.performance_evaluation" />
           <FundSubscription v-if="modalType === 'subscription'" :subscriptionRedemption="fundDetail.subscription_redemption" />
           <FundSameType v-if="modalType === 'sametype'" :sameTypeFunds="fundDetail.same_type_funds" :isExpanded="true" @fund-select="handleSameTypeFundSelect" />

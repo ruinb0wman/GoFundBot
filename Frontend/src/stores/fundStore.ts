@@ -22,9 +22,10 @@ export const useFundStore = defineStore('fund', {
         return existing
       }
       const promise = fundAPI.getFundDetail(fundCode).then(res => {
+        const data = res.data?.data ?? res.data
         delete this.pendingRequests[fundCode]
-        this.cache[fundCode] = { data: res.data, ts: Date.now() }
-        return res.data
+        this.cache[fundCode] = { data, ts: Date.now() }
+        return data
       }).catch(err => {
         delete this.pendingRequests[fundCode]
         throw err
