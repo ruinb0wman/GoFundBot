@@ -1,7 +1,7 @@
 /* eslint-disable max-lines */
 import Decimal from 'decimal.js'
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
-import { screeningAPI, watchlistAPI, fundAPI } from '../services/api'
+import { screeningAPI, fundAPI } from '../services/api'
 import { useWatchlistStore } from '../stores/watchlistStore'
 import { translate } from '../locales/index'
 import { fmtNumber, returnClass as calcReturnClass } from '../utils/number'
@@ -807,21 +807,18 @@ export function useFundScreening(emit) {
     const toggleWatchlist = async (fund) => {
         const code = fund.fund_code
         const watched = isInWatchlist(code)
+        const store = useWatchlistStore()
         try {
             if (watched) {
-                await watchlistAPI.removeFromWatchlist(code)
+                await store.removeFund(code)
                 watchlistCodes.value.delete(code)
                 watchlistCodes.value = new Set(watchlistCodes.value)
             } else {
-                await watchlistAPI.addToWatchlist(code, fund.fund_name, fund.fund_type)
+                await store.addFund(code, fund.fund_name, fund.fund_type)
                 watchlistCodes.value = new Set([...watchlistCodes.value, code])
             }
         } catch (err) {
-            if (err.response?.status === 409) {
-                watchlistCodes.value = new Set([...watchlistCodes.value, code])
-            } else {
-                console.error('切换自选失败:', err)
-            }
+            console.error('切换自选失败:', err)
         }
     }
 

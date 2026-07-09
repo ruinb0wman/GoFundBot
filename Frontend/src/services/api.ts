@@ -49,27 +49,10 @@ export const fundAPI = {
     return api.get(`/market/daily${forceRefresh ? '?refresh=true' : ''}`)
   },
   analyzeFund(fundCode: string) { return api.get(`/fund/${fundCode}/analyze`) },
+  getEstimates(codes: string[]) { return api.get(`/funds/estimates?codes=${codes.join(',')}`) },
 }
 
 export const watchlistAPI = {
-  getWatchlist() { return api.get('/watchlist') },
-  checkInWatchlist(fundCode: string) { return api.get(`/watchlist/${fundCode}`) },
-  addToWatchlist(fundCode: string, fundName: string, fundType = '', groupId: number | null = null, estimate?: any) {
-    return api.post('/watchlist', { fund_code: fundCode, fund_name: fundName, fund_type: fundType, group_id: groupId, estimate })
-  },
-  removeFromWatchlist(fundCode: string) { return api.delete(`/watchlist/${fundCode}`) },
-  batchDelete(fundCodes: string[]) { return api.post('/watchlist/batch-delete', { fund_codes: fundCodes }) },
-  reorder(fundCodeOrder: string[], groupId: number | null = null) {
-    return api.put('/watchlist/reorder', { order: fundCodeOrder, group_id: groupId })
-  },
-  moveFundToGroup(fundCode: string, groupId: number | null) {
-    return api.put('/watchlist/move', { fund_code: fundCode, group_id: groupId })
-  },
-  getGroups() { return api.get('/watchlist/groups') },
-  createGroup(name: string) { return api.post('/watchlist/groups', { name }) },
-  renameGroup(groupId: number, name: string) { return api.put(`/watchlist/groups/${groupId}`, { name }) },
-  deleteGroup(groupId: number) { return api.delete(`/watchlist/groups/${groupId}`) },
-  reorderGroups(groupIdOrder: number[]) { return api.put('/watchlist/groups/reorder', { order: groupIdOrder }) },
   refreshEstimates() { return api.post('/watchlist/refresh-estimates') },
 }
 

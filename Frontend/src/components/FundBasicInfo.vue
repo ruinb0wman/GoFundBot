@@ -122,8 +122,9 @@
 import BButton from './BButton.vue'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { fundAPI, watchlistAPI } from '../services/api'
+import { fundAPI } from '../services/api'
 import { useFundStore } from '../stores/fundStore'
+import { useWatchlistStore } from '../stores/watchlistStore'
 import { fmtNumber } from '../utils/number'
 import Decimal from 'decimal.js'
 
@@ -203,8 +204,8 @@ watch(() => props.fundCode, (newCode) => {
 
 async function checkWatchlistStatus(): Promise<void> {
   try {
-    const response = await watchlistAPI.checkInWatchlist(props.fundCode)
-    isInWatchlist.value = response.data.in_watchlist
+    const store = useWatchlistStore()
+    isInWatchlist.value = await store.checkInWatchlist(props.fundCode)
   } catch (error) {
     console.error('检查自选状态失败:', error)
     isInWatchlist.value = false
@@ -214,24 +215,16 @@ async function checkWatchlistStatus(): Promise<void> {
 async function toggleWatchlist(): Promise<void> {
   if (watchlistLoading.value || !props.fundCode) return
   watchlistLoading.value = true
+  const store = useWatchlistStore()
   try {
     if (isInWatchlist.value) {
-      await watchlistAPI.removeFromWatchlist(props.fundCode)
+      await store.removeFund(props.fundCode)
       isInWatchlist.value = false
-      window.dispatchEvent(new CustomEvent('watchlist-updated', { detail: { fundCode: props.fundCode, action: 'remove' } }))
     } else {
       const fundName = fundInfo.value?.name || fundInfo.value?.fund_name || props.fundCode
       const fundType = fundInfo.value?.fund_type || ''
-      await watchlistAPI.addToWatchlist(props.fundCode, fundName, fundType, null, {
-        name: fundName,
-        net_worth: fundInfo.value?.dwjz,
-        net_worth_date: fundInfo.value?.jzrq,
-        estimate_value: fundInfo.value?.gsz,
-        estimate_change: fundInfo.value?.gszzl,
-        estimate_time: fundInfo.value?.gztime,
-      })
+      await store.addFund(props.fundCode, fundName, fundType)
       isInWatchlist.value = true
-      window.dispatchEvent(new CustomEvent('watchlist-updated', { detail: { fundCode: props.fundCode, action: 'add' } }))
     }
   } catch (error: any) {
     console.error('操作自选失败:', error)

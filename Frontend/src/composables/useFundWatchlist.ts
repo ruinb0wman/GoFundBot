@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { watchlistAPI } from '../services/api'
 import { useWatchlistStore } from '../stores/watchlistStore'
 import { translate } from '../locales/index'
 
@@ -61,6 +60,9 @@ export function useFundWatchlist(
     loading.value = true
     try {
       await watchlistStore.fetch(true)
+      if (watchlistStore.funds.length > 0) {
+        await watchlistStore.refreshEstimates()
+      }
       watchlist.value = Array.isArray(watchlistStore.funds) ? watchlistStore.funds : []
       groups.value = Array.isArray(watchlistStore.groups) ? watchlistStore.groups : []
       if (isInitialLoad.value) {
@@ -149,7 +151,7 @@ export function useFundWatchlist(
     if (selectedFunds.value.length === 0) return
     if (!confirm(translate('fund.watchlist.confirmDeleteFunds', { count: selectedFunds.value.length }))) return
     try {
-      await watchlistAPI.batchDelete(selectedFunds.value)
+      await watchlistStore.batchDelete(selectedFunds.value)
       watchlist.value = watchlist.value.filter(
         f => !selectedFunds.value.includes(f.fund_code)
       )
@@ -164,7 +166,7 @@ export function useFundWatchlist(
   const removeFund = async (fundCode) => {
     if (!confirm(translate('fund.watchlist.confirmRemoveFund'))) return
     try {
-      await watchlistAPI.removeFromWatchlist(fundCode)
+      await watchlistStore.removeFund(fundCode)
       watchlist.value = watchlist.value.filter(f => f.fund_code !== fundCode)
     } catch (error) {
       console.error('移除失败:', error)
@@ -210,7 +212,7 @@ export function useFundWatchlist(
           if (moved) {
             funds.splice(dragOverIndex.value.index, 0, moved)
             try {
-              await watchlistAPI.reorder(funds.map(f => f.fund_code), fromGroupId)
+              await watchlistStore.reorder(funds.map(f => f.fund_code), fromGroupId)
               loadWatchlist()
             } catch (error) {
               console.error('排序失败:', error)
@@ -221,7 +223,7 @@ export function useFundWatchlist(
         const fund = fromFunds[draggingIndex.value.index]
         if (fund) {
           try {
-            await watchlistAPI.moveFundToGroup(fund.fund_code, toGroupId)
+            await watchlistStore.moveFundToGroup(fund.fund_code, toGroupId)
             loadWatchlist()
           } catch (error) {
             console.error('移动失败:', error)
@@ -254,7 +256,7 @@ export function useFundWatchlist(
         : getGroupFunds(draggingIndex.value.groupId)
       const fund = fromFunds[draggingIndex.value.index]
       try {
-        await watchlistAPI.moveFundToGroup(fund.fund_code, groupId)
+        await watchlistStore.moveFundToGroup(fund.fund_code, groupId)
         loadWatchlist()
       } catch (error) {
         console.error('移动失败:', error)
@@ -289,11 +291,11 @@ export function useFundWatchlist(
     if (!name) return
     try {
       if (editingGroup.value) {
-        await watchlistAPI.renameGroup(editingGroup.value.id, name)
+        await watchlistStore.renameGroup(editingGroup.value.id, name)
       } else {
-        const response = await watchlistAPI.createGroup(name)
-        if (response.data && response.data.id) {
-          expandedGroups.value.push(response.data.id)
+        const group = await watchlistStore.createGroup(name)
+        if (group && group.id) {
+          expandedGroups.value.push(group.id)
         }
       }
       closeGroupModal()
@@ -307,7 +309,7 @@ export function useFundWatchlist(
   const deleteGroup = async (group) => {
     if (!confirm(translate('fund.watchlist.deleteGroupConfirm', { name: group.name }))) return
     try {
-      await watchlistAPI.deleteGroup(group.id)
+      await watchlistStore.deleteGroup(group.id)
       loadWatchlist()
     } catch (error) {
       console.error('删除分组失败:', error)
