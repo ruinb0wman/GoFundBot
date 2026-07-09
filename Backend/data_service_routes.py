@@ -257,6 +257,75 @@ def proxy_market_sector_constituents(code):
         return jsonify(e.to_payload()), e.status_code
 
 
+@data_service_bp.route("/market/money-flow/<symbol>", methods=["GET"])
+def proxy_market_money_flow(symbol):
+    """代理个股资金流向 → DataService /api/market/money-flow/:symbol"""
+    days = request.args.get("days", 1, type=int)
+    try:
+        result = get_data_service_client().get_stock_money_flow(symbol, days=days)
+        return jsonify(result)
+    except DataServiceError as e:
+        return jsonify(e.to_payload()), e.status_code
+
+
+@data_service_bp.route("/market/money-flow", methods=["GET"])
+def proxy_market_money_flow_aggregate():
+    """代理全市场资金流向 → DataService /api/market/money-flow"""
+    try:
+        result = get_data_service_client().get_market_money_flow()
+        return jsonify(result)
+    except DataServiceError as e:
+        return jsonify(e.to_payload()), e.status_code
+
+
+@data_service_bp.route("/market/breadth", methods=["GET"])
+def proxy_market_breadth():
+    """代理市场涨跌统计 → DataService /api/market/breadth"""
+    try:
+        result = get_data_service_client().get_market_breadth()
+        return jsonify(result)
+    except DataServiceError as e:
+        return jsonify(e.to_payload()), e.status_code
+
+
+@data_service_bp.route("/market/north-flow", methods=["GET"])
+def proxy_market_north_flow():
+    """代理北向资金 → DataService /api/market/north-flow"""
+    try:
+        result = get_data_service_client().get_market_north_flow()
+        return jsonify(result)
+    except DataServiceError as e:
+        return jsonify(e.to_payload()), e.status_code
+
+
+@data_service_bp.route("/market/global-indices", methods=["GET"])
+def proxy_market_global_indices():
+    """代理全球指数 → DataService /api/market/global-indices"""
+    try:
+        result = get_data_service_client().get_market_global_indices()
+        return jsonify(result)
+    except DataServiceError as e:
+        return jsonify(e.to_payload()), e.status_code
+
+
+@data_service_bp.route("/market/kline/global/<symbol>", methods=["GET"])
+def proxy_market_global_kline(symbol):
+    """代理全球指数K线 → DataService /api/market/kline/global/:symbol"""
+    period = request.args.get("period", "daily")
+    start_date = request.args.get("startDate")
+    end_date = request.args.get("endDate")
+    try:
+        result = get_data_service_client().get_market_global_kline(
+            symbol,
+            period=period,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        return jsonify(result)
+    except DataServiceError as e:
+        return jsonify(e.to_payload()), e.status_code
+
+
 # ---------------------------------------------------------------------------
 # News 相关代理
 # ---------------------------------------------------------------------------

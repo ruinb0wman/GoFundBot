@@ -109,6 +109,85 @@ export interface IndexListDto {
   items: IndexDto[];
 }
 
+export interface StockMoneyFlowPointDto {
+  date: string;
+  mainNetInflow: number | null;
+  superLargeNetInflow: number | null;
+  largeNetInflow: number | null;
+  mediumNetInflow: number | null;
+  smallNetInflow: number | null;
+  mainNetInflowRatio: number | null;
+}
+
+export interface StockMoneyFlowDto {
+  code: string;
+  name: string | null;
+  items: StockMoneyFlowPointDto[];
+}
+
+export interface MarketMoneyFlowDto {
+  date: string;
+  mainNetInflow: number | null;
+  superLargeNetInflow: number | null;
+  largeNetInflow: number | null;
+  mediumNetInflow: number | null;
+  smallNetInflow: number | null;
+}
+
+export interface MarketBreadthDto {
+  upCount: number;
+  downCount: number;
+  flatCount: number;
+  limitUp: number;
+  limitDown: number;
+  total: number;
+}
+
+export interface LimitUpStockDto {
+  code: string;
+  name: string;
+  price: number | null;
+  changePercent: number | null;
+  amount: number | null;
+  reason: string | null;
+  firstTime: string | null;
+  lastTime: string | null;
+  openCount: number;
+  continuousDays: number;
+}
+
+export interface LimitUpStockListDto {
+  items: LimitUpStockDto[];
+}
+
+export interface NorthFlowDto {
+  date: string;
+  shNetInflow: number | null;
+  szNetInflow: number | null;
+  totalNetInflow: number | null;
+  shUpCount: number | null;
+  shDownCount: number | null;
+  szUpCount: number | null;
+  szDownCount: number | null;
+}
+
+export interface GlobalIndexDto {
+  code: string;
+  name: string;
+  price: number | null;
+  changePercent: number | null;
+  changeAmount: number | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  prevClose: number | null;
+  market: string | null;
+}
+
+export interface GlobalIndexListDto {
+  items: GlobalIndexDto[];
+}
+
 export interface NewsItemDto {
   title: string;
   summary: string | null;
@@ -152,6 +231,12 @@ export interface MarketProvider {
   indices?(): Promise<IndexListDto>;
   sectors?(): Promise<SectorListDto>;
   sectorConstituents?(code: string): Promise<ConstituentListDto>;
+  moneyFlow?(code: string, days?: number): Promise<StockMoneyFlowDto>;
+  marketMoneyFlow?(): Promise<MarketMoneyFlowDto>;
+  breadth?(): Promise<MarketBreadthDto>;
+  limitUpStocks?(limit?: number): Promise<LimitUpStockListDto>;
+  northFlow?(): Promise<NorthFlowDto>;
+  globalIndices?(): Promise<GlobalIndexListDto>;
 }
 
 export interface StockProvider {

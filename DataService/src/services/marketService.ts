@@ -4,15 +4,22 @@ import { ProviderChain } from '../core/providerChain.js';
 import type { ServiceResult } from '../types/common.js';
 import { StockSdkMarketProvider } from '../providers/stock-sdk/stockSdkMarketProvider.js';
 import { EastMoneyMarketProvider } from '../providers/eastmoney/eastmoneyMarketProvider.js';
+import { YahooMarketProvider } from '../providers/yahoo/yahooMarketProvider.js';
+import { isGlobalIndexSymbol } from '../providers/yahoo/yahooClient.js';
 import type {
   ConstituentListDto,
+  GlobalIndexListDto,
   IndexListDto,
   KlineDto,
   KlineOptions,
+  MarketBreadthDto,
+  MarketMoneyFlowDto,
   MarketProvider,
   MarketQuoteDto,
+  NorthFlowDto,
   ProviderChainResult,
   SectorListDto,
+  StockMoneyFlowDto,
 } from '../providers/types.js';
 
 export type { KlineDto, MarketQuoteDto } from '../providers/types.js';
@@ -27,6 +34,7 @@ export interface KlineQuery {
 
 const stockSdkMarketProvider = new StockSdkMarketProvider();
 const eastMoneyMarketProvider = new EastMoneyMarketProvider();
+const yahooMarketProvider = new YahooMarketProvider();
 
 export async function getMarketQuotes(symbolsParam: string | undefined): Promise<ServiceResult<MarketQuoteDto[]>> {
   const symbols = parseSymbols(symbolsParam);
@@ -46,6 +54,18 @@ export async function getMarketKline(symbol: string, query: KlineQuery): Promise
   const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider, eastMoneyMarketProvider]);
   const result = await cacheThrough(key, ttl.marketKline, () =>
     chain.run('market.kline', (provider) => provider.kline(stockSymbol, options))
+  );
+
+  return toServiceResult(result);
+}
+
+export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Promise<ServiceResult<KlineDto[]>> {
+  const globalSymbol = assertGlobalIndexSymbol(symbol);
+  const options = parseGlobalKlineOptions(query);
+  const key = `market:kline:global:${globalSymbol}:${JSON.stringify(options)}`;
+  const chain = new ProviderChain<MarketProvider>([yahooMarketProvider]);
+  const result = await cacheThrough(key, ttl.marketGlobalKline, () =>
+    chain.run('market.kline', (provider) => provider.kline(globalSymbol, options))
   );
 
   return toServiceResult(result);
@@ -76,6 +96,28 @@ function assertStockSymbol(value: string | undefined): string {
     });
   }
   return symbol.toLowerCase();
+}
+
+function assertGlobalIndexSymbol(value: string | undefined): string {
+  const symbol = assertCode(value, 'symbol');
+  const lower = symbol.toLowerCase();
+  if (!isGlobalIndexSymbol(lower)) {
+    throw new AppError('INVALID_ARGUMENT', `Unsupported global index symbol: ${symbol}`, 400, { symbol });
+  }
+  return lower;
+}
+
+function parseGlobalKlineOptions(query: KlineQuery): KlineOptions {
+  const period = query.period ?? 'daily';
+  if (!['daily', 'weekly', 'monthly'].includes(period)) {
+    throw new AppError('INVALID_ARGUMENT', 'period must be daily, weekly, or monthly', 400, { period });
+  }
+  return {
+    period: period as 'daily' | 'weekly' | 'monthly',
+    adjust: '' as const,
+    startDate: query.startDate ? normalizeDate(query.startDate) : undefined,
+    endDate: query.endDate ? normalizeDate(query.endDate) : undefined,
+  };
 }
 
 function parseKlineOptions(query: KlineQuery): KlineOptions {
@@ -157,6 +199,78 @@ export async function getMarketIndices(): Promise<ServiceResult<IndexListDto>> {
         throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement indices`, 501);
       }
       return provider.indices();
+    })
+  );
+
+  return toServiceResult(result);
+}
+
+export async function getStockMoneyFlow(code: string, days?: number): Promise<ServiceResult<StockMoneyFlowDto>> {
+  const stockSymbol = assertStockSymbol(code);
+  const key = `market:money-flow:${stockSymbol}:${days ?? 1}`;
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const result = await cacheThrough(key, ttl.marketMoneyFlow, () =>
+    chain.run('market.moneyFlow', (provider) => {
+      if (!provider.moneyFlow) {
+        throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement moneyFlow`, 501);
+      }
+      return provider.moneyFlow(stockSymbol, days);
+    })
+  );
+
+  return toServiceResult(result);
+}
+
+export async function getMarketMoneyFlow(): Promise<ServiceResult<MarketMoneyFlowDto>> {
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const result = await cacheThrough('market:money-flow:market', ttl.marketMoneyFlow, () =>
+    chain.run('market.marketMoneyFlow', (provider) => {
+      if (!provider.marketMoneyFlow) {
+        throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement marketMoneyFlow`, 501);
+      }
+      return provider.marketMoneyFlow();
+    })
+  );
+
+  return toServiceResult(result);
+}
+
+export async function getMarketBreadth(): Promise<ServiceResult<MarketBreadthDto>> {
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const result = await cacheThrough('market:breadth', ttl.marketBreadth, () =>
+    chain.run('market.breadth', (provider) => {
+      if (!provider.breadth) {
+        throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement breadth`, 501);
+      }
+      return provider.breadth();
+    })
+  );
+
+  return toServiceResult(result);
+}
+
+export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const result = await cacheThrough('market:north-flow', ttl.marketNorthFlow, () =>
+    chain.run('market.northFlow', (provider) => {
+      if (!provider.northFlow) {
+        throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement northFlow`, 501);
+      }
+      return provider.northFlow();
+    })
+  );
+
+  return toServiceResult(result);
+}
+
+export async function getGlobalIndices(): Promise<ServiceResult<GlobalIndexListDto>> {
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const result = await cacheThrough('market:global-indices', ttl.marketGlobalIndices, () =>
+    chain.run('market.globalIndices', (provider) => {
+      if (!provider.globalIndices) {
+        throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement globalIndices`, 501);
+      }
+      return provider.globalIndices();
     })
   );
 

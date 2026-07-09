@@ -2,11 +2,17 @@ import { Router } from 'express';
 import { asyncHandler } from '../core/errors.js';
 import { sendSuccess } from '../core/response.js';
 import {
+  getGlobalIndexKline,
+  getGlobalIndices,
+  getMarketBreadth,
   getMarketIndices,
   getMarketKline,
+  getMarketMoneyFlow,
   getMarketQuotes,
   getMarketSectorConstituents,
   getMarketSectors,
+  getNorthFlow,
+  getStockMoneyFlow,
 } from '../services/marketService.js';
 
 export const marketRouter = Router();
@@ -34,6 +40,20 @@ marketRouter.get(
 );
 
 marketRouter.get(
+  '/kline/global/:symbol',
+  asyncHandler(async (req, res) => {
+    sendSuccess(
+      res,
+      await getGlobalIndexKline(routeParam(req.params.symbol), {
+        period: firstQueryValue(req.query.period),
+        startDate: firstQueryValue(req.query.startDate),
+        endDate: firstQueryValue(req.query.endDate),
+      })
+    );
+  })
+);
+
+marketRouter.get(
   '/indices',
   asyncHandler(async (req, res) => {
     sendSuccess(res, await getMarketIndices());
@@ -51,6 +71,42 @@ marketRouter.get(
   '/sectors/:code/constituents',
   asyncHandler(async (req, res) => {
     sendSuccess(res, await getMarketSectorConstituents(routeParam(req.params.code)));
+  })
+);
+
+marketRouter.get(
+  '/money-flow/:symbol',
+  asyncHandler(async (req, res) => {
+    const days = firstQueryValue(req.query.days);
+    sendSuccess(res, await getStockMoneyFlow(routeParam(req.params.symbol), days ? parseInt(days, 10) : undefined));
+  })
+);
+
+marketRouter.get(
+  '/money-flow',
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await getMarketMoneyFlow());
+  })
+);
+
+marketRouter.get(
+  '/breadth',
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await getMarketBreadth());
+  })
+);
+
+marketRouter.get(
+  '/north-flow',
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await getNorthFlow());
+  })
+);
+
+marketRouter.get(
+  '/global-indices',
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await getGlobalIndices());
   })
 );
 

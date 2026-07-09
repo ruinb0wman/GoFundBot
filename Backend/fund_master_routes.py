@@ -337,6 +337,11 @@ def get_index_kline(code):
         - adjust: qfq（前复权）/ hfq（后复权）/ none（默认 qfq）
         - startDate: 起始日期 YYYYMMDD（可选）
         - endDate: 结束日期 YYYYMMDD（可选）
+
+    数据流：
+        全球指数（b_*/gb_*/hk*）→ DataService → Yahoo Finance（代理）
+        回退 → akshare（Sina/EastMoney）
+        A 股指数 → tencent/eastmoney/akshare
     """
     code = code.strip()
     period = request.args.get("period", "daily")
@@ -344,17 +349,44 @@ def get_index_kline(code):
     start_date = request.args.get("startDate", "")
     end_date = request.args.get("endDate", "")
 
+    code_lower = code.lower()
+
+    # -------
+    # 全球指数：DataService first, akshare fallback
+    # -------
+    if code_lower.startswith(("b_", "gb_", "hk")):
+        try:
+            from services.data_service_client import DataServiceError, get_data_service_client
+
+            ds = get_data_service_client()
+            ds_result = ds.get_market_global_kline(code_lower, period=period, start_date=start_date, end_date=end_date)
+            ds_data = ds_result.get("data") if isinstance(ds_result, dict) else None
+            if ds_data:
+                logger.info(f"index kline {code_lower}: DataService success, {len(ds_data)} points")
+                return jsonify({"success": True, "data": ds_data, "source": "data_service"})
+        except (DataServiceError, Exception) as e:
+            logger.warning(f"index kline {code_lower}: DataService unavailable, fallback: {e}")
+
+        # fallback to akshare
+        from services.market_data import get_market_data_service as get_mds
+
+        mds = get_mds()
+        if code_lower.startswith("b_"):
+            result = mds.get_global_index_kline(code_lower, start_date=start_date, end_date=end_date)
+        else:
+            result = mds.get_us_index_kline(code_lower, start_date=start_date, end_date=end_date)
+        if not result.get("success"):
+            return jsonify(result), 404
+        return jsonify(result)
+
+    # -------
+    # A 股指数：tencent → eastmoney → akshare
+    # -------
     from services.market_data import get_market_data_service as get_mds
 
     try:
         mds = get_mds()
-        code_lower = code.lower()
-        if code_lower.startswith("b_"):
-            result = mds.get_global_index_kline(code_lower, start_date=start_date, end_date=end_date)
-        elif code_lower in {"gb_ixic", "gb_dji", "gb_inx"}:
-            result = mds.get_us_index_kline(code_lower, start_date=start_date, end_date=end_date)
-        else:
-            result = mds.get_a_stock_kline(code, klt=period, fqt=adjust, start_date=start_date, end_date=end_date)
+        result = mds.get_a_stock_kline(code, klt=period, fqt=adjust, start_date=start_date, end_date=end_date)
         if not result.get("success"):
             return jsonify(result), 404
         return jsonify(result)

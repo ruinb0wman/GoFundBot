@@ -6,6 +6,7 @@ DataService's unified response envelope.
 """
 
 import os
+import re
 from collections.abc import Iterable
 from typing import Any
 
@@ -205,6 +206,62 @@ class DataServiceClient:
         return self._get(f"/market/sectors/{code}/constituents")
 
     # ------------------------------------------------------------------
+    # Market – money flow (per stock)
+    # ------------------------------------------------------------------
+
+    def get_stock_money_flow(self, code: str, days: int = 1) -> dict[str, Any]:
+        symbol = self._to_stock_symbol(code)
+        return self._get(f"/market/money-flow/{symbol}", params={"days": str(days)})
+
+    # ------------------------------------------------------------------
+    # Market – money flow (market-wide aggregate)
+    # ------------------------------------------------------------------
+
+    def get_market_money_flow(self) -> dict[str, Any]:
+        return self._get("/market/money-flow")
+
+    # ------------------------------------------------------------------
+    # Market – breadth
+    # ------------------------------------------------------------------
+
+    def get_market_breadth(self) -> dict[str, Any]:
+        return self._get("/market/breadth")
+
+    # ------------------------------------------------------------------
+    # Market – north flow
+    # ------------------------------------------------------------------
+
+    def get_market_north_flow(self) -> dict[str, Any]:
+        return self._get("/market/north-flow")
+
+    # ------------------------------------------------------------------
+    # Market – global indices
+    # ------------------------------------------------------------------
+
+    def get_market_global_indices(self) -> dict[str, Any]:
+        return self._get("/market/global-indices")
+
+    # ------------------------------------------------------------------
+    # Market – global index kline
+    # ------------------------------------------------------------------
+
+    def get_market_global_kline(
+        self,
+        symbol: str,
+        period: str = "daily",
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> dict[str, Any]:
+        params = self._drop_none(
+            {
+                "period": period,
+                "startDate": start_date,
+                "endDate": end_date,
+            }
+        )
+        return self._get(f"/market/kline/global/{symbol}", params=params)
+
+    # ------------------------------------------------------------------
     # News – flash news
     # ------------------------------------------------------------------
 
@@ -269,6 +326,19 @@ class DataServiceClient:
     @staticmethod
     def _drop_none(params: dict[str, Any]) -> dict[str, Any]:
         return {key: value for key, value in params.items() if value is not None}
+
+    @staticmethod
+    def _to_stock_symbol(code: str) -> str:
+        """Normalize a stock code to DataService symbol format (e.g., sh600519)."""
+        code = code.strip()
+        if re.match(r"^(sh|sz|bj)", code, re.IGNORECASE):
+            return code.lower()
+        code = re.sub(r"\.(SH|SZ|BJ|HK)$", "", code, flags=re.IGNORECASE)
+        if re.match(r"^\d{6}$", code):
+            if code.startswith(("6", "9")):
+                return f"sh{code}"
+            return f"sz{code}"
+        return code.lower()
 
 
 def get_data_service_client() -> DataServiceClient:

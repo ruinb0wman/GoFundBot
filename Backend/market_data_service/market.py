@@ -145,19 +145,75 @@ class MarketMixin:
         logger.info(f"[市场数据] 北向资金历史回退成功: total={result['total']}亿 日期={data_date}")
         return result
 
+    def _try_ds_main_flow(self) -> dict[str, object] | None:
+        try:
+            from services.data_service_client import DataServiceError, get_data_service_client
+
+            client = get_data_service_client()
+            ds = client.get_market_money_flow()
+            if not ds or not isinstance(ds, dict):
+                return None
+            ds_data = ds.get("data") if isinstance(ds.get("data"), dict) else None
+            if not ds_data:
+                return None
+
+            ds_date = ds_data.get("date", "")
+            if not ds_date:
+                return None
+
+            raw_main = self._safe_float(ds_data.get("mainNetInflow"))
+            raw_super = self._safe_float(ds_data.get("superLargeNetInflow"))
+            raw_large = self._safe_float(ds_data.get("largeNetInflow"))
+            raw_medium = self._safe_float(ds_data.get("mediumNetInflow"))
+            raw_small = self._safe_float(ds_data.get("smallNetInflow"))
+
+            if raw_main is None:
+                return None
+
+            result: dict[str, object] = {
+                "data_status": "realtime",
+                "data_date": ds_date,
+                "data_source": "data_service.eastmoney",
+                "super_large": round(raw_super / 1e8, 2),
+                "large": round(raw_large / 1e8, 2),
+                "medium": round(raw_medium / 1e8, 2),
+                "small": round(raw_small / 1e8, 2),
+                "main_net": round((raw_super + raw_large) / 1e8, 2),
+                "data_note": f"主力资金数据来自 DataService（{ds_date}）。",
+                "update_time": datetime.now().strftime("%H:%M:%S"),
+            }
+            logger.info(f"[市场数据] DataService 主力净流入: {result['main_net']}亿 (日期{ds_date})")
+            return result
+        except ImportError:
+            logger.warning("[市场数据] DataServiceClient 不可用（未安装依赖）")
+            return None
+        except DataServiceError as e:
+            logger.warning(f"[市场数据] DataService 主力资金不可用，回退 akshare: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"[市场数据] DataService 主力资金异常: {e}")
+            return None
+
     def get_main_flow(self) -> dict[str, object]:
         cache_key = "main_flow"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
 
+        # 1) Try DataService first
+        ds_result = self._try_ds_main_flow()
+        if ds_result:
+            self._set_cache(cache_key, ds_result)
+            return ds_result
+
+        # 2) Fallback to akshare
         result = self._build_unavailable_result("主力资金")
         _base._ensure_akshare()
         if not _base.AKSHARE_AVAILABLE:
             return result
 
         try:
-            logger.info("[市场数据] 获取主力资金数据...")
+            logger.info("[市场数据] 获取主力资金数据（akshare 回退）...")
             result = self._do_get_main_flow(result)
         except Exception as e:
             logger.error(f"[市场数据] 获取主力资金失败: {e}")
@@ -202,12 +258,51 @@ class MarketMixin:
 
         return fallback
 
+    def _try_ds_breadth(self) -> dict[str, object] | None:
+        try:
+            from services.data_service_client import DataServiceError, get_data_service_client
+
+            client = get_data_service_client()
+            ds = client.get_market_breadth()
+            if not ds or not isinstance(ds, dict):
+                return None
+            ds_data = ds.get("data") if isinstance(ds.get("data"), dict) else None
+            if not ds_data:
+                return None
+
+            result: dict[str, object] = {
+                "up_count": int(ds_data.get("upCount", 0)),
+                "down_count": int(ds_data.get("downCount", 0)),
+                "flat_count": int(ds_data.get("flatCount", 0)),
+                "limit_up": int(ds_data.get("limitUp", 0)),
+                "limit_down": int(ds_data.get("limitDown", 0)),
+                "update_time": datetime.now().strftime("%H:%M:%S"),
+                "source": "data_service",
+            }
+            logger.info(f"[市场数据] DataService 涨跌统计: 涨{result['up_count']} 跌{result['down_count']}")
+            return result
+        except ImportError:
+            return None
+        except DataServiceError as e:
+            logger.warning(f"[市场数据] DataService 涨跌统计不可用: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"[市场数据] DataService 涨跌统计异常: {e}")
+            return None
+
     def get_market_breadth(self) -> dict[str, object]:
         cache_key = "market_breadth"
         cached = self._get_cache(cache_key)
         if cached:
             return cached
 
+        # 1) Try DataService first
+        ds_result = self._try_ds_breadth()
+        if ds_result:
+            self._set_cache(cache_key, ds_result)
+            return ds_result
+
+        # 2) Fallback to akshare
         result = {
             "up_count": 0,
             "down_count": 0,
@@ -222,7 +317,7 @@ class MarketMixin:
             return result
 
         try:
-            logger.info("[市场数据] 获取市场涨跌统计...")
+            logger.info("[市场数据] 获取市场涨跌统计（akshare 回退）...")
 
             df = self._call_akshare_with_retry(_base.ak.stock_zh_a_spot_em, "A股实时行情")
             if (df is None or df.empty) and _base.AKSHARE_AVAILABLE:

@@ -155,4 +155,10 @@ export const ttl = {
   marketQuotes: 15 * 1000,
   marketKline: 60 * 60 * 1000,
   stockReference: 7 * 24 * 60 * 60 * 1000,
+  marketMoneyFlow: 30 * 1000,
+  marketBreadth: 15 * 1000,
+  marketLimitUp: 30 * 1000,
+  marketNorthFlow: 15 * 1000,
+  marketGlobalIndices: 15 * 1000,
+  marketGlobalKline: 60 * 60 * 1000,
 };

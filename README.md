@@ -370,6 +370,41 @@ MyBot/
 ```
 
 
+## ⚠️ 已知限制
+
+### Yahoo Finance API 需要代理
+
+DataService 的全球指数历史 K 线通过 Yahoo Finance v8 API 获取。由于 Yahoo Finance 屏蔽中国大陆 IP，
+需要配置 `HTTP_PROXY` / `HTTPS_PROXY` 代理环境变量才能正常访问。
+
+配置方式（见 `DataService/.env.example`）：
+```bash
+HTTP_PROXY=http://127.0.0.1:7890
+HTTPS_PROXY=http://127.0.0.1:7890
+```
+
+### Push2 A 股全市场列表不可用
+
+东方财富 `push2.eastmoney.com` 的 A 股全市场 filter 在当前服务环境被拒绝访问。受影响的 DataService 功能：
+
+- **涨跌统计**（`GET /market/breadth`）→ 改用 `api/qt/stock/get?secid=1.000001` 的
+  上证指数级字段作为近似替代，仅覆盖上证市场，不含深证。
+- **涨停股池** → 不可用，Backend 保留 akshare `stock_zt_pool_em` 作为唯一数据源。
+
+### 全球指数历史 K 线
+
+全球指数（美股/港股/日经/欧股等）的历史 K 线通过 Yahoo Finance v8 API 获取，
+而非 EastMoney push2his（push2his 不支持全球指数 secid）。
+
+### 个股资金流向说明
+
+个股资金流向数据通过 EastMoney push2 `fflow/daykline/get` 接口获取。
+字段含义：
+- 主力净流入 = 超大单净流入 + 大单净流入（≈ 机构资金）
+- 中单净流入 ≈ 大户资金
+- 小单净流入 ≈ 散户资金
+- 数值单位为元，DataService 返回原始值，Backend 转换为亿元（÷1e8）。
+
 ## 📈 近期演进 (2026-06)
 
 | 模块 | 主要进展 |
