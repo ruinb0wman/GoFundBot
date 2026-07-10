@@ -87,6 +87,38 @@ export interface MarketCacheEntry {
   updatedAt: number
 }
 
+export interface ScreeningFund {
+  fund_code: string
+  fund_name: string
+  fund_type: string | null
+  return_1m: number | null
+  return_3m: number | null
+  return_6m: number | null
+  return_1y: number | null
+  return_2y: number | null
+  return_3y: number | null
+  ytd: number | null
+  since_inception: number | null
+  fee: string | null
+  nav: number | null
+  nav_date: string | null
+  source: string | null
+  updated_time: string | null
+  max_drawdown_1y: number | null
+  sharpe_ratio_1y: number | null
+  sharpe_ratio_3y: number | null
+  volatility_1y: number | null
+  calmar_ratio_1y: number | null
+  industry_tag_name: string | null
+  rank_pct_1m: number | null
+  rank_pct_3m: number | null
+  rank_pct_6m: number | null
+  rank_pct_1y: number | null
+  rank_pct_2y: number | null
+  rank_pct_3y: number | null
+  pass_4433: number
+}
+
 export class GoFundDB extends Dexie {
   watchlist!: Table<WatchlistItem>
   watchlistGroups!: Table<WatchlistGroup>
@@ -98,6 +130,7 @@ export class GoFundDB extends Dexie {
   chatMessages!: Table<ChatMessage>
   fundCache!: Table<FundCacheEntry>
   marketCache!: Table<MarketCacheEntry>
+  screeningFunds!: Table<ScreeningFund>
 
   constructor() {
     super('GoFundBot')
@@ -113,6 +146,10 @@ export class GoFundDB extends Dexie {
       chatMessages: '++id, sessionId, role, createdAt',
       fundCache: 'fundCode, updatedAt',
       marketCache: 'key, updatedAt',
+    })
+
+    this.version(2).stores({
+      screeningFunds: 'fund_code, fund_type, pass_4433, updated_time',
     })
   }
 }

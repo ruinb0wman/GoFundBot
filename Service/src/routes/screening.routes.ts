@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../core/errors.js';
 import { sendSuccess } from '../core/response.js';
 import { getFundScreeningSnapshot, searchFunds } from '../services/fundService.js';
+import { cache } from '../core/cache.js';
 import type { FundSearchItemDto, FundSearchResultDto, FundScreeningSnapshotItemDto } from '../types/fund.js';
 
 export const screeningRouter = Router();
@@ -11,9 +12,60 @@ screeningRouter.get(
   asyncHandler(async (_req, res) => {
     sendSuccess(res, {
       status: 'ready',
-      db_update_status: 'idle',
-      fund_count: 0,
-      last_update_time: null,
+      sync_available: true,
+      basic_count: 0,
+      latest_update: null,
+    });
+  }),
+);
+
+screeningRouter.get(
+  '/sync',
+  asyncHandler(async (req, res) => {
+    const since = typeof req.query.since === 'string' ? req.query.since : undefined;
+    const force = req.query.force === 'true' || req.query.force === '1';
+
+    // 强制刷新：清除内存缓存
+    if (force) {
+      cache.clear();
+    }
+
+    const snapshot = await getFundScreeningSnapshot({ limitPerType: 500 });
+    const updatedAt = snapshot.updatedAt?.toISOString?.() || null;
+
+    // 前端传了 since 且缓存未刷新 → 返回 unchanged
+    if (since && updatedAt && since >= updatedAt) {
+      sendSuccess(res, {
+        unchanged: true,
+        sync_time: updatedAt,
+      });
+      return;
+    }
+
+    const allFunds = ((snapshot.data as { items?: FundScreeningSnapshotItemDto[] } | undefined)?.items ?? []);
+    const funds = allFunds.map((f: FundScreeningSnapshotItemDto) => ({
+      fund_code: f.code,
+      fund_name: f.name,
+      fund_type: f.type,
+      return_1m: f.return1m,
+      return_3m: f.return3m,
+      return_6m: f.return6m,
+      return_1y: f.return1y,
+      return_2y: f.return2y,
+      return_3y: f.return3y,
+      ytd: f.ytd,
+      since_inception: f.sinceInception,
+      fee: f.fee,
+      nav: f.nav,
+      nav_date: f.navDate,
+      source: f.source,
+      updated_time: f.updatedAt,
+    }));
+    sendSuccess(res, {
+      unchanged: false,
+      funds,
+      total: funds.length,
+      sync_time: new Date().toISOString(),
     });
   }),
 );

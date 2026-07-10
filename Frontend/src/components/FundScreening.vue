@@ -375,7 +375,7 @@
             <span :class="getCalmarClass(row.calmar_ratio_1y)">{{ formatNumber(row.calmar_ratio_1y) }}</span>
           </template>
           <template #pass4433="{ row }">
-            <span v-if="row.pass_4433" class="pass-badge"><LucideIcon name="Check" :size="14" /></span>
+            <span v-if="row.pass_4433 === 1" class="pass-badge"><LucideIcon name="Check" :size="14" /></span>
             <span v-else class="fail-badge">-</span>
           </template>
           <template #actions="{ row }">

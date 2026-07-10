@@ -128,18 +128,20 @@ export async function getFundScreeningSnapshot(options: {
   types?: string[];
   sort?: string;
   pageSize?: number;
+  limitPerType?: number;
 }): Promise<ServiceResult<FundScreeningSnapshotDto>> {
   const types = options.types?.filter(Boolean);
   const sort = options.sort || '1nzf';
   const pageSize = options.pageSize || 500;
-  const key = `fund:screening-snapshot:${(types || []).join(',')}:${sort}:${pageSize}`;
+  const limitPerType = options.limitPerType;
+  const key = `fund:screening-snapshot:${(types || []).join(',')}:${sort}:${pageSize}:${limitPerType ?? ''}`;
   const chain = new ProviderChain<FundProvider>([eastMoneyFundProvider]);
   const result = await cacheThrough(key, ttl.fundScreeningSnapshot, () =>
     chain.run('fund.screeningSnapshot', (provider) => {
       if (!provider.screeningSnapshot) {
         throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement fund screening snapshot`, 501);
       }
-      return provider.screeningSnapshot({ types, sort, pageSize });
+      return provider.screeningSnapshot({ types, sort, pageSize, limitPerType });
     })
   );
 

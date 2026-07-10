@@ -28,6 +28,7 @@ export interface FundScreeningSnapshotOptions {
   types?: string[];
   sort?: string;
   pageSize?: number;
+  limitPerType?: number;
 }
 
 export interface KlineOptions {

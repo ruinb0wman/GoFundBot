@@ -2,11 +2,18 @@
 import Decimal from 'decimal.js'
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { screeningAPI, fundAPI } from '../services/api'
+import { useScreeningDb } from './useScreeningDb'
 import { useWatchlistStore } from '../stores/watchlistStore'
 import { translate } from '../locales/index'
 import { fmtNumber, returnClass as calcReturnClass } from '../utils/number'
 
 export function useFundScreening(emit) {
+    const {
+        syncFromServer, getStatus: getLocalStatus,
+        queryFunds, syncing: dbSyncing,
+        lastSyncTime, computed: dbComputed
+    } = useScreeningDb()
+
     const dbStatus = ref({
         basic_count: 0,
         latest_update: null,
@@ -455,7 +462,7 @@ export function useFundScreening(emit) {
     const gridOptions = reactive({
         border: true,
         stripe: true,
-        showOverflow: true,
+        showOverflow: 'title',
         height: 1000,
         rowConfig: {
             isHover: true
@@ -496,7 +503,9 @@ export function useFundScreening(emit) {
 
     const sortConfig = reactive({
         remote: true,
-        trigger: 'default'
+        trigger: 'default',
+        field: 'return_1y',
+        order: 'desc',
     })
 
     const progressPercent = computed(() => {
@@ -517,13 +526,13 @@ export function useFundScreening(emit) {
 
     const fetchDbStatus = async () => {
         try {
-            const res = await screeningAPI.getStatus()
-            dbStatus.value = res.data
-            if (res.data.update_status) {
-                updateStatus.value = res.data.update_status
+            const status = await getLocalStatus()
+            dbStatus.value = {
+                basic_count: status.basic_count,
+                latest_update: status.latest_update,
+                type_counts: status.type_counts,
             }
         } catch (err) {
-            updateStatus.value.running = false
             console.error('获取状态失败:', err)
         }
     }
@@ -599,6 +608,12 @@ export function useFundScreening(emit) {
             const looksComplete = d.total > 0 && d.progress >= d.total
             if (!d.running && (looksComplete || d.total === 0)) {
                 stopStatusPoll()
+                // 同步完成后拉取最新数据到 IndexedDB（强制刷新缓存）
+                try {
+                    await syncFromServer(undefined, true)
+                } catch (err) {
+                    console.error('更新后同步失败:', err)
+                }
                 fetchDbStatus()
             }
         } catch (err) {
@@ -685,21 +700,20 @@ export function useFundScreening(emit) {
         try {
             const cleanFilters = buildFilterParams()
 
-            const res = await screeningAPI.query({
-                ...cleanFilters,
-                sort_by: sortBy.value,
-                sort_order: sortOrder.value,
-                page: currentPage.value,
-                page_size: pageSize.value
-            })
+            const result = await queryFunds(
+                cleanFilters,
+                sortBy.value,
+                sortOrder.value as 'asc' | 'desc',
+                currentPage.value,
+                pageSize.value
+            )
 
-            const responseData = res.data.data || {}
-            results.value = responseData.funds || []
-            totalCount.value = responseData.total || 0
+            results.value = result.funds
+            totalCount.value = result.total
 
             if (!quickTypeFilter.value) {
                 const types = new Set()
-                results.value.forEach(f => {
+                result.funds.forEach(f => {
                     if (f.fund_type) types.add(f.fund_type)
                 })
                 const existingTypes = new Set(availableTypes.value)
@@ -896,13 +910,37 @@ export function useFundScreening(emit) {
     })
 
     onMounted(async () => {
-        await fetchProgress()
-        fetchDbStatus()
         fetchWatchlistCodes()
         fetchIndustryTags()
 
-        if (updateStatus.value.running) {
-            startStatusPoll()
+        // 检测本地是否有缓存数据
+        const { db } = await import('../db')
+        const count = await db.screeningFunds.count()
+
+        if (count > 0) {
+            // 有缓存 → 先显示，再后台静默同步
+            fetchDbStatus()
+            search()
+
+            try {
+                const updated = await syncFromServer(lastSyncTime.value ?? undefined)
+                if (updated > 0) {
+                    // 后台数据有更新 → 刷新页面
+                    search()
+                    fetchDbStatus()
+                }
+            } catch (err) {
+                console.error('后台同步失败:', err)
+            }
+        } else {
+            // 首次打开 → 完整同步后显示
+            try {
+                await syncFromServer()
+                search()
+                fetchDbStatus()
+            } catch (err) {
+                console.error('首次同步失败:', err)
+            }
         }
 
         document.addEventListener('click', closeQuickDropdown)

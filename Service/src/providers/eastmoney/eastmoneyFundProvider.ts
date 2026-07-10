@@ -175,6 +175,7 @@ export class EastMoneyFundProvider implements FundProvider {
     const types = normalizeScreeningTypes(options.types);
     const pageSize = normalizePageSize(options.pageSize);
     const sort = options.sort || '1nzf';
+    const limitPerType = options.limitPerType ?? 0;
     const seen = new Set<string>();
     const items: FundScreeningSnapshotItemDto[] = [];
     const failedPages: FundScreeningSnapshotDto['failedPages'] = [];
@@ -196,7 +197,8 @@ export class EastMoneyFundProvider implements FundProvider {
         continue;
       }
 
-      const totalPages = Math.max(1, Math.ceil(firstPage.total / pageSize));
+      const maxPages = limitPerType > 0 ? Math.ceil(limitPerType / pageSize) : Infinity;
+      const totalPages = Math.min(Math.max(1, Math.ceil(firstPage.total / pageSize)), maxPages);
       const pages = Array.from({ length: Math.max(0, totalPages - 1) }, (_, idx) => idx + 2);
       for (const pageBatch of chunkArray(pages, 4)) {
         const results = await Promise.allSettled(

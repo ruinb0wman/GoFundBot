@@ -59,6 +59,7 @@ export const watchlistAPI = {
 export const screeningAPI = {
   getStatus() { return api.get('/screening/status') },
   getProgress() { return api.get('/screening/progress') },
+  sync(params?: Record<string, unknown>) { return api.get('/screening/sync', { params }) },
   startUpdate(options: Record<string, unknown> = {}) { return api.post('/screening/update', options) },
   stopUpdate() { return api.post('/screening/stop') },
   query(params: Record<string, unknown>) { return api.post('/screening/query', params) },
