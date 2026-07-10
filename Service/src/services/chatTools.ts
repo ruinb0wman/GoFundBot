@@ -1,9 +1,9 @@
 import { logger } from '../core/logger.js';
 import { getFundBasic, getFundDetail, getFundEstimate, getFundNavHistory, getFundHoldings, getFundManagers, getFundScreeningSnapshot } from './fundService.js';
-import { getMarketIndices, getMarketSectors, getMarketSectorsFromAkshare, getNorthFlow, getMarketBreadth, getMarketMoneyFlow, fetchGoldRealtime } from './marketService.js';
+import { fetchIndicesFromSina, getMarketSectorsFromAkshare, fetchGoldRealtime } from './marketService.js';
 import { getStockReference } from './stockService.js';
 import { getFlashNews } from './newsService.js';
-import { runBacktest, runPython } from './pythonRunner.js';
+import { runBacktest, runFetchMarket, runPython } from './pythonRunner.js';
 
 export interface ToolDef {
   type: 'function'
@@ -101,7 +101,7 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
     type: 'function',
     function: {
       name: 'get_concept_sectors',
-      description: '获取东方财富概念板块实时行情，返回板块涨跌幅、指数点位、主力资金净流入等。',
+      description: '获取概念板块行情，返回板块名称、驱动事件、成分股数量等概览数据。注意：不含个股涨跌幅。',
       parameters: {
         type: 'object',
         properties: { limit: { type: 'integer', description: '返回板块数量，默认10，最大50' } },
@@ -315,8 +315,7 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
   },
 
   get_market_indices: async () => {
-    const result = await getMarketIndices();
-    return toolData(result);
+    return await fetchIndicesFromSina();
   },
 
   get_market_news: async (args) => {
@@ -331,32 +330,44 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
     return sectors;
   },
 
-  get_concept_sectors: async (args) => {
-    const limit = Math.min(Math.max((args.limit as number) || 10, 1), 50);
-    const result = await getMarketSectors();
-    const data = toolData(result) as unknown as Record<string, unknown>;
-    const items = (data?.items as Array<Record<string, unknown>>) || [];
-    items.sort((a, b) => {
-      const ap = parseFloat(String(a.changePercent ?? 0));
-      const bp = parseFloat(String(b.changePercent ?? 0));
-      return bp - ap;
-    });
-    return items.slice(0, limit);
+  get_concept_sectors: async () => {
+    try {
+      const result = await runFetchMarket<{ concept_sectors: any }>('concept-sector');
+      return result.concept_sectors ?? { data_status: 'unavailable', items: [] };
+    } catch (error) {
+      logger.error('get_concept_sectors error', { error: String(error) });
+      return { data_status: 'error', items: [], note: String(error) };
+    }
   },
 
   get_north_flow: async () => {
-    const result = await getNorthFlow();
-    return toolData(result);
+    try {
+      const result = await runFetchMarket<{ north_flow: any }>('north-flow');
+      return result.north_flow ?? { data_status: 'unavailable' };
+    } catch (error) {
+      logger.error('get_north_flow error', { error: String(error) });
+      return { data_status: 'error', note: String(error) };
+    }
   },
 
   get_market_breadth: async () => {
-    const result = await getMarketBreadth();
-    return toolData(result);
+    try {
+      const result = await runFetchMarket<{ breadth: any }>('breadth');
+      return result.breadth ?? { data_status: 'unavailable', up_count: 0, down_count: 0, flat_count: 0, limit_up: 0, limit_down: 0, total: 0 };
+    } catch (error) {
+      logger.error('get_market_breadth error', { error: String(error) });
+      return { data_status: 'error', up_count: 0, down_count: 0, flat_count: 0, limit_up: 0, limit_down: 0, total: 0, note: String(error) };
+    }
   },
 
   get_main_flow: async () => {
-    const result = await getMarketMoneyFlow();
-    return toolData(result);
+    try {
+      const result = await runFetchMarket<{ main_flow: any }>('main-flow');
+      return result.main_flow ?? { data_status: 'unavailable' };
+    } catch (error) {
+      logger.error('get_main_flow error', { error: String(error) });
+      return { data_status: 'error', note: String(error) };
+    }
   },
 
   get_flash_news: async (args) => {

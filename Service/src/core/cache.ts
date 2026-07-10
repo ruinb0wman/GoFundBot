@@ -162,4 +162,5 @@ export const ttl = {
   marketGlobalIndices: 15 * 1000,
   marketGlobalKline: 60 * 60 * 1000,
   goldRealtime: 60 * 1000,
+  marketAkshare: 30 * 1000,
 };

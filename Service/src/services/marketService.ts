@@ -1,5 +1,6 @@
 import { cache, cacheThrough, ttl } from '../core/cache.js';
 import { AppError, assertCode } from '../core/errors.js';
+import { logger } from '../core/logger.js';
 import { ProviderChain } from '../core/providerChain.js';
 import { runFetchMarket, runPython } from './pythonRunner.js';
 import type { ServiceResult } from '../types/common.js';
@@ -10,6 +11,7 @@ import { isGlobalIndexSymbol } from '../providers/yahoo/yahooClient.js';
 import type {
   ConstituentListDto,
   GlobalIndexListDto,
+  IndexDto,
   IndexListDto,
   KlineDto,
   KlineOptions,
@@ -352,6 +354,81 @@ export async function getMarketSectorsFromAkshare(limit = 90): Promise<any[]> {
 export async function getMarketIndicesFromAkshare(): Promise<any[]> {
   const result = await runFetchMarket<{ indices: any[] }>('index');
   return result.indices ?? [];
+}
+
+export async function fetchIndicesFromSina(): Promise<IndexListDto> {
+  const SINA_URL = 'http://hq.sinajs.cn/list=sh000001,sz399001,sz399006,sh000300,sh000688';
+  const INDEX_MAP: Record<string, { name: string; market: string }> = {
+    sh000001: { name: '上证指数', market: '上海' },
+    sz399001: { name: '深证成指', market: '深圳' },
+    sz399006: { name: '创业板指', market: '深圳' },
+    sh000300: { name: '沪深300', market: '上海' },
+    sh000688: { name: '科创50', market: '上海' },
+  };
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch(SINA_URL, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+        'Referer': 'https://finance.sina.com.cn',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!response.ok) {
+      throw new Error(`Sina HTTP ${response.status}`);
+    }
+
+    const buffer = await response.arrayBuffer();
+    const text = new TextDecoder('gbk').decode(buffer);
+
+    const items: IndexDto[] = [];
+
+    for (const key of Object.keys(INDEX_MAP)) {
+      const re = new RegExp(`var hq_str_${key}="([^"]*)"`);
+      const match = text.match(re);
+      if (!match) continue;
+
+      const parts = match[1].split(',');
+      const idxInfo = INDEX_MAP[key];
+      const currentStr = parts[3];
+      const prevCloseStr = parts[2];
+      const volumeStr = parts[8];
+      const amountStr = parts[9];
+
+      const price = parseFloat(currentStr);
+      const prevClose = parseFloat(prevCloseStr);
+      const change = price - prevClose;
+      const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
+
+      items.push({
+        code: key,
+        name: idxInfo.name,
+        price: isNaN(price) ? null : price,
+        changePercent: isNaN(changePercent) ? null : changePercent,
+        changeAmount: isNaN(change) ? null : change,
+        market: idxInfo.market,
+      });
+    }
+
+    return { items };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    logger.error('fetchIndicesFromSina failed', { error: errMsg });
+    return {
+      items: Object.entries(INDEX_MAP).map(([code, info]) => ({
+        code,
+        name: info.name,
+        price: null,
+        changePercent: null,
+        changeAmount: null,
+        market: info.market,
+      })),
+    };
+  }
 }
 
 export async function getMarketOverview(): Promise<Record<string, unknown>> {
