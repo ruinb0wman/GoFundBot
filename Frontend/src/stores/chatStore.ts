@@ -226,6 +226,7 @@ export const useChatStore = defineStore('chat', {
               })
               await db.chatSessions.update(this.currentSessionId, { updatedAt: Date.now() })
             }
+            await this._autoTitleSession(this.currentSessionId, conversationMessages)
           }
           await this.refreshSessions()
         },
@@ -242,6 +243,7 @@ export const useChatStore = defineStore('chat', {
               createdAt: Date.now(),
             })
             await db.chatSessions.update(this.currentSessionId, { updatedAt: Date.now() })
+            await this._autoTitleSession(this.currentSessionId, conversationMessages)
           }
           await this.refreshSessions()
         },
@@ -265,6 +267,16 @@ export const useChatStore = defineStore('chat', {
     async refreshSessions() {
       const result = await chatAPI.getSessions()
       this.sessions = result.data || []
+    },
+
+    async _autoTitleSession(sessionId: number, conversationMessages: { role: string; content: string }[]) {
+      const title = this.currentSession?.title
+      if (title !== '新对话') return
+      const firstUser = conversationMessages.find(m => m.role === 'user')
+      if (!firstUser) return
+      const text = firstUser.content
+      const newTitle = text.length > 50 ? text.slice(0, 50) + '...' : text
+      await chatAPI.updateSessionTitle(sessionId, newTitle)
     },
 
     toggleOpen() {

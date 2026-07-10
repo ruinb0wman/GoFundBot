@@ -10,8 +10,7 @@ export interface ToolCallInfo {
 export interface ChatSessionDto {
   id: number
   title: string
-  created_time: string | null
-  updated_time: string | null
+  updated_at: number
 }
 
 export interface ChatMessageDto {
@@ -155,8 +154,7 @@ export const chatAPI = {
       data: sessions.map(s => ({
         id: s.id!,
         title: s.title,
-        created_time: null,
-        updated_time: null,
+        updated_at: s.updatedAt,
       })),
     }
   },
@@ -167,7 +165,7 @@ export const chatAPI = {
       updatedAt: Date.now(),
     })
     return {
-      data: { id, title: '新对话', created_time: null, updated_time: null },
+      data: { id, title: '新对话', updated_at: Date.now() },
     }
   },
 

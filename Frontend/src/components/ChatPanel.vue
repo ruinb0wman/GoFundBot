@@ -16,29 +16,43 @@
     <!-- Session list (collapsible in narrow, always visible in wide) -->
     <div v-if="showSessions || chatStore.isWideMode" class="chat-sessions">
       <div class="session-list">
-        <BButton
+        <div
           v-for="session in chatStore.sessions"
           :key="session.id"
-          text
           class="session-item"
-          :active="session.id === chatStore.currentSessionId"
+          :class="{ active: session.id === chatStore.currentSessionId }"
           @click="handleSwitchSession(session.id)"
         >
-          <LucideIcon name="MessageSquare" :size="14" />
-          <span class="session-title">{{ session.title }}</span>
-          <span
-            class="session-delete"
-            role="button"
-            tabindex="0"
-            @click.stop="chatStore.deleteSession(session.id)"
-            @keydown.enter.stop="chatStore.deleteSession(session.id)"
-            :title="t('chat.delete')"
-          >
-            <LucideIcon name="Trash2" :size="12" />
-          </span>
-        </BButton>
+          <div class="session-item-title">
+            <LucideIcon name="MessageSquare" :size="14" />
+            <span class="session-title">{{ session.title }}</span>
+          </div>
+          <div class="session-item-meta">
+            <span class="session-time">{{ formatTime(session.updated_at) }}</span>
+            <span
+              class="session-delete"
+              role="button"
+              tabindex="0"
+              @click.stop="handleDeleteClick(session)"
+              @keydown.enter.stop="handleDeleteClick(session)"
+              :title="t('chat.delete')"
+            >
+              <LucideIcon name="Trash2" :size="12" />
+            </span>
+          </div>
+        </div>
       </div>
     </div>
+    <BDialog
+      :visible="deleteTarget !== null"
+      :title="t('chat.deleteConfirmTitle')"
+      :message="t('chat.deleteConfirmMessage')"
+      danger
+      :confirmText="t('chat.delete')"
+      :cancelText="t('chat.cancel')"
+      @confirm="confirmDelete"
+      @cancel="deleteTarget = null"
+    />
 
     <!-- Chat main area (messages + input) -->
     <div class="chat-main">
@@ -179,6 +193,7 @@ import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
 import BButton from './BButton.vue'
+import BDialog from './BDialog.vue'
 import LucideIcon from './LucideIcon.vue'
 
 const { t } = useI18n()
@@ -192,6 +207,7 @@ const inputRef = ref<HTMLTextAreaElement | null>(null)
 const scrollAnchor = ref<HTMLElement | null>(null)
 const showSessions = ref(false)
 const showSkillPicker = ref(false)
+const deleteTarget = ref<{ id: number; title: string } | null>(null)
 const hasRunningToolCall = computed(() =>
   chatStore.activeToolCalls.some(t => t.status === 'running')
 )
@@ -332,6 +348,23 @@ function selectSkill(name: string) {
   } else {
     chatStore.selectSkill(name)
   }
+}
+
+function handleDeleteClick(session: { id: number; title: string }) {
+  deleteTarget.value = session
+}
+
+async function confirmDelete() {
+  if (deleteTarget.value) {
+    await chatStore.deleteSession(deleteTarget.value.id)
+  }
+  deleteTarget.value = null
+}
+
+function formatTime(ts: number): string {
+  const d = new Date(ts)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function formatTokens(n: number): string {
