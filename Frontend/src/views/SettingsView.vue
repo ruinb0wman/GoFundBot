@@ -30,6 +30,7 @@ const router = useRouter()
 const tabs = computed(() => [
   { name: 'settings-general', icon: 'Settings', label: t('common.settings') },
   { name: 'settings-llm', icon: 'Brain', label: t('settings.llmTab') },
+  { name: 'settings-proxy', icon: 'Network', label: t('settings.proxyTab') },
   { name: 'settings-logs', icon: 'FileText', label: t('logs.title') },
   { name: 'settings-anomaly', icon: 'BellRing', label: t('settings.anomalyTab') },
   { name: 'settings-sqlite-admin', icon: 'Database', label: t('common.database') },

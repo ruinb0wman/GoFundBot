@@ -1,11 +1,20 @@
 import { Router } from 'express';
 import { asyncHandler } from '../core/errors.js';
-import { sendSuccess } from '../core/response.js';
+import { sendSuccess, sendFailure } from '../core/response.js';
 import { getCacheStats } from '../core/cache.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { setProxyUrl } from '../providers/eastmoney/eastmoneyRequest.js';
 
 export const systemRouter = Router();
+
+interface ProxyConfig {
+  url: string;
+}
+
+let currentProxyConfig: ProxyConfig = {
+  url: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || '',
+};
 
 systemRouter.get(
   '/',
@@ -39,5 +48,26 @@ systemRouter.get(
       memory: process.memoryUsage(),
       nodeVersion: process.version,
     });
+  }),
+);
+
+systemRouter.get(
+  '/proxy',
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, { ...currentProxyConfig });
+  }),
+);
+
+systemRouter.put(
+  '/proxy',
+  asyncHandler(async (req, res) => {
+    const { url } = req.body;
+    if (typeof url !== 'string') {
+      sendFailure(res, 400, { code: 'INVALID_ARGUMENT', message: 'url must be a string' });
+      return;
+    }
+    currentProxyConfig = { url };
+    setProxyUrl(url || null);
+    sendSuccess(res, { ...currentProxyConfig });
   }),
 );

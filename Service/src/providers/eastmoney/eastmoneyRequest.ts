@@ -1,3 +1,4 @@
+import { ProxyAgent } from 'undici';
 import { AppError } from '../../core/errors.js';
 
 const DEFAULT_HEADERS = {
@@ -7,14 +8,40 @@ const DEFAULT_HEADERS = {
   Accept: '*/*',
 };
 
+let _proxyDispatcher: any | undefined;
+
+function readProxyUrl(): string | undefined {
+  return process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined;
+}
+
+export function setProxyUrl(url: string | null): void {
+  if (_proxyDispatcher && typeof _proxyDispatcher.close === 'function') {
+    _proxyDispatcher.close().catch(() => {});
+  }
+  _proxyDispatcher = url ? new ProxyAgent(url) : undefined;
+}
+
+function getDispatcher(): any | undefined {
+  if (_proxyDispatcher) return _proxyDispatcher;
+  const proxyUrl = readProxyUrl();
+  if (proxyUrl) {
+    _proxyDispatcher = new ProxyAgent(proxyUrl);
+    return _proxyDispatcher;
+  }
+  return undefined;
+}
+
 export async function fetchText(url: string, timeoutMs = 10000): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const dispatcher = getDispatcher();
 
   try {
     const response = await fetch(url, {
       headers: DEFAULT_HEADERS,
       signal: controller.signal,
+      ...(dispatcher ? { dispatcher } : {}),
     });
 
     if (!response.ok) {

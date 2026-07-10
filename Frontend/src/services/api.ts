@@ -120,4 +120,9 @@ export const anomalyConfigAPI = {
   getDefaults() { return api.get('/alerts/anomaly-config/defaults') },
 }
 
+export const systemAPI = {
+  getProxy() { return api.get('/proxy') },
+  updateProxy(data: { url: string }) { return api.put('/proxy', data) },
+}
+
 export default api

@@ -257,7 +257,7 @@ const fetchDetail = async () => {
       error.value = res.data.error || '获取指数详情失败'
     }
   } catch (e: any) {
-    error.value = '获取指数详情失败: ' + (e.response?.data?.error || e.message)
+    error.value = '获取指数详情失败: ' + (e.response?.data?.error?.message || e.response?.data?.message || e.message)
   }
 }
 

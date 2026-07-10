@@ -28,6 +28,22 @@ import type {
 export type { KlineDto, MarketQuoteDto } from '../providers/types.js';
 export type { ConstituentListDto, IndexListDto, SectorListDto } from '../providers/types.js';
 
+export interface IndexDetailDto {
+  code: string;
+  name: string;
+  price: number | null;
+  change_amt: number | null;
+  change_pct: number | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  prev_close: number | null;
+  volume: number | null;
+  amount: number | null;
+  amplitude: number | null;
+  market: string;
+}
+
 export interface KlineQuery {
   period?: string;
   adjust?: string;
@@ -72,6 +88,86 @@ export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Pr
   );
 
   return toServiceResult(result);
+}
+
+function normalizeIndexSymbol(symbol: string): string {
+  const m = symbol.match(/^(\d)\.(\d{6})$/);
+  if (m) {
+    const prefix = m[1] === '1' ? 'sh' : 'sz';
+    return prefix + m[2];
+  }
+  return symbol.toLowerCase();
+}
+
+export async function getIndexDetail(symbol: string): Promise<ServiceResult<IndexDetailDto>> {
+  const normalized = normalizeIndexSymbol(symbol);
+  const [quoteResult, klineResult] = await Promise.allSettled([
+    getMarketQuotes(normalized),
+    getMarketKline(normalized, { period: 'daily' }),
+  ]);
+
+  let code = normalized;
+  let name = '';
+  let price: number | null = null;
+  let changeAmt: number | null = null;
+  let changePct: number | null = null;
+  let open: number | null = null;
+  let high: number | null = null;
+  let low: number | null = null;
+  let prevClose: number | null = null;
+  let volume: number | null = null;
+  let amount: number | null = null;
+  let market = '';
+
+  if (quoteResult.status === 'fulfilled' && quoteResult.value.data?.length) {
+    const q = quoteResult.value.data[0];
+    code = q.code;
+    name = q.name;
+    price = q.price;
+    changeAmt = q.change;
+    changePct = q.changePercent;
+    volume = q.volume;
+    amount = q.amount;
+    market = q.market;
+  }
+
+  if (klineResult.status === 'fulfilled' && klineResult.value.data?.length) {
+    const data = klineResult.value.data;
+    const latest = data[data.length - 1];
+    open = latest.open;
+    high = latest.high;
+    low = latest.low;
+    prevClose = data.length >= 2 ? data[data.length - 2].close : latest.close;
+  }
+
+  const amplitude = high != null && low != null && prevClose != null && prevClose !== 0
+    ? +(((high - low) / prevClose) * 100).toFixed(2)
+    : null;
+
+  const data: IndexDetailDto = {
+    code,
+    name,
+    price,
+    change_amt: changeAmt,
+    change_pct: changePct,
+    open,
+    high,
+    low,
+    prev_close: prevClose,
+    volume,
+    amount,
+    amplitude,
+    market,
+  };
+
+  return {
+    data,
+    provider: quoteResult.status === 'fulfilled' ? quoteResult.value.provider : (klineResult.status === 'fulfilled' ? klineResult.value.provider : 'none'),
+    fallback: quoteResult.status !== 'fulfilled' || klineResult.status !== 'fulfilled',
+    cached: false,
+    stale: false,
+    updatedAt: new Date(),
+  };
 }
 
 function parseSymbols(value: string | undefined): string[] {

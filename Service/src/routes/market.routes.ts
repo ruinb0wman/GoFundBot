@@ -4,6 +4,7 @@ import { sendSuccess } from '../core/response.js';
 import {
   getGlobalIndexKline,
   getGlobalIndices,
+  getIndexDetail,
   getMarketBreadth,
   getMarketIndices,
   getMarketKline,
@@ -22,6 +23,13 @@ marketRouter.get(
   '/quotes',
   asyncHandler(async (req, res) => {
     sendSuccess(res, await getMarketQuotes(firstQueryValue(req.query.symbols)));
+  })
+);
+
+marketRouter.get(
+  '/index/:code/detail',
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await getIndexDetail(routeParam(req.params.code)));
   })
 );
 
