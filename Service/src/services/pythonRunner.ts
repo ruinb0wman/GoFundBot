@@ -19,6 +19,7 @@ interface RunOptions {
   args?: string[];
   input?: Record<string, unknown>;
   timeoutMs?: number;
+  retries?: number;
 }
 
 const DEFAULT_SCRIPT_DIR = join(import.meta.dirname, '../../../Scripts/cli');
@@ -32,71 +33,88 @@ export async function runPython<T = unknown>(
   script: string,
   options: RunOptions = {},
 ): Promise<T> {
-  const { args = [], input, timeoutMs = DEFAULT_TIMEOUT } = options;
+  const { args = [], input, timeoutMs = DEFAULT_TIMEOUT, retries = 1 } = options;
   const scriptPath = join(SCRIPT_DIR, script);
 
-  return new Promise<T>((resolve, reject) => {
-    const childArgs = args.length > 0 ? [scriptPath, ...args] : [scriptPath];
-    const child = spawn(PYTHON_BIN, childArgs, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: timeoutMs,
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    if (input) {
-      child.stdin.write(JSON.stringify(input));
-      child.stdin.end();
-    }
-
-    child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString();
-    });
-
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString();
-    });
-
-    child.on('error', (err: Error) => {
-      logger.error('Python process spawn failed', {
-        script,
-        args,
-        error: err.message,
+  async function spawnOnce(): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const childArgs = args.length > 0 ? [scriptPath, ...args] : [scriptPath];
+      const child = spawn(PYTHON_BIN, childArgs, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: timeoutMs,
       });
-      reject(new Error(`Python spawn failed: ${err.message}`));
-    });
 
-    child.on('close', (code: number | null) => {
-      if (code !== 0) {
-        const errMsg = stderr.trim() || `Python exited with code ${code}`;
-        logger.error('Python script failed', {
+      let stdout = '';
+      let stderr = '';
+
+      if (input) {
+        child.stdin.write(JSON.stringify(input));
+        child.stdin.end();
+      }
+
+      child.stdout.on('data', (chunk: Buffer) => {
+        stdout += chunk.toString();
+      });
+
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+
+      child.on('error', (err: Error) => {
+        logger.error('Python process spawn failed', {
           script,
-          code,
-          stderr: stderr.trim(),
+          args,
+          error: err.message,
         });
-        reject(new Error(errMsg));
-        return;
-      }
+        reject(new Error(`Python spawn failed: ${err.message}`));
+      });
 
-      const trimmed = stdout.trim();
-      if (!trimmed) {
-        resolve(undefined as unknown as T);
-        return;
-      }
-
-      try {
-        const parsed: PythonOutput<T> = JSON.parse(trimmed);
-        if (!parsed.success) {
-          reject(new Error(parsed.error ?? 'Unknown Python error'));
+      child.on('close', (code: number | null) => {
+        if (code !== 0) {
+          const errMsg = stderr.trim() || `Python exited with code ${code}`;
+          logger.error('Python script failed', {
+            script,
+            code,
+            stderr: stderr.trim(),
+          });
+          reject(new Error(errMsg));
           return;
         }
-        resolve(parsed.data as T);
-      } catch {
-        resolve(trimmed as unknown as T);
-      }
+
+        const trimmed = stdout.trim();
+        if (!trimmed) {
+          resolve(undefined as unknown as T);
+          return;
+        }
+
+        try {
+          const parsed: PythonOutput<T> = JSON.parse(trimmed);
+          if (!parsed.success) {
+            reject(new Error(parsed.error ?? 'Unknown Python error'));
+            return;
+          }
+          resolve(parsed.data as T);
+        } catch {
+          resolve(trimmed as unknown as T);
+        }
+      });
     });
-  });
+  }
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await spawnOnce();
+    } catch (error) {
+      if (attempt === retries) throw error;
+      const msg = String(error).toLowerCase();
+      const isRetryable = /timeout|econn|eaddrinuse|enotfound|spawn|reset/i.test(msg);
+      if (!isRetryable) throw error;
+      logger.warn(`Python retry ${attempt + 1}/${retries}`, { script, error: String(error) });
+      await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+    }
+  }
+
+  throw new Error('unreachable');
 }
 
 export async function runBacktest<T = unknown>(
@@ -140,6 +158,20 @@ export async function runClassifyIndustry(
     args.push('--all');
   }
   return runPython<{ classified: number; total: number }>('classify_industry.py', { args });
+}
+
+export async function runQueryIndustryFunds(keyword: string): Promise<{ funds: unknown[]; total: number }> {
+  return runPython<{ funds: unknown[]; total: number }>('query_industry.py', {
+    input: { action: 'funds_by_industry', keyword },
+    timeoutMs: 30_000,
+  });
+}
+
+export async function runIndustryPerformance(): Promise<Record<string, unknown>> {
+  return runPython<Record<string, unknown>>('query_industry.py', {
+    input: { action: 'industry_performance' },
+    timeoutMs: 30_000,
+  });
 }
 
 

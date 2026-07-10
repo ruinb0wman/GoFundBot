@@ -256,6 +256,36 @@
   color: var(--text-tertiary);
 }
 
+/* ── Message usage ── */
+.message-usage {
+  margin-top: 4px;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Status bar ── */
+.session-tokens {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Retry banner ── */
+.retry-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  border-top: 1px solid var(--color-primary-bg);
+  flex-shrink: 0;
+}
+
 /* ── Input ── */
 .chat-input-area {
   display: flex;

@@ -2,17 +2,14 @@
   "app.title": "GoFundBot",
   "app.subtitle": "智能基金分析 · 实时市场追踪",
   "app.footer": "数据来源：天天基金 / 东方财富 / 百度股市通 | 更新时间：{time}",
-
   "nav.dashboard": "市场大盘",
   "nav.screening": "基金筛选",
   "nav.backtest": "定投回测",
   "nav.portfolio": "估值与持仓",
   "nav.research": "投研看板",
-
   "theme.light": "浅色模式",
   "theme.dark": "深色模式",
   "theme.auto": "跟随系统",
-
   "fund.search.placeholder": "输入基金代码或名称搜索...",
   "fund.search.noResults": "未找到相关基金",
   "fund.search.history": "最近搜索",
@@ -24,7 +21,6 @@
   "fund.search.updateSuccess": "✅ 更新成功！已加载 {count} 只基金",
   "fund.search.updateFailed": "❌ 更新失败: {error}",
   "fund.search.updateNetError": "❌ 更新失败，请检查网络连接",
-
   "fund.detail": "基金详情",
   "fund.detail.estimateChange": "估算涨幅",
   "fund.detail.change": "涨跌幅",
@@ -71,7 +67,6 @@
   "fund.compare.managerScore": "经理评分",
   "fund.compare.needMore": "请再选择至少1只基金进行对比",
   "fund.compare.maxHint": "还可添加{count}只",
-
   "fund.watchlist": "我的自选",
   "fund.watchlist.empty": "暂无自选基金",
   "fund.watchlist.add": "添加自选",
@@ -98,16 +93,13 @@
   "fund.watchlist.refreshEstimates": "刷新估值",
   "fund.watchlist.emptyGroup": "暂无基金，拖拽基金到此分组",
   "fund.watchlist.emptyHint": "在基金详情页点击 {icon} 添加自选",
-
   "fund.screening.title": "基金筛选",
   "fund.screening.export": "导出 CSV",
   "fund.screening.quickTags": "快速筛选",
-
   "fund.backtest.title": "定投回测",
   "fund.backtest.run": "开始回测",
   "fund.backtest.strategy": "智能推荐策略",
   "fund.backtest.reset": "重置参数",
-
   "fund.aiAnalyze.title": "AI 智能分析",
   "fund.aiAnalyze.start": "开始分析",
   "fund.aiAnalyze.retry": "重新分析",
@@ -128,7 +120,6 @@
   "fund.aiAnalyze.managerAbility": "经理能力",
   "fund.aiAnalyze.positionAnalysis": "持仓结构",
   "fund.aiAnalyze.marketOutlook": "后市展望",
-
   "chat.title": "AI 助手",
   "chat.newSession": "新对话",
   "chat.minimize": "最小化",
@@ -196,7 +187,6 @@
   "fund.aiAnalyze.evidence": "关键证据",
   "fund.aiAnalyze.riskFlags": "风险关注",
   "fund.aiAnalyze.stageOrchestrating": "四位专业分析师正在并行评估基金...",
-
   "chart.thisFund": "本基金",
   "chart.performanceTrend": "业绩走势",
   "chart.returnComparison": "收益对比",
@@ -205,31 +195,25 @@
   "chart.drawdownRepairDays": "最大回撤修复天数",
   "chart.repairing": "正在修复中...",
   "chart.days": "天",
-
   "fund.portfolio.title": "持仓明细",
   "fund.portfolio.empty": "暂无股票持仓数据",
   "fund.portfolio.clickDetail": "点击查看个股详情",
-
   "fund.scaleChange.title": "基金规模变动",
   "fund.scaleChange.scale": "规模(亿元)",
   "fund.scaleChange.change": "环比变化",
   "fund.scaleChange.empty": "暂无规模变动数据",
-
   "fund.holderStructure.title": "持有人结构",
   "fund.holderStructure.empty": "暂无持有人结构数据",
-
   "fund.subscription.title": "申购赎回情况",
   "fund.subscription.purchase": "期间申购(亿)",
   "fund.subscription.redemption": "期间赎回(亿)",
   "fund.subscription.net": "净申购(亿)",
   "fund.subscription.totalShares": "总份额(亿)",
   "fund.subscription.empty": "暂无申购赎回数据",
-
   "fund.rankingTrend.title": "同类排名走势",
   "fund.rankingTrend.total": "同类总数",
   "fund.rankingTrend.beat": "击败同类",
   "fund.rankingTrend.empty": "暂无同类排名数据",
-
   "fund.managerInfo.title": "基金经理能力评估",
   "fund.managerInfo.experience": "从业",
   "fund.managerInfo.managedScale": "管理规模",
@@ -239,28 +223,21 @@
   "fund.managerInfo.type": "类型",
   "fund.managerInfo.return": "收益",
   "fund.managerInfo.empty": "暂无基金经理信息",
-
   "fund.evaluation.title": "基金综合评价",
   "fund.evaluation.subscription": "申购赎回情况",
   "fund.evaluation.empty": "暂无评价数据",
-
   "fund.assetAllocation.title": "资产配置",
   "fund.assetAllocation.leverage": "该基金存在杠杆",
   "fund.assetAllocation.empty": "暂无资产配置数据",
-
   "fund.sameType.title": "同类型基金涨幅榜",
-
   "fund.abilityEval.title": "本基金历史表现",
   "fund.abilityEval.composite": "综合",
   "fund.abilityEval.empty": "暂无评价数据",
-
   "fund.listItem.addedToCompare": "已添加到对比",
   "fund.listItem.addToCompare": "添加到对比",
   "fund.listItem.addToRealtime": "添加到实时估值",
   "fund.listItem.alertSettings": "告警设置",
-
   "searchBar.placeholder": "基金代码/名称",
-
   "stockPopup.loading": "正在获取行情数据...",
   "stockPopup.open": "今开",
   "stockPopup.prevClose": "昨收",
@@ -281,16 +258,12 @@
   "stockPopup.latestPrice": "最新价",
   "stockPopup.emptyHistory": "暂无历史走势数据",
   "stockPopup.emptyQuote": "暂无行情数据",
-
   "fund.watchlist.confirmDeleteFunds": "确定删除选中的 {count} 只基金吗？",
   "fund.watchlist.confirmRemoveFund": "确定移除该基金吗？",
   "fund.watchlist.deleteGroupConfirm": "确定删除分组\"{name}\"吗？\n分组内的基金将移到未分组。",
   "fund.watchlist.deleteFailed": "删除失败，请重试",
   "fund.watchlist.operationFailed": "操作失败，请重试",
-
   "fund.compare.maxFunds": "最多只能对比5只基金",
-
-  "fund.screening.title": "基金筛选",
   "fund.screening.fundCount": "只基金",
   "fund.screening.completeData": "只数据完整",
   "fund.screening.updateTask": "选择要执行的更新任务",
@@ -317,9 +290,7 @@
   "fund.screening.selectTask": "请至少选择一个更新任务",
   "fund.screening.updateInProgress": "更新任务已在进行中",
   "fund.screening.updateFailed": "启动更新失败",
-
   "fund.realtimeGroups.deleteGroupConfirm": "确定删除分组\"{name}\"吗？分组内的基金将回到默认状态。",
-
   "indexDetail.loading": "加载中...",
   "indexDetail.code": "代码:",
   "indexDetail.noKline": "暂无K线数据",
@@ -337,7 +308,6 @@
   "indexDetail.range3y": "最近3年",
   "indexDetail.range5y": "最近5年",
   "indexDetail.rangeAll": "所有",
-
   "dailyMarket.title": "每日市场行情",
   "dailyMarket.refresh": "刷新",
   "dailyMarket.generating": "正在生成今日市场分析",
@@ -348,7 +318,6 @@
   "dailyMarket.keyNews": "关键新闻",
   "dailyMarket.outlook": "后市展望",
   "dailyMarket.firstGen": "首次生成可能需要30-60秒",
-
   "logs.title": "日志",
   "logs.searchPlaceholder": "搜索关键词...",
   "logs.statError": "错误",
@@ -373,7 +342,6 @@
   "logs.errorPatterns": "错误模式",
   "logs.optimizationSuggestions": "优化建议",
   "logs.criticalItems": "需立即处理",
-
   "backtest.title": "定投回测",
   "backtest.desc": "模拟历史定投收益，验证投资策略",
   "backtest.selectFund": "请先选择一只基金进行回测",
@@ -402,7 +370,6 @@
   "backtest.totalReturn": "总收益",
   "backtest.returnRate": "收益率",
   "backtest.annualReturn": "年化收益率",
-
   "research.title": "投研看板",
   "research.desc": "基金市场统计、基金分组看板和 ETF 每日跟踪",
   "research.refreshing": "刷新中...",
@@ -424,7 +391,6 @@
   "research.year1": "1年",
   "research.sharpe": "夏普",
   "research.drawdown": "回撤",
-
   "fund.position.title": "我的持仓",
   "fund.position.desc": "输入基金代码自动补全名称；按中国基金交易规则自动处理购买日净值；持仓按实时估值刷新盈亏。",
   "fund.position.code": "基金代码",
@@ -466,7 +432,6 @@
   "fund.position.costPrice": "持仓成本",
   "fund.position.realtimeVal": "实时估值",
   "fund.position.valTime": "估值时间",
-
   "fund.realtime.title": "估值与持仓",
   "fund.realtime.addFund": "添加基金",
   "fund.realtime.refreshing": "刷新中...",
@@ -528,7 +493,6 @@
   "fund.realtime.setFirstBuy": "点击设置首次买入",
   "fund.realtime.dataUpdateTime": "数据更新时间:",
   "fund.realtime.emptyHint": "点击下方按钮添加基金后，即可实时查看盘中估值、持仓盈亏等数据",
-
   "fund.realtimeModal.title": "添加基金",
   "fund.realtimeModal.searchPlaceholder": "输入基金名称或代码",
   "fund.realtimeModal.searching": "搜索中...",
@@ -583,7 +547,6 @@
   "fund.realtimeModal.rebalanceTarget": "目标占比（每只基金）",
   "fund.realtimeModal.rebalanceUpper": "上限阈值",
   "fund.realtimeModal.rebalanceLower": "下限阈值",
-
   "market.title": "市场概览",
   "market.realtimeData": "市场实时数据",
   "market.overview": "综合概览",
@@ -603,7 +566,6 @@
   "market.anomalyLabel": "异动",
   "market.clickForDetail": "点击查看详情",
   "market.clickForHistory": "点击查看历史走势",
-
   "flashNews.title": "7×24 快讯",
   "flashNews.itemCount": "条",
   "flashNews.noData": "暂无快讯数据",
@@ -614,7 +576,6 @@
   "flashNews.relatedStocks": "相关股票",
   "flashNews.error": "获取快讯失败",
   "flashNews.networkError": "网络异常，请稍后重试",
-
   "sectorRank.title": "行业板块排行",
   "sectorRank.cachedData": "缓存数据",
   "sectorRank.liveData": "实时数据",
@@ -654,7 +615,6 @@
   "market.anomaly": "市场异动",
   "market.news": "7×24 快讯",
   "market.sectors": "板块排行",
-
   "alert.settings": "告警设置",
   "alert.settingsTitle": "告警设置 - {code}",
   "alert.add": "添加规则",
@@ -670,7 +630,6 @@
   "alert.returnAbove": "收益大于",
   "alert.returnBelow": "收益小于",
   "alert.anomaly.empty": "今日未检测到市场异动",
-
   "common.settings": "设置",
   "common.updated": "更新",
   "common.unknown": "未知",
@@ -687,9 +646,7 @@
   "common.type": "类型",
   "common.total": "总数",
   "common.action": "操作",
-
   "error.renderError": "页面渲染异常",
-
   "nav.short.dashboard": "大盘",
   "nav.short.screening": "筛选",
   "nav.short.backtest": "回测",
@@ -707,13 +664,10 @@
   "common.confirm": "确认",
   "common.search": "搜索",
   "common.refresh": "刷新",
-
   "i18n.switchTo": "Switch to English",
   "i18n.switchToZh": "切换到中文",
-
   "locale.zh": "中文",
   "locale.en": "English",
-
   "settings.general.appearance": "外观",
   "settings.general.themeDesc": "选择主题显示模式",
   "settings.general.language": "语言",
@@ -738,7 +692,6 @@
   "settings.anomaly.saved": "设置已保存",
   "settings.anomaly.saveFailed": "保存失败",
   "settings.anomaly.inputRequired": "请输入有效数值",
-
   "settings.llmTab": "AI 配置",
   "settings.llm.title": "AI 服务配置",
   "settings.llm.apiKey": "API 密钥",
@@ -750,5 +703,8 @@
   "settings.llm.saved": "配置已保存",
   "settings.llm.showKey": "显示",
   "settings.llm.hideKey": "隐藏",
-  "settings.llm.notConfigured": "请在设置中配置 AI 服务密钥后再使用"
+  "settings.llm.notConfigured": "请在设置中配置 AI 服务密钥后再使用",
+  "chat.tool.getFundsByIndustry": "查询行业基金",
+  "chat.tool.getIndustryPerformance": "获取行业业绩",
+  "chat.tool.getConceptSectors": "获取概念板块"
 }

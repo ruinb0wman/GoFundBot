@@ -34,6 +34,8 @@ export interface ChatCallbacks {
   onToolStart: (tool: ToolCallInfo) => void
   onToolEnd: (tool: { name: string; duration_ms: number }) => void
   onSkillSelected: (skill: SkillInfo) => void
+  onUsage: (inputTokens: number, outputTokens: number, totalTokens: number) => void
+  onStatus: (message: string) => void
   onDone: () => void
   onError: (error: string) => void
 }
@@ -121,6 +123,16 @@ export const chatAPI = {
             name: parsed.name || '',
             description: parsed.description || '',
           })
+          break
+        case 'usage':
+          if (callbacks.onUsage) {
+            callbacks.onUsage(parsed.input_tokens || 0, parsed.output_tokens || 0, parsed.total_tokens || 0)
+          }
+          break
+        case 'status':
+          if (callbacks.onStatus) {
+            callbacks.onStatus(parsed.message || '')
+          }
           break
         case 'error':
           callbacks.onError(parsed.message || '未知错误')

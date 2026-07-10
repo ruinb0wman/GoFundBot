@@ -92,6 +92,10 @@
 
           <!-- Markdown content -->
           <div v-if="msg.content" class="message-text" v-html="renderMarkdown(msg.content)" />
+          <!-- Per-message token usage -->
+          <div v-if="msg.usage" class="message-usage">
+            ↑ {{ formatTokens(msg.usage.inputTokens) }} · ↓ {{ formatTokens(msg.usage.outputTokens) }}
+          </div>
           <!-- Thinking indicator (streaming placeholder, no tokens yet, no running tools) -->
           <div v-if="msg.id === '__streaming__' && !msg.content && chatStore.isStreaming && !hasRunningToolCall" class="thinking-indicator">
             <span class="thinking-text">{{ t('chat.thinking') }}</span>
@@ -101,6 +105,12 @@
       </div>
 
         <div ref="scrollAnchor" />
+      </div>
+
+      <!-- Retry banner -->
+      <div v-if="chatStore.retryMessage" class="retry-banner">
+        <LucideIcon name="Loader" :size="12" class="spinning" />
+        <span>{{ chatStore.retryMessage }}</span>
       </div>
 
       <!-- Skill bar -->
@@ -123,6 +133,9 @@
             </div>
           </div>
         </div>
+        <span v-if="chatStore.sessionTotalTokens > 0" class="session-tokens">
+          {{ formatTokens(chatStore.sessionTotalTokens) }}
+        </span>
       </div>
 
       <!-- Skill badge during streaming -->
@@ -130,6 +143,9 @@
         <span class="skill-label">{{ t('chat.skillLabel') }}</span>
         <span class="skill-current">{{ currentSkillLabel }}</span>
         <span class="skill-badge-dot" />
+        <span v-if="chatStore.sessionTotalTokens > 0" class="session-tokens">
+          {{ formatTokens(chatStore.sessionTotalTokens) }}
+        </span>
       </div>
 
       <!-- Input -->
@@ -229,6 +245,7 @@ const toolLabels = computed((): Record<string, string> => ({
   get_market_indices: t('chat.tool.getMarketIndices'),
   get_market_news: t('chat.tool.getMarketNews'),
   get_hot_sectors: t('chat.tool.getHotSectors'),
+  get_concept_sectors: t('chat.tool.getConceptSectors'),
   get_north_flow: t('chat.tool.getNorthFlow'),
   get_market_breadth: t('chat.tool.getMarketBreadth'),
   get_main_flow: t('chat.tool.getMainFlow'),
@@ -242,6 +259,8 @@ const toolLabels = computed((): Record<string, string> => ({
   get_gold_realtime: t('chat.tool.getGoldRealtime'),
   get_fund_holdings: t('chat.tool.getFundHoldings'),
   get_fund_managers: t('chat.tool.getFundManagers'),
+  get_funds_by_industry: t('chat.tool.getFundsByIndustry'),
+  get_industry_performance: t('chat.tool.getIndustryPerformance'),
 }))
 
 const suggestions = computed(() => skillSuggestions.value)
@@ -313,6 +332,12 @@ function selectSkill(name: string) {
   } else {
     chatStore.selectSkill(name)
   }
+}
+
+function formatTokens(n: number): string {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
+  return String(n)
 }
 
 function renderMarkdown(text: string): string {

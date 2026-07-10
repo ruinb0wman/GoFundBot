@@ -8,6 +8,7 @@ export interface DisplayMessage {
   role: 'user' | 'assistant' | 'tool'
   content: string
   toolCalls?: ToolCallStatus[]
+  usage?: { inputTokens: number; outputTokens: number; totalTokens: number }
 }
 
 export interface ToolCallStatus {
@@ -25,6 +26,8 @@ export const useChatStore = defineStore('chat', {
     isStreaming: false,
     streamingContent: '',
     activeToolCalls: [] as ToolCallStatus[],
+    sessionTotalTokens: 0,
+    retryMessage: '',
     isOpen: false,
     isWideMode: false,
     initialized: false,
@@ -114,6 +117,8 @@ export const useChatStore = defineStore('chat', {
       this.messages = []
       this.streamingContent = ''
       this.activeToolCalls = []
+      this.sessionTotalTokens = 0
+      this.retryMessage = ''
 
       try {
         const result = await chatAPI.getMessages(sessionId)
@@ -167,6 +172,7 @@ export const useChatStore = defineStore('chat', {
       this.isStreaming = true
       this.streamingContent = ''
       this.activeToolCalls = []
+      this.retryMessage = ''
       this.currentSkill = null
 
       const skillParam = this.selectedSkill && this.selectedSkill !== 'auto' ? this.selectedSkill : undefined
@@ -191,6 +197,19 @@ export const useChatStore = defineStore('chat', {
         },
         onSkillSelected: (skill: SkillInfo) => {
           this.currentSkill = skill.name
+        },
+        onUsage: (inputTokens: number, outputTokens: number, totalTokens: number) => {
+          this.sessionTotalTokens += totalTokens
+          const streaming = this.messages.find(m => m.id === '__streaming__' || m.role === 'assistant')
+          if (streaming) {
+            streaming.usage = { inputTokens, outputTokens, totalTokens }
+          }
+        },
+        onStatus: (message: string) => {
+          this.retryMessage = message
+          setTimeout(() => {
+            if (this.retryMessage === message) this.retryMessage = ''
+          }, 5000)
         },
         onDone: async () => {
           this.finalizeStream()

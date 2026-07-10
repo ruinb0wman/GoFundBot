@@ -2,17 +2,14 @@
   "app.title": "GoFundBot",
   "app.subtitle": "Smart Fund Analysis · Real-time Market Tracking",
   "app.footer": "Data Source: TianTianFund / EastMoney / Baidu Stock | Updated: {time}",
-
   "nav.dashboard": "Market",
   "nav.screening": "Fund Screening",
   "nav.backtest": "Backtest",
   "nav.portfolio": "Portfolio",
   "nav.research": "Research",
-
   "theme.light": "Light",
   "theme.dark": "Dark",
   "theme.auto": "System",
-
   "fund.search.placeholder": "Search fund code or name...",
   "fund.search.noResults": "No funds found",
   "fund.search.history": "Recent Search",
@@ -24,7 +21,6 @@
   "fund.search.updateSuccess": "✅ Updated! {count} funds loaded",
   "fund.search.updateFailed": "❌ Update failed: {error}",
   "fund.search.updateNetError": "❌ Update failed, check network",
-
   "fund.detail": "Fund Detail",
   "fund.detail.estimateChange": "Est. Change",
   "fund.detail.change": "Change",
@@ -71,7 +67,6 @@
   "fund.compare.managerScore": "Manager Score",
   "fund.compare.needMore": "Select at least 1 more fund to compare",
   "fund.compare.maxHint": "Add up to {count} more",
-
   "fund.watchlist": "Watchlist",
   "fund.watchlist.empty": "No funds in watchlist",
   "fund.watchlist.add": "Add",
@@ -98,16 +93,13 @@
   "fund.watchlist.refreshEstimates": "Refresh estimates",
   "fund.watchlist.emptyGroup": "No funds, drag funds here",
   "fund.watchlist.emptyHint": "Click {icon} on fund detail to add",
-
   "fund.screening.title": "Fund Screening",
   "fund.screening.export": "Export CSV",
   "fund.screening.quickTags": "Quick Filters",
-
   "fund.backtest.title": "Backtest",
   "fund.backtest.run": "Run Backtest",
   "fund.backtest.strategy": "Smart Strategy",
   "fund.backtest.reset": "Reset",
-
   "fund.aiAnalyze.title": "AI Analysis",
   "fund.aiAnalyze.start": "Analyze",
   "fund.aiAnalyze.retry": "Re-analyze",
@@ -129,7 +121,6 @@
   "fund.aiAnalyze.positionAnalysis": "Portfolio",
   "fund.aiAnalyze.marketOutlook": "Outlook",
   "fund.aiAnalyze.analystCount": "{count} Analysts",
-
   "chat.title": "AI Assistant",
   "chat.newSession": "New Chat",
   "chat.minimize": "Minimize",
@@ -189,7 +180,6 @@
   "fund.aiAnalyze.underweight": "Underweight",
   "fund.aiAnalyze.sell": "Sell",
   "fund.aiAnalyze.analystViews": "Analyst Perspectives",
-  "fund.aiAnalyze.analystCount": "{count} Analysts",
   "fund.aiAnalyze.analystPerf": "Performance Analyst",
   "fund.aiAnalyze.analystHolding": "Holding Analyst",
   "fund.aiAnalyze.analystManager": "Manager Analyst",
@@ -197,7 +187,6 @@
   "fund.aiAnalyze.evidence": "Key Evidence",
   "fund.aiAnalyze.riskFlags": "Risk Flags",
   "fund.aiAnalyze.stageOrchestrating": "Four analysts running in parallel...",
-
   "chart.thisFund": "This Fund",
   "chart.performanceTrend": "Performance",
   "chart.returnComparison": "Return Comparison",
@@ -206,31 +195,25 @@
   "chart.drawdownRepairDays": "Drawdown Repair Days",
   "chart.repairing": "Repairing...",
   "chart.days": "days",
-
   "fund.portfolio.title": "Holdings",
   "fund.portfolio.empty": "No equity holdings data",
   "fund.portfolio.clickDetail": "Click for stock details",
-
   "fund.scaleChange.title": "Scale Change",
   "fund.scaleChange.scale": "Scale (100M)",
   "fund.scaleChange.change": "Change",
   "fund.scaleChange.empty": "No scale change data",
-
   "fund.holderStructure.title": "Holder Structure",
   "fund.holderStructure.empty": "No holder structure data",
-
   "fund.subscription.title": "Subscription & Redemption",
   "fund.subscription.purchase": "Purchase (100M)",
   "fund.subscription.redemption": "Redemption (100M)",
   "fund.subscription.net": "Net (100M)",
   "fund.subscription.totalShares": "Total Shares (100M)",
   "fund.subscription.empty": "No subscription data",
-
   "fund.rankingTrend.title": "Ranking Trend",
   "fund.rankingTrend.total": "Total",
   "fund.rankingTrend.beat": "Beat",
   "fund.rankingTrend.empty": "No ranking data",
-
   "fund.managerInfo.title": "Manager Assessment",
   "fund.managerInfo.experience": "Exp:",
   "fund.managerInfo.managedScale": "Scale:",
@@ -240,28 +223,21 @@
   "fund.managerInfo.type": "Type",
   "fund.managerInfo.return": "Return",
   "fund.managerInfo.empty": "No manager info",
-
   "fund.evaluation.title": "Fund Evaluation",
   "fund.evaluation.subscription": "Subscription & Redemption",
   "fund.evaluation.empty": "No evaluation data",
-
   "fund.assetAllocation.title": "Asset Allocation",
   "fund.assetAllocation.leverage": "This fund uses leverage",
   "fund.assetAllocation.empty": "No allocation data",
-
   "fund.sameType.title": "Similar Funds",
-
   "fund.abilityEval.title": "Historical Performance",
   "fund.abilityEval.composite": "Composite",
   "fund.abilityEval.empty": "No evaluation data",
-
   "fund.listItem.addedToCompare": "Added to Compare",
   "fund.listItem.addToCompare": "Add to Compare",
   "fund.listItem.addToRealtime": "Add to Realtime",
   "fund.listItem.alertSettings": "Alert Settings",
-
   "searchBar.placeholder": "Fund Code/Name",
-
   "stockPopup.loading": "Loading quote data...",
   "stockPopup.open": "Open",
   "stockPopup.prevClose": "Prev Close",
@@ -282,16 +258,12 @@
   "stockPopup.latestPrice": "Latest Price",
   "stockPopup.emptyHistory": "No historical chart data",
   "stockPopup.emptyQuote": "No quote data",
-
   "fund.watchlist.confirmDeleteFunds": "Delete {count} selected fund(s)?",
   "fund.watchlist.confirmRemoveFund": "Remove this fund?",
   "fund.watchlist.deleteGroupConfirm": "Delete group \"{name}\"?\nFunds will move to Ungrouped.",
   "fund.watchlist.deleteFailed": "Delete failed, please retry",
   "fund.watchlist.operationFailed": "Operation failed, please retry",
-
   "fund.compare.maxFunds": "Maximum 5 funds for comparison",
-
-  "fund.screening.title": "Fund Screening",
   "fund.screening.fundCount": "funds",
   "fund.screening.completeData": "with complete data",
   "fund.screening.updateTask": "Select update tasks",
@@ -318,9 +290,7 @@
   "fund.screening.selectTask": "Select at least one update task",
   "fund.screening.updateInProgress": "Update already in progress",
   "fund.screening.updateFailed": "Failed to start update",
-
   "fund.realtimeGroups.deleteGroupConfirm": "Delete group \"{name}\"? Funds will return to default state.",
-
   "indexDetail.loading": "Loading...",
   "indexDetail.code": "Code:",
   "indexDetail.noKline": "No K-line data",
@@ -338,7 +308,6 @@
   "indexDetail.range3y": "3 Years",
   "indexDetail.range5y": "5 Years",
   "indexDetail.rangeAll": "All",
-
   "dailyMarket.title": "Daily Market Summary",
   "dailyMarket.refresh": "Refresh",
   "dailyMarket.generating": "Generating market summary",
@@ -348,7 +317,6 @@
   "dailyMarket.hotSectors": "Hot Sectors",
   "dailyMarket.keyNews": "Key News",
   "dailyMarket.outlook": "Outlook",
-
   "logs.title": "Logs",
   "logs.searchPlaceholder": "Search keywords...",
   "logs.statError": "Errors",
@@ -373,7 +341,6 @@
   "logs.errorPatterns": "Error Patterns",
   "logs.optimizationSuggestions": "Suggestions",
   "logs.criticalItems": "Critical Items",
-
   "backtest.title": "Backtest",
   "backtest.desc": "Simulate historical returns, verify investment strategy",
   "backtest.selectFund": "Select a fund to backtest",
@@ -402,7 +369,6 @@
   "backtest.totalReturn": "Total Return",
   "backtest.returnRate": "Return Rate",
   "backtest.annualReturn": "Annual Return",
-
   "research.title": "Research Dashboard",
   "research.desc": "Fund market statistics, group dashboard, and ETF daily tracking",
   "research.refreshing": "Refreshing...",
@@ -424,7 +390,6 @@
   "research.year1": "1Y",
   "research.sharpe": "Sharpe",
   "research.drawdown": "Drawdown",
-
   "fund.position.title": "My Positions",
   "fund.position.desc": "Auto-complete fund name by code; auto-handle purchase date by 15:00 rule; real-time P&L tracking.",
   "fund.position.code": "Fund Code",
@@ -466,7 +431,6 @@
   "fund.position.costPrice": "Cost Price",
   "fund.position.realtimeVal": "Est. Value",
   "fund.position.valTime": "Est. Time",
-
   "fund.realtime.title": "Portfolio",
   "fund.realtime.addFund": "Add Fund",
   "fund.realtime.refreshing": "Refreshing...",
@@ -528,7 +492,6 @@
   "fund.realtime.setFirstBuy": "Set first buy",
   "fund.realtime.dataUpdateTime": "Data updated:",
   "fund.realtime.emptyHint": "Add funds below to track real-time estimates and P&L",
-
   "fund.realtimeModal.title": "Add Fund",
   "fund.realtimeModal.searchPlaceholder": "Search fund name or code",
   "fund.realtimeModal.searching": "Searching...",
@@ -583,7 +546,6 @@
   "fund.realtimeModal.rebalanceTarget": "Target Allocation (per fund)",
   "fund.realtimeModal.rebalanceUpper": "Upper Threshold",
   "fund.realtimeModal.rebalanceLower": "Lower Threshold",
-
   "market.title": "Market Overview",
   "market.realtimeData": "Market Realtime Data",
   "market.overview": "Overview",
@@ -603,7 +565,6 @@
   "market.anomalyLabel": "Alert",
   "market.clickForDetail": "Click for details",
   "market.clickForHistory": "Click for history",
-
   "flashNews.title": "7×24 Flash News",
   "flashNews.itemCount": "items",
   "flashNews.noData": "No flash news",
@@ -614,7 +575,6 @@
   "flashNews.relatedStocks": "Related Stocks",
   "flashNews.error": "Failed to fetch news",
   "flashNews.networkError": "Network error, please retry",
-
   "sectorRank.title": "Sector Ranking",
   "sectorRank.cachedData": "Cached",
   "sectorRank.liveData": "Live",
@@ -654,7 +614,6 @@
   "market.anomaly": "Market Alerts",
   "market.news": "7×24 News",
   "market.sectors": "Sector Ranking",
-
   "alert.settings": "Alert Settings",
   "alert.settingsTitle": "Alert Settings - {code}",
   "alert.add": "Add Rule",
@@ -670,7 +629,6 @@
   "alert.returnAbove": "Return Above",
   "alert.returnBelow": "Return Below",
   "alert.anomaly.empty": "No anomalies detected today",
-
   "common.settings": "Settings",
   "common.updated": "Updated",
   "common.unknown": "Unknown",
@@ -687,9 +645,7 @@
   "common.type": "Type",
   "common.total": "Total",
   "common.action": "Action",
-
   "error.renderError": "Page render error",
-
   "nav.short.dashboard": "Market",
   "nav.short.screening": "Screening",
   "nav.short.backtest": "Backtest",
@@ -707,13 +663,10 @@
   "common.confirm": "Confirm",
   "common.search": "Search",
   "common.refresh": "Refresh",
-
   "i18n.switchTo": "English",
   "i18n.switchToZh": "中文",
-
   "locale.zh": "Chinese",
   "locale.en": "English",
-
   "settings.general.appearance": "Appearance",
   "settings.general.themeDesc": "Choose theme display mode",
   "settings.general.language": "Language",
@@ -738,7 +691,6 @@
   "settings.anomaly.saved": "Settings saved",
   "settings.anomaly.saveFailed": "Save failed",
   "settings.anomaly.inputRequired": "Please enter a valid number",
-
   "settings.llmTab": "AI Config",
   "settings.llm.title": "AI Service Configuration",
   "settings.llm.apiKey": "API Key",
@@ -750,5 +702,8 @@
   "settings.llm.saved": "Configuration saved",
   "settings.llm.showKey": "Show",
   "settings.llm.hideKey": "Hide",
-  "settings.llm.notConfigured": "Please configure AI service key in settings before use"
+  "settings.llm.notConfigured": "Please configure AI service key in settings before use",
+  "chat.tool.getFundsByIndustry": "Search Funds by Industry",
+  "chat.tool.getIndustryPerformance": "Industry Performance",
+  "chat.tool.getConceptSectors": "Concept Sectors"
 }

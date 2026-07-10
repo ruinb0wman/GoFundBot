@@ -3,7 +3,7 @@ import { getFundBasic, getFundDetail, getFundEstimate, getFundNavHistory, getFun
 import { fetchIndicesFromSina, getMarketSectorsFromAkshare, fetchGoldRealtime } from './marketService.js';
 import { getStockReference } from './stockService.js';
 import { getFlashNews } from './newsService.js';
-import { runBacktest, runFetchMarket, runPython } from './pythonRunner.js';
+import { runBacktest, runFetchMarket, runIndustryPerformance, runPython, runQueryIndustryFunds } from './pythonRunner.js';
 
 export interface ToolDef {
   type: 'function'
@@ -268,13 +268,28 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
   if (!handler) {
     throw new Error(`Unknown tool: ${name}`);
   }
-  logger.info('chat tool call', { tool: name, args });
-  try {
-    return await handler(args);
-  } catch (error) {
-    logger.error('chat tool error', { tool: name, error: String(error) });
-    return { error: String(error) };
+
+  const maxRetries = 1;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      logger.info('chat tool call', { tool: name, args, attempt });
+      return await handler(args);
+    } catch (error) {
+      if (attempt === maxRetries) {
+        logger.error('chat tool error', { tool: name, error: String(error) });
+        return { error: String(error) };
+      }
+      const msg = String(error).toLowerCase();
+      const isRetryable = /timeout|econn|eaddrinuse|enotfound|spawn|reset|network|fetch.*failed/i.test(msg);
+      if (!isRetryable) {
+        logger.error('chat tool error (non-retryable)', { tool: name, error: String(error) });
+        return { error: String(error) };
+      }
+      logger.warn('chat tool retry', { tool: name, attempt, error: String(error) });
+      await new Promise(r => setTimeout(r, 1500));
+    }
   }
+  throw new Error('unreachable');
 }
 
 function toolData<T>(result: { data: T } | T): T {
@@ -448,41 +463,22 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
 
   get_funds_by_industry: async (args) => {
     const keyword = args.keyword as string;
-    const result = await getFundScreeningSnapshot({});
-    const data = toolData(result) as unknown as Record<string, unknown>;
-    const items: Array<Record<string, unknown>> = data.items as Array<Record<string, unknown>> || [];
-    const kw = keyword.toLowerCase();
-    const matched = items.filter(f => {
-      const name = String(f.fund_name || f.name || '').toLowerCase();
-      const code = String(f.fund_code || f.code || '');
-      return name.includes(kw) || code.includes(kw);
-    });
-    return { funds: matched.slice(0, 30), total: matched.length };
+    try {
+      const result = await runQueryIndustryFunds(keyword);
+      return result;
+    } catch (error) {
+      logger.error('get_funds_by_industry error', { error: String(error) });
+      return { funds: [], total: 0, message: `查询失败: ${String(error)}` };
+    }
   },
 
   get_industry_performance: async () => {
-    const result = await getFundScreeningSnapshot({});
-    const data = toolData(result) as unknown as Record<string, unknown>;
-    const items: Array<Record<string, unknown>> = data.items as Array<Record<string, unknown>> || [];
-    const byType: Record<string, { returns: number[]; count: number }> = {};
-    for (const f of items) {
-      const type = String(f.fund_type || '其他');
-      if (!byType[type]) byType[type] = { returns: [], count: 0 };
-      const r = parseFloat(String(f.return_1y ?? ''));
-      if (!isNaN(r)) byType[type].returns.push(r);
-      byType[type].count++;
+    try {
+      const result = await runIndustryPerformance();
+      return result;
+    } catch (error) {
+      logger.error('get_industry_performance error', { error: String(error) });
+      return { items: [], summary: { total: 0 }, error: String(error) };
     }
-    const resultPayload: Array<Record<string, unknown>> = [];
-    for (const [type, data] of Object.entries(byType)) {
-      const sorted = data.returns.sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      resultPayload.push({
-        industry: type,
-        fund_count: data.count,
-        median_return_1y: sorted.length > 0 ? sorted[mid] : null,
-        positive_rate: data.returns.length > 0 ? (data.returns.filter(r => r > 0).length / data.returns.length * 100).toFixed(1) + '%' : null,
-      });
-    }
-    return resultPayload;
   },
 };
