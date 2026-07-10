@@ -274,8 +274,8 @@ export async function* chat(
         }
       } catch (error) {
         if (fullContent) {
-          yield { event: 'token', data: JSON.stringify({ token: '', full: fullContent }) };
-          return;
+      yield { event: 'token', data: JSON.stringify({ token: '', full: fullContent }) };
+        break;
         }
 
         logger.warn('stream fallback to non-streaming', { error: String(error) });
