@@ -26,6 +26,11 @@
           <div class="range-tabs">
             <span v-for="r in rangeOptions" :key="r.key" :class="{ active: activeRange === r.key }" @click="switchRange(r.key)">{{ r.label }}</span>
           </div>
+          <div class="ma-tabs">
+            <span v-for="ma in MA_PRESETS" :key="ma.period" :class="{ active: activeMAs.includes(ma.period) }" @click="toggleMA(ma.period)">
+              <span class="ma-dot" :style="{ background: ma.color }"></span>{{ ma.label }}
+            </span>
+          </div>
         </div>
         <div class="kline-chart">
           <v-chart class="chart" :option="klineOption" autoresize :theme="echartThemeName" v-if="klineData.length" />
@@ -52,14 +57,15 @@ import { useI18n } from 'vue-i18n'
 import { marketAPI } from '../services/api'
 
 const { t } = useI18n()
+import { MA_PRESETS, calcMA } from '../utils/ma'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"
-import { CandlestickChart, BarChart } from "echarts/charts"
+import { CandlestickChart, BarChart, LineChart } from "echarts/charts"
 import { GridComponent, TooltipComponent, DataZoomComponent } from "echarts/components"
 import VChart from "vue-echarts"
 
-use([CanvasRenderer, CandlestickChart, BarChart, GridComponent, TooltipComponent, DataZoomComponent])
+use([CanvasRenderer, CandlestickChart, BarChart, LineChart, GridComponent, TooltipComponent, DataZoomComponent])
 
 const props = defineProps<{ indexCode: string }>()
 
@@ -80,6 +86,15 @@ const rangeOptions = computed(() => [
   { key: '5y', label: t('indexDetail.range5y') },
   { key: 'all', label: t('indexDetail.rangeAll') },
 ])
+
+const activeMAs = ref<number[]>([5, 20])
+const toggleMA = (period: number) => {
+  if (activeMAs.value.includes(period)) {
+    activeMAs.value = activeMAs.value.filter(p => p !== period)
+  } else {
+    activeMAs.value = [...activeMAs.value, period]
+  }
+}
 
 const { echartThemeName } = useEChartsTheme()
 
@@ -110,8 +125,6 @@ const klineOption = computed(() => {
   const dates = data.map((i: any) => (i.date || i.time || '').slice(5))
   const ohlc = data.map((i: any) => [i.open, i.close, i.low, i.high])
   const volumes = data.map((i: any) => parseFloat(i.volume || 0))
-  const ma5 = calcMA(5, data)
-  const ma20 = calcMA(20, data)
 
   const upColor = cssVar('--color-danger', '#ff4d4f')
   const downColor = cssVar('--color-success', '#52c41a')
@@ -130,14 +143,18 @@ const klineOption = computed(() => {
         const d = data[idx]
         const isUp = d.close >= d.open
         const color = isUp ? upColor : downColor
-        return `
-          <div style="margin-bottom:4px;font-weight:bold">${d.date || d.time}</div>
+        let html = `<div style="margin-bottom:4px;font-weight:bold">${d.date || d.time}</div>
           <div>开盘: <b>${d.open}</b></div>
           <div>收盘: <b style="color:${color}">${d.close}</b></div>
           <div>最高: <b>${d.high}</b></div>
           <div>最低: <b>${d.low}</b></div>
-          <div>成交量: ${d.volume || 0}</div>
-        `
+          <div>成交量: ${d.volume || 0}</div>`
+        for (const p of params) {
+          if (p.seriesName?.startsWith('MA') && p.value !== undefined && p.value !== '-' && p.value !== null) {
+            html += `<div>${p.marker} ${p.seriesName}: <b>${p.value}</b></div>`
+          }
+        }
+        return html
       }
     },
     xAxis: [
@@ -199,26 +216,20 @@ const klineOption = computed(() => {
         xAxisIndex: 0,
         yAxisIndex: 0
       },
-      {
-        name: 'MA5',
-        type: 'line',
-        data: ma5,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { width: 1, color: '#f59e0b' },
-        xAxisIndex: 0,
-        yAxisIndex: 0
-      },
-      {
-        name: 'MA20',
-        type: 'line',
-        data: ma20,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { width: 1, color: '#8b5cf6' },
-        xAxisIndex: 0,
-        yAxisIndex: 0
-      },
+      ...activeMAs.value.map(period => {
+        const config = MA_PRESETS.find(m => m.period === period)
+        const maValues = calcMA(period, data.map((i: any) => parseFloat(i.close)))
+        return {
+          name: `MA${period}`,
+          type: 'line',
+          data: maValues.map(v => v === null ? '-' : v),
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { width: 1, color: config?.color || '#999' },
+          xAxisIndex: 0,
+          yAxisIndex: 0
+        }
+      }),
       {
         name: '成交量',
         type: 'bar',
@@ -234,19 +245,6 @@ const klineOption = computed(() => {
     ]
   }
 })
-
-const calcMA = (days: number, data: any[]) => {
-  const result: any[] = []
-  for (let i = 0; i < data.length; i++) {
-    if (i < days - 1) { result.push('-'); continue }
-    let sum = 0
-    for (let j = i - days + 1; j <= i; j++) {
-      sum += parseFloat(data[j].close || data[j].close)
-    }
-    result.push(+(sum / days).toFixed(2))
-  }
-  return result
-}
 
 const fetchDetail = async () => {
   try {
@@ -422,6 +420,40 @@ onMounted(() => { loadAll() })
   background: var(--color-primary-bg);
 }
 
+.ma-tabs {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ma-tabs span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+.ma-tabs span:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+.ma-tabs span.active {
+  color: var(--color-primary);
+  font-weight: 600;
+  background: var(--color-primary-bg);
+}
+.ma-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
 .kline-chart {
   height: 440px;
 }
@@ -451,14 +483,12 @@ onMounted(() => { loadAll() })
   padding: 12px;
   text-align: center;
 }
-
 .stat-label {
   display: block;
   font-size: 0.8em;
   color: var(--text-tertiary);
   margin-bottom: 4px;
 }
-
 .stat-value {
   font-size: 1.05em;
   font-weight: 600;

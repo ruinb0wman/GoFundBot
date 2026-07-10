@@ -4,13 +4,12 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
 import { translate } from '../locales/index'
-
+import { MA_PRESETS, calcMA } from '../utils/ma'
 export function useFundChart(props) {
   const chartEl = ref(null)
   const activeTab = ref('performance')
   const selectedRange = ref('1y')
   let chartInstance = null
-
   const { echartThemeName } = useEChartsTheme()
 
   const cssColor = (name, fallback = '') => {
@@ -23,7 +22,6 @@ export function useFundChart(props) {
     const b = parseInt(hex.slice(5, 7), 16)
     return `rgba(${r},${g},${b},${alpha})`
   }
-
   const timeRanges = [
     { label: translate('fund.detail.month3'), value: '3m' },
     { label: translate('fund.detail.month6'), value: '6m' },
@@ -31,7 +29,6 @@ export function useFundChart(props) {
     { label: translate('fund.detail.year3'), value: '3y' },
     { label: translate('fund.detail.sinceInception'), value: 'all' }
   ]
-
   const setTimeRange = (range) => {
     selectedRange.value = range
     updateChart()
@@ -47,16 +44,22 @@ export function useFundChart(props) {
       initChart()
     })
   }
-
   const getColor = (val) => {
     if (!val) return ''
     return val >= 0 ? 'text-red' : 'text-green'
   }
-
   const fundChange = ref('0.00')
   const maxDrawdownInfo = ref({ val: '0.00', days: 0 })
   const comparisonInfo = ref([])
-
+  const activeMAs = ref([5, 20])
+  const toggleMA = (period: number) => {
+    if (activeMAs.value.includes(period)) {
+      activeMAs.value = activeMAs.value.filter(p => p !== period)
+    } else {
+      activeMAs.value = [...activeMAs.value, period]
+    }
+    nextTick(() => updateChart())
+  }
   const filterByDate = (data, range) => {
     if (!data || data.length === 0) return []
     const now = new Date()
@@ -178,7 +181,9 @@ export function useFundChart(props) {
     return {
       chartData,
       drawdownInfo: ddInfo,
-      useRawValues
+      useRawValues,
+      rawValues: filtered.map(item => item[1]),
+      timestamps: filtered.map(item => item[0]),
     }
   }
 
@@ -225,7 +230,7 @@ export function useFundChart(props) {
     }
 
     if (activeTab.value === 'performance') {
-      const { chartData, useRawValues } = processData()
+      const { chartData, useRawValues, rawValues, timestamps } = processData()
       const unit = useRawValues ? '' : '%'
 
       // Build trade marker lookup
@@ -288,9 +293,22 @@ export function useFundChart(props) {
           z: 3,
         })
       }
-
+      // MA lines
+      if (activeMAs.value.length > 0 && rawValues?.length > 0) {
+        const sv = rawValues[0] || 1
+        for (const period of activeMAs.value) {
+          const maVals = calcMA(period, rawValues)
+          const config = MA_PRESETS.find(m => m.period === period)
+          const data = timestamps.map((ts, i) => [
+            ts, maVals[i] === null ? null : useRawValues ? maVals[i] : (maVals[i] - sv) / sv * 100
+          ])
+          option.series.push({
+            name: `MA${period}`, type: 'line', data, smooth: true, symbol: 'none',
+            lineStyle: { width: 1, color: config?.color || '#999' }, z: 2,
+          })
+        }
+      }
       option.yAxis.axisLabel.formatter = useRawValues ? '{value}' : '{value}%'
-
       option.tooltip.formatter = function (params) {
         if (!params?.length) return ''
         const date = echarts.format.formatTime('yyyy-MM-dd', params[0].value[0])
@@ -299,6 +317,8 @@ export function useFundChart(props) {
           if (p.seriesName === '本基金') {
             const val = p.value[1]
             html += `<div>${p.marker} 净值: ${val}${unit}</div>`
+          } else if (p.seriesName?.startsWith('MA') && p.value?.[1] !== null) {
+            html += `<div>${p.marker} ${p.seriesName}: ${(+p.value[1]).toFixed(2)}${unit}</div>`
           }
         }
         const t = tradeByDate[date]
@@ -319,7 +339,6 @@ export function useFundChart(props) {
       }
     } else if (activeTab.value === 'comparison') {
       const comparisonData = props.grandTotal || []
-
       if (comparisonData.length > 0) {
         const colors = [
           cssColor('--chart-1', '#1677ff'),
@@ -370,7 +389,6 @@ export function useFundChart(props) {
       }
     } else if (activeTab.value === 'drawdown') {
       const { chartData, drawdownInfo } = processData()
-
       if (chartData.length > 0) {
         const seriesData = {
           name: '本基金',
@@ -444,7 +462,6 @@ export function useFundChart(props) {
     chartInstance.setOption(option, true)
     chartInstance.resize()
   }
-
   const handleResize = () => { chartInstance?.resize() }
 
   onMounted(() => {
@@ -458,11 +475,9 @@ export function useFundChart(props) {
     }
     window.removeEventListener('resize', handleResize)
   })
-
   watch([() => props.netWorthTrend, () => props.grandTotal], () => {
     nextTick(() => updateChart())
   }, { deep: true })
-
   watch(echartThemeName, () => {
     if (chartInstance) {
       chartInstance.dispose()
@@ -470,17 +485,9 @@ export function useFundChart(props) {
       nextTick(() => initChart())
     }
   })
-
   return {
-    chartEl,
-    timeRanges,
-    selectedRange,
-    setTimeRange,
-    activeTab,
-    switchTab,
-    fundChange,
-    maxDrawdownInfo,
-    comparisonInfo,
-    getColor
+    chartEl, timeRanges, selectedRange, setTimeRange,
+    activeTab, switchTab, fundChange, maxDrawdownInfo,
+    comparisonInfo, getColor, activeMAs, toggleMA,
   }
 }

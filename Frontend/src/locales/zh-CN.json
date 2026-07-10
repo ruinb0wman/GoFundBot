@@ -311,6 +311,7 @@
   "indexDetail.range3y": "最近3年",
   "indexDetail.range5y": "最近5年",
   "indexDetail.rangeAll": "所有",
+  "indexDetail.ma": "均线",
   "dailyMarket.title": "每日市场行情",
   "dailyMarket.refresh": "刷新",
   "dailyMarket.generating": "正在生成今日市场分析",

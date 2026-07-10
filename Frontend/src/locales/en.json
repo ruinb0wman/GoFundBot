@@ -311,6 +311,7 @@
   "indexDetail.range3y": "3 Years",
   "indexDetail.range5y": "5 Years",
   "indexDetail.rangeAll": "All",
+  "indexDetail.ma": "MA",
   "dailyMarket.title": "Daily Market Summary",
   "dailyMarket.refresh": "Refresh",
   "dailyMarket.generating": "Generating market summary",

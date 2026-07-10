@@ -32,6 +32,13 @@
             <span class="value" :class="getColor(fundChange)">{{ fundChange > 0 ? '+' : ''}}{{ fundChange }}%</span>
         </div>
     </div>
+    <div class="ma-tabs-wrapper" v-if="activeTab === 'performance'">
+      <div class="ma-tabs">
+        <span v-for="ma in MA_PRESETS" :key="ma.period" :class="{ active: activeMAs.includes(ma.period) }" @click="toggleMA(ma.period)">
+          <span class="ma-dot" :style="{ background: ma.color }"></span>{{ ma.label }}
+        </span>
+      </div>
+    </div>
 
     <div class="summary-info drawdown-info" v-else-if="activeTab === 'drawdown'">
         <div class="info-group">
@@ -81,6 +88,7 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
+import { MA_PRESETS } from '../utils/ma'
 import { useFundChart } from '../composables/useFundChart'
 
 const props = defineProps({
@@ -100,7 +108,9 @@ const {
   fundChange,
   maxDrawdownInfo,
   comparisonInfo,
-  getColor
+  getColor,
+  activeMAs,
+  toggleMA,
 } = useFundChart(props)
 </script>
 
@@ -218,6 +228,50 @@ const {
   width: 100%;
   height: 100%;
   min-height: 280px;
+}
+
+.ma-tabs-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 4px 20px 2px;
+}
+
+.ma-tabs {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ma-tabs span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.ma-tabs span:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.ma-tabs span.active {
+  color: var(--color-primary);
+  font-weight: 600;
+  background: var(--color-primary-bg);
+}
+
+.ma-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 .time-ranges {
