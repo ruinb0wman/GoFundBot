@@ -4,6 +4,7 @@ import { sendSuccess } from '../core/response.js';
 import {
   getGlobalIndexKline,
   getGlobalIndices,
+  getGoldHistory,
   getIndexDetail,
   getMarketBreadth,
   getMarketIndices,
@@ -13,6 +14,7 @@ import {
   getMarketQuotes,
   getMarketSectorConstituents,
   getMarketSectorsFromAkshare,
+  getSilverHistory,
   getNorthFlow,
   getStockMoneyFlow,
 } from '../services/marketService.js';
@@ -125,6 +127,22 @@ marketRouter.get(
   '/north-flow',
   asyncHandler(async (_req, res) => {
     sendSuccess(res, await getNorthFlow());
+  })
+);
+
+marketRouter.get(
+  '/gold/history',
+  asyncHandler(async (req, res) => {
+    const days = parseInt(firstQueryValue(req.query.days) ?? '10', 10) || 10;
+    res.json(await getGoldHistory(days));
+  })
+);
+
+marketRouter.get(
+  '/silver/history',
+  asyncHandler(async (req, res) => {
+    const days = parseInt(firstQueryValue(req.query.days) ?? '10', 10) || 10;
+    res.json(await getSilverHistory(days));
   })
 );
 

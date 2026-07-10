@@ -441,6 +441,131 @@ export async function fetchGoldRealtime(): Promise<Record<string, any>> {
   }
 }
 
+export async function getGoldHistory(days: number = 10): Promise<Record<string, any>> {
+  const cacheKey = `gold:history:${days}`;
+  const cached = cache.get<Record<string, any>>(cacheKey);
+  if (cached) return cached.value;
+
+  try {
+    const fetchMetalHistory = async (code: string, needField = '128,129,70') => {
+      const url = new URL('https://api.jijinhao.com/quoteCenter/history.htm');
+      url.searchParams.set('code', code);
+      url.searchParams.set('style', '3');
+      url.searchParams.set('pageSize', String(days));
+      url.searchParams.set('needField', needField);
+      url.searchParams.set('currentPage', '1');
+      url.searchParams.set('_', String(Date.now()));
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          'accept': '*/*',
+          'referer': 'https://quote.cngold.org/gjs/swhj_zghj.html',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const text = await response.text();
+      return JSON.parse(text.replace('var quote_json = ', ''));
+    };
+
+    const [data1, data2] = await Promise.all([
+      fetchMetalHistory('JO_52683'),
+      fetchMetalHistory('JO_42660'),
+    ]);
+
+    const raw1 = data1?.data || [];
+    const raw2 = data2?.data || [];
+
+    const result = raw1.map((item: any, i: number) => {
+      const t = item.time || 0;
+      const date = t ? new Date(t).toISOString().slice(0, 10) : '';
+      const gold2 = raw2[i] || {};
+      return {
+        date,
+        china_gold_price: item.q1 ?? 'N/A',
+        china_gold_change: String(item.q70 ?? 'N/A'),
+        zhoudafu_price: gold2.q1 ?? 'N/A',
+        zhoudafu_change: String(gold2.q70 ?? 'N/A'),
+      };
+    });
+
+    const data = {
+      success: true,
+      data: result,
+      update_time: new Date().toISOString(),
+    };
+    cache.set(cacheKey, data, ttl.goldHistory);
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      data: [],
+      update_time: new Date().toISOString(),
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export async function getSilverHistory(days: number = 10): Promise<Record<string, any>> {
+  const cacheKey = `silver:history:${days}`;
+  const cached = cache.get<Record<string, any>>(cacheKey);
+  if (cached) return cached.value;
+
+  try {
+    const url = new URL('https://api.jijinhao.com/quoteCenter/history.htm');
+    url.searchParams.set('code', 'JO_92232');
+    url.searchParams.set('style', '3');
+    url.searchParams.set('pageSize', String(days));
+    url.searchParams.set('needField', '70');
+    url.searchParams.set('currentPage', '1');
+    url.searchParams.set('_', String(Date.now()));
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        'accept': '*/*',
+        'referer': 'https://quote.cngold.org/gjs/swhj_zghj.html',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const text = await response.text();
+    const parsed = JSON.parse(text.replace('var quote_json = ', ''));
+    const raw = parsed?.data || [];
+    const unit = parsed?.unit || '美元/盎司';
+
+    const result = raw.map((item: any) => {
+      const t = item.time || 0;
+      const date = t ? new Date(t).toISOString().slice(0, 10) : '';
+      return {
+        date,
+        price: item.q1 ?? 'N/A',
+        change: String(item.q70 ?? 'N/A'),
+        high: item.q3 ?? 'N/A',
+        low: item.q4 ?? 'N/A',
+        volume: item.q60 ?? 0,
+        unit,
+      };
+    });
+
+    const data = {
+      success: true,
+      data: result,
+      update_time: new Date().toISOString(),
+    };
+    cache.set(cacheKey, data, ttl.goldHistory);
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      data: [],
+      update_time: new Date().toISOString(),
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 export async function getMarketSectorsFromAkshare(limit = 90): Promise<any[]> {
   const result = await runFetchMarket<{ sectors: any[] }>('sector');
   const sectors = result.sectors ?? [];
