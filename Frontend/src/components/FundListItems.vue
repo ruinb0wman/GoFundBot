@@ -39,8 +39,8 @@
       </div>
 
       <div class="col-nav">
-        <div class="nav-value">{{ fund.net_worth || fund.estimate_value || '--' }}</div>
-        <div class="nav-date">{{ fund.net_worth_date || fund.estimate_time || '' }}</div>
+        <div class="nav-value">{{ fund.estimate_value || fund.net_worth || '--' }}</div>
+        <div class="nav-date">{{ fund.estimate_time || fund.net_worth_date || '' }}</div>
       </div>
 
       <div class="col-change" :class="getChangeClass(fund.estimate_change)">

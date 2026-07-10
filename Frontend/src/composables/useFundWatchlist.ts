@@ -88,7 +88,8 @@ export function useFundWatchlist(
       await watchlistStore.refreshEstimates()
       watchlist.value = Array.isArray(watchlistStore.funds) ? watchlistStore.funds : []
       groups.value = Array.isArray(watchlistStore.groups) ? watchlistStore.groups : []
-      lastEstimateUpdate.value = new Date().toLocaleTimeString()
+      const times = watchlistStore.funds.map(f => f.estimate_time).filter(Boolean).sort() as string[]
+      lastEstimateUpdate.value = times.length > 0 ? times[times.length - 1] : new Date().toLocaleTimeString()
     } catch (error) {
       console.error('刷新估值失败:', error)
     } finally {
