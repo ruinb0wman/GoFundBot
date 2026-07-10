@@ -97,6 +97,28 @@ ${RESPONSE_REQUIREMENTS}
 3. 用户问"哪些基金好/推荐"时，先问清楚筛选条件
 4. 回到用户问题：展示数据后，必须从数据回到用户最关心的问题上给出直接回答（例如用户问"建仓"就结合数据给出建议，用户问"能不能买"就给出有依据的判断）`;
 
+const INDUSTRY_RESEARCH_PROMPT = `你是一位行业投资研究员，专注分析行业板块的投资价值。
+
+## 你的角色
+你的任务是从数据面+信息面综合研判行业板块的投资机会——哪些值得关注、哪些适合建仓。不做单只基金深度分析，不做具体买卖决策。
+
+## 职责范围
+- 查询各行业板块的多周期业绩汇总
+- 获取市场快讯新闻并从中提取行业/政策相关信息
+- 查询热门行业板块实时行情
+- 查询概念板块行情和资金流向
+- 按行业/主题查找相关基金
+- 综合业绩数据+政策面+行业动态给出有依据的研判
+
+${DATA_RULES}
+
+${RESPONSE_REQUIREMENTS}
+
+## 回答策略
+1. 多维度交叉验证：业绩数据（量化）+ 政策新闻（催化）+ 行业动态（趋势），三者互相印证才能给出判断
+2. 分层回答：先展示数据梳理，再给出值得关注（强势/趋势向好）和值得准备建仓（回调中/左侧机会）的分类判断
+3. 风险提示：每个方向都要说清楚是趋势延续还是左侧布局，短期过热还是估值合理`;
+
 const INVESTMENT_STRATEGY_PROMPT = `你是一位定投策略顾问，专注回测分析和策略推荐。
 
 ## 你的角色
@@ -170,9 +192,16 @@ export const SKILL_DEFINITIONS: Skill[] = [
     toolNames: ['get_market_news', 'get_flash_news'],
   },
   {
+    name: 'industry_research',
+    description: '行业板块投资研究：结合业绩数据+政策新闻+板块行情，研判行业投资价值',
+    keywords: ['行业', '建仓', '值得关注', '行业分析', '板块机会', '行业前景', '行业轮动', '看好哪', '主线', '热点板块', '板块', '前景'],
+    systemPrompt: INDUSTRY_RESEARCH_PROMPT,
+    toolNames: ['get_industry_performance', 'get_market_news', 'get_flash_news', 'get_hot_sectors', 'get_concept_sectors', 'get_funds_by_industry'],
+  },
+  {
     name: 'fund_screening',
     description: '按条件筛选、排名、查找行业主题基金',
-    keywords: ['筛选', '排名', '排行', '推荐', '哪些基金', '行业', '主题', '新能源', '医药', '半导体', '白酒', '消费', '科技', '军工', '医疗', '新能源车'],
+    keywords: ['筛选', '排名', '排行', '推荐', '哪些基金', '主题', '新能源', '医药', '半导体', '白酒', '消费', '科技', '军工', '医疗', '新能源车'],
     systemPrompt: FUND_SCREENING_PROMPT,
     toolNames: ['search_funds', 'screen_funds_by_4433', 'get_funds_by_industry', 'get_industry_performance'],
   },
@@ -210,6 +239,7 @@ export const ROUTER_SYSTEM_PROMPT = `你是一个意图分类器。根据用户�
 - fund_analysis: 询问或分析某只具体的基金，包括基金代码查询、业绩、净值、持仓、基金经理等
 - market_overview: 询问大盘行情、市场指数、板块涨跌、北向资金、涨跌家数、主力资金等
 - news_briefing: 询问市场新闻、快讯、消息面、今天有什么消息等
+- industry_research: 询问哪些行业值得关注/建仓、行业前景/板块机会分析、结合新闻政策研判行业方向
 - fund_screening: 找基金、筛选排名、查找某个行业或主题的基金
 - investment_strategy: 询问定投方案、回测模拟、投资策略推荐
 - general: 不属于以上任何一类，或者问题混合了多个类别
@@ -247,7 +277,7 @@ export class SkillRouter {
   }
 
   keywordRoute(message: string): string | null {
-    const priority = ['fund_screening', 'news_briefing', 'investment_strategy', 'market_overview', 'fund_analysis'];
+    const priority = ['industry_research', 'fund_screening', 'news_briefing', 'investment_strategy', 'market_overview', 'fund_analysis'];
     for (const name of priority) {
       const skill = SKILL_MAP[name];
       if (skill.keywords.some(kw => message.includes(kw))) {
