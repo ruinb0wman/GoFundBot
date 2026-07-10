@@ -1,9 +1,11 @@
 import { logger } from '../core/logger.js';
-import { getFundBasic, getFundDetail, getFundEstimate, getFundNavHistory, getFundHoldings, getFundManagers, getFundScreeningSnapshot } from './fundService.js';
+import { searchFunds, getFundDetail, getFundEstimate, getFundNavHistory, getFundHoldings, getFundManagers, getFundScreeningSnapshot } from './fundService.js';
+import type { FundScreeningSnapshotItemDto } from '../types/fund.js';
 import { fetchIndicesFromSina, getMarketSectorsFromAkshare, fetchGoldRealtime } from './marketService.js';
 import { getStockReference } from './stockService.js';
 import { getFlashNews } from './newsService.js';
-import { runBacktest, runFetchMarket, runIndustryPerformance, runPython, runQueryIndustryFunds } from './pythonRunner.js';
+import { runBacktest, runFetchMarket, runPython } from './pythonRunner.js';
+import { buildIndustryPerformanceFromScreening, filterFundsByIndustry, compute4433Ranking } from './chatIndustryTools.js';
 
 export interface ToolDef {
   type: 'function'
@@ -307,7 +309,7 @@ function getDateRange(startDate?: string, endDate?: string): { startDate?: strin
 
 const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {
   search_funds: async (args) => {
-    const result = await getFundBasic(args.keyword as string);
+    const result = await searchFunds(args.keyword as string);
     return toolData(result);
   },
 
@@ -396,18 +398,11 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
   },
 
   screen_funds_by_4433: async () => {
-    const result = await getFundScreeningSnapshot({});
-    const data = toolData(result) as unknown as Record<string, unknown>;
-    const items: Array<Record<string, unknown>> = data.items as Array<Record<string, unknown>> || [];
-    const sorted = items
-      .filter(f => f.return_1y !== null && f.return_1y !== undefined)
-      .sort((a, b) => {
-        const ra = parseFloat(String(b.return_1y ?? 0));
-        const rb = parseFloat(String(a.return_1y ?? 0));
-        return ra - rb;
-      })
-      .slice(0, 50);
-    return sorted;
+    const result = await getFundScreeningSnapshot({ pageSize: 500 });
+    const data = toolData(result) as { items?: FundScreeningSnapshotItemDto[] };
+    const items = data?.items ?? [];
+    if (items.length === 0) return { funds: [], message: '暂未获取到基金数据，请稍后重试', method: '4433' };
+    return { funds: compute4433Ranking(items), method: '4433', total_screened: items.length };
   },
 
   run_backtest: async (args) => {
@@ -464,8 +459,10 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
   get_funds_by_industry: async (args) => {
     const keyword = args.keyword as string;
     try {
-      const result = await runQueryIndustryFunds(keyword);
-      return result;
+      const result = await getFundScreeningSnapshot({ pageSize: 500 });
+      const data = toolData(result) as { items?: FundScreeningSnapshotItemDto[] };
+      const items = data?.items ?? [];
+      return filterFundsByIndustry(items, keyword);
     } catch (error) {
       logger.error('get_funds_by_industry error', { error: String(error) });
       return { funds: [], total: 0, message: `查询失败: ${String(error)}` };
@@ -474,8 +471,11 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
 
   get_industry_performance: async () => {
     try {
-      const result = await runIndustryPerformance();
-      return result;
+      const result = await getFundScreeningSnapshot({ pageSize: 500 });
+      const data = toolData(result) as { items?: FundScreeningSnapshotItemDto[] };
+      const items = data?.items ?? [];
+      if (items.length === 0) return { items: [], summary: { total: 0 }, error: '暂未获取到基金数据，请稍后重试' };
+      return buildIndustryPerformanceFromScreening(items);
     } catch (error) {
       logger.error('get_industry_performance error', { error: String(error) });
       return { items: [], summary: { total: 0 }, error: String(error) };
