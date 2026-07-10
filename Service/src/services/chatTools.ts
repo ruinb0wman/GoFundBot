@@ -6,6 +6,7 @@ import { getStockReference } from './stockService.js';
 import { getFlashNews } from './newsService.js';
 import { runBacktest, runFetchMarket, runPython } from './pythonRunner.js';
 import { buildIndustryPerformanceFromScreening, filterFundsByIndustry, compute4433Ranking } from './chatIndustryTools.js';
+import { getSearchSettings } from './settingsService.js';
 
 export interface ToolDef {
   type: 'function'
@@ -258,6 +259,24 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
   {
     type: 'function',
     function: {
+      name: 'search_news',
+      description: '通过网络搜索新闻、政策、行业动态，用于获取近期政策法规或行业新闻。'
+        + ' 与快讯工具（get_market_news/get_flash_news）不同：快讯只返回今日实时消息，'
+        + ' search_news 可搜索数天至一个月内的时间范围的网络信息。'
+        + ' 使用场景：用户问"XX有什么政策"、"近期XX行业有什么新闻"、"XX新规"等。',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: '搜索关键词，如"碳中和 政策"' },
+          max_results: { type: 'integer', description: '最大结果数，默认5' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_industry_performance',
       description: '获取各行业板块的多周期业绩汇总——各行业中位收益、正收益基金占比、基金数量。',
       parameters: { type: 'object', properties: {} },
@@ -469,6 +488,27 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
     }
   },
 
+  search_news: async (args) => {
+    const query = args.query as string;
+    const maxResults = (args.max_results as number) || 5;
+    if (!query) return { error: 'query is required' };
+    try {
+      const search = getSearchSettings();
+      const result = await runPython<{
+        success: boolean; results?: Array<{ title: string; snippet: string; url: string; source: string; date: string | null }>; provider?: string; error?: string
+      }>('search_web.py', {
+        input: { query, max_results: maxResults, bocha_key: search.bochaKey, tavily_key: search.tavilyKey },
+        timeoutMs: 30_000,
+      });
+      if (result.success && result.results) {
+        return { query, results: result.results, provider: result.provider ?? 'search' };
+      }
+      return { query, results: [], error: result.error ?? '搜索未返回结果' };
+    } catch (error) {
+      logger.error('search_news error', { error: String(error) });
+      return { query, results: [], error: String(error) };
+    }
+  },
   get_industry_performance: async () => {
     try {
       const result = await getFundScreeningSnapshot({ pageSize: 500 });

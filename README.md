@@ -117,6 +117,7 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 *   **数据获取**: akshare / 东方财富 eastmoney API
 *   **风险计算**: 夏普比率 / 最大回撤 / 波动率 / 年化收益
 *   **行业分类**: 基金名称规则匹配 → 行业标签
+*   **搜索引擎**: Bocha / Tavily / DuckDuckGo 多源降级搜索（search_service.py）
 
 ### 前端 (Frontend)
 *   **框架**: Vue 3 (Composition API + TypeScript, 全部 `<script setup lang="ts">`)
@@ -170,6 +171,9 @@ cp Service/.env.example Service/.env
 LLM_API_KEY=your_api_key_here
 LLM_API_BASE=https://api.siliconflow.cn/v1
 LLM_MODEL=deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+
+# 也可以直接在浏览器中访问 设置 → AI 模型 页面配置 LLM，无需修改 .env。
+# 搜索 API Key（选填，用于 AI 对话的新闻/政策搜索）可在 设置 → 搜索 页面配置。
 ```
 
 ### 4. 一键启动
@@ -237,19 +241,22 @@ GoFundBot/
 │   │   ├── services/            # API 客户端
 │   │   └── views/               # 页面视图
 │   └── package.json
-├── Scripts/                     # Python CLI 脚本（计算/数据补全）
+├── Scripts/                     # Python CLI 脚本（计算/数据补全/搜索引擎）
 │   ├── cli/                     # 可执行脚本
 │   │   ├── backtest.py          # 定投回测
 │   │   ├── fetch_fund.py        # 基金数据拉取
 │   │   ├── fetch_market.py      # 市场数据拉取
 │   │   ├── compute_risk.py      # 风险指标计算
 │   │   ├── classify_industry.py # 行业分类
-│   │   └── memory_reflect.py    # 分析记忆反思
+│   │   ├── memory_reflect.py    # 分析记忆反思
+│   │   └── search_web.py        # Web 搜索（Express spawn 调用）
 │   ├── cli/shared/              # 共享 Python 库
 │   │   └── http_client.py       # HTTP 客户端
 │   ├── services/                # Python 计算模块（backtest.py, risk_metrics.py...）
+│   │   └── ai_agent/            # AI 对话 Agent（技能路由 + 工具调用 + ReAct 循环）
 │   ├── providers/               # Python 数据源（eastmoney.py, tencent.py）
 │   ├── Data/                    # 日志、缓存文件
+│   ├── search_service.py        # 搜索引擎模块（Bocha/Tavily/DuckDuckGo 多源降级）
 │   └── requirements.txt
 ├── docs/                        # 文档和截图
 ├── package.json                 # 根目录 — 一键启动脚本

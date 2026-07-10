@@ -15,6 +15,7 @@ import { newsRouter } from './routes/news.routes.js';
 import { researchRouter } from './routes/research.routes.js';
 import { screeningRouter } from './routes/screening.routes.js';
 import { stockRouter } from './routes/stock.routes.js';
+import { settingsRouter } from './routes/settings.routes.js';
 import { systemRouter } from './routes/system.routes.js';
 import { chatRouter } from './routes/chat.routes.js';
 
@@ -49,6 +50,7 @@ export function createApp() {
   app.use('/api/alerts', alertRouter);
   app.use('/api/screening', screeningRouter);
   app.use('/api/research', researchRouter);
+  app.use('/api/settings', settingsRouter);
   app.use('/api', systemRouter);
   app.use('/api/chat', chatRouter);
 

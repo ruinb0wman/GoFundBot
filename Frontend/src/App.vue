@@ -91,11 +91,14 @@ import FlashNews from './components/FlashNews.vue'
 import SectorRank from './components/SectorRank.vue'
 import AlertBadge from './components/AlertBadge.vue'
 import ChatBubble from './components/ChatBubble.vue'
+import { onMounted } from 'vue'
 import { useApp } from './composables/useApp'
+import { useAppSettings } from './composables/useAppSettings'
 
 defineOptions({ name: 'App' })
 
 const { t } = useI18n()
+const { settings, syncToExpress } = useAppSettings()
 
 const {
   drawerOpen, currentTime, route, router, isMobile,
@@ -104,6 +107,10 @@ const {
   handleNavigate, handleHeaderSearch, resetToDashboard,
   handleAddToCompare, handleRemoveFromCompare, handleClearCompare
 } = useApp()
+
+onMounted(() => {
+  syncToExpress()
+})
 </script>
 
 <style>

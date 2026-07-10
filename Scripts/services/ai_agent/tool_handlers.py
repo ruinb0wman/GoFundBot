@@ -323,6 +323,27 @@ class ToolHandlersMixin:
         finally:
             db.close()
 
+    def _tool_search_news(self, query: str, max_results: int = 5) -> Any:
+        from search_service import get_search_service
+
+        response = get_search_service().search(query, max_results=max_results)
+        if response.success and response.results:
+            return {
+                "query": response.query,
+                "provider": response.provider,
+                "results": [
+                    {
+                        "title": r.title,
+                        "snippet": r.snippet,
+                        "url": r.url,
+                        "source": r.source,
+                        "date": r.published_date,
+                    }
+                    for r in response.results
+                ],
+            }
+        return {"query": query, "results": [], "provider": response.provider, "error": response.error_message or "搜索无结果"}
+
     def _tool_get_industry_performance(self) -> Any:
         from database import SessionLocal
         from services.fund_industry.performance import _industry_performance_payload

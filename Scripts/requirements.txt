@@ -16,3 +16,4 @@ langchain>=0.1.0
 langchain-openai>=0.0.5
 akshare>=1.15.0
 flask-admin>=1.6.0
+duckduckgo-search>=7.0

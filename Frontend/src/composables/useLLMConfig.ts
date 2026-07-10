@@ -1,4 +1,5 @@
 import { computed, ref, type Ref } from 'vue'
+import { settingsAPI } from '../services/api'
 
 const STORAGE_KEY = 'gofund-llm-config'
 
@@ -29,6 +30,7 @@ function loadConfig(): LLMConfig {
 function saveConfig(updated: LLMConfig) {
   config.value = updated
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+  settingsAPI.update({ llm: updated }).catch(() => {})
 }
 
 export function useLLMConfig() {

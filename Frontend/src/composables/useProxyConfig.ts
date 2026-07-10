@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import { systemAPI } from '../services/api'
+import { systemAPI, settingsAPI } from '../services/api'
 
 const STORAGE_KEY = 'gofund-proxy-config'
 
@@ -30,6 +30,11 @@ async function saveConfig(updated: ProxyConfig) {
     await systemAPI.updateProxy(updated)
   } catch {
     // silent — backend proxy sync is best-effort
+  }
+  try {
+    await settingsAPI.update({ proxy: updated })
+  } catch {
+    // silent
   }
 }
 

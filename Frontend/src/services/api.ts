@@ -125,4 +125,9 @@ export const systemAPI = {
   updateProxy(data: { url: string }) { return api.put('/proxy', data) },
 }
 
+export const settingsAPI = {
+  get() { return api.get('/settings') },
+  update(data: Record<string, unknown>) { return api.put('/settings', data) },
+}
+
 export default api

@@ -2,6 +2,7 @@
 MyBot 搜索服务模块
 """
 
+import datetime
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -216,6 +217,48 @@ class BochaSearchProvider(BaseSearchProvider):
             return "未知来源"
 
 
+class DuckDuckGoSearchProvider(BaseSearchProvider):
+    def __init__(self):
+        super().__init__([], "DuckDuckGo")
+
+    @property
+    def is_available(self) -> bool:
+        return True
+
+    def _do_search(self, query: str, api_key: str, max_results: int) -> SearchResponse:
+        try:
+            from duckduckgo_search import DDGS
+
+            biased_query = f"{query} {datetime.datetime.now().year}年"
+            with DDGS() as ddgs:
+                raw = list(ddgs.text(biased_query, region="cn-zh", max_results=max_results))
+            results = []
+            for item in raw:
+                results.append(
+                    SearchResult(
+                        title=item.get("title", ""),
+                        snippet=item.get("body", "")[:500],
+                        url=item.get("href", ""),
+                        source=self._extract_domain(item.get("href", "")),
+                        published_date=item.get("date"),
+                    )
+                )
+            return SearchResponse(query, results, self.name, bool(results))
+        except ImportError:
+            return SearchResponse(query, [], self.name, False,
+                                  "DuckDuckGo 搜索不可用：请安装 duckduckgo-search 包 (pip install duckduckgo-search)")
+        except Exception as e:
+            return SearchResponse(query, [], self.name, False, str(e))
+
+    @staticmethod
+    def _extract_domain(url: str) -> str:
+        try:
+            from urllib.parse import urlparse
+            return urlparse(url).netloc.replace("www.", "") or "未知来源"
+        except Exception:
+            return "未知来源"
+
+
 class SearchService:
     def __init__(self, bocha_keys=None, tavily_keys=None, serpapi_keys=None):
         self._providers = []
@@ -225,6 +268,7 @@ class SearchService:
             self._providers.append(TavilySearchProvider(tavily_keys))
         if serpapi_keys:
             self._providers.append(SerpAPISearchProvider(serpapi_keys))
+        self._providers.append(DuckDuckGoSearchProvider())
 
     @property
     def is_available(self) -> bool:

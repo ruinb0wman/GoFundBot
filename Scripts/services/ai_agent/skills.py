@@ -85,6 +85,7 @@ NEWS_BRIEFING_PROMPT = f"""你是一位财经快讯编辑，专注提供最新�
 
 - 获取市场快讯新闻
 - 获取 DataService 快讯新闻
+- 通过网络搜索新闻、政策、行业动态（search_news 工具）
 - 提取新闻中的关键信息
 
 {DATA_RULES}
@@ -95,7 +96,8 @@ NEWS_BRIEFING_PROMPT = f"""你是一位财经快讯编辑，专注提供最新�
 
 1. 摘要优先：先给一段总体概述，再列出关键新闻条目
 2. 每条新闻要提取：时间、标题/要点、如果有关联板块或个股要标注
-3. 用户问"发生了什么"时覆盖多个新闻源"""
+3. 用户问"发生了什么"时覆盖多个新闻源
+4. 用户问"XX有什么政策"、"近期XX有什么新闻"、"XX新规"时，使用 search_news 搜索网络而非仅依赖今日快讯"""
 
 
 FUND_SCREENING_PROMPT = f"""你是一位基金筛选专家，擅长帮用户找到符合条件的基金。
@@ -134,6 +136,7 @@ INDUSTRY_RESEARCH_PROMPT = f"""你是一位行业投资研究员，专注分析�
 
 - 查询各行业板块的多周期业绩汇总
 - 获取市场快讯新闻并从中提取行业/政策相关信息
+- 通过网络搜索近期政策、行业新闻（search_news 工具）
 - 查询热门行业板块实时行情
 - 查询概念板块行情和资金流向
 - 按行业/主题查找相关基金
@@ -147,7 +150,8 @@ INDUSTRY_RESEARCH_PROMPT = f"""你是一位行业投资研究员，专注分析�
 
 1. 多维度交叉验证：业绩数据（量化）+ 政策新闻（催化）+ 行业动态（趋势），三者互相印证才能给出判断
 2. 分层回答：先展示数据梳理，再给出值得关注（强势/趋势向好）和值得准备建仓（回调中/左侧机会）的分类判断
-3. 风险提示：每个方向都要说清楚是趋势延续还是左侧布局，短期过热还是估值合理"""
+3. 风险提示：每个方向都要说清楚是趋势延续还是左侧布局，短期过热还是估值合理
+4. 用户问"XX有什么政策"、"XX新规"时，使用 search_news 搜索网络而非仅依赖今日快讯"""
 
 
 INVESTMENT_STRATEGY_PROMPT = f"""你是一位定投策略顾问，专注回测分析和策略推荐。
@@ -241,17 +245,18 @@ SKILL_DEFINITIONS: list[Skill] = [
     Skill(
         name="news_briefing",
         description="获取市场新闻和快讯",
-        keywords=["新闻", "快讯", "消息", "资讯", "发生", "公告", "报道"],
+        keywords=["新闻", "快讯", "消息", "资讯", "发生", "公告", "报道", "政策", "新规"],
         system_prompt=NEWS_BRIEFING_PROMPT,
         tool_names=[
             "get_market_news",
             "get_flash_news",
+            "search_news",
         ],
     ),
     Skill(
         name="industry_research",
         description="行业板块投资研究：结合业绩数据+政策新闻+板块行情，研判行业投资价值",
-        keywords=["行业", "建仓", "值得关注", "行业分析", "板块机会", "行业前景", "行业轮动", "看好哪", "主线", "热点板块", "板块", "前景"],
+        keywords=["行业", "建仓", "值得关注", "行业分析", "板块机会", "行业前景", "行业轮动", "看好哪", "主线", "热点板块", "板块", "前景", "政策", "新规"],
         system_prompt=INDUSTRY_RESEARCH_PROMPT,
         tool_names=[
             "get_industry_performance",
@@ -260,6 +265,7 @@ SKILL_DEFINITIONS: list[Skill] = [
             "get_hot_sectors",
             "get_concept_sectors",
             "get_funds_by_industry",
+            "search_news",
         ],
     ),
     Skill(
@@ -330,6 +336,7 @@ SKILL_DEFINITIONS: list[Skill] = [
             "get_fund_managers",
             "get_funds_by_industry",
             "get_industry_performance",
+            "search_news",
         ],
     ),
 ]

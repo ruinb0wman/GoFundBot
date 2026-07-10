@@ -63,6 +63,7 @@ const NEWS_BRIEFING_PROMPT = `你是一位财经快讯编辑，专注提供最�
 ## 职责范围
 - 获取市场快讯新闻
 - 获取快讯新闻
+- 通过网络搜索新闻、政策、行业动态（search_news 工具）
 - 提取新闻中的关键信息
 
 ${DATA_RULES}
@@ -72,7 +73,8 @@ ${RESPONSE_REQUIREMENTS}
 ## 回答策略
 1. 摘要优先：先给一段总体概述，再列出关键新闻条目
 2. 每条新闻要提取：时间、标题/要点
-3. 用户问"发生了什么"时覆盖多个新闻源`;
+3. 用户问"发生了什么"时覆盖多个新闻源
+4. 用户问"XX有什么政策"、"近期XX有什么新闻"、"XX新规"时，使用 search_news 搜索网络而非仅依赖今日快讯`;
 
 const FUND_SCREENING_PROMPT = `你是一位基金筛选专家，擅长帮用户找到符合条件的基金。
 
@@ -105,6 +107,7 @@ const INDUSTRY_RESEARCH_PROMPT = `你是一位行业投资研究员，专注分�
 ## 职责范围
 - 查询各行业板块的多周期业绩汇总
 - 获取市场快讯新闻并从中提取行业/政策相关信息
+- 通过网络搜索近期政策、行业新闻（search_news 工具）
 - 查询热门行业板块实时行情
 - 查询概念板块行情和资金流向
 - 按行业/主题查找相关基金
@@ -117,7 +120,8 @@ ${RESPONSE_REQUIREMENTS}
 ## 回答策略
 1. 多维度交叉验证：业绩数据（量化）+ 政策新闻（催化）+ 行业动态（趋势），三者互相印证才能给出判断
 2. 分层回答：先展示数据梳理，再给出值得关注（强势/趋势向好）和值得准备建仓（回调中/左侧机会）的分类判断
-3. 风险提示：每个方向都要说清楚是趋势延续还是左侧布局，短期过热还是估值合理`;
+3. 风险提示：每个方向都要说清楚是趋势延续还是左侧布局，短期过热还是估值合理
+4. 用户问"XX有什么政策"、"XX新规"时，使用 search_news 搜索网络而非仅依赖今日快讯`;
 
 const INVESTMENT_STRATEGY_PROMPT = `你是一位定投策略顾问，专注回测分析和策略推荐。
 
@@ -147,6 +151,7 @@ const GENERAL_PROMPT = `你是一位基金研究助手，你的用户是个人�
 
 ## 职责范围
 - 你可以查基金数据、市场行情、板块资金、新闻快讯等
+- 你可以通过网络搜索新闻、政策、行业动态（search_news 工具）
 - 你需要把不同数据源的信息串起来，帮用户看清全局
 - 用户问"XX基金怎么样"时，给出有依据的研究判断
 - 用户问"XX是多少/查一下"时，直接回报数据即可
@@ -159,7 +164,8 @@ ${RESPONSE_REQUIREMENTS}
 
 ## 回答策略
 1. 回应范围匹配：用户问的是宏观问题，应做并列概览；用户问的是单个标的，应做深度聚焦
-2. 闭环回答：展示数据后，必须直接回应用户的问题本身`;
+2. 闭环回答：展示数据后，必须直接回应用户的问题本身
+3. 用户问"XX有什么政策"、"近期XX有什么新闻"、"XX新规"时，使用 search_news 搜索网络而非仅依赖今日快讯`;
 
 export interface Skill {
   name: string
@@ -187,16 +193,16 @@ export const SKILL_DEFINITIONS: Skill[] = [
   {
     name: 'news_briefing',
     description: '获取市场新闻和快讯',
-    keywords: ['新闻', '快讯', '消息', '资讯', '发生', '公告', '报道'],
+    keywords: ['新闻', '快讯', '消息', '资讯', '发生', '公告', '报道', '政策', '新规'],
     systemPrompt: NEWS_BRIEFING_PROMPT,
-    toolNames: ['get_market_news', 'get_flash_news'],
+    toolNames: ['get_market_news', 'get_flash_news', 'search_news'],
   },
   {
     name: 'industry_research',
     description: '行业板块投资研究：结合业绩数据+政策新闻+板块行情，研判行业投资价值',
-    keywords: ['行业', '建仓', '值得关注', '行业分析', '板块机会', '行业前景', '行业轮动', '看好哪', '主线', '热点板块', '板块', '前景'],
+    keywords: ['行业', '建仓', '值得关注', '行业分析', '板块机会', '行业前景', '行业轮动', '看好哪', '主线', '热点板块', '板块', '前景', '政策', '新规'],
     systemPrompt: INDUSTRY_RESEARCH_PROMPT,
-    toolNames: ['get_industry_performance', 'get_market_news', 'get_flash_news', 'get_hot_sectors', 'get_concept_sectors', 'get_funds_by_industry'],
+    toolNames: ['get_industry_performance', 'get_market_news', 'get_flash_news', 'get_hot_sectors', 'get_concept_sectors', 'get_funds_by_industry', 'search_news'],
   },
   {
     name: 'fund_screening',
@@ -224,6 +230,7 @@ export const SKILL_DEFINITIONS: Skill[] = [
       'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
       'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
       'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
+      'search_news',
     ],
   },
 ];

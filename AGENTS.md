@@ -27,6 +27,8 @@ Real-time data:   ProviderChain → Express → Frontend → IndexedDB (Dexie)
 User data CRUD:   Frontend → IndexedDB (Dexie) — no server round-trip
 Backtest:         Express → PythonRunner.spawn('backtest.py') → stdout JSON → Frontend → Dexie
 Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → stdout JSON → Express
+Web search:       Express chatTools → runPython('search_web.py') → search_service.py → Bocha/Tavily/DDG → stdout JSON
+Settings:         Frontend (localStorage) → PUT /api/settings → Express settingsService (memory cache)
 ```
 
 ## Commands
@@ -55,6 +57,7 @@ python cli/fetch_fund.py --code 019667
 python cli/compute_risk.py < input.json
 python cli/classify_industry.py < input.json
 python cli/data_complete.py --source akshare --type stocks
+echo '{"query":"碳中和 政策","max_results":5}' | python cli/search_web.py
 ```
 
 ## CI/CD
@@ -77,6 +80,8 @@ Both services enforce single-file max 500 lines. Violations block CI.
 - **Graceful shutdown**: Service handles `SIGTERM`/`SIGINT` — 10s wait, then force exit.
 - **Vite proxy**: `Frontend/vite.config.ts` proxies `/api` → `localhost:3100`.
 - **Dexie.js**: All persistent data in IndexedDB, 10 tables in `Frontend/src/db/index.ts`.
+- **Settings endpoint**: `GET/PUT /api/settings` — 统一 LLM/Proxy/Search 配置内存缓存，前端 localStorage 同步。
+- **Search chain**: Bocha → Tavily → DuckDuckGo（自动降级，DDG 免费无需 Key）。
 
 ## Monorepo hot spots
 
@@ -84,17 +89,19 @@ Both services enforce single-file max 500 lines. Violations block CI.
 |-----------|------|
 | `Service/src/` | Express app with ProviderChain, all routes |
 | `Service/src/app.ts` | App bootstrap — route registration, middleware |
-| `Service/src/routes/` | All Express route handlers (fund, market, screening, backtest, etc.) |
-| `Service/src/services/` | Business logic (fundService, pythonRunner, cache) |
+| `Service/src/routes/` | All Express route handlers (fund, market, screening, backtest, settings, etc.) |
+| `Service/src/services/` | Business logic (fundService, pythonRunner, cache, settingsService, chatTools/chatSkills) |
 | `Service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo) |
 | `Service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
 | `Service/src/types/` | DTO interfaces (fund.ts, common.ts) |
-| `Scripts/cli/` | Python CLI scripts (backtest, fetch_fund, compute_risk, classify_industry) |
+| `Scripts/cli/` | Python CLI scripts (backtest, fetch_fund, compute_risk, classify_industry, search_web) |
 | `Scripts/cli/shared/` | Shared Python utilities (http_client) |
 | `Scripts/services/*.py` | Python computation modules (backtest.py, risk_metrics.py, helpers.py) |
+| `Scripts/services/ai_agent/` | Python AI Agent (chat loop, skill routing, tool handlers) |
 | `Scripts/providers/` | Python data providers (eastmoney.py, tencent.py) |
+| `Scripts/search_service.py` | Search engine service (Bocha → Tavily → DuckDuckGo) |
 | `Frontend/src/db/` | Dexie schema (index.ts) — all IndexedDB table definitions |
-| `Frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, etc.) |
+| `Frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
 | `Frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
 | `Frontend/src/services/` | API client (api.ts, portfolioApi.ts, chatApi.ts) |
 

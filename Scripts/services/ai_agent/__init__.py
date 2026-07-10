@@ -301,6 +301,26 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
             {
                 "type": "function",
                 "function": {
+                    "name": "search_news",
+                    "description": (
+                        "通过网络搜索新闻、政策、行业动态，用于获取近期政策法规或行业新闻。"
+                        "与快讯工具（get_market_news/get_flash_news）不同：快讯只返回今日实时消息，"
+                        "search_news 可搜索数天至一个月内的时间范围的网络信息。"
+                        "使用场景：用户问'XX有什么政策'、'近期XX行业有什么新闻'、'XX新规'等。"
+                    ),
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "搜索关键词，如'碳中和 政策'"},
+                            "max_results": {"type": "integer", "description": "最大结果数，默认5"},
+                        },
+                        "required": ["query"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
                     "name": "get_industry_performance",
                     "description": "获取各行业板块的多周期业绩汇总——各行业中位收益（3月/6月/1年/3年）、正收益基金占比、基金数量。按收益排名预排序（top_3m / top_1y / weak_3m）。用于识别持续走强或走弱的行业趋势，与当日涨跌幅快照（get_hot_sectors）互补。",
                     "parameters": {"type": "object", "properties": {}},
@@ -352,6 +372,7 @@ class AIAgent(ToolHandlersMixin, ChatMixin):
             "get_fund_holdings": self._tool_get_fund_holdings,
             "get_fund_managers": self._tool_get_fund_managers,
             "get_funds_by_industry": self._tool_get_funds_by_industry,
+            "search_news": self._tool_search_news,
             "get_industry_performance": self._tool_get_industry_performance,
         }
         handler = handlers.get(name)
