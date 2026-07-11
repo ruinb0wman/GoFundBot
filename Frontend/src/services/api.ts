@@ -76,7 +76,7 @@ export const screeningAPI = {
 
 export const backtestAPI = {
   fixedInvestment(data: Record<string, unknown>) { return api.post('/backtest/fixed-investment', data) },
-  strategySuggest(data: { fund_code: string }) { return api.post('/backtest/strategy-suggest', data) },
+  strategySuggest(data: { fundCode: string }) { return api.post('/backtest/strategy-suggest', data) },
 }
 
 export const marketAPI = {

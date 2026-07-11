@@ -27,8 +27,8 @@ export function useFundBacktest(props: { fundCode: string }) {
     strategyLoading.value = true
     strategyResult.value = null
     try {
-      const response = await backtestAPI.strategySuggest({ fund_code: currentFundCode.value })
-      strategyResult.value = response.data
+      const response = await backtestAPI.strategySuggest({ fundCode: currentFundCode.value })
+      strategyResult.value = response.data?.data
     } catch (err: any) {
       error.value = '策略推荐失败: ' + (err.response?.data?.error || err.message)
     } finally {
@@ -150,22 +150,19 @@ export function useFundBacktest(props: { fundCode: string }) {
 
     try {
       const response = await backtestAPI.fixedInvestment({
-        fund_code: currentFundCode.value,
-        start_date: params.value.startDate,
-        end_date: params.value.endDate,
-        investment_type: params.value.investmentType,
-        investment_day: params.value.investmentDay,
+        fundCode: currentFundCode.value,
+        startDate: params.value.startDate,
+        endDate: params.value.endDate,
+        investmentType: params.value.investmentType,
         amount: params.value.amount,
-        initial_amount: params.value.initialAmount,
-        fee_rate: params.value.feeRate,
-        take_profit_rate: params.value.takeProfitRate,
-        stop_loss_rate: params.value.stopLossRate,
-        dividend_mode: params.value.dividendMode,
-        take_profit_action: params.value.takeProfitAction
+        initialAmount: params.value.initialAmount,
+        feeRate: params.value.feeRate,
+        takeProfitRate: params.value.takeProfitRate,
+        stopLossRate: params.value.stopLossRate
       })
 
-      if (response.data && response.data.summary) {
-        result.value = response.data
+      if (response.data?.data?.summary) {
+        result.value = response.data.data
         await nextTick()
         initChart()
       } else if (response.data.error) {
