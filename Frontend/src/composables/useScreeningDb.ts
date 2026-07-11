@@ -11,6 +11,7 @@ export interface QueryResult {
 
 export interface ScreeningStatus {
   basic_count: number
+  complete_count: number
   pass_4433_count: number
   risk_metrics_count: number
   type_counts: Record<string, number>
@@ -61,12 +62,12 @@ export function useScreeningDb() {
         nav_date: f.nav_date ?? null,
         source: f.source ?? null,
         updated_time: f.updated_time ?? null,
-        max_drawdown_1y: null,
-        sharpe_ratio_1y: null,
-        sharpe_ratio_3y: null,
-        volatility_1y: null,
-        calmar_ratio_1y: null,
-        industry_tag_name: null,
+        max_drawdown_1y: f.max_drawdown_1y ?? null,
+        sharpe_ratio_1y: f.sharpe_ratio_1y ?? null,
+        sharpe_ratio_3y: f.sharpe_ratio_3y ?? null,
+        volatility_1y: f.volatility_1y ?? null,
+        calmar_ratio_1y: f.calmar_ratio_1y ?? null,
+        industry_tag_name: f.industry_tag_name ?? null,
         rank_pct_1m: null,
         rank_pct_3m: null,
         rank_pct_6m: null,
@@ -175,6 +176,7 @@ export function useScreeningDb() {
     const typeCounts: Record<string, number> = {}
     let passCount = 0
     let riskCount = 0
+    let completeCount = 0
     let latestUpdate: string | null = null
 
     for (const fund of all) {
@@ -182,6 +184,9 @@ export function useScreeningDb() {
       typeCounts[t] = (typeCounts[t] || 0) + 1
       if (fund.pass_4433 === 1) passCount++
       if (fund.sharpe_ratio_1y !== null) riskCount++
+      if (fund.fund_type && fund.fund_type !== '(untyped)'
+        && fund.industry_tag_name !== null
+        && fund.sharpe_ratio_1y !== null) completeCount++
       if (fund.updated_time && (!latestUpdate || fund.updated_time > latestUpdate)) {
         latestUpdate = fund.updated_time
       }
@@ -189,6 +194,7 @@ export function useScreeningDb() {
 
     return {
       basic_count: all.length,
+      complete_count: completeCount,
       pass_4433_count: passCount,
       risk_metrics_count: riskCount,
       type_counts: typeCounts,

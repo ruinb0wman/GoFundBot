@@ -108,15 +108,15 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 *   **输入校验**: Zod schemas
 *   **AI/LLM**: OpenAI SDK (Node.js), SSE 流式输出
 *   **分析引擎**: 4 分析师并行（performance/holding/manager/market）+ Supervisor 合成
-*   **Python Runner**: `child_process.spawn()` 调用 Python CLI 脚本（回测/风险计算）
+*   **Python Runner**: `child_process.spawn()` 调用 Python CLI 脚本（回测）；筛选富化在 Service 侧 TypeScript 原生计算
 *   **结构化日志**: JSON 格式 + `requestId` 链路追踪
 
 ### Python 计算层 (Scripts)
 *   **语言**: Python 3.11+
 *   **回测引擎**: 定投模拟（月/周/MA均线/价值平均）+ 策略推荐
 *   **数据获取**: akshare / 东方财富 eastmoney API
-*   **风险计算**: 夏普比率 / 最大回撤 / 波动率 / 年化收益
-*   **行业分类**: 基金名称规则匹配 → 行业标签
+*   **风险计算**: 夏普比率 / 最大回撤 / 波动率 / 年化收益（Python CLI + Service TypeScript 双实现）
+*   **行业分类**: 基金名称规则匹配 → 行业标签（Python CLI + Service TypeScript 双实现）
 *   **搜索引擎**: Bocha / Tavily / DuckDuckGo 多源降级搜索（search_service.py）
 
 ### 前端 (Frontend)
@@ -225,7 +225,7 @@ GoFundBot/
 │   ├── src/
 │   │   ├── app.ts               # 应用入口 — 路由注册 + 中间件
 │   │   ├── routes/              # API 路由（fund/market/screening/backtest/...）
-│   │   ├── services/            # 业务逻辑（fundService, pythonRunner, aiAnalyst）
+│   │   ├── services/            # 业务逻辑（fundService, riskMetrics, industry, screeningEnrichment, aiAnalyst...）
 │   │   ├── providers/           # 数据源（eastmoney, stock-sdk, tencent, yahoo）
 │   │   ├── core/                # 基础设施（logger, cache, errors, response）
 │   │   ├── types/               # DTO 类型定义

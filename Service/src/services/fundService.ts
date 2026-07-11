@@ -352,6 +352,13 @@ export async function getFundDetail(code: string): Promise<ServiceResult<FundDet
     }
   }
 
+  // 后台补足该基金的缓存数据（不阻塞响应）
+  setImmediate(() => {
+    import('./screeningEnrichment.js').then(({ enrichFund }) => {
+      enrichFund(fundCode).catch(() => {});
+    }).catch(() => {});
+  });
+
   return {
     data: {
       code: fundCode,

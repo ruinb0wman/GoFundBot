@@ -7,8 +7,8 @@
           <span class="stat-chip">
             <LucideIcon name="Package" :size="14" /> {{ dbStatus.basic_count || 0 }} {{ t('fund.screening.fundCount') }}
           </span>
-          <span class="stat-chip complete" v-if="dbStatus.risk_metrics_count">
-            <LucideIcon name="Check" :size="14" /> {{ dbStatus.risk_metrics_count }} {{ t('fund.screening.completeData') }}
+          <span class="stat-chip complete">
+            <LucideIcon name="Check" :size="14" /> {{ dbStatus.complete_count || 0 }} 完整
           </span>
           <span class="update-time-chip" v-if="dbStatus.latest_update">
             <LucideIcon name="Clock" :size="14" /> {{ formatDate(dbStatus.latest_update) }}

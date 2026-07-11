@@ -553,7 +553,7 @@ export class EastMoneyFundProvider implements FundProvider {
 // Module-level helpers (reused from original)
 // ---------------------------------------------------------------------------
 
-interface FundCodeSearchItem {
+export interface FundCodeSearchItem {
   code: string;
   shortName: string;
   name: string;
@@ -563,7 +563,7 @@ interface FundCodeSearchItem {
 
 let fundCodeSearchCache: { items: FundCodeSearchItem[]; expiresAt: number } | null = null;
 
-async function fetchFundCodeSearchList(): Promise<FundCodeSearchItem[]> {
+export async function fetchFundCodeSearchList(): Promise<FundCodeSearchItem[]> {
   if (fundCodeSearchCache && Date.now() < fundCodeSearchCache.expiresAt) {
     return fundCodeSearchCache.items;
   }

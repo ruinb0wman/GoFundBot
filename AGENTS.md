@@ -27,6 +27,7 @@ Real-time data:   ProviderChain → Express → Frontend → IndexedDB (Dexie)
 User data CRUD:   Frontend → IndexedDB (Dexie) — no server round-trip
 Backtest:         Express → PythonRunner.spawn('backtest.py') → stdout JSON → Frontend → Dexie
 Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → stdout JSON → Express
+Screening enrichment: Express → fetch NAV + fund list → TypeScript risk/industry → merge into sync
 Web search:       Express chatTools → runPython('search_web.py') → search_service.py → Bocha/Tavily/DDG → stdout JSON
 Settings:         Frontend (localStorage) → PUT /api/settings → Express settingsService (memory cache)
 ```
@@ -90,7 +91,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `Service/src/` | Express app with ProviderChain, all routes |
 | `Service/src/app.ts` | App bootstrap — route registration, middleware |
 | `Service/src/routes/` | All Express route handlers (fund, market, screening, backtest, settings, etc.) |
-| `Service/src/services/` | Business logic (fundService, pythonRunner, cache, settingsService, chatTools/chatSkills) |
+| `Service/src/services/` | Business logic (fundService, riskMetrics, industry, screeningEnrichment, pythonRunner, cache, settingsService, chatTools/chatSkills) |
 | `Service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo) |
 | `Service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
 | `Service/src/types/` | DTO interfaces (fund.ts, common.ts) |
