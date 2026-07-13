@@ -14,7 +14,7 @@ export interface DisplayMessage {
 export interface ToolCallStatus {
   name: string
   params: Record<string, unknown>
-  status: 'running' | 'done'
+  status: 'running' | 'done' | 'error'
   durationMs?: number
 }
 
@@ -188,10 +188,10 @@ export const useChatStore = defineStore('chat', {
             status: 'running',
           })
         },
-        onToolEnd: (tool: { name: string; duration_ms: number }) => {
+        onToolEnd: (tool: { name: string; duration_ms: number; error?: boolean }) => {
           const existing = this.activeToolCalls.find((t) => t.name === tool.name && t.status === 'running')
           if (existing) {
-            existing.status = 'done'
+            existing.status = tool.error ? 'error' : 'done'
             existing.durationMs = tool.duration_ms
           }
         },

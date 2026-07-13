@@ -31,7 +31,7 @@ export interface SkillInfo {
 export interface ChatCallbacks {
   onToken: (token: string, full: string) => void
   onToolStart: (tool: ToolCallInfo) => void
-  onToolEnd: (tool: { name: string; duration_ms: number }) => void
+  onToolEnd: (tool: { name: string; duration_ms: number; error?: boolean }) => void
   onSkillSelected: (skill: SkillInfo) => void
   onUsage: (inputTokens: number, outputTokens: number, totalTokens: number) => void
   onStatus: (message: string) => void
@@ -115,6 +115,7 @@ export const chatAPI = {
           callbacks.onToolEnd({
             name: parsed.name,
             duration_ms: parsed.duration_ms || 0,
+            error: !!parsed.error,
           })
           break
         case 'skill_selected':

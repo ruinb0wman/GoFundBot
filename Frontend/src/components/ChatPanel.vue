@@ -93,7 +93,7 @@
               :class="tc.status"
             >
               <LucideIcon
-                :name="tc.status === 'running' ? 'Loader' : 'CheckCircle'"
+                :name="tc.status === 'running' ? 'Loader' : tc.status === 'error' ? 'XCircle' : 'CheckCircle'"
                 :size="14"
                 :class="{ spinning: tc.status === 'running' }"
               />

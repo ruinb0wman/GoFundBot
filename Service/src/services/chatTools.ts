@@ -290,7 +290,7 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
     throw new Error(`Unknown tool: ${name}`);
   }
 
-  const maxRetries = 1;
+  const maxRetries = 2;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       logger.info('chat tool call', { tool: name, args, attempt });

@@ -216,9 +216,11 @@ export async function* chat(
         const result = await executeTool(tc.function.name, args);
         const durationMs = Date.now() - startTime;
 
+        const hasError = result && typeof result === 'object' && 'error' in (result as Record<string, unknown>);
+
         yield {
           event: 'tool_end',
-          data: JSON.stringify({ name: tc.function.name, tool_call_id: tc.id, duration_ms: durationMs }),
+          data: JSON.stringify({ name: tc.function.name, tool_call_id: tc.id, duration_ms: durationMs, error: hasError }),
         };
 
         let resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2);

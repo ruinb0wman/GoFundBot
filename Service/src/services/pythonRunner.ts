@@ -33,7 +33,7 @@ export async function runPython<T = unknown>(
   script: string,
   options: RunOptions = {},
 ): Promise<T> {
-  const { args = [], input, timeoutMs = DEFAULT_TIMEOUT, retries = 1 } = options;
+  const { args = [], input, timeoutMs = DEFAULT_TIMEOUT, retries = 2 } = options;
   const scriptPath = join(SCRIPT_DIR, script);
 
   async function spawnOnce(): Promise<T> {
@@ -133,6 +133,7 @@ export async function runFetchMarket<T = unknown>(
   return runPython<T>('fetch_market.py', {
     args: ['--type', dataType],
     timeoutMs: 60_000,
+    retries: 2,
   });
 }
 
