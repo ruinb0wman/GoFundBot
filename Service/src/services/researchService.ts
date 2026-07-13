@@ -1,5 +1,6 @@
 import type { FundScreeningSnapshotItemDto } from '../types/fund.js';
 import type { SectorDto } from '../providers/types.js';
+import { getEnrichment } from './screeningEnrichment.js';
 
 const RESEARCH_FUND_GROUPS: Array<{ key: string; name: string; keywords: string[] }> = [
   { key: 'equity', name: '股票型', keywords: ['股票'] },
@@ -60,26 +61,30 @@ function latestUpdateTime(items: FundScreeningSnapshotItemDto[]): string | null 
 }
 
 function researchFundRow(item: FundScreeningSnapshotItemDto): Record<string, unknown> {
+  const e = getEnrichment(item.code);
   return {
     fund_code: item.code,
     fund_name: item.name,
-    fund_type: item.type,
+    fund_type: e?.fund_type ?? item.type ?? null,
     return_1m: roundPercent(item.return1m),
     return_3m: roundPercent(item.return3m),
     return_6m: roundPercent(item.return6m),
     return_1y: roundPercent(item.return1y),
+    return_2y: roundPercent(item.return2y),
     return_3y: roundPercent(item.return3y),
-    max_drawdown_1y: null,
-    volatility_1y: null,
-    sharpe_ratio_1y: null,
-    calmar_ratio_1y: null,
-    rank_pct_1y: null,
-    pass_4433: false,
-    estimate_change: null,
-    estimate_time: null,
+    ytd: roundPercent(item.ytd),
     nav: item.nav,
     nav_date: item.navDate,
     updated_time: item.updatedAt,
+    max_drawdown_1y: e?.max_drawdown_1y ?? null,
+    volatility_1y: e?.volatility_1y ?? null,
+    sharpe_ratio_1y: e?.sharpe_ratio_1y ?? null,
+    sharpe_ratio_3y: e?.sharpe_ratio_3y ?? null,
+    calmar_ratio_1y: e?.calmar_ratio_1y ?? null,
+    industry_tag_name: e?.industry_tag ?? null,
+    pass_4433: false,
+    estimate_change: null,
+    estimate_time: null,
   };
 }
 
@@ -87,20 +92,22 @@ export function buildResearchMarketStats(items: FundScreeningSnapshotItemDto[]):
   const rows = items.map((item) => researchFundRow(item));
   const total = rows.length;
 
-  const typeMap = new Map<string, { count: number; pass4433: number; return1yValues: number[]; return3mValues: number[] }>();
+  const typeMap = new Map<string, { count: number; return1yValues: number[]; return3mValues: number[] }>();
   const groupMap = new Map<string, { key: string; name: string; count: number; return1yValues: number[] }>();
+  let enrichedCount = 0;
 
   for (const item of rows) {
     const fundType = (item.fund_type as string) || '未分类';
     let ts = typeMap.get(fundType);
     if (!ts) {
-      ts = { count: 0, pass4433: 0, return1yValues: [], return3mValues: [] };
+      ts = { count: 0, return1yValues: [], return3mValues: [] };
       typeMap.set(fundType, ts);
     }
     ts.count += 1;
-    if (item.pass_4433) ts.pass4433 += 1;
     if (item.return_1y !== null) ts.return1yValues.push(item.return_1y as number);
     if (item.return_3m !== null) ts.return3mValues.push(item.return_3m as number);
+
+    if (item.sharpe_ratio_1y !== null && item.sharpe_ratio_1y !== undefined) enrichedCount++;
 
     const gk = fundGroupKey(item.fund_type as string | null, item.fund_name as string | null);
     let gs = groupMap.get(gk);
@@ -117,8 +124,8 @@ export function buildResearchMarketStats(items: FundScreeningSnapshotItemDto[]):
       fund_type: fundType,
       count: stat.count,
       ratio: total ? Math.round((stat.count / total) * 10000) / 100 : 0,
-      pass_4433: stat.pass4433,
-      pass_rate: stat.count ? Math.round((stat.pass4433 / stat.count) * 10000) / 100 : 0,
+      pass_4433: 0,
+      pass_rate: 0,
       return_1y_median: median(stat.return1yValues),
       return_3m_median: median(stat.return3mValues),
     }))
@@ -137,12 +144,6 @@ export function buildResearchMarketStats(items: FundScreeningSnapshotItemDto[]):
   return {
     summary: {
       total_funds: total,
-      risk_ready: 0,
-      risk_ready_rate: 0,
-      rank_ready: 0,
-      rank_ready_rate: 0,
-      pass_4433: 0,
-      pass_4433_rate: 0,
       return_1y_median: median(rows.map((r) => r.return_1y as number | null)),
       return_3m_median: median(rows.map((r) => r.return_3m as number | null)),
       positive_1y_rate: positiveRate(rows.map((r) => r.return_1y as number | null)),
@@ -150,6 +151,12 @@ export function buildResearchMarketStats(items: FundScreeningSnapshotItemDto[]):
     },
     type_stats: typeStats.slice(0, 30),
     group_stats: groupStats,
+    items: rows,
+    enrichment_summary: {
+      total,
+      enriched: enrichedCount,
+      missing: total - enrichedCount,
+    },
   };
 }
 
