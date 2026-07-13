@@ -119,6 +119,19 @@ export interface ScreeningFund {
   pass_4433: number
 }
 
+export interface AnalysisMemoryRecord {
+  id?: number
+  fundCode: string
+  analysisDate: number
+  rating: string
+  sentimentScore: number
+  thesis: string
+  resolved: number
+  actualReturn: number | null
+  reflection: string | null
+  resolvedDate: number | null
+}
+
 export class GoFundDB extends Dexie {
   watchlist!: Table<WatchlistItem>
   watchlistGroups!: Table<WatchlistGroup>
@@ -131,6 +144,7 @@ export class GoFundDB extends Dexie {
   fundCache!: Table<FundCacheEntry>
   marketCache!: Table<MarketCacheEntry>
   screeningFunds!: Table<ScreeningFund>
+  analysisMemory!: Table<AnalysisMemoryRecord>
 
   constructor() {
     super('GoFundBot')
@@ -150,6 +164,10 @@ export class GoFundDB extends Dexie {
 
     this.version(2).stores({
       screeningFunds: 'fund_code, fund_type, pass_4433, updated_time',
+    })
+
+    this.version(3).stores({
+      analysisMemory: '++id, fundCode, resolved, analysisDate',
     })
   }
 }

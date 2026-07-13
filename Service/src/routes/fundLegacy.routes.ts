@@ -255,6 +255,7 @@ fundLegacyRouter.get(
       holdings,
       managers,
       industryTag: '',
+      pastContext: req.body?.pastContext,
     };
 
     const result = await analyzeFund(input, llmConfig);
@@ -267,6 +268,7 @@ fundLegacyRouter.post(
   asyncHandler(async (req, res) => {
     const code = String(req.params.code);
     const llmConfig = req.body?.llmConfig;
+    const pastContext = req.body?.pastContext;
     const detailResult = await getFundDetail(code);
     const detail = detailResult.data;
     if (!detail) {
@@ -297,6 +299,7 @@ fundLegacyRouter.post(
       holdings,
       managers,
       industryTag: '',
+      pastContext,
     };
 
     res.setHeader('Content-Type', 'text/event-stream');

@@ -3,6 +3,7 @@ import { ref, watch, computed } from 'vue'
 import { fundAPI } from '../services/api'
 import { translate } from '../locales/index'
 import type { AnalystReport, FundAnalysisResult } from '../types'
+import { storeAnalysis, resolvePending, getPastContext } from '../db/analysisMemory'
 
 export function useFundAIAnalysis<T extends (...args: any[]) => any>(
   props: { fundCode: string },
@@ -154,15 +155,28 @@ export function useFundAIAnalysis<T extends (...args: any[]) => any>(
     loading.value = true
     error.value = null
     streamingContent.value = ''
-    stageMessage.value = '正在初始化...'
+    stageMessage.value = '正在查询历史分析记录...'
     analystReports.value = []
     showAnalysts.value = true
 
     try {
+      // resolve old pending analyses + get past context
+      let pastContext = ''
+      try {
+        const detailResp = await fundAPI.getFundDetail(props.fundCode)
+        const perf = detailResp.data?.data?.sections?.performance?.data
+        const currentReturn = perf?.return1m ?? (perf?.return3m != null ? perf.return3m / 3 : null)
+        if (currentReturn != null) {
+          await resolvePending(props.fundCode, currentReturn)
+        }
+        pastContext = await getPastContext(props.fundCode)
+      } catch { /* non-critical, continue without memory */ }
+
       const baseUrl = '/api'
       const response = await fetch(`${baseUrl}/fund/${props.fundCode}/analyze/stream`, {
         method: 'POST',
-        headers: { 'Accept': 'text/event-stream' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+        body: JSON.stringify({ pastContext: pastContext || undefined }),
       })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const body = response.body
@@ -200,6 +214,8 @@ export function useFundAIAnalysis<T extends (...args: any[]) => any>(
                 const parsed = JSON.parse(payload)
                 data.value = parsed
                 analystReports.value = parsed.analyst_reports || []
+                // store analysis memory asynchronously
+                storeAnalysis(props.fundCode, parsed)
               } catch { /* ignore */ }
             }
             continue
@@ -236,6 +252,7 @@ export function useFundAIAnalysis<T extends (...args: any[]) => any>(
         } else {
           data.value = fullResponse.data
           analystReports.value = fullResponse.data.analyst_reports || []
+          storeAnalysis(props.fundCode, fullResponse.data)
         }
       }
     } catch {

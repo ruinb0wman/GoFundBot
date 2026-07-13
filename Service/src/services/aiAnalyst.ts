@@ -36,6 +36,7 @@ export interface AnalystInput {
   }>;
   industryTag?: string;
   marketContext?: string;
+  pastContext?: string;
 }
 
 interface AnalystReport {
@@ -188,8 +189,10 @@ export async function analyzeFund(input: AnalystInput, llmConfig?: LLMConfig): P
     ? `经理信息：\n${input.managers.map((m) => `- ${m.name ?? '未知'}：从业${m.workExperience ?? '未知'}年，管理规模${m.managedFundSize ?? '未知'}`).join('\n')}`
     : '暂无经理信息';
 
-  const marketExtra =
-    input.marketContext ?? `行业标签：${input.industryTag ?? '未知'}`;
+  const marketExtra = [
+    input.marketContext ?? `行业标签：${input.industryTag ?? '未知'}`,
+    input.pastContext ?? '',
+  ].filter(Boolean).join('\n\n');
 
   const [perfReport, holdingReport, managerReport, marketReport] = await Promise.all([
     callAnalyst('performance', PERFORMANCE_PROMPT, fundInfo, perfExtra, config),
@@ -242,8 +245,10 @@ export async function* analyzeFundStream(
   yield { stage: 'token', content: JSON.stringify(managerReport) };
 
   yield { stage: 'stage', content: 'market分析师工作中...' };
-  const marketExtra =
-    input.marketContext ?? `行业标签：${input.industryTag ?? '未知'}`;
+  const marketExtra = [
+    input.marketContext ?? `行业标签：${input.industryTag ?? '未知'}`,
+    input.pastContext ?? '',
+  ].filter(Boolean).join('\n\n');
   const marketReport = await callAnalyst('market', MARKET_PROMPT, fundInfo, marketExtra, config);
   yield { stage: 'token', content: JSON.stringify(marketReport) };
 

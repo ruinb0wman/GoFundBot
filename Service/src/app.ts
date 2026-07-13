@@ -18,6 +18,7 @@ import { stockRouter } from './routes/stock.routes.js';
 import { settingsRouter } from './routes/settings.routes.js';
 import { systemRouter } from './routes/system.routes.js';
 import { chatRouter } from './routes/chat.routes.js';
+import { analysisMemoryRouter } from './routes/analysisMemory.routes.js';
 
 export function createApp() {
   const app = express();
@@ -53,6 +54,7 @@ export function createApp() {
   app.use('/api/settings', settingsRouter);
   app.use('/api', systemRouter);
   app.use('/api/chat', chatRouter);
+  app.use('/api/analysis-memory', analysisMemoryRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
