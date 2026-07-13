@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../core/errors.js';
 import { sendSuccess } from '../core/response.js';
-import { runPython } from '../services/pythonRunner.js';
+import { getMarketIndices } from '../services/marketService.js';
 
 export const watchlistRouter = Router();
 export const portfolioRouter = Router();
@@ -157,8 +157,8 @@ alertRouter.get(
 alertRouter.get(
   '/market-anomaly',
   asyncHandler(async (_req, res) => {
-    const data = await runPython<Record<string, unknown>>('fetch_market.py', { args: ['--type', 'index'] }).catch(() => ({}));
-    sendSuccess(res, { anomalies: [], data });
+    const data = await getMarketIndices().catch(() => ({ data: { items: [] } }));
+    sendSuccess(res, { anomalies: [], data: data.data });
   }),
 );
 

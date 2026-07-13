@@ -1,12 +1,12 @@
 import { logger } from '../core/logger.js';
 import { searchFunds, getFundDetail, getFundEstimate, getFundNavHistory, getFundHoldings, getFundManagers, getFundScreeningSnapshot } from './fundService.js';
 import type { FundScreeningSnapshotItemDto } from '../types/fund.js';
-import { fetchIndicesFromSina, getMarketSectorsFromAkshare, fetchGoldRealtime } from './marketService.js';
+import { fetchIndicesFromSina, getMarketSectorsFromAkshare, fetchGoldRealtime, getMarketIndices, getNorthFlow, getMarketBreadth, getMarketMoneyFlow } from './marketService.js';
 import { getStockReference } from './stockService.js';
 import { getFlashNews } from './newsService.js';
-import { runBacktest, runFetchMarket, runPython } from './pythonRunner.js';
+import { runBacktest } from './pythonRunner.js';
 import { buildIndustryPerformanceFromScreening, filterFundsByIndustry, compute4433Ranking } from './chatIndustryTools.js';
-import { getSearchSettings } from './settingsService.js';
+import { searchWeb } from './searchService.js';
 
 export interface ToolDef {
   type: 'function'
@@ -368,8 +368,8 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
 
   get_concept_sectors: async () => {
     try {
-      const result = await runFetchMarket<{ concept_sectors: any }>('concept-sector');
-      return result.concept_sectors ?? { data_status: 'unavailable', items: [] };
+      const result = await getMarketSectorsFromAkshare(50);
+      return { data_status: 'available', items: result, count: result.length };
     } catch (error) {
       logger.error('get_concept_sectors error', { error: String(error) });
       return { data_status: 'error', items: [], note: String(error) };
@@ -378,8 +378,19 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
 
   get_north_flow: async () => {
     try {
-      const result = await runFetchMarket<{ north_flow: any }>('north-flow');
-      return result.north_flow ?? { data_status: 'unavailable' };
+      const result = await getNorthFlow();
+      const d = result.data;
+      return {
+        data_status: d.totalNetInflow != null ? 'available' : 'unavailable',
+        date: d.date ?? '',
+        sh_net_inflow: d.shNetInflow,
+        sz_net_inflow: d.szNetInflow,
+        total_net_inflow: d.totalNetInflow,
+        sh_up_count: d.shUpCount,
+        sh_down_count: d.shDownCount,
+        sz_up_count: d.szUpCount,
+        sz_down_count: d.szDownCount,
+      };
     } catch (error) {
       logger.error('get_north_flow error', { error: String(error) });
       return { data_status: 'error', note: String(error) };
@@ -388,8 +399,9 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
 
   get_market_breadth: async () => {
     try {
-      const result = await runFetchMarket<{ breadth: any }>('breadth');
-      return result.breadth ?? { data_status: 'unavailable', up_count: 0, down_count: 0, flat_count: 0, limit_up: 0, limit_down: 0, total: 0 };
+      const result = await getMarketBreadth();
+      const d = result.data;
+      return { data_status: d.total > 0 ? 'available' : 'unavailable', up_count: d.upCount, down_count: d.downCount, flat_count: d.flatCount, limit_up: d.limitUp, limit_down: d.limitDown, total: d.total };
     } catch (error) {
       logger.error('get_market_breadth error', { error: String(error) });
       return { data_status: 'error', up_count: 0, down_count: 0, flat_count: 0, limit_up: 0, limit_down: 0, total: 0, note: String(error) };
@@ -398,8 +410,17 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
 
   get_main_flow: async () => {
     try {
-      const result = await runFetchMarket<{ main_flow: any }>('main-flow');
-      return result.main_flow ?? { data_status: 'unavailable' };
+      const result = await getMarketMoneyFlow();
+      const d = result.data;
+      return {
+        data_status: d.date ? 'available' : 'unavailable',
+        date: d.date ?? '',
+        main_net_inflow: d.mainNetInflow,
+        super_large_net_inflow: d.superLargeNetInflow,
+        large_net_inflow: d.largeNetInflow,
+        medium_net_inflow: d.mediumNetInflow,
+        small_net_inflow: d.smallNetInflow,
+      };
     } catch (error) {
       logger.error('get_main_flow error', { error: String(error) });
       return { data_status: 'error', note: String(error) };
@@ -451,11 +472,8 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
 
   get_market_anomaly: async () => {
     try {
-      const result = await runPython<Record<string, unknown>>('fetch_market.py', {
-        args: ['--type', 'index'],
-        timeoutMs: 30_000,
-      });
-      return result;
+      const result = await getMarketIndices();
+      return { anomalies: [], indices: result.data.items };
     } catch (error) {
       return { anomalies: [], error: String(error) };
     }
@@ -493,13 +511,7 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
     const maxResults = (args.max_results as number) || 5;
     if (!query) return { error: 'query is required' };
     try {
-      const search = getSearchSettings();
-      const result = await runPython<{
-        success: boolean; results?: Array<{ title: string; snippet: string; url: string; source: string; date: string | null }>; provider?: string; error?: string
-      }>('search_web.py', {
-        input: { query, max_results: maxResults, bocha_key: search.bochaKey, tavily_key: search.tavilyKey },
-        timeoutMs: 30_000,
-      });
+      const result = await searchWeb(query, maxResults);
       if (result.success && result.results) {
         return { query, results: result.results, provider: result.provider ?? 'search' };
       }

@@ -2,8 +2,6 @@ import { Router } from 'express';
 import { asyncHandler } from '../core/errors.js';
 import { sendSuccess, sendFailure } from '../core/response.js';
 import { getCacheStats } from '../core/cache.js';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { getSettings, updateSettings } from '../services/settingsService.js';
 
 export const systemRouter = Router();
@@ -22,12 +20,10 @@ systemRouter.get(
 systemRouter.get(
   '/health',
   asyncHandler(async (_req, res) => {
-    const dbPath = join(import.meta.dirname, '../../../Scripts/Data/funds.db');
     sendSuccess(res, {
       status: 'ok',
       service: 'gofund-data-service',
       cache: getCacheStats(),
-      sqlite: existsSync(dbPath) ? 'available' : 'unavailable',
     });
   }),
 );

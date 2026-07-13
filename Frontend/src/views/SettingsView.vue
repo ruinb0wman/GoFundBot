@@ -34,7 +34,6 @@ const tabs = computed(() => [
   { name: 'settings-search', icon: 'Search', label: '搜索' },
   { name: 'settings-logs', icon: 'FileText', label: t('logs.title') },
   { name: 'settings-anomaly', icon: 'BellRing', label: t('settings.anomalyTab') },
-  { name: 'settings-sqlite-admin', icon: 'Database', label: t('common.database') },
 ])
 </script>
 

@@ -55,10 +55,7 @@ npm run build            # output in Frontend/dist/
 cd Scripts
 echo '{"navHistory":[...]}' | python cli/backtest.py
 python cli/fetch_fund.py --code 019667
-python cli/compute_risk.py < input.json
-python cli/classify_industry.py < input.json
 python cli/data_complete.py --source akshare --type stocks
-echo '{"query":"碳中和 政策","max_results":5}' | python cli/search_web.py
 ```
 
 ## CI/CD
@@ -76,7 +73,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 - **Input validation**: Zod schemas on key POST routes.
 - **Security headers**: Service uses `helmet` (CSP/COEP disabled).
 - **Structured logging**: JSON via `core/logger.ts` (Service) with `requestId` per request. Daily files `dataservice-YYYY-MM-DD.jsonl` under `Scripts/Data/logs`.
-- **Health check**: `GET /api/health` — includes cache stats + SQLite availability.
+- **Health check**: `GET /api/health` — includes cache stats.
 - **Cache TTLs**: fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
 - **Graceful shutdown**: Service handles `SIGTERM`/`SIGINT` — 10s wait, then force exit.
 - **Vite proxy**: `Frontend/vite.config.ts` proxies `/api` → `localhost:3100`.

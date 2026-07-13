@@ -2,7 +2,6 @@ import { cache, cacheThrough, ttl } from '../core/cache.js';
 import { AppError, assertCode } from '../core/errors.js';
 import { logger } from '../core/logger.js';
 import { ProviderChain } from '../core/providerChain.js';
-import { runFetchMarket, runPython } from './pythonRunner.js';
 import type { ServiceResult } from '../types/common.js';
 import { StockSdkMarketProvider } from '../providers/stock-sdk/stockSdkMarketProvider.js';
 import { EastMoneyMarketProvider } from '../providers/eastmoney/eastmoneyMarketProvider.js';
@@ -567,14 +566,37 @@ export async function getSilverHistory(days: number = 10): Promise<Record<string
 }
 
 export async function getMarketSectorsFromAkshare(limit = 90): Promise<any[]> {
-  const result = await runFetchMarket<{ sectors: any[] }>('sector');
-  const sectors = result.sectors ?? [];
-  return sectors.slice(0, Math.min(Math.max(limit, 1), 120));
+  try {
+    const result = await getMarketSectors();
+    const items = result.data.items ?? [];
+    return items.slice(0, Math.min(Math.max(limit, 1), 120)).map(s => ({
+      name: s.name,
+      code: s.code,
+      change_pct: s.changePercent != null ? `${s.changePercent >= 0 ? '+' : ''}${s.changePercent.toFixed(2)}%` : '',
+      main_inflow: s.mainNetInflow != null ? `${s.mainNetInflow >= 0 ? '+' : ''}${s.mainNetInflow.toFixed(2)}亿` : '',
+      raw_change: s.changePercent,
+      raw_main_inflow: s.mainNetInflow,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getMarketIndicesFromAkshare(): Promise<any[]> {
-  const result = await runFetchMarket<{ indices: any[] }>('index');
-  return result.indices ?? [];
+  try {
+    const result = await getMarketIndices();
+    const items = result.data.items ?? [];
+    return items.map(idx => ({
+      code: idx.code,
+      name: idx.name,
+      price: idx.price ?? 0,
+      change_pct: idx.changePercent ?? 0,
+      change_amount: idx.changeAmount ?? 0,
+      market: idx.market,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchIndicesFromSina(): Promise<IndexListDto> {
@@ -656,31 +678,25 @@ export async function getMarketOverview(): Promise<Record<string, unknown>> {
   const updateTime = new Date().toISOString();
 
   let indices: any[] = [];
-  let aVolume: Record<string, any> = { success: false, data: [], update_time: updateTime };
 
-  const [indicesResult, goldResult, volumeResult] = await Promise.allSettled([
-    runFetchMarket<{ indices: any[] }>('index'),
+  const [indicesResult, goldResult] = await Promise.allSettled([
+    getMarketIndices(),
     fetchGoldRealtime(),
-    runPython<any[]>('fetch_volume.py', { timeoutMs: 30_000 }),
   ]);
 
   if (indicesResult.status === 'fulfilled') {
-    indices = indicesResult.value.indices ?? [];
+    indices = indicesResult.value.data.items ?? [];
   }
 
   const goldRealtime = goldResult.status === 'fulfilled'
     ? goldResult.value
     : { success: false, data: [], update_time: updateTime };
 
-  if (volumeResult.status === 'fulfilled') {
-    aVolume = { success: true, data: volumeResult.value, update_time: updateTime };
-  }
-
   return {
     success: true,
     market_index: { success: true, data: indices },
     gold_realtime: goldRealtime,
-    a_volume_7days: aVolume,
+    a_volume_7days: { success: false, data: [], update_time: updateTime },
     update_time: updateTime,
   };
 }

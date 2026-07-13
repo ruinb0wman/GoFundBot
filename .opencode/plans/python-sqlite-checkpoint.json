@@ -1,0 +1,25 @@
+{
+  "plan": "python-sqlite-migration.md",
+  "created": "2026-07-13",
+  "phase_states": {
+    "CP-0": { "name": "分析确认", "status": "completed", "notes": "计划已编写完成" },
+    "CP-1": { "name": "移除 SQLite 依赖 (Python 端)", "status": "completed", "notes": "删除 database.py, models.py, migrate_db/, 以及所有 SQLite 写入服务" },
+    "CP-2": { "name": "移除 SQLite 依赖 (Node.js 端)", "status": "completed", "notes": "更新 system.routes.ts, package.json" },
+    "CP-3": { "name": "移除 SQLite 依赖 (前端 + 文档)", "status": "completed", "notes": "删除 SettingsSqliteAdmin.vue, 更新路由/AGENTS.md" },
+    "CP-4": { "name": "迁移 search_web.py → TypeScript", "status": "completed", "notes": "创建 searchService.ts, 更新 chatTools.ts" },
+    "CP-5": { "name": "迁移 fetch_market.py → TypeScript", "status": "completed", "notes": "替换 chatTools.ts, marketService.ts, userData.routes.ts 中的 Python 调用" },
+    "CP-6": { "name": "迁移 fetch_volume.py → TypeScript", "status": "completed", "notes": "替换 marketService.ts 中的 volume 调用" },
+    "CP-7": { "name": "清理 pythonRunner.ts 未使用包装器", "status": "completed", "notes": "移除 runFetchMarket, runComputeRisk, runClassifyIndustry, runQueryIndustryFunds, runIndustryPerformance" },
+    "CP-8": { "name": "删除遗留 Python 服务", "status": "completed", "notes": "删除 ~100 个遗留 Python 文件" },
+    "CP-9": { "name": "验证 + 修复", "status": "completed", "notes": "typecheck ✅ lint ✅ 67 测试 ✅" }
+  },
+  "current_phase": "CP-9",
+  "current_step": "",
+  "summary": {
+    "python_files_before": 132,
+    "python_files_after": 17,
+    "sqlite_dbs_removed": 1,
+    "ts_files_created": 1,
+    "test_results": "67/67 passed, lint 0 warnings"
+  }
+}
