@@ -53,7 +53,7 @@ export class EastMoneyMarketProvider implements MarketProvider {
 
     const symbolToSecid = new Map<string, string>();
     for (let i = 0; i < symbols.length; i++) {
-      symbolToSecid.set(secids[i], symbols[i]);
+      symbolToSecid.set(secids[i].split('.')[1], symbols[i]);
     }
 
     return diffArr.map((item) => {

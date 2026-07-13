@@ -362,7 +362,7 @@ export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {
 }
 
 export async function getGlobalIndices(): Promise<ServiceResult<GlobalIndexListDto>> {
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider, yahooMarketProvider]);
   const result = await cacheThrough('market:global-indices', ttl.marketGlobalIndices, () =>
     chain.run('market.globalIndices', (provider) => {
       if (!provider.globalIndices) {
