@@ -674,29 +674,147 @@ export async function fetchIndicesFromSina(): Promise<IndexListDto> {
   }
 }
 
+export async function getAVolume7Days(): Promise<{
+  success: boolean;
+  data: Array<{ date: string; total: string; shanghai: string; shenzhen: string; beijing: string }>;
+  update_time: string;
+}> {
+  const updateTime = new Date().toISOString();
+  try {
+    const now = new Date();
+    const endDate = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const startDate = new Date(now.getTime() - 14 * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+
+    const [shResult, szResult] = await Promise.allSettled([
+      getMarketKline('sh000001', { period: 'daily', startDate, endDate }),
+      getMarketKline('sz399001', { period: 'daily', startDate, endDate }),
+    ]);
+
+    const shData = shResult.status === 'fulfilled' ? (shResult.value.data ?? []) : [];
+    const szData = szResult.status === 'fulfilled' ? (szResult.value.data ?? []) : [];
+
+    const shLast7 = shData.slice(-7);
+    const szLast7 = szData.slice(-7);
+
+    const volumeMap = new Map<string, { date: string; shanghai: number; shenzhen: number }>();
+
+    for (const item of shLast7) {
+      if (item.date && item.amount != null) {
+        volumeMap.set(item.date, { date: item.date, shanghai: item.amount, shenzhen: 0 });
+      }
+    }
+
+    for (const item of szLast7) {
+      const d = item.date;
+      if (!d) continue;
+      const entry = volumeMap.get(d);
+      if (entry) {
+        entry.shenzhen = item.amount ?? 0;
+      } else if (item.amount != null) {
+        volumeMap.set(d, { date: d, shanghai: 0, shenzhen: item.amount });
+      }
+    }
+
+    const result = Array.from(volumeMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-7)
+      .map((item) => {
+        const total = item.shanghai + item.shenzhen;
+        return {
+          date: item.date,
+          total: `${(total / 1e8).toFixed(2)}亿`,
+          shanghai: `${(item.shanghai / 1e8).toFixed(2)}亿`,
+          shenzhen: `${(item.shenzhen / 1e8).toFixed(2)}亿`,
+          beijing: '0亿',
+        };
+      });
+
+    return { success: true, data: result, update_time: updateTime };
+  } catch {
+    return { success: false, data: [], update_time: updateTime };
+  }
+}
+
+const A_SHARE_INDICES: Array<{ symbol: string; name: string; market: string }> = [
+  { symbol: 'sh000001', name: '上证指数', market: 'A股' },
+  { symbol: 'sz399001', name: '深证成指', market: 'A股' },
+  { symbol: 'sz399006', name: '创业板指', market: 'A股' },
+  { symbol: 'sh000300', name: '沪深300', market: 'A股' },
+  { symbol: 'sh000688', name: '科创50', market: 'A股' },
+];
+const CN_INDEX_MAP = new Map(
+  A_SHARE_INDICES.map((x) => [x.symbol.replace(/^(sh|sz|bj)/i, ''), x])
+);
+
 export async function getMarketOverview(): Promise<Record<string, unknown>> {
   const updateTime = new Date().toISOString();
 
-  let indices: any[] = [];
+  const symbols = A_SHARE_INDICES.map((x) => x.symbol).join(',');
 
-  const [indicesResult, goldResult] = await Promise.allSettled([
-    getMarketIndices(),
+  const [cnResult, globalResult, goldResult, volResult] = await Promise.allSettled([
+    getMarketQuotes(symbols),
+    getGlobalIndices(),
     fetchGoldRealtime(),
+    getAVolume7Days(),
   ]);
 
-  if (indicesResult.status === 'fulfilled') {
-    indices = indicesResult.value.data.items ?? [];
+  const indices: any[] = [];
+  const returnedNumericCodes = new Set<string>();
+
+  if (cnResult.status === 'fulfilled') {
+    const quotes = cnResult.value.data ?? [];
+    for (const q of quotes) {
+      returnedNumericCodes.add(q.code);
+      const knownIdx = CN_INDEX_MAP.get(q.code);
+      indices.push({
+        code: knownIdx?.symbol ?? q.symbol,
+        name: q.name,
+        price: q.price ?? null,
+        change_pct: q.changePercent ?? null,
+        change_amount: q.change ?? null,
+        market: knownIdx?.market ?? 'A股',
+      });
+    }
+  }
+
+  for (const [numericCode, idx] of CN_INDEX_MAP) {
+    if (!returnedNumericCodes.has(numericCode)) {
+      indices.push({
+        code: idx.symbol,
+        name: idx.name,
+        price: null,
+        change_pct: null,
+        change_amount: null,
+        market: idx.market,
+      });
+    }
+  }
+
+  if (globalResult.status === 'fulfilled') {
+    const globalItems = (globalResult.value.data.items ?? []).map((item) => ({
+      code: item.code,
+      name: item.name,
+      price: item.price ?? null,
+      change_pct: item.changePercent ?? null,
+      change_amount: item.changeAmount ?? null,
+      market: '全球',
+    }));
+    indices.push(...globalItems);
   }
 
   const goldRealtime = goldResult.status === 'fulfilled'
     ? goldResult.value
     : { success: false, data: [], update_time: updateTime };
 
+  const aVolume7days = volResult.status === 'fulfilled'
+    ? volResult.value
+    : { success: false, data: [], update_time: updateTime };
+
   return {
     success: true,
     market_index: { success: true, data: indices },
     gold_realtime: goldRealtime,
-    a_volume_7days: { success: false, data: [], update_time: updateTime },
+    a_volume_7days: aVolume7days,
     update_time: updateTime,
   };
 }

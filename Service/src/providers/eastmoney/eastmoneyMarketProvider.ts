@@ -138,32 +138,49 @@ export class EastMoneyMarketProvider implements MarketProvider {
   }
 
   async sectors(): Promise<SectorListDto> {
-    const url = 'https://push2.eastmoney.com/api/qt/clist/get';
-    const params = new URLSearchParams({
-      cb: '',
-      fid: 'f3',
-      po: '1',
-      np: '1',
-      fltt: '2',
-      invt: '2',
-      ut: 'bd1d9ddb04089700cf9c27f6f7426281',
-      fs: 'm:90+t:2',
-      fields: 'f12,f14,f2,f3,f4,f5,f6,f7,f8,f9,f23,f62,f184',
-      pn: '1',
-      pz: '100',
-    });
+    try {
+      // Step 1: get BK sector codes from clist/get (no cb param — plain JSON)
+      const listUrl = 'https://push2.eastmoney.com/api/qt/clist/get';
+      const listParams = new URLSearchParams({
+        fid: 'f3',
+        po: '1',
+        np: '1',
+        fltt: '2',
+        invt: '2',
+        fs: 'm:90+t:2',
+        fields: 'f12,f14',
+        pn: '1',
+        pz: '500',
+      });
 
-    const respData = await fetchJson(`${url}?${params.toString()}`);
-    const dataNode = (respData.data ?? respData) as Record<string, unknown>;
-    const diff = (dataNode.diff ?? []) as Record<string, unknown>[];
-    const diffArr: Record<string, unknown>[] = Array.isArray(diff) ? diff : Object.values(diff);
+      const listResp = await fetchJson(`${listUrl}?${listParams.toString()}`);
+      const listData = (listResp.data ?? listResp) as Record<string, unknown>;
+      const listDiff = (listData.diff ?? []) as Record<string, unknown>[];
+      const listArr: Record<string, unknown>[] = Array.isArray(listDiff) ? listDiff : Object.values(listDiff);
 
-    const items: SectorDto[] = diffArr
-      .filter((bk) => {
-        const code = String(bk.f12 ?? bk.code ?? '');
-        return code.startsWith('BK');
-      })
-      .map((bk) => ({
+      const bkCodes = listArr
+        .map((item) => toString(item.f12 ?? ''))
+        .filter((code) => code.startsWith('BK'));
+
+      if (bkCodes.length === 0) return { items: [] };
+
+      // Step 2: batch-query sector quotes via ulist.np/get (same reliable endpoint as indices())
+      const secids = bkCodes.slice(0, 200).map((code) => `90.${code}`);
+      const quoteUrl = 'https://push2.eastmoney.com/api/qt/ulist.np/get';
+      const quoteParams = new URLSearchParams({
+        fltt: '2',
+        invt: '2',
+        fields: 'f2,f3,f4,f12,f14,f62,f8',
+        secids: secids.join(','),
+        _: String(Date.now()),
+      });
+
+      const respData = await fetchJson(`${quoteUrl}?${quoteParams.toString()}`);
+      const dataNode = (respData.data ?? respData) as Record<string, unknown>;
+      const diff = (dataNode.diff ?? []) as Record<string, unknown>[];
+      const diffArr: Record<string, unknown>[] = Array.isArray(diff) ? diff : Object.values(diff);
+
+      const items: SectorDto[] = diffArr.map((bk) => ({
         code: toString(bk.f12 ?? bk.code),
         name: toString(bk.f14 ?? bk.name),
         price: toNum(bk.f2),
@@ -172,7 +189,14 @@ export class EastMoneyMarketProvider implements MarketProvider {
         turnoverRate: toNum(bk.f8),
       }));
 
-    return { items };
+      return { items };
+    } catch (err) {
+      throw new AppError(
+        'PROVIDER_UNAVAILABLE',
+        `EastMoney sectors failed: ${err instanceof Error ? err.message : String(err)}`,
+        502,
+      );
+    }
   }
 
   async sectorConstituents(code: string): Promise<ConstituentListDto> {
@@ -501,13 +525,11 @@ export class EastMoneyMarketProvider implements MarketProvider {
   private async fetchSectorConstituentsRaw(code: string): Promise<Record<string, unknown>[]> {
     const url = 'https://push2.eastmoney.com/api/qt/clist/get';
     const params = new URLSearchParams({
-      cb: '',
       fid: 'f3',
       po: '1',
       np: '1',
       fltt: '2',
       invt: '2',
-      ut: 'bd1d9ddb04089700cf9c27f6f7426281',
       fs: `b:${code}`,
       fields: 'f12,f14,f2,f3,f8,f9,f20',
       pn: '1',
