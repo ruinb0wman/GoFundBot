@@ -7,7 +7,7 @@
 1. **Service** (port 3100) — Node.js/Express/TypeScript unified backend
    - All API routes (`/api/fund/*`, `/api/market/*`, `/api/screening/*`, `/api/backtest/*`, etc.)
    - ProviderChain (stock-sdk → eastmoney → baidu/cls) for real-time financial data
-   - PythonRunner: spawns Python scripts for computation (backtest, risk metrics)
+   - PythonRunner: spawns Python scripts for computation (backtest)
    - AI analysis (via `openai` npm package)
 2. **Frontend** (port 5173) — Vue 3 + Vite, proxies `/api` → Service
 
@@ -28,7 +28,7 @@ User data CRUD:   Frontend → IndexedDB (Dexie) — no server round-trip
 Backtest:         Express → PythonRunner.spawn('backtest.py') → stdout JSON → Frontend → Dexie
 Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → stdout JSON → Express
 Screening enrichment: Express → fetch NAV + fund list → TypeScript risk/industry → merge into sync
-Web search:       Express chatTools → runPython('search_web.py') → search_service.py → Bocha/Tavily/DDG → stdout JSON
+Web search:       Express chatTools → searchService → Bocha/Tavily/DDG → ServiceResult
 Settings:         Frontend (localStorage) → PUT /api/settings → Express settingsService (memory cache)
 ```
 
@@ -51,11 +51,11 @@ npx vue-tsc --noEmit     # TypeScript typecheck
 npm test                 # vitest run
 npm run build            # output in Frontend/dist/
 
-# Python scripts (standalone, no Flask)
+# Python scripts (standalone, no HTTP server)
 cd Scripts
-echo '{"navHistory":[...]}' | python cli/backtest.py
-python cli/fetch_fund.py --code 019667
-python cli/data_complete.py --source akshare --type stocks
+echo '{"navHistory":[...]}' | Scripts/.venv/bin/python cli/backtest.py
+Scripts/.venv/bin/python cli/fetch_fund.py --code 019667
+Scripts/.venv/bin/python cli/data_complete.py --source akshare --type stocks
 ```
 
 ## CI/CD
@@ -92,12 +92,10 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `Service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo) |
 | `Service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
 | `Service/src/types/` | DTO interfaces (fund.ts, common.ts) |
-| `Scripts/cli/` | Python CLI scripts (backtest, fetch_fund, compute_risk, classify_industry, search_web) |
+| `Scripts/cli/` | Python CLI scripts (backtest, fetch_fund, data_complete) |
 | `Scripts/cli/shared/` | Shared Python utilities (http_client) |
-| `Scripts/services/*.py` | Python computation modules (backtest.py, risk_metrics.py, helpers.py) |
-| `Scripts/services/ai_agent/` | Python AI Agent (chat loop, skill routing, tool handlers) |
-| `Scripts/providers/` | Python data providers (eastmoney.py, tencent.py) |
-| `Scripts/search_service.py` | Search engine service (Bocha → Tavily → DuckDuckGo) |
+| `Scripts/services/*.py` | Python computation modules (backtest.py, helpers.py) |
+| `Service/src/services/searchService.ts` | Search engine chain (Bocha → Tavily → DuckDuckGo) |
 | `Frontend/src/db/` | Dexie schema (index.ts) — all IndexedDB table definitions |
 | `Frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
 | `Frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
