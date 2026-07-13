@@ -17,7 +17,7 @@ import type {
   FundScreeningSnapshotDto,
   FundSearchResultDto,
 } from '../types/fund.js';
-import { EastMoneyFundProvider } from '../providers/eastmoney/eastmoneyFundProvider.js';
+import { EastMoneyFundProvider, fetchFundCodeSearchList } from '../providers/eastmoney/eastmoneyFundProvider.js';
 import { StockSdkFundProvider } from '../providers/stock-sdk/stockSdkFundProvider.js';
 import type { FundNavHistoryOptions, FundProvider, ProviderChainResult } from '../providers/types.js';
 
@@ -136,14 +136,33 @@ export async function getFundScreeningSnapshot(options: {
   const limitPerType = options.limitPerType;
   const key = `fund:screening-snapshot:${(types || []).join(',')}:${sort}:${pageSize}:${limitPerType ?? ''}`;
   const chain = new ProviderChain<FundProvider>([eastMoneyFundProvider]);
-  const result = await cacheThrough(key, ttl.fundScreeningSnapshot, () =>
-    chain.run('fund.screeningSnapshot', (provider) => {
+  const result = await cacheThrough(key, ttl.fundScreeningSnapshot, async () => {
+    const chainResult = await chain.run('fund.screeningSnapshot', (provider) => {
       if (!provider.screeningSnapshot) {
         throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement fund screening snapshot`, 501);
       }
       return provider.screeningSnapshot({ types, sort, pageSize, limitPerType });
-    })
-  );
+    });
+
+    const items = chainResult.data.items;
+    if (items && items.length > 0) {
+      try {
+        const typeList = await fetchFundCodeSearchList();
+        const typeMap = new Map(typeList.map(f => [f.code, f.type]));
+        for (const item of items) {
+          item.type = typeMap.get(item.code) || null;
+        }
+        const summary = chainResult.data.summary;
+        if (summary?.types) {
+          summary.types = [...new Set(items.map(i => i.type).filter((t): t is string => !!t))].sort();
+        }
+      } catch {
+        // silently ignore type enrichment failures
+      }
+    }
+
+    return chainResult;
+  });
 
   return toServiceResult(result);
 }
