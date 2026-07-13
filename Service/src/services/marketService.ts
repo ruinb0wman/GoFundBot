@@ -573,7 +573,7 @@ export async function getMarketSectorsFromAkshare(limit = 90): Promise<any[]> {
       name: s.name,
       code: s.code,
       change_pct: s.changePercent != null ? `${s.changePercent >= 0 ? '+' : ''}${s.changePercent.toFixed(2)}%` : '',
-      main_inflow: s.mainNetInflow != null ? `${s.mainNetInflow >= 0 ? '+' : ''}${s.mainNetInflow.toFixed(2)}亿` : '',
+      main_inflow: s.mainNetInflow != null ? `${s.mainNetInflow >= 0 ? '+' : ''}${(s.mainNetInflow / 1e8).toFixed(2)}亿` : '',
       raw_change: s.changePercent,
       raw_main_inflow: s.mainNetInflow,
     }));
