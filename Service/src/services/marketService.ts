@@ -2,6 +2,7 @@ import { cache, cacheThrough, ttl } from '../core/cache.js';
 import { AppError, assertCode } from '../core/errors.js';
 import { logger } from '../core/logger.js';
 import { ProviderChain } from '../core/providerChain.js';
+import { runPython } from './pythonRunner.js';
 import type { ServiceResult } from '../types/common.js';
 import { StockSdkMarketProvider } from '../providers/stock-sdk/stockSdkMarketProvider.js';
 import { EastMoneyMarketProvider } from '../providers/eastmoney/eastmoneyMarketProvider.js';
@@ -69,12 +70,71 @@ export async function getMarketKline(symbol: string, query: KlineQuery): Promise
   const stockSymbol = assertStockSymbol(symbol);
   const options = parseKlineOptions(query);
   const key = `market:kline:${stockSymbol}:${JSON.stringify(options)}`;
-  const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider, eastMoneyMarketProvider]);
-  const result = await cacheThrough(key, ttl.marketKline, () =>
-    chain.run('market.kline', (provider) => provider.kline(stockSymbol, options))
-  );
 
-  return toServiceResult(result);
+  const cached = cache.get<ProviderChainResult<KlineDto[]>>(key);
+  if (cached) return toServiceResult(cached);
+
+  try {
+    const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider, eastMoneyMarketProvider]);
+    const result = await chain.run('market.kline', (provider) => provider.kline(stockSymbol, options));
+    return toServiceResult(cache.set(key, result, ttl.marketKline));
+  } catch (err) {
+    logger.error('All kline providers failed, trying akshare fallback', {
+      symbol: stockSymbol,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  try {
+    const data = await getMarketKlineFromAkshare(stockSymbol, options);
+    const result: ProviderChainResult<KlineDto[]> = {
+      data,
+      provider: 'akshare',
+      fallback: true,
+      stale: false,
+      providerErrors: [],
+    };
+    return toServiceResult(cache.set(key, result, ttl.marketKline));
+  } catch (fallbackErr) {
+    logger.error('Akshare kline fallback also failed', {
+      error: fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr),
+    });
+    throw new AppError('PROVIDER_UNAVAILABLE', 'All providers failed for market.kline', 503);
+  }
+}
+
+async function getMarketKlineFromAkshare(stockSymbol: string, options: KlineOptions): Promise<KlineDto[]> {
+  const startDate = options.startDate ?? '';
+  const endDate = options.endDate ?? '';
+  const result = await runPython<Record<string, unknown>>('data_complete.py', {
+    args: [
+      '--source', 'akshare',
+      '--type', 'kline',
+      '--code', stockSymbol,
+      '--start_date', startDate,
+      '--end_date', endDate,
+    ],
+    timeoutMs: 60_000,
+  });
+  const rawItems = (result?.kline ?? []) as Record<string, unknown>[];
+  return rawItems.map((item) => {
+    const date = String(item.date ?? '');
+    const timestamp = date ? new Date(date).getTime() : null;
+    return {
+      code: stockSymbol,
+      date,
+      timestamp,
+      open: toNullableNumber(item.open),
+      close: toNullableNumber(item.close),
+      high: toNullableNumber(item.high),
+      low: toNullableNumber(item.low),
+      volume: toNullableNumber(item.volume),
+      amount: toNullableNumber(item.amount),
+      change: toNullableNumber(item.change),
+      changePercent: toNullableNumber(item.changePercent),
+      turnoverRate: null,
+    } as KlineDto;
+  });
 }
 
 export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Promise<ServiceResult<KlineDto[]>> {
@@ -565,21 +625,69 @@ export async function getSilverHistory(days: number = 10): Promise<Record<string
   }
 }
 
-export async function getMarketSectorsFromAkshare(limit = 90): Promise<any[]> {
+export interface SectorSpotItem {
+  name: string;
+  code: string;
+  change_pct: string;
+  main_inflow: string;
+  raw_change: number | null;
+  raw_main_inflow: number | null;
+}
+
+export async function getMarketSectorsFromAkshare(limit = 90): Promise<{
+  items: SectorSpotItem[];
+  source: string;
+  error?: string;
+}> {
+  const clampedLimit = Math.min(Math.max(limit, 1), 120);
+
+  // Primary: EastMoney via provider
   try {
     const result = await getMarketSectors();
     const items = result.data.items ?? [];
-    return items.slice(0, Math.min(Math.max(limit, 1), 120)).map(s => ({
-      name: s.name,
-      code: s.code,
-      change_pct: s.changePercent != null ? `${s.changePercent >= 0 ? '+' : ''}${s.changePercent.toFixed(2)}%` : '',
-      main_inflow: s.mainNetInflow != null ? `${s.mainNetInflow >= 0 ? '+' : ''}${(s.mainNetInflow / 1e8).toFixed(2)}亿` : '',
-      raw_change: s.changePercent,
-      raw_main_inflow: s.mainNetInflow,
-    }));
-  } catch {
-    return [];
+    if (items.length > 0) {
+      return {
+        source: result.provider,
+        items: items.slice(0, clampedLimit).map(s => ({
+          name: s.name,
+          code: s.code,
+          change_pct: s.changePercent != null ? `${s.changePercent >= 0 ? '+' : ''}${s.changePercent.toFixed(2)}%` : '',
+          main_inflow: s.mainNetInflow != null ? `${s.mainNetInflow >= 0 ? '+' : ''}${(s.mainNetInflow / 1e8).toFixed(2)}亿` : '',
+          raw_change: s.changePercent,
+          raw_main_inflow: s.mainNetInflow,
+        })),
+      };
+    }
+  } catch (err) {
+    logger.error('EastMoney sectors failed, trying akshare fallback', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
+
+  // Fallback: Python akshare (THS source)
+  try {
+    const spotResult = await runPython<Record<string, unknown>>('data_complete.py', {
+      args: ['--source', 'akshare', '--type', 'sector_spot'],
+      timeoutMs: 60_000,
+    });
+    const sectors = (spotResult?.sector_spot ?? []) as SectorSpotItem[];
+    if (sectors.length > 0) {
+      return {
+        source: 'akshare_thailand',
+        items: sectors.slice(0, clampedLimit),
+      };
+    }
+  } catch (err) {
+    logger.error('Akshare sectors fallback also failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  return {
+    source: 'failed',
+    items: [],
+    error: '所有板块数据源均不可用',
+  };
 }
 
 export async function getMarketIndicesFromAkshare(): Promise<any[]> {
@@ -832,4 +940,10 @@ function toServiceResult<T>(lookup: {
     stale: lookup.value.stale,
     updatedAt: lookup.updatedAt,
   };
+}
+
+function toNullableNumber(value: unknown): number | null {
+  if (value == null || value === '') return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
 }

@@ -369,7 +369,7 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
   get_concept_sectors: async () => {
     try {
       const result = await getMarketSectorsFromAkshare(50);
-      return { data_status: 'available', items: result, count: result.length };
+      return { data_status: 'available', items: result.items, count: result.items.length };
     } catch (error) {
       logger.error('get_concept_sectors error', { error: String(error) });
       return { data_status: 'error', items: [], note: String(error) };

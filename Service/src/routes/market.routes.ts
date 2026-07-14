@@ -82,14 +82,26 @@ marketRouter.get(
   '/sectors',
   asyncHandler(async (req, res) => {
     const limit = Math.min(Math.max(parseInt(firstQueryValue(req.query.limit) ?? '90', 10) || 90, 1), 120);
-    const sectors = await getMarketSectorsFromAkshare(limit);
+    const result = await getMarketSectorsFromAkshare(limit);
+    if (result.error) {
+      res.json({
+        success: false,
+        data: [],
+        error: result.error,
+        total_count: 0,
+        update_time: new Date().toISOString(),
+        data_date: '',
+        source: result.source,
+      });
+      return;
+    }
     res.json({
       success: true,
-      data: sectors,
-      total_count: sectors.length,
+      data: result.items,
+      total_count: result.items.length,
       update_time: new Date().toISOString(),
       data_date: '',
-      source: 'akshare',
+      source: result.source,
     });
   })
 );

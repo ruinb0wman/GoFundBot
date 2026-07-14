@@ -1,3 +1,4 @@
+import { request as httpsRequest } from 'node:https';
 import { ProxyAgent } from 'undici';
 import { AppError } from '../../core/errors.js';
 
@@ -21,7 +22,33 @@ export function setProxyUrl(url: string | null): void {
   _proxyDispatcher = url ? new ProxyAgent(url) : undefined;
 }
 
-function getDispatcher(): any | undefined {
+const BYPASS_HOST_PATTERNS = [
+  /\.eastmoney\.com$/i,
+  /\.eastmoneysec\.com$/i,
+  /^localhost$/i,
+  /^127\./,
+];
+
+function shouldBypassProxy(requestUrl: string): boolean {
+  try {
+    const hostname = new URL(requestUrl).hostname;
+    if (BYPASS_HOST_PATTERNS.some(p => p.test(hostname))) return true;
+    const noProxy = process.env.NO_PROXY || process.env.no_proxy || '';
+    if (!noProxy) return false;
+    for (const pattern of noProxy.split(',').map(p => p.trim())) {
+      if (!pattern) continue;
+      const regex = new RegExp(
+        '^' + pattern.replace(/\*/g, '.*').replace(/\./g, '\\.') + '$',
+        'i'
+      );
+      if (regex.test(hostname)) return true;
+    }
+  } catch {}
+  return false;
+}
+
+function getDispatcher(requestUrl?: string): any | undefined {
+  if (requestUrl && shouldBypassProxy(requestUrl)) return undefined;
   if (_proxyDispatcher) return _proxyDispatcher;
   const proxyUrl = readProxyUrl();
   if (proxyUrl) {
@@ -31,11 +58,45 @@ function getDispatcher(): any | undefined {
   return undefined;
 }
 
+function fetchViaHttps(url: string, timeoutMs: number): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const parsed = new URL(url);
+    const req = httpsRequest(
+      {
+        hostname: parsed.hostname,
+        port: 443,
+        path: parsed.pathname + parsed.search,
+        method: 'GET',
+        headers: DEFAULT_HEADERS,
+        timeout: timeoutMs,
+      },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+        res.on('end', () => {
+          if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+            reject(new AppError('PROVIDER_UNAVAILABLE', `EastMoney HTTP ${res.statusCode}`, 502, { url, status: res.statusCode }));
+            return;
+          }
+          resolve(data);
+        });
+      },
+    );
+    req.on('error', (err: Error) => reject(new AppError('PROVIDER_UNAVAILABLE', `EastMoney request failed: ${err.message}`, 502, { url })));
+    req.on('timeout', () => { req.destroy(); reject(new AppError('PROVIDER_TIMEOUT', 'EastMoney request timed out', 504, { url })); });
+    req.end();
+  });
+}
+
 export async function fetchText(url: string, timeoutMs = 10000): Promise<string> {
+  if (shouldBypassProxy(url)) {
+    return fetchViaHttps(url, timeoutMs);
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  const dispatcher = getDispatcher();
+  const dispatcher = getDispatcher(url);
 
   try {
     const response = await fetch(url, {
