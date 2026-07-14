@@ -6,7 +6,7 @@
         <div class="tab-group">
           <span v-for="tab in tabs" :key="tab.key" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">{{ tab.name }}</span>
         </div>
-        <span class="update-tag" v-if="latestKlineDate">截至 {{ latestKlineDate }}</span>
+        <span class="update-tag" v-if="klineUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(klineUpdateTime) }}</span>
       </div>
       <div class="chart-container sse-chart-container">
         <v-chart class="chart" :option="currentChartOption" autoresize :theme="echartThemeName" v-if="hasCurrentData" />
@@ -17,6 +17,7 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="Globe" :size="20" /> {{ t('market.indices') }}</h3>
+        <span class="update-tag" v-if="overviewUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(overviewUpdateTime) }}</span>
         <BButton size="small" icon="RefreshCw" :loading="loading" @click="fetchAll" :disabled="loading" />
       </div>
 
@@ -46,6 +47,7 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="BarChart3" :size="20" /> {{ t('market.volume') }}</h3>
+        <span class="update-tag" v-if="overviewUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(overviewUpdateTime) }}</span>
       </div>
       <div class="chart-container volume-chart-container">
         <v-chart class="chart" :option="volumeOption" autoresize :theme="echartThemeName" v-if="aVolume.length" />
@@ -127,6 +129,12 @@ use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, Title
 const { t } = useI18n()
 const router = useRouter()
 
+function formatUpdateTime(isoStr: string) {
+  try {
+    return new Date(isoStr).toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  } catch { return isoStr.slice(11, 19) }
+}
+
 const goToAnomalySettings = () => {
   router.push({ name: 'settings-anomaly' })
 }
@@ -139,7 +147,7 @@ const props = defineProps({
 })
 
 const {
-  loading, fetchAll, marketIndex, indices,
+  loading, fetchAll, marketIndex, indices, klineUpdateTime, overviewUpdateTime,
   goldRealtime, goldModal, goldDays, metalChartOption,
   openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
   aVolume, volumeOption, echartThemeName,

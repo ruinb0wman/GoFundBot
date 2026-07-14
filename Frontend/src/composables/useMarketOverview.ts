@@ -12,7 +12,9 @@ export function useMarketOverview(props: any) {
   const goldHistory: any = ref([])
   const aVolume: any = ref([])
   const updateTime = ref('')
-  let refreshTimer = null
+  const klineUpdateTime = ref('')
+  const overviewUpdateTime = ref('')
+  let refreshTimer: ReturnType<typeof setInterval> | null = null
 
   const { echartThemeName } = useEChartsTheme()
 
@@ -202,6 +204,7 @@ export function useMarketOverview(props: any) {
       if (data.gold_realtime?.success) goldRealtime.value = data.gold_realtime.data
       if (data.a_volume_7days?.success) aVolume.value = data.a_volume_7days.data.slice().reverse()
       updateTime.value = data.update_time
+      overviewUpdateTime.value = new Date().toISOString()
     }
   }
 
@@ -211,7 +214,7 @@ export function useMarketOverview(props: any) {
     monthAgo.setDate(monthAgo.getDate() - 35)
     const startDate = monthAgo.toISOString().slice(0, 10).replace(/-/g, '')
     const codes = { sh: 'sh000001', sz: 'sz399001', hs300: 'sh000300' }
-    const results = { sh: [], sz: [], hs300: [] }
+    const results = { ...indicesIntraday.value }
     const tasks = Object.entries(codes).map(async ([key, code]) => {
       try {
         const res = await marketAPI.getIndexKline(code, { period: 'daily', startDate })
@@ -224,6 +227,7 @@ export function useMarketOverview(props: any) {
     })
     await Promise.all(tasks)
     indicesIntraday.value = results
+    klineUpdateTime.value = new Date().toISOString()
   }
 
   const fetchAll = async () => {
@@ -276,7 +280,7 @@ export function useMarketOverview(props: any) {
   onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
 
   return {
-    loading, fetchAll, marketIndex, indices,
+    loading, fetchAll, marketIndex, indices, klineUpdateTime, overviewUpdateTime,
     goldRealtime, goldModal, goldDays, goldModalHistory, metalChartOption,
     openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
     aVolume, updateTime, formatDate, getChangeClass, getUpDnClass, navigateToIndex,

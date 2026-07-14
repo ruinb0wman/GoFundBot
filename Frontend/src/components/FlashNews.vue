@@ -203,6 +203,11 @@ const fetchNews = async (page = 1, append = false) => {
       const incoming = response.data.data?.items || []
 
       if (page === 1) {
+        if (incoming.length === 0 && newsList.value.length > 0) {
+          hasMore.value = false
+          updateTime.value = response.data.update_time || ''
+          return
+        }
         const currentKeys = new Set(incoming.map((n: any) => n.publish_time + n.title?.slice(0, 20)))
         const enriched = incoming.map((n: any) => ({
           ...n,

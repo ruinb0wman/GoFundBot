@@ -619,6 +619,7 @@
   "market.anomaly": "市场异动",
   "market.news": "7×24 快讯",
   "market.sectors": "板块排行",
+  "market.updatedAt": "更新于",
   "alert.settings": "告警设置",
   "alert.settingsTitle": "告警设置 - {code}",
   "alert.add": "添加规则",

@@ -236,8 +236,9 @@ const fetchSectors = async () => {
     clearSectorData()
     error.value = response.data.error || t('common.error')
   } catch (e) {
-    clearSectorData()
-    error.value = t('flashNews.networkError')
+    if (!sectors.value.length) {
+      error.value = t('flashNews.networkError')
+    }
     console.error('获取板块排行失败:', e)
   } finally {
     loading.value = false
