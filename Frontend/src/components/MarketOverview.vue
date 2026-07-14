@@ -17,8 +17,10 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="Globe" :size="20" /> {{ t('market.indices') }}</h3>
-        <BButton size="small" icon="RefreshCw" :loading="loading" @click="fetchAll" :disabled="loading" />
-        <span class="update-tag" v-if="overviewUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(overviewUpdateTime) }}</span>
+        <div class="header-actions">
+          <span class="update-tag" v-if="overviewUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(overviewUpdateTime) }}</span>
+          <BButton size="small" icon="RefreshCw" :loading="loading" @click="fetchAll" :disabled="loading" />
+        </div>
       </div>
 
       <div class="market-sub-section">
