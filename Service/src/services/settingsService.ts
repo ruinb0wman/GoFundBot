@@ -1,5 +1,5 @@
 import { logger } from '../core/logger.js';
-import { setProxyUrl } from '../providers/eastmoney/eastmoneyRequest.js';
+import { setGlobalProxyUrl } from '../core/fetch.js';
 
 export interface LlmSettings {
   apiKey: string;
@@ -75,12 +75,5 @@ export function updateSettings(partial: Partial<AppSettings>): AppSettings {
 }
 
 function _applyProxy(url: string): void {
-  setProxyUrl(url || null);
-  if (url) {
-    process.env.HTTPS_PROXY = url;
-    process.env.HTTP_PROXY = url;
-  } else {
-    delete process.env.HTTPS_PROXY;
-    delete process.env.HTTP_PROXY;
-  }
+  setGlobalProxyUrl(url || null);
 }

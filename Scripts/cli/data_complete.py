@@ -16,6 +16,8 @@ import argparse
 import os
 import sys
 
+import requests
+
 _BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for _p in (os.path.dirname(os.path.abspath(__file__)), _BACKEND):
     if _p not in sys.path:
@@ -27,6 +29,11 @@ except ImportError:
     ak = None
 
 from _template import run_script  # noqa: E402
+
+_REQUESTS_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Referer": "https://data.eastmoney.com/",
+}
 
 
 def complete_kline(code: str, start_date: str = "", end_date: str = ""):
@@ -163,10 +170,58 @@ def complete_sector_spot():
     return []
 
 
+def complete_north_flow():
+    """
+    Fetch northbound capital flow (北向资金) data from eastmoney datacenter API.
+    Uses a different endpoint than the Node.js provider (datacenter-web vs push2),
+    providing genuine fallback diversity.
+    Returns dict with keys: total, sh, sz, each containing date, fund_inflow, net_deal_amt, deal_amt.
+    """
+    types = {
+        "005": "total",
+        "001": "sh",
+        "003": "sz",
+    }
+    result = {}
+    for type_code, key in types.items():
+        try:
+            url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+            params = {
+                "reportName": "RPT_MUTUAL_DEAL_HISTORY",
+                "columns": "TRADE_DATE,FUND_INFLOW,NET_DEAL_AMT,DEAL_AMT,BUY_AMT,SELL_AMT",
+                "filter": f'(MUTUAL_TYPE="{type_code}")',
+                "sortColumns": "TRADE_DATE",
+                "sortTypes": "-1",
+                "pageSize": "1",
+                "pageNumber": "1",
+                "source": "WEB",
+                "client": "WEB",
+            }
+            resp = requests.get(url, params=params, timeout=30, headers=_REQUESTS_HEADERS)
+            data = resp.json()
+            items = data.get("result", {}).get("data", [])
+            if items:
+                item = items[0]
+                result[key] = {
+                    "date": (item.get("TRADE_DATE") or "")[:10],
+                    "fund_inflow": item.get("FUND_INFLOW"),
+                    "net_deal_amt": item.get("NET_DEAL_AMT"),
+                    "deal_amt": item.get("DEAL_AMT"),
+                }
+            else:
+                result[key] = {"date": "", "fund_inflow": None, "net_deal_amt": None, "deal_amt": None}
+        except Exception as e:
+            print(f"north_flow {key} failed: {e}", file=sys.stderr)
+            result[key] = {"date": "", "fund_inflow": None, "net_deal_amt": None, "deal_amt": None}
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description="Data completion")
     parser.add_argument("--source", choices=["akshare", "eastmoney"], default="akshare")
-    parser.add_argument("--type", choices=["stocks", "industry", "sector_spot", "kline", "all"], default="all")
+    parser.add_argument(
+        "--type", choices=["stocks", "industry", "sector_spot", "kline", "north_flow", "all"], default="all"
+    )
     parser.add_argument("--code", type=str, default="")
     parser.add_argument("--start_date", type=str, default="")
     parser.add_argument("--end_date", type=str, default="")
@@ -186,6 +241,8 @@ def main():
         if not args.code:
             return {"error": "--code is required for --type kline"}
         result["kline"] = complete_kline(args.code, args.start_date, args.end_date)
+    if args.type == "north_flow":
+        result["north_flow"] = complete_north_flow()
     return result
 
 

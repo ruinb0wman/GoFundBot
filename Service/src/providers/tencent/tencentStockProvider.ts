@@ -1,10 +1,9 @@
 import type { StockReferenceDto } from '../../models/stock.js';
 import { AppError } from '../../core/errors.js';
+import { fetchUrl } from '../../core/fetch.js';
 import type { StockProvider } from '../types.js';
 
 const TENCENT_QT_URL = 'https://qt.gtimg.cn/';
-const USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36';
 
 export class TencentStockProvider implements StockProvider {
   readonly name = 'tencent';
@@ -15,42 +14,27 @@ export class TencentStockProvider implements StockProvider {
       throw new AppError('PROVIDER_UNAVAILABLE', `Tencent does not support stock code ${code}`, 502, { code });
     }
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
+    const text = await fetchUrl(`${TENCENT_QT_URL}?q=${qtCode}`, {
+      timeoutMs: 8000,
+      proxy: 'never',
+      encoding: 'gbk',
+      headers: { Referer: 'https://gu.qq.com/' },
+    });
+    const parsed = parseQtText(text, qtCode);
 
-    try {
-      const response = await fetch(`${TENCENT_QT_URL}?q=${qtCode}`, {
-        headers: { 'User-Agent': USER_AGENT, Referer: 'https://gu.qq.com/' },
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        throw new AppError('PROVIDER_UNAVAILABLE', `Tencent HTTP ${response.status}`, 502, {
-          code,
-          status: response.status,
-        });
-      }
-
-      const buffer = await response.arrayBuffer();
-      const text = new TextDecoder('gbk').decode(buffer);
-      const parsed = parseQtText(text, qtCode);
-
-      if (!parsed || !parsed.name) {
-        throw new AppError('PROVIDER_UNAVAILABLE', 'Tencent stock reference returned empty data', 502, { code });
-      }
-
-      return {
-        code: parsed.code || code,
-        name: parsed.name,
-        market: parsed.market,
-        symbol: qtCode,
-        industry: null,
-        region: null,
-        concepts: [],
-      };
-    } finally {
-      clearTimeout(timer);
+    if (!parsed || !parsed.name) {
+      throw new AppError('PROVIDER_UNAVAILABLE', 'Tencent stock reference returned empty data', 502, { code });
     }
+
+    return {
+      code: parsed.code || code,
+      name: parsed.name,
+      market: parsed.market,
+      symbol: qtCode,
+      industry: null,
+      region: null,
+      concepts: [],
+    };
   }
 }
 

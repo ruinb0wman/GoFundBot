@@ -1,8 +1,6 @@
-import { ProxyAgent } from 'undici';
 import { AppError } from '../../core/errors.js';
+import { fetchUrl } from '../../core/fetch.js';
 import type { GlobalIndexDto, GlobalIndexListDto } from '../types.js';
-
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36';
 
 const YAHOO_BASE = 'https://query1.finance.yahoo.com';
 
@@ -55,15 +53,6 @@ const INTERVAL_MAP: Record<string, string> = {
   monthly: '1mo',
 };
 
-let _dispatcher: ProxyAgent | undefined;
-
-function getDispatcher(): ProxyAgent | undefined {
-  if (_dispatcher !== undefined) return _dispatcher;
-  const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
-  _dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
-  return _dispatcher;
-}
-
 function toYahooSymbol(symbol: string): string | null {
   const lower = symbol.replace(/^(sh|sz|bj)/i, '').toLowerCase();
   return YAHOO_SYMBOL_MAP[lower] ?? null;
@@ -102,30 +91,11 @@ export async function fetchYahooChart(
   const interval = INTERVAL_MAP[period] || '1d';
   const url = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${range}&interval=${interval}`;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-
-  let text: string;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const opts: any = {
-      headers: { 'User-Agent': USER_AGENT },
-      signal: controller.signal,
-    };
-    const d = getDispatcher();
-    if (d) opts.dispatcher = d;
-    const response = await fetch(url, opts);
-
-    if (!response.ok) {
-      throw new AppError('PROVIDER_UNAVAILABLE', `Yahoo Finance HTTP ${response.status}`, 502, {
-        url,
-        status: response.status,
-      });
-    }
-    text = await response.text();
-  } finally {
-    clearTimeout(timer);
-  }
+  const text = await fetchUrl(url, {
+    timeoutMs: 15000,
+    proxy: 'auto',
+    headers: { 'Referer': 'https://finance.yahoo.com/' },
+  });
 
   const payload = JSON.parse(text) as Record<string, unknown>;
   const chart = payload.chart as Record<string, unknown> | undefined;
@@ -172,26 +142,19 @@ async function fetchSingleGlobalQuote(def: { code: string; name: string; yahooSy
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 15000);
-
       let text: string;
       try {
-        const opts: any = {
-          headers: { 'User-Agent': USER_AGENT },
-          signal: controller.signal,
-        };
-        const d = getDispatcher();
-        if (d) opts.dispatcher = d;
-        const response = await fetch(url, opts);
-        if (response.status === 429) {
+        text = await fetchUrl(url, {
+          timeoutMs: 15000,
+          proxy: 'auto',
+          headers: { 'Referer': 'https://finance.yahoo.com/' },
+        });
+      } catch (error: any) {
+        if (error?.message?.includes('429')) {
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
           continue;
         }
-        if (!response.ok) return null;
-        text = await response.text();
-      } finally {
-        clearTimeout(timer);
+        return null;
       }
 
       const payload = JSON.parse(text) as Record<string, unknown>;

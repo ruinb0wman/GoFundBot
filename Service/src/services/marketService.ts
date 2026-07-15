@@ -3,6 +3,7 @@ import { AppError, assertCode } from '../core/errors.js';
 import { logger } from '../core/logger.js';
 import { ProviderChain } from '../core/providerChain.js';
 import { runPython } from './pythonRunner.js';
+import { fetchUrl } from '../core/fetch.js';
 import type { ServiceResult } from '../types/common.js';
 import { StockSdkMarketProvider } from '../providers/stock-sdk/stockSdkMarketProvider.js';
 import { EastMoneyMarketProvider } from '../providers/eastmoney/eastmoneyMarketProvider.js';
@@ -135,6 +136,33 @@ async function getMarketKlineFromAkshare(stockSymbol: string, options: KlineOpti
       turnoverRate: null,
     } as KlineDto;
   });
+}
+
+async function getNorthFlowFromAkshare(): Promise<NorthFlowDto> {
+  const result = await runPython<Record<string, unknown>>('data_complete.py', {
+    args: ['--source', 'akshare', '--type', 'north_flow'],
+    timeoutMs: 60_000,
+  });
+
+  const northFlow = (result?.north_flow ?? {}) as Record<string, unknown>;
+  const total = (northFlow.total ?? {}) as Record<string, unknown>;
+  const sh = (northFlow.sh ?? {}) as Record<string, unknown>;
+  const sz = (northFlow.sz ?? {}) as Record<string, unknown>;
+
+  const shNetDealAmt = toNullableNumber(sh.net_deal_amt);
+  const szNetDealAmt = toNullableNumber(sz.net_deal_amt);
+  const totalNetDealAmt = toNullableNumber(total.net_deal_amt);
+
+  return {
+    date: String(total.date ?? ''),
+    shNetInflow: shNetDealAmt,
+    szNetInflow: szNetDealAmt,
+    totalNetInflow: totalNetDealAmt,
+    shUpCount: null,
+    shDownCount: null,
+    szUpCount: null,
+    szDownCount: null,
+  };
 }
 
 export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Promise<ServiceResult<KlineDto[]>> {
@@ -408,17 +436,42 @@ export async function getMarketBreadth(): Promise<ServiceResult<MarketBreadthDto
 }
 
 export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
-  const result = await cacheThrough('market:north-flow', ttl.marketNorthFlow, () =>
-    chain.run('market.northFlow', (provider) => {
+  const key = 'market:north-flow';
+
+  const cached = cache.get<ProviderChainResult<NorthFlowDto>>(key);
+  if (cached) return toServiceResult(cached);
+
+  try {
+    const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+    const result = await chain.run('market.northFlow', (provider) => {
       if (!provider.northFlow) {
         throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement northFlow`, 501);
       }
       return provider.northFlow();
-    })
-  );
+    });
+    return toServiceResult(cache.set(key, result, ttl.marketNorthFlow));
+  } catch (err) {
+    logger.error('NorthFlow providers failed, trying akshare fallback', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
-  return toServiceResult(result);
+  try {
+    const data = await getNorthFlowFromAkshare();
+    const result: ProviderChainResult<NorthFlowDto> = {
+      data,
+      provider: 'akshare',
+      fallback: true,
+      stale: false,
+      providerErrors: [],
+    };
+    return toServiceResult(cache.set(key, result, ttl.marketNorthFlow));
+  } catch (fallbackErr) {
+    logger.error('Akshare north flow fallback also failed', {
+      error: fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr),
+    });
+    throw new AppError('PROVIDER_UNAVAILABLE', 'All providers failed for north flow', 503);
+  }
 }
 
 export async function getGlobalIndices(): Promise<ServiceResult<GlobalIndexListDto>> {
@@ -444,16 +497,12 @@ export async function fetchGoldRealtime(): Promise<Record<string, any>> {
     url.searchParams.set('codes', 'JO_71,JO_92233,JO_92232');
     url.searchParams.set('_', String(Date.now()));
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        'accept': '*/*',
-        'referer': 'https://quote.cngold.org/gjs/gjhj.html',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
-      },
-      signal: AbortSignal.timeout(10000),
+    const text = await fetchUrl(url.toString(), {
+      timeoutMs: 10000,
+      proxy: 'never',
+      headers: { 'referer': 'https://quote.cngold.org/gjs/gjhj.html' },
     });
 
-    const text = await response.text();
     const json = JSON.parse(text.replace('var quote_json = ', ''));
 
     const codeMap: Record<string, string> = {
@@ -515,16 +564,12 @@ export async function getGoldHistory(days: number = 10): Promise<Record<string, 
       url.searchParams.set('currentPage', '1');
       url.searchParams.set('_', String(Date.now()));
 
-      const response = await fetch(url.toString(), {
-        headers: {
-          'accept': '*/*',
-          'referer': 'https://quote.cngold.org/gjs/swhj_zghj.html',
-          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        },
-        signal: AbortSignal.timeout(10000),
+      const text = await fetchUrl(url.toString(), {
+        timeoutMs: 10000,
+        proxy: 'never',
+        headers: { 'referer': 'https://quote.cngold.org/gjs/swhj_zghj.html' },
       });
 
-      const text = await response.text();
       return JSON.parse(text.replace('var quote_json = ', ''));
     };
 
@@ -580,16 +625,12 @@ export async function getSilverHistory(days: number = 10): Promise<Record<string
     url.searchParams.set('currentPage', '1');
     url.searchParams.set('_', String(Date.now()));
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        'accept': '*/*',
-        'referer': 'https://quote.cngold.org/gjs/swhj_zghj.html',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-      },
-      signal: AbortSignal.timeout(10000),
+    const text = await fetchUrl(url.toString(), {
+      timeoutMs: 10000,
+      proxy: 'never',
+      headers: { 'referer': 'https://quote.cngold.org/gjs/swhj_zghj.html' },
     });
 
-    const text = await response.text();
     const parsed = JSON.parse(text.replace('var quote_json = ', ''));
     const raw = parsed?.data || [];
     const unit = parsed?.unit || '美元/盎司';
@@ -718,23 +759,12 @@ export async function fetchIndicesFromSina(): Promise<IndexListDto> {
   };
 
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
-    const response = await fetch(SINA_URL, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-        'Referer': 'https://finance.sina.com.cn',
-      },
-      signal: controller.signal,
+    const text = await fetchUrl(SINA_URL, {
+      timeoutMs: 10000,
+      proxy: 'never',
+      encoding: 'gbk',
+      headers: { Referer: 'https://finance.sina.com.cn' },
     });
-    clearTimeout(timer);
-
-    if (!response.ok) {
-      throw new Error(`Sina HTTP ${response.status}`);
-    }
-
-    const buffer = await response.arrayBuffer();
-    const text = new TextDecoder('gbk').decode(buffer);
 
     const items: IndexDto[] = [];
 

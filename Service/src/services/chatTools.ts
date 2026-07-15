@@ -115,7 +115,7 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
     type: 'function',
     function: {
       name: 'get_north_flow',
-      description: '获取北向资金（沪股通+深股通）流向数据。必须检查 data_status 字段。',
+      description: '获取北向资金（沪股通+深股通）流向数据。必须检查 data_status 字段，unavailable 时需查看 note 字段说明原因。',
       parameters: { type: 'object', properties: {} },
     },
   },
@@ -131,7 +131,7 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
     type: 'function',
     function: {
       name: 'get_main_flow',
-      description: '获取主力资金流向（超大单/大单/中单/小单净流入）。必须检查 data_status 字段。',
+      description: '获取主力资金流向（超大单/大单/中单/小单净流入）。必须检查 data_status 字段，unavailable 时需查看 note 字段说明原因。',
       parameters: { type: 'object', properties: {} },
     },
   },
@@ -380,8 +380,9 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
     try {
       const result = await getNorthFlow();
       const d = result.data;
+      const isAvailable = d.totalNetInflow != null;
       return {
-        data_status: d.totalNetInflow != null ? 'available' : 'unavailable',
+        data_status: isAvailable ? 'available' : 'unavailable',
         date: d.date ?? '',
         sh_net_inflow: d.shNetInflow,
         sz_net_inflow: d.szNetInflow,
@@ -390,6 +391,9 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
         sh_down_count: d.shDownCount,
         sz_up_count: d.szUpCount,
         sz_down_count: d.szDownCount,
+        note: isAvailable
+          ? undefined
+          : '北向资金数据暂不可用，可能是沪深股通休市、非交易时段或数据尚未更新',
       };
     } catch (error) {
       logger.error('get_north_flow error', { error: String(error) });

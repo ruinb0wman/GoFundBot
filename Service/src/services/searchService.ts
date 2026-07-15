@@ -1,4 +1,5 @@
 import { logger } from '../core/logger.js';
+import { fetchUrl } from '../core/fetch.js';
 import { getSearchSettings } from './settingsService.js';
 
 export interface SearchResultItem {
@@ -31,18 +32,25 @@ async function searchBocha(query: string, apiKey: string, maxResults: number): P
   const url = 'https://api.bocha.cn/v1/web-search';
   const startTime = Date.now();
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, freshness: 'oneMonth', summary: true, count: Math.min(maxResults, 10) }),
-    signal: AbortSignal.timeout(10000),
-  });
-
-  if (!resp.ok) {
-    return { success: false, results: [], provider: 'Bocha', search_time: (Date.now() - startTime) / 1000, error: `HTTP ${resp.status}` };
+  let respText: string;
+  try {
+    respText = await fetchUrl(url, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, freshness: 'oneMonth', summary: true, count: Math.min(maxResults, 10) }),
+      timeoutMs: 10000,
+      proxy: 'never',
+    });
+  } catch {
+    return { success: false, results: [], provider: 'Bocha', search_time: (Date.now() - startTime) / 1000, error: 'Request failed' };
   }
 
-  const data: any = await resp.json();
+  let data: any;
+  try {
+    data = JSON.parse(respText);
+  } catch {
+    return { success: false, results: [], provider: 'Bocha', search_time: (Date.now() - startTime) / 1000, error: 'Invalid JSON' };
+  }
   if (data.code !== 200) {
     return { success: false, results: [], provider: 'Bocha', search_time: (Date.now() - startTime) / 1000, error: data.msg };
   }
@@ -65,18 +73,25 @@ async function searchTavily(query: string, apiKey: string, maxResults: number): 
   const url = 'https://api.tavily.com/search';
   const startTime = Date.now();
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: maxResults, days: 3 }),
-    signal: AbortSignal.timeout(10000),
-  });
-
-  if (!resp.ok) {
-    return { success: false, results: [], provider: 'Tavily', search_time: (Date.now() - startTime) / 1000, error: `HTTP ${resp.status}` };
+  let respText: string;
+  try {
+    respText = await fetchUrl(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: maxResults, days: 3 }),
+      timeoutMs: 10000,
+      proxy: 'never',
+    });
+  } catch {
+    return { success: false, results: [], provider: 'Tavily', search_time: (Date.now() - startTime) / 1000, error: 'Request failed' };
   }
 
-  const data: any = await resp.json();
+  let data: any;
+  try {
+    data = JSON.parse(respText);
+  } catch {
+    return { success: false, results: [], provider: 'Tavily', search_time: (Date.now() - startTime) / 1000, error: 'Invalid JSON' };
+  }
   const items = data.results ?? [];
   const results: SearchResultItem[] = items.slice(0, maxResults).map((item: any) => ({
     title: item.title ?? '',
@@ -94,16 +109,22 @@ async function searchTavily(query: string, apiKey: string, maxResults: number): 
 async function searchDuckDuckGo(query: string, maxResults: number): Promise<SearchResponse> {
   const startTime = Date.now();
 
-  const resp = await fetch(
-    `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
-    { signal: AbortSignal.timeout(10000) },
-  );
-
-  if (!resp.ok) {
-    return { success: false, results: [], provider: 'DuckDuckGo', search_time: (Date.now() - startTime) / 1000, error: `HTTP ${resp.status}` };
+  let respText: string;
+  try {
+    respText = await fetchUrl(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
+      { timeoutMs: 10000, proxy: 'never' },
+    );
+  } catch {
+    return { success: false, results: [], provider: 'DuckDuckGo', search_time: (Date.now() - startTime) / 1000, error: 'Request failed' };
   }
 
-  const data: any = await resp.json();
+  let data: any;
+  try {
+    data = JSON.parse(respText);
+  } catch {
+    return { success: false, results: [], provider: 'DuckDuckGo', search_time: (Date.now() - startTime) / 1000, error: 'Invalid JSON' };
+  }
   const results: SearchResultItem[] = [];
 
   if (data.AbstractText) {
