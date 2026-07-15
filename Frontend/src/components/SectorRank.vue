@@ -10,6 +10,16 @@
         :disabled="!sectors.length"
         :title="t('sectorRank.expand')"
       />
+      <span v-if="isFromCache && sectors.length" class="data-source-badge stale" :title="t('sectorRank.localCache')">
+        <LucideIcon name="Package" :size="14" /> {{ t('sectorRank.localCache') }}
+      </span>
+      <span v-if="dataDate" class="data-date" :title="t('sectorRank.dataDate')">
+        <LucideIcon v-if="isStale" name="Calendar" :size="14" /> {{ dataDate }}
+      </span>
+      <span class="update-tag" v-if="adaptiveRefresh.lastSuccessTime.value && sectors.length">
+        {{ t('market.updatedAt') }} {{ formatUpdateTime(adaptiveRefresh.lastSuccessTime.value) }}
+      </span>
+      <span v-if="adaptiveRefresh.isStale.value && sectors.length" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ t('common.staleData') }}</span>
     </div>
     <div class="filter-panel">
       <div class="market-stats" v-if="sectors.length">
@@ -76,16 +86,6 @@
         <span class="page-info">{{ t('sectorRank.pageInfo', { current: currentPage, total: totalPages }) }}</span>
         <BButton size="small" @click="currentPage += 1" :disabled="currentPage === totalPages">{{ t('sectorRank.nextPage') }}</BButton>
       </div>
-    </div>
-
-    <div v-if="updateTime" class="update-time">
-      <span v-if="isFromCache" class="data-source-badge stale" :title="t('sectorRank.localCache')">
-        <LucideIcon name="Package" :size="14" /> {{ t('sectorRank.localCache') }}
-      </span>
-      <span v-if="dataDate" class="data-date" :title="t('sectorRank.dataDate')">
-        <LucideIcon v-if="isStale" name="Calendar" :size="14" /> {{ dataDate }}
-      </span>
-      <span class="last-refresh">{{ t('sectorRank.lastRefresh', { time: updateTime.slice(-8) }) }}</span>
     </div>
 
     <Teleport to="body">
@@ -185,8 +185,15 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BButton from './BButton.vue'
 import { marketAPI } from '../services/api'
+import { useAdaptiveRefresh } from '../composables/useAdaptiveRefresh'
 
 const { t } = useI18n()
+
+function formatUpdateTime(isoStr: string) {
+  try {
+    return new Date(isoStr).toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  } catch { return isoStr.slice(11, 19) }
+}
 
 const props = withDefaults(defineProps<{ limit?: number; autoRefresh?: boolean; refreshInterval?: number }>(), { limit: 90, autoRefresh: true, refreshInterval: 300000 })
 
@@ -206,7 +213,12 @@ const modalVisible = ref(false)
 const selectedSector = ref<any>(null)
 const pageSize = 20
 const currentPage = ref(1)
-let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+const adaptiveRefresh = useAdaptiveRefresh({
+  fetcher: async () => {
+    return await fetchSectors() as unknown as boolean
+  },
+})
 
 const fetchSectors = async () => {
   loading.value = true
@@ -221,7 +233,7 @@ const fetchSectors = async () => {
         is_partial: !!response.data.is_partial,
         source: response.data.source || 'backend'
       })
-      return
+      return true
     }
     if (response.data.data?.length) {
       applySectorData(response.data.data, {
@@ -231,15 +243,17 @@ const fetchSectors = async () => {
         is_partial: true,
         source: 'backend_partial'
       })
-      return
+      return true
     }
     clearSectorData()
     error.value = response.data.error || t('common.error')
+    return false
   } catch (e) {
     if (!sectors.value.length) {
       error.value = t('flashNews.networkError')
     }
     console.error('获取板块排行失败:', e)
+    return false
   } finally {
     loading.value = false
   }
@@ -331,16 +345,11 @@ watch(totalPages, (pages: number) => {
 })
 
 onMounted(() => {
-  fetchSectors()
-  if (props.autoRefresh) {
-    refreshTimer = setInterval(fetchSectors, props.refreshInterval)
-  }
+  adaptiveRefresh.start()
 })
 
 onUnmounted(() => {
-  if (refreshTimer) {
-    clearInterval(refreshTimer)
-  }
+  adaptiveRefresh.stop()
 })
 </script>
 

@@ -635,6 +635,7 @@
   "alert.returnAbove": "收益大于",
   "alert.returnBelow": "收益小于",
   "alert.anomaly.empty": "今日未检测到市场异动",
+  "common.staleData": "超时",
   "common.settings": "设置",
   "common.updated": "更新",
   "common.unknown": "未知",

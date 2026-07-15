@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useWatchlistStore } from '../stores/watchlistStore'
 import { translate } from '../locales/index'
+import { useAdaptiveRefresh } from './useAdaptiveRefresh'
 
 export function useFundWatchlist(
   props: { compareMode: boolean; compareFunds: any[]; showCompareToggle: boolean; addToRealtimeMode: boolean },
@@ -23,10 +24,28 @@ export function useFundWatchlist(
   const groupNameInput = ref(null)
   const alertFundCode = ref('')
 
-  const estimateRefreshTimer = ref(null)
+  const adaptiveRefresh = useAdaptiveRefresh({
+    fetcher: async () => {
+      if (watchlist.value.length === 0) return false
+      isRefreshingEstimates.value = true
+      try {
+        await watchlistStore.refreshEstimates()
+        watchlist.value = Array.isArray(watchlistStore.funds) ? watchlistStore.funds : []
+        groups.value = Array.isArray(watchlistStore.groups) ? watchlistStore.groups : []
+        const times = watchlistStore.funds.map(f => f.estimate_time).filter(Boolean).sort() as string[]
+        lastEstimateUpdate.value = times.length > 0 ? times[times.length - 1] : new Date().toLocaleTimeString()
+        return true
+      } catch (error) {
+        console.error('刷新估值失败:', error)
+        return false
+      } finally {
+        isRefreshingEstimates.value = false
+      }
+    },
+  })
+
   const lastEstimateUpdate = ref(null)
   const isRefreshingEstimates = ref(false)
-  const ESTIMATE_REFRESH_INTERVAL = 3 * 60 * 1000
 
   const _compareDateStr = (val) => {
     if (!val) return ''
@@ -82,42 +101,15 @@ export function useFundWatchlist(
   const refreshWatchlist = () => loadWatchlist()
 
   const refreshEstimates = async () => {
-    if (isRefreshingEstimates.value || watchlist.value.length === 0) return
-    isRefreshingEstimates.value = true
-    try {
-      await watchlistStore.refreshEstimates()
-      watchlist.value = Array.isArray(watchlistStore.funds) ? watchlistStore.funds : []
-      groups.value = Array.isArray(watchlistStore.groups) ? watchlistStore.groups : []
-      const times = watchlistStore.funds.map(f => f.estimate_time).filter(Boolean).sort() as string[]
-      lastEstimateUpdate.value = times.length > 0 ? times[times.length - 1] : new Date().toLocaleTimeString()
-    } catch (error) {
-      console.error('刷新估值失败:', error)
-    } finally {
-      isRefreshingEstimates.value = false
-    }
+    adaptiveRefresh.refresh()
   }
 
   const startEstimateRefreshTimer = () => {
-    refreshEstimates()
-    estimateRefreshTimer.value = setInterval(() => {
-      const now = new Date()
-      const day = now.getDay()
-      const hour = now.getHours()
-      const minute = now.getMinutes()
-      const timeInMinutes = hour * 60 + minute
-      const isTradeDay = day >= 1 && day <= 5
-      const isTradeTime = timeInMinutes >= 9 * 60 + 30 && timeInMinutes <= 15 * 60
-      if (isTradeDay && isTradeTime) {
-        refreshEstimates()
-      }
-    }, ESTIMATE_REFRESH_INTERVAL)
+    if (watchlist.value.length > 0) adaptiveRefresh.start()
   }
 
   const stopEstimateRefreshTimer = () => {
-    if (estimateRefreshTimer.value) {
-      clearInterval(estimateRefreshTimer.value)
-      estimateRefreshTimer.value = null
-    }
+    adaptiveRefresh.stop()
   }
 
   const toggleGroup = (groupId) => {
@@ -350,6 +342,7 @@ export function useFundWatchlist(
     loadWatchlist,
     refreshWatchlist,
     refreshEstimates,
+    adaptiveRefresh,
     toggleGroup,
     enterEditMode,
     exitEditMode,

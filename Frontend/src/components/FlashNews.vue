@@ -70,8 +70,9 @@
 
     <!-- 底部 -->
     <div v-if="updateTime && !loading" class="news-footer">
-      <span class="footer-dot online"></span>
+      <span class="footer-dot online" :class="{'stale': adaptiveRefresh.isStale.value}"></span>
       <span>{{ t('flashNews.updatedAt') }} {{ formatUpdateTime(updateTime) }}</span>
+      <span v-if="adaptiveRefresh.isStale.value && newsList.length" class="stale-badge"><LucideIcon name="Clock" :size="12" /> {{ t('common.staleData') }}</span>
     </div>
 
     <!-- 详情弹窗 -->
@@ -121,8 +122,9 @@ import BButton from './BButton.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marketAPI } from '../services/api'
+import { useAdaptiveRefresh } from '../composables/useAdaptiveRefresh'
 
-const props = withDefaults(defineProps<{ count?: number; autoRefresh?: boolean; refreshInterval?: number }>(), { count: 30, autoRefresh: true, refreshInterval: 30000 })
+const props = withDefaults(defineProps<{ count?: number; autoRefresh?: boolean; refreshInterval?: number }>(), { count: 30, autoRefresh: true, refreshInterval: 60000 })
 
 const { t } = useI18n()
 
@@ -142,7 +144,16 @@ const prevKeys = new Set()
 const modal = reactive({ visible: false, news: null as any })
 const listRef = ref<HTMLElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
-let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+const adaptiveRefresh = useAdaptiveRefresh({
+  fetcher: async () => {
+    const prevLen = newsList.value.length
+    await fetchNews(1, false)
+    const gotData = newsList.value.length > 0
+    return gotData
+  },
+  overrideInterval: 60000,
+})
 
 const displayedNews = computed(() => {
   return newsList.value.slice(0, displayCount.value)
@@ -305,9 +316,9 @@ const formatUpdateTime = (timeStr: string) => {
 
 onMounted(() => {
   fetchNews(1, false)
-  if (props.autoRefresh) refreshTimer = setInterval(() => fetchNews(1, false), props.refreshInterval)
+  if (props.autoRefresh) adaptiveRefresh.start()
 })
-onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
+onUnmounted(() => { adaptiveRefresh.stop() })
 </script>
 
 <style scoped>
@@ -408,7 +419,10 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
   padding: 8px 14px; border-top: 1px solid var(--border-default);
   font-size: 11px; color: var(--text-disabled); flex-shrink: 0;
 }
-.footer-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
+.footer-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.footer-dot.online { background: var(--color-primary); }
+.footer-dot.stale { background: var(--color-warning); }
+.stale-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; color: var(--color-warning); background: var(--color-warning-bg); padding: 1px 5px; border-radius: 4px; font-weight: 600; }
 
 .news-fade-enter-active { transition: all 0.4s ease; }
 .news-fade-leave-active { transition: all 0.25s ease; }

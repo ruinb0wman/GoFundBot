@@ -60,6 +60,7 @@
     <div v-if="lastEstimateUpdate && totalCount > 0" class="estimate-update-hint">
       <span class="hint-icon"><LucideIcon name="BarChart3" :size="12" /></span>
       <span>{{ t('fund.watchlist.estimateUpdated', { time: lastEstimateUpdate }) }}</span>
+      <span v-if="adaptiveRefresh.isStale.value" class="stale-badge"><LucideIcon name="Clock" :size="12" /> {{ t('common.staleData') }}</span>
       <span class="hint-auto">{{ t('fund.watchlist.autoRefresh') }}</span>
     </div>
 
@@ -194,7 +195,7 @@ const {
   ungroupedFunds, getGroupFunds, isGroupExpanded,
   showGroupModal, editingGroup, groupName, groupNameInput,
   lastEstimateUpdate, isRefreshingEstimates, alertFundCode,
-  loadWatchlist, refreshEstimates, toggleGroup,
+  loadWatchlist, refreshEstimates, adaptiveRefresh, toggleGroup,
   enterEditMode, exitEditMode, toggleSelect, batchDelete,
   removeFund, viewFundDetail, addToCompare,
   onDragStart, onDragEnd, onDragOver, onDrop,

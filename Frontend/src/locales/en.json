@@ -634,6 +634,7 @@
   "alert.returnAbove": "Return Above",
   "alert.returnBelow": "Return Below",
   "alert.anomaly.empty": "No anomalies detected today",
+  "common.staleData": "Stale",
   "common.settings": "Settings",
   "common.updated": "Updated",
   "common.unknown": "Unknown",

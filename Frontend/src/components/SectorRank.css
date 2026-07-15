@@ -327,6 +327,27 @@
   color: var(--text-tertiary);
 }
 
+.update-tag {
+  font-size: 0.8em;
+  color: var(--text-tertiary);
+  background: var(--bg-subtle);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.stale-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
 .sector-modal-overlay {
   position: fixed;
   inset: 0;

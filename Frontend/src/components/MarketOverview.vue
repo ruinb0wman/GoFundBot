@@ -7,6 +7,7 @@
           <span v-for="tab in tabs" :key="tab.key" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">{{ tab.name }}</span>
         </div>
         <span class="update-tag" v-if="klineUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(klineUpdateTime) }}</span>
+        <span v-if="adaptiveRefresh.isStale.value && hasCurrentData" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ t('common.staleData') }}</span>
       </div>
       <div class="chart-container sse-chart-container">
         <v-chart class="chart" :option="currentChartOption" autoresize :theme="echartThemeName" v-if="hasCurrentData" />
@@ -18,7 +19,9 @@
       <div class="section-header">
         <h3><LucideIcon name="Globe" :size="20" /> {{ t('market.indices') }}</h3>
         <div class="header-actions">
-          <span class="update-tag" v-if="overviewUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(overviewUpdateTime) }}</span>
+        <span class="update-tag" v-if="overviewUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(overviewUpdateTime) }}</span>
+        <span v-if="adaptiveRefresh.isStale.value && aVolume.length" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ t('common.staleData') }}</span>
+          <span v-if="adaptiveRefresh.isStale.value && marketIndex.length" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ t('common.staleData') }}</span>
           <BButton size="small" icon="RefreshCw" :loading="loading" @click="fetchAll" :disabled="loading" />
         </div>
       </div>
@@ -155,7 +158,8 @@ const {
   aVolume, volumeOption, echartThemeName,
   tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate,
   currentChartOption, getUpDnClass, navigateToIndex, formatDate,
-  anomalies, anomaliesLoading, fetchAnomalies
+  anomalies, anomaliesLoading, fetchAnomalies,
+  adaptiveRefresh,
 } = useMarketOverview(props)
 </script>
 
