@@ -298,6 +298,8 @@ export const useChatStore = defineStore('chat', {
       this.selectedSkill = name
       if (name) {
         this.currentSkill = name
+      } else {
+        this.currentSkill = null
       }
     },
   },
