@@ -336,7 +336,7 @@ function parseKlineOptions(query: KlineQuery): KlineOptions {
     period: period as 'daily' | 'weekly' | 'monthly',
     adjust: normalizedAdjust,
     startDate: query.startDate ? normalizeDate(query.startDate) : undefined,
-    endDate: query.endDate ? normalizeDate(query.endDate) : undefined,
+    endDate: query.endDate ? normalizeDate(query.endDate) : (query.startDate ? normalizeDate(new Date().toISOString().slice(0, 10)) : undefined),
   };
 }
 
