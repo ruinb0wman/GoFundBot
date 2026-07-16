@@ -65,6 +65,19 @@
 
     <div class="market-section">
       <div class="section-header">
+        <h3><LucideIcon name="TrendingUp" :size="20" /> {{ t('market.moneyFlow') }}</h3>
+        <span class="update-tag" :class="{ failed: moneyFlowStatus === 'failed' }" v-if="moneyFlowUpdateTime">
+          {{ moneyFlowStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(moneyFlowUpdateTime) }}
+        </span>
+      </div>
+      <div class="flow-chart-container">
+        <v-chart class="chart" :option="moneyFlowOption" autoresize :theme="echartThemeName" v-if="moneyFlow && moneyFlow.date" />
+        <div v-else class="empty-state">{{ moneyFlowLoading ? t('common.loading') : t('common.noData') }}</div>
+      </div>
+    </div>
+
+    <div class="market-section">
+      <div class="section-header">
         <h3><LucideIcon name="Award" :size="20" /> {{ t('market.gold') }}</h3>
         <span class="update-tag" :class="{ failed: goldStatus === 'failed' }" v-if="goldUpdateTime">
           {{ goldStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(goldUpdateTime) }}
@@ -166,6 +179,7 @@ const {
   goldRealtime, goldModal, goldDays, metalChartOption,
   openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
   aVolume, volumeOption, echartThemeName,
+  moneyFlow, moneyFlowOption, moneyFlowStatus, moneyFlowUpdateTime, moneyFlowLoading,
   tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate,
   currentChartOption, getUpDnClass, navigateToIndex, formatDate,
   anomalies, anomaliesLoading, fetchAnomalies,

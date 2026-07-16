@@ -96,6 +96,7 @@ export const marketAPI = {
   getStockKline(code: string, params: Record<string, unknown> = {}) { return api.get(`/market/kline/${code}`, { params }) },
   getIndexDetail(code: string) { return api.get(`/market/index/${code}/detail`) },
   getIndexKline(code: string, params: Record<string, unknown> = {}) { return api.get(`/market/kline/${code}`, { params }) },
+  getMarketMoneyFlow() { return api.get('/market/money-flow') },
 }
 
 export const researchAPI = {

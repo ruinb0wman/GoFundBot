@@ -615,6 +615,7 @@
   "sectorRank.dataDate": "数据对应的交易日",
   "market.indices": "全球行情",
   "market.volume": "近7日A股成交量",
+  "market.moneyFlow": "今日资金流向",
   "market.gold": "实时贵金属",
   "market.anomaly": "市场异动",
   "market.news": "7×24 快讯",

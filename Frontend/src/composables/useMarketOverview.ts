@@ -168,9 +168,19 @@ export function useMarketOverview(props: any) {
   const volumePoller = useDataPoller<any[]>({
     fetcher: async () => {
       const res = await marketAPI.getVolume7Days()
-      return { success: res.data.success, data: (res.data.data ?? []).slice().reverse() }
+      return { success: true, data: (res.data.data ?? []).slice().reverse() }
     },
     type: 'volume',
+    successInterval: 600_000,
+    failureInterval: 60_000,
+  })
+
+  const moneyFlowPoller = useDataPoller<any>({
+    fetcher: async () => {
+      const res = await marketAPI.getMarketMoneyFlow()
+      return { success: true, data: res.data.data ?? null }
+    },
+    type: 'moneyFlow',
     successInterval: 600_000,
     failureInterval: 60_000,
   })
@@ -178,6 +188,7 @@ export function useMarketOverview(props: any) {
   const marketIndex = computed(() => indicesPoller.data.value ?? [])
   const goldRealtime = computed(() => goldPoller.data.value ?? [])
   const aVolume = computed(() => volumePoller.data.value ?? [])
+  const moneyFlow = computed(() => moneyFlowPoller.data.value)
 
   const indices = computed(() => {
     const all = marketIndex.value
@@ -253,7 +264,8 @@ export function useMarketOverview(props: any) {
     indicesPoller.loading.value ||
     klinePoller.loading.value ||
     goldPoller.loading.value ||
-    volumePoller.loading.value
+    volumePoller.loading.value ||
+    moneyFlowPoller.loading.value
   )
 
   const fetchAll = () => {
@@ -261,6 +273,7 @@ export function useMarketOverview(props: any) {
     klinePoller.refresh()
     goldPoller.refresh()
     volumePoller.refresh()
+    moneyFlowPoller.refresh()
   }
 
   const getChangeClass = (change: string) => {
@@ -284,6 +297,70 @@ export function useMarketOverview(props: any) {
     const parts = dateStr.split('-')
     return parts.length >= 3 ? `${parts[1]}-${parts[2]}` : dateStr
   }
+
+  const moneyFlowOption = computed(() => {
+    echartThemeName.value
+    const data = moneyFlow.value
+    if (!data || !data.date) return {}
+
+    const categories = ['主力', '机构', '大户', '散户']
+    const values = [
+      data.mainNetInflow,
+      data.superLargeNetInflow,
+      data.largeNetInflow,
+      data.smallNetInflow,
+    ]
+    const valuesYi = values.map((v: number | null) => v != null ? v / 1e8 : 0)
+    const maxAbs = Math.max(...valuesYi.map(Math.abs), 1)
+
+    return {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: any) => {
+          const p = params[0]
+          if (!p) return ''
+          const raw = values[p.dataIndex]
+          return `${categories[p.dataIndex]}: ${raw != null ? (raw / 1e8).toFixed(2) : '--'}亿`
+        }
+      },
+      grid: { top: 5, right: 80, bottom: 25, left: 50, containLabel: true },
+      xAxis: {
+        type: 'value',
+        max: maxAbs * 1.3,
+        min: -maxAbs * 1.3,
+        axisLabel: { formatter: '{value}亿', fontSize: 10, color: cssVar('--text-tertiary', '#9ca3af') },
+        splitLine: { lineStyle: { type: 'dashed', color: cssVar('--border-subtle', '#f0f0f0') } },
+      },
+      yAxis: {
+        type: 'category',
+        data: categories,
+        axisLabel: { fontSize: 11, fontWeight: 'bold', color: cssVar('--text-secondary', '#6b7280') },
+        axisLine: { show: false },
+        axisTick: { show: false },
+      },
+      series: [{
+        type: 'bar',
+        data: valuesYi.map((v: number, i: number) => ({
+          value: v,
+          itemStyle: {
+            color: v >= 0
+              ? cssVar('--color-danger', '#ff4d4f')
+              : cssVar('--color-success', '#52c41a'),
+            borderRadius: v >= 0 ? [0, 4, 4, 0] : [4, 0, 0, 4],
+          }
+        })),
+        barWidth: '55%',
+        label: {
+          show: true,
+          position: 'right',
+          formatter: (p: any) => `${p.value >= 0 ? '+' : ''}${p.value.toFixed(2)}亿`,
+          fontSize: 10,
+          color: cssVar('--text-primary', '#1f2937'),
+        },
+      }]
+    }
+  })
 
   const anomalies: any = ref([])
   const anomaliesLoading = ref(false)
@@ -314,9 +391,12 @@ export function useMarketOverview(props: any) {
     volumeStatus: volumePoller.status,
     volumeUpdateTime: volumePoller.updateTime,
     volumeLoading: volumePoller.loading,
+    moneyFlowStatus: moneyFlowPoller.status,
+    moneyFlowUpdateTime: moneyFlowPoller.updateTime,
+    moneyFlowLoading: moneyFlowPoller.loading,
 
     loading, fetchAll, marketIndex, indices,
-    goldRealtime, aVolume,
+    goldRealtime, aVolume, moneyFlow, moneyFlowOption,
     goldModal, goldDays, goldModalHistory, metalChartOption,
     openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
     formatDate, getChangeClass, getUpDnClass, navigateToIndex,

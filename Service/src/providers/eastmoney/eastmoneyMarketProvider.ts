@@ -344,33 +344,60 @@ export class EastMoneyMarketProvider implements MarketProvider {
   }
 
   // -----------------------------------------------------------------------
-  // Market-wide money flow
+  // Market-wide money flow (沪深两市合计)
   // -----------------------------------------------------------------------
 
   async marketMoneyFlow(): Promise<MarketMoneyFlowDto> {
-    const symbol = '1.000001';
+    const [shData, szData] = await Promise.allSettled([
+      this.fetchMarketMoneyFlowForIndex('1.000001'),
+      this.fetchMarketMoneyFlowForIndex('0.399106'),
+    ]);
+
+    const sh = shData.status === 'fulfilled' ? shData.value : null;
+    const sz = szData.status === 'fulfilled' ? szData.value : null;
+
+    const sum = (a: number | null, b: number | null): number | null => {
+      if (a == null && b == null) return null;
+      return (a ?? 0) + (b ?? 0);
+    };
+
+    return {
+      date: sh?.date || sz?.date || '',
+      mainNetInflow: sum(sh?.mainNetInflow ?? null, sz?.mainNetInflow ?? null),
+      superLargeNetInflow: sum(sh?.superLargeNetInflow ?? null, sz?.superLargeNetInflow ?? null),
+      largeNetInflow: sum(sh?.largeNetInflow ?? null, sz?.largeNetInflow ?? null),
+      mediumNetInflow: sum(sh?.mediumNetInflow ?? null, sz?.mediumNetInflow ?? null),
+      smallNetInflow: sum(sh?.smallNetInflow ?? null, sz?.smallNetInflow ?? null),
+    };
+  }
+
+  private async fetchMarketMoneyFlowForIndex(secid: string): Promise<MarketMoneyFlowDto> {
     const url = 'https://push2.eastmoney.com/api/qt/stock/fflow/daykline/get';
     const params = new URLSearchParams({
       fields1: 'f1,f2,f3,f7',
       fields2: 'f51,f52,f53,f54,f55,f56,f57',
       lmt: '1',
-      secid: symbol,
+      secid,
     });
 
-    const respData = await fetchJson(`${url}?${params.toString()}`, 15000);
-    const data = (respData.data ?? respData) as Record<string, unknown>;
-    const rawKlines = (data.klines ?? []) as string[];
+    try {
+      const respData = await fetchJson(`${url}?${params.toString()}`, 15000);
+      const data = (respData.data ?? respData) as Record<string, unknown>;
+      const rawKlines = (data.klines ?? []) as string[];
 
-    if (Array.isArray(rawKlines) && rawKlines.length > 0) {
-      const parts = rawKlines[0].split(',');
-      return {
-        date: String(parts[0] ?? ''),
-        mainNetInflow: toMoneyFlowNum(parts[1]),
-        superLargeNetInflow: toMoneyFlowNum(parts[5]),
-        largeNetInflow: toMoneyFlowNum(parts[4]),
-        mediumNetInflow: toMoneyFlowNum(parts[3]),
-        smallNetInflow: toMoneyFlowNum(parts[2]),
-      };
+      if (Array.isArray(rawKlines) && rawKlines.length > 0) {
+        const parts = rawKlines[0].split(',');
+        return {
+          date: String(parts[0] ?? ''),
+          mainNetInflow: toMoneyFlowNum(parts[1]),
+          superLargeNetInflow: toMoneyFlowNum(parts[5]),
+          largeNetInflow: toMoneyFlowNum(parts[4]),
+          mediumNetInflow: toMoneyFlowNum(parts[3]),
+          smallNetInflow: toMoneyFlowNum(parts[2]),
+        };
+      }
+    } catch {
+      // fall through to default
     }
 
     return {

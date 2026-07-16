@@ -26,6 +26,7 @@
 .index-card.down .index-price, .index-card.down .index-change { color: var(--color-success); }
 .index-change { font-size: 0.8em; margin-top: 2px; }
 .volume-chart-container { height: 220px; }
+.flow-chart-container { height: 220px; }
 .gold-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .gold-card { padding: 12px; background: var(--color-warning-bg); border: 1px solid var(--color-warning-border); border-radius: 8px; text-align: center; }
 .gold-name { font-size: 0.9em; color: var(--text-secondary); margin-bottom: 4px; }
