@@ -884,6 +884,66 @@ const CN_INDEX_MAP = new Map(
   A_SHARE_INDICES.map((x) => [x.symbol.replace(/^(sh|sz|bj)/i, ''), x])
 );
 
+export async function getCombinedIndices(): Promise<Record<string, unknown>> {
+  const updateTime = new Date().toISOString();
+  const symbols = A_SHARE_INDICES.map((x) => x.symbol).join(',');
+
+  const [cnResult, globalResult] = await Promise.allSettled([
+    getMarketQuotes(symbols),
+    getGlobalIndices(),
+  ]);
+
+  const indices: any[] = [];
+  const returnedNumericCodes = new Set<string>();
+
+  if (cnResult.status === 'fulfilled') {
+    const quotes = cnResult.value.data ?? [];
+    for (const q of quotes) {
+      returnedNumericCodes.add(q.code);
+      const knownIdx = CN_INDEX_MAP.get(q.code);
+      indices.push({
+        code: knownIdx?.symbol ?? q.symbol,
+        name: q.name,
+        price: q.price ?? null,
+        change_pct: q.changePercent ?? null,
+        change_amount: q.change ?? null,
+        market: knownIdx?.market ?? 'A股',
+      });
+    }
+  }
+
+  for (const [numericCode, idx] of CN_INDEX_MAP) {
+    if (!returnedNumericCodes.has(numericCode)) {
+      indices.push({
+        code: idx.symbol,
+        name: idx.name,
+        price: null,
+        change_pct: null,
+        change_amount: null,
+        market: idx.market,
+      });
+    }
+  }
+
+  if (globalResult.status === 'fulfilled') {
+    const globalItems = (globalResult.value.data.items ?? []).map((item) => ({
+      code: item.code,
+      name: item.name,
+      price: item.price ?? null,
+      change_pct: item.changePercent ?? null,
+      change_amount: item.changeAmount ?? null,
+      market: '全球',
+    }));
+    indices.push(...globalItems);
+  }
+
+  return {
+    success: true,
+    data: indices,
+    update_time: updateTime,
+  };
+}
+
 export async function getMarketOverview(): Promise<Record<string, unknown>> {
   const updateTime = new Date().toISOString();
 

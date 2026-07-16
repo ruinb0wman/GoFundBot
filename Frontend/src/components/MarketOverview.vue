@@ -6,8 +6,9 @@
         <div class="tab-group">
           <span v-for="tab in tabs" :key="tab.key" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">{{ tab.name }}</span>
         </div>
-        <span class="update-tag" v-if="klineUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(klineUpdateTime) }}</span>
-        <span v-if="adaptiveRefresh.isStale.value && hasCurrentData" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ t('common.staleData') }}</span>
+        <span class="update-tag" :class="{ failed: klineStatus === 'failed' }" v-if="klineUpdateTime">
+          {{ klineStatus === 'success' ? t('market.updatedAt') : '获取失败' }} {{ formatUpdateTime(klineUpdateTime) }}
+        </span>
       </div>
       <div class="chart-container sse-chart-container">
         <v-chart class="chart" :option="currentChartOption" autoresize :theme="echartThemeName" v-if="hasCurrentData" />
@@ -19,9 +20,9 @@
       <div class="section-header">
         <h3><LucideIcon name="Globe" :size="20" /> {{ t('market.indices') }}</h3>
         <div class="header-actions">
-        <span class="update-tag" v-if="overviewUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(overviewUpdateTime) }}</span>
-        <span v-if="adaptiveRefresh.isStale.value && aVolume.length" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ t('common.staleData') }}</span>
-          <span v-if="adaptiveRefresh.isStale.value && marketIndex.length" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ t('common.staleData') }}</span>
+          <span class="update-tag" :class="{ failed: indicesStatus === 'failed' }" v-if="indicesUpdateTime">
+            {{ indicesStatus === 'success' ? t('market.updatedAt') : '获取失败' }} {{ formatUpdateTime(indicesUpdateTime) }}
+          </span>
           <BButton size="small" icon="RefreshCw" :loading="loading" @click="fetchAll" :disabled="loading" />
         </div>
       </div>
@@ -52,7 +53,9 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="BarChart3" :size="20" /> {{ t('market.volume') }}</h3>
-        <span class="update-tag" v-if="overviewUpdateTime">{{ t('market.updatedAt') }} {{ formatUpdateTime(overviewUpdateTime) }}</span>
+        <span class="update-tag" :class="{ failed: volumeStatus === 'failed' }" v-if="volumeUpdateTime">
+          {{ volumeStatus === 'success' ? t('market.updatedAt') : '获取失败' }} {{ formatUpdateTime(volumeUpdateTime) }}
+        </span>
       </div>
       <div class="chart-container volume-chart-container">
         <v-chart class="chart" :option="volumeOption" autoresize :theme="echartThemeName" v-if="aVolume.length" />
@@ -63,6 +66,9 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="Award" :size="20" /> {{ t('market.gold') }}</h3>
+        <span class="update-tag" :class="{ failed: goldStatus === 'failed' }" v-if="goldUpdateTime">
+          {{ goldStatus === 'success' ? t('market.updatedAt') : '获取失败' }} {{ formatUpdateTime(goldUpdateTime) }}
+        </span>
       </div>
       <div class="gold-grid" v-if="goldRealtime.length">
         <div v-for="item in goldRealtime" :key="item.name" class="gold-card" :class="{ 'up': item.change >= 0, 'down': item.change < 0, 'clickable': isGoldItem(item) }"             @click="isGoldItem(item) && openGoldHistory(item)" :title="isGoldItem(item) ? t('market.clickForHistory') : ''">
@@ -152,14 +158,17 @@ const props = defineProps({
 })
 
 const {
-  loading, fetchAll, marketIndex, indices, klineUpdateTime, overviewUpdateTime,
+  loading, fetchAll, marketIndex, indices,
+  klineUpdateTime, klineStatus,
+  indicesUpdateTime, indicesStatus,
+  goldUpdateTime, goldStatus,
+  volumeUpdateTime, volumeStatus,
   goldRealtime, goldModal, goldDays, metalChartOption,
   openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
   aVolume, volumeOption, echartThemeName,
   tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate,
   currentChartOption, getUpDnClass, navigateToIndex, formatDate,
   anomalies, anomaliesLoading, fetchAnomalies,
-  adaptiveRefresh,
 } = useMarketOverview(props)
 </script>
 

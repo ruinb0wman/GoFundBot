@@ -88,6 +88,8 @@ export const marketAPI = {
   getGoldHistory(days = 10) { return api.get(`/market/gold/history?days=${days}`) },
   getSilverHistory(days = 10) { return api.get(`/market/silver/history?days=${days}`) },
   getVolumeWeekly() { return api.get('/market/volume') },
+  getVolume7Days() { return api.get('/market/volume/7days') },
+  getCombinedIndices() { return api.get('/market/indices/combined') },
   getSSE30min() { return api.get('/market/sse') },
   getIndicesIntraday() { return api.get('/market/indices/intraday') },
   getStockQuote(code: string) { return api.get(`/stocks/${code}/reference`) },

@@ -69,10 +69,11 @@
     </div>
 
     <!-- 底部 -->
-    <div v-if="updateTime && !loading" class="news-footer">
-      <span class="footer-dot online" :class="{'stale': adaptiveRefresh.isStale.value}"></span>
-      <span>{{ t('flashNews.updatedAt') }} {{ formatUpdateTime(updateTime) }}</span>
-      <span v-if="adaptiveRefresh.isStale.value && newsList.length" class="stale-badge"><LucideIcon name="Clock" :size="12" /> {{ t('common.staleData') }}</span>
+    <div v-if="dataPoller.updateTime.value" class="news-footer">
+      <span class="footer-dot online" :class="{'stale': dataPoller.status.value === 'failed'}"></span>
+      <span :class="{ 'failed-text': dataPoller.status.value === 'failed' }">
+        {{ dataPoller.status.value === 'success' ? t('flashNews.updatedAt') : '获取失败' }} {{ formatUpdateTime(dataPoller.updateTime.value) }}
+      </span>
     </div>
 
     <!-- 详情弹窗 -->
@@ -119,10 +120,10 @@
 
 <script setup lang="ts">
 import BButton from './BButton.vue'
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marketAPI } from '../services/api'
-import { useAdaptiveRefresh } from '../composables/useAdaptiveRefresh'
+import { useDataPoller } from '../composables/useDataPoller'
 
 const props = withDefaults(defineProps<{ count?: number; autoRefresh?: boolean; refreshInterval?: number }>(), { count: 30, autoRefresh: true, refreshInterval: 60000 })
 
@@ -145,14 +146,13 @@ const modal = reactive({ visible: false, news: null as any })
 const listRef = ref<HTMLElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 
-const adaptiveRefresh = useAdaptiveRefresh({
+const dataPoller = useDataPoller({
   fetcher: async () => {
-    const prevLen = newsList.value.length
     await fetchNews(1, false)
-    const gotData = newsList.value.length > 0
-    return gotData
+    return { success: newsList.value.length > 0, data: null }
   },
-  overrideInterval: 60000,
+  type: 'news',
+  forceInterval: 60000,
 })
 
 const displayedNews = computed(() => {
@@ -316,9 +316,7 @@ const formatUpdateTime = (timeStr: string) => {
 
 onMounted(() => {
   fetchNews(1, false)
-  if (props.autoRefresh) adaptiveRefresh.start()
 })
-onUnmounted(() => { adaptiveRefresh.stop() })
 </script>
 
 <style scoped>
@@ -423,6 +421,7 @@ onUnmounted(() => { adaptiveRefresh.stop() })
 .footer-dot.online { background: var(--color-primary); }
 .footer-dot.stale { background: var(--color-warning); }
 .stale-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; color: var(--color-warning); background: var(--color-warning-bg); padding: 1px 5px; border-radius: 4px; font-weight: 600; }
+.failed-text { color: var(--color-danger); font-weight: 600; }
 
 .news-fade-enter-active { transition: all 0.4s ease; }
 .news-fade-leave-active { transition: all 0.25s ease; }

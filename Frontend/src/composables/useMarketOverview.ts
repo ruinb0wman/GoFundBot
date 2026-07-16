@@ -1,21 +1,12 @@
 // @ts-nocheck
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { marketAPI, alertAPI } from '../services/api'
 import { useEChartsTheme } from './useEChartsTheme'
-import { useAdaptiveRefresh } from './useAdaptiveRefresh'
+import { useDataPoller } from './useDataPoller'
 
 export function useMarketOverview(props: any) {
   const router = useRouter()
-  const loading = ref(false)
-  const marketIndex: any = ref([])
-  const goldRealtime: any = ref([])
-  const goldHistory: any = ref([])
-  const aVolume: any = ref([])
-  const updateTime = ref('')
-  const klineUpdateTime = ref('')
-  const overviewUpdateTime = ref('')
-
   const { echartThemeName } = useEChartsTheme()
 
   const cssVar = (name: string, fallback = '') =>
@@ -126,6 +117,68 @@ export function useMarketOverview(props: any) {
     return data[data.length - 1].date || ''
   })
 
+  const indicesPoller = useDataPoller<any[]>({
+    fetcher: async () => {
+      const res = await marketAPI.getCombinedIndices()
+      return { success: true, data: res.data.data ?? [] }
+    },
+    type: 'indices',
+    successInterval: 600_000,
+    failureInterval: 60_000,
+  })
+
+  const klinePoller = useDataPoller<any>({
+    fetcher: async () => {
+      const now = new Date()
+      const monthAgo = new Date(now)
+      monthAgo.setDate(monthAgo.getDate() - 35)
+      const startDate = monthAgo.toISOString().slice(0, 10).replace(/-/g, '')
+      const codes = { sh: 'sh000001', sz: 'sz399001', hs300: 'sh000300' }
+      const results = { ...indicesIntraday.value }
+      let anySuccess = false
+      await Promise.all(Object.entries(codes).map(async ([key, code]) => {
+        try {
+          const res = await marketAPI.getIndexKline(code, { period: 'daily', startDate })
+          if (res.data.success && Array.isArray(res.data.data)) {
+            results[key] = res.data.data.slice(-22).map((item: any) => ({
+              date: item.date, close: parseFloat(item.close) || 0, change: Number(item.changePercent)
+            }))
+            anySuccess = true
+          }
+        } catch (e) { console.error(`获取 ${key} K线失败:`, e) }
+      }))
+      indicesIntraday.value = results
+      return { success: anySuccess, data: null }
+    },
+    type: 'kline',
+    successInterval: 600_000,
+    failureInterval: 60_000,
+  })
+
+  const goldPoller = useDataPoller<any[]>({
+    fetcher: async () => {
+      const res = await marketAPI.getGoldRealtime()
+      return { success: res.data.success, data: res.data.data ?? [] }
+    },
+    type: 'gold',
+    successInterval: 600_000,
+    failureInterval: 60_000,
+  })
+
+  const volumePoller = useDataPoller<any[]>({
+    fetcher: async () => {
+      const res = await marketAPI.getVolume7Days()
+      return { success: res.data.success, data: (res.data.data ?? []).slice().reverse() }
+    },
+    type: 'volume',
+    successInterval: 600_000,
+    failureInterval: 60_000,
+  })
+
+  const marketIndex = computed(() => indicesPoller.data.value ?? [])
+  const goldRealtime = computed(() => goldPoller.data.value ?? [])
+  const aVolume = computed(() => volumePoller.data.value ?? [])
+
   const indices = computed(() => {
     const all = marketIndex.value
     const chinaNames = ['上证指数','深证成指','创业板指','科创50','沪深300','上证50','中证500','中小100','恒生指数','国企指数','恒生科技']
@@ -196,71 +249,18 @@ export function useMarketOverview(props: any) {
     }
   })
 
-  const fetchOverview = async (): Promise<boolean> => {
-    try {
-      const response = await marketAPI.getOverview()
-      if (response.data.success) {
-        const data = response.data
-        if (data.market_index?.success) marketIndex.value = data.market_index.data
-        if (data.gold_realtime?.success) goldRealtime.value = data.gold_realtime.data
-        if (data.a_volume_7days?.success) aVolume.value = data.a_volume_7days.data.slice().reverse()
-        updateTime.value = data.update_time
-        overviewUpdateTime.value = new Date().toISOString()
-        return true
-      }
-      return false
-    } catch (e) {
-      console.error('获取概览失败:', e)
-      return false
-    }
-  }
+  const loading = computed(() =>
+    indicesPoller.loading.value ||
+    klinePoller.loading.value ||
+    goldPoller.loading.value ||
+    volumePoller.loading.value
+  )
 
-  const fetchKline = async (): Promise<boolean> => {
-    try {
-      const now = new Date()
-      const monthAgo = new Date(now)
-      monthAgo.setDate(monthAgo.getDate() - 35)
-      const startDate = monthAgo.toISOString().slice(0, 10).replace(/-/g, '')
-      const codes = { sh: 'sh000001', sz: 'sz399001', hs300: 'sh000300' }
-      const results = { ...indicesIntraday.value }
-      let anySuccess = false
-      const tasks = Object.entries(codes).map(async ([key, code]) => {
-        try {
-          const res = await marketAPI.getIndexKline(code, { period: 'daily', startDate })
-          if (res.data.success && Array.isArray(res.data.data)) {
-            results[key] = res.data.data.slice(-22).map((item: any) => ({
-              date: item.date, close: parseFloat(item.close) || 0, change: Number(item.changePercent)
-            }))
-            anySuccess = true
-          }
-        } catch (e) { console.error(`获取 ${key} K线失败:`, e) }
-      })
-      await Promise.all(tasks)
-      indicesIntraday.value = results
-      klineUpdateTime.value = new Date().toISOString()
-      return anySuccess
-    } catch (e) {
-      console.error('获取K线失败:', e)
-      return false
-    }
-  }
-
-  const adaptiveRefresh = useAdaptiveRefresh({
-    fetcher: async () => {
-      loading.value = true
-      try {
-        const [overviewOk, klineOk] = await Promise.all([fetchOverview(), fetchKline()])
-        return overviewOk || klineOk
-      } catch {
-        return false
-      } finally {
-        loading.value = false
-      }
-    },
-  })
-
-  const fetchAll = async () => {
-    adaptiveRefresh.refresh()
+  const fetchAll = () => {
+    indicesPoller.refresh()
+    klinePoller.refresh()
+    goldPoller.refresh()
+    volumePoller.refresh()
   }
 
   const getChangeClass = (change: string) => {
@@ -297,22 +297,31 @@ export function useMarketOverview(props: any) {
     finally { anomaliesLoading.value = false }
   }
 
-  onMounted(() => {
-    adaptiveRefresh.start()
-    fetchAnomalies()
-  })
-
-  onUnmounted(() => {
-    adaptiveRefresh.stop()
-  })
+  // Auto-start all pollers and anomalies
+  // useDataPoller handles its own onMounted for auto-start
+  fetchAnomalies()
 
   return {
-    loading, fetchAll, marketIndex, indices, klineUpdateTime, overviewUpdateTime,
-    goldRealtime, goldModal, goldDays, goldModalHistory, metalChartOption,
+    indicesStatus: indicesPoller.status,
+    indicesUpdateTime: indicesPoller.updateTime,
+    indicesLoading: indicesPoller.loading,
+    klineStatus: klinePoller.status,
+    klineUpdateTime: klinePoller.updateTime,
+    klineLoading: klinePoller.loading,
+    goldStatus: goldPoller.status,
+    goldUpdateTime: goldPoller.updateTime,
+    goldLoading: goldPoller.loading,
+    volumeStatus: volumePoller.status,
+    volumeUpdateTime: volumePoller.updateTime,
+    volumeLoading: volumePoller.loading,
+
+    loading, fetchAll, marketIndex, indices,
+    klineUpdateTime: klinePoller.updateTime,
+    goldRealtime, aVolume,
+    goldModal, goldDays, goldModalHistory, metalChartOption,
     openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
-    aVolume, updateTime, formatDate, getChangeClass, getUpDnClass, navigateToIndex,
+    formatDate, getChangeClass, getUpDnClass, navigateToIndex,
     volumeOption, tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate,
     currentChartOption, echartThemeName, anomalies, anomaliesLoading, fetchAnomalies,
-    adaptiveRefresh,
   }
 }

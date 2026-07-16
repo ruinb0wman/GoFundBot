@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { asyncHandler } from '../core/errors.js';
 import { sendSuccess } from '../core/response.js';
 import {
+  fetchGoldRealtime,
+  getAVolume7Days,
+  getCombinedIndices,
   getGlobalIndexKline,
   getGlobalIndices,
   getGoldHistory,
@@ -162,6 +165,27 @@ marketRouter.get(
   '/global-indices',
   asyncHandler(async (_req, res) => {
     sendSuccess(res, await getGlobalIndices());
+  })
+);
+
+marketRouter.get(
+  '/gold/realtime',
+  asyncHandler(async (_req, res) => {
+    res.json(await fetchGoldRealtime());
+  })
+);
+
+marketRouter.get(
+  '/volume/7days',
+  asyncHandler(async (_req, res) => {
+    res.json(await getAVolume7Days());
+  })
+);
+
+marketRouter.get(
+  '/indices/combined',
+  asyncHandler(async (_req, res) => {
+    res.json(await getCombinedIndices());
   })
 );
 
