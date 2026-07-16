@@ -619,6 +619,7 @@
   "market.news": "7×24 News",
   "market.sectors": "Sector Ranking",
   "market.updatedAt": "Updated",
+  "market.fetchFailed": "Fetch failed",
   "alert.settings": "Alert Settings",
   "alert.settingsTitle": "Alert Settings - {code}",
   "alert.add": "Add Rule",

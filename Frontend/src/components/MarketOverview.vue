@@ -6,8 +6,8 @@
         <div class="tab-group">
           <span v-for="tab in tabs" :key="tab.key" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">{{ tab.name }}</span>
         </div>
-        <span class="update-tag" :class="{ failed: klineStatus === 'failed' }" v-if="klineUpdateTime">
-          {{ klineStatus === 'success' ? t('market.updatedAt') : '获取失败' }} {{ formatUpdateTime(klineUpdateTime) }}
+        <span class="update-tag" :class="{ failed: klineStatus === 'failed' || !hasCurrentData }" v-if="klineUpdateTime">
+          {{ (klineStatus === 'success' && hasCurrentData) ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(klineUpdateTime) }}
         </span>
       </div>
       <div class="chart-container sse-chart-container">
@@ -21,7 +21,7 @@
         <h3><LucideIcon name="Globe" :size="20" /> {{ t('market.indices') }}</h3>
         <div class="header-actions">
           <span class="update-tag" :class="{ failed: indicesStatus === 'failed' }" v-if="indicesUpdateTime">
-            {{ indicesStatus === 'success' ? t('market.updatedAt') : '获取失败' }} {{ formatUpdateTime(indicesUpdateTime) }}
+            {{ indicesStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(indicesUpdateTime) }}
           </span>
           <BButton size="small" icon="RefreshCw" :loading="loading" @click="fetchAll" :disabled="loading" />
         </div>
@@ -54,7 +54,7 @@
       <div class="section-header">
         <h3><LucideIcon name="BarChart3" :size="20" /> {{ t('market.volume') }}</h3>
         <span class="update-tag" :class="{ failed: volumeStatus === 'failed' }" v-if="volumeUpdateTime">
-          {{ volumeStatus === 'success' ? t('market.updatedAt') : '获取失败' }} {{ formatUpdateTime(volumeUpdateTime) }}
+          {{ volumeStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(volumeUpdateTime) }}
         </span>
       </div>
       <div class="chart-container volume-chart-container">
@@ -67,7 +67,7 @@
       <div class="section-header">
         <h3><LucideIcon name="Award" :size="20" /> {{ t('market.gold') }}</h3>
         <span class="update-tag" :class="{ failed: goldStatus === 'failed' }" v-if="goldUpdateTime">
-          {{ goldStatus === 'success' ? t('market.updatedAt') : '获取失败' }} {{ formatUpdateTime(goldUpdateTime) }}
+          {{ goldStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(goldUpdateTime) }}
         </span>
       </div>
       <div class="gold-grid" v-if="goldRealtime.length">

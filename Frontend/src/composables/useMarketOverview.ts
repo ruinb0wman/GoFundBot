@@ -135,7 +135,7 @@ export function useMarketOverview(props: any) {
       const startDate = monthAgo.toISOString().slice(0, 10).replace(/-/g, '')
       const codes = { sh: 'sh000001', sz: 'sz399001', hs300: 'sh000300' }
       const results = { ...indicesIntraday.value }
-      let anySuccess = false
+      let successCount = 0
       await Promise.all(Object.entries(codes).map(async ([key, code]) => {
         try {
           const res = await marketAPI.getIndexKline(code, { period: 'daily', startDate })
@@ -143,12 +143,12 @@ export function useMarketOverview(props: any) {
             results[key] = res.data.data.slice(-22).map((item: any) => ({
               date: item.date, close: parseFloat(item.close) || 0, change: Number(item.changePercent)
             }))
-            anySuccess = true
+            successCount++
           }
         } catch (e) { console.error(`获取 ${key} K线失败:`, e) }
       }))
       indicesIntraday.value = results
-      return { success: anySuccess, data: null }
+      return { success: successCount === Object.keys(codes).length, data: null }
     },
     type: 'kline',
     successInterval: 600_000,
@@ -316,7 +316,6 @@ export function useMarketOverview(props: any) {
     volumeLoading: volumePoller.loading,
 
     loading, fetchAll, marketIndex, indices,
-    klineUpdateTime: klinePoller.updateTime,
     goldRealtime, aVolume,
     goldModal, goldDays, goldModalHistory, metalChartOption,
     openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
