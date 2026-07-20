@@ -216,11 +216,40 @@ def complete_north_flow():
     return result
 
 
+def complete_market_money_flow():
+    """
+    Fetch daily market money flow (主力资金流向) from akshare.
+    Returns latest trading day: date, mainNetInflow, superLargeNetInflow,
+    largeNetInflow, mediumNetInflow, smallNetInflow (all in raw yuan).
+    Matches MarketMoneyFlowDto interface.
+    """
+    if not ak:
+        return {}
+    try:
+        df = ak.stock_market_fund_flow()
+        if df is None or df.empty:
+            return {}
+        latest = df.iloc[-1]
+        return {
+            "date": str(latest["日期"]),
+            "mainNetInflow": float(latest["主力净流入-净额"]),
+            "superLargeNetInflow": float(latest["超大单净流入-净额"]),
+            "largeNetInflow": float(latest["大单净流入-净额"]),
+            "mediumNetInflow": float(latest["中单净流入-净额"]),
+            "smallNetInflow": float(latest["小单净流入-净额"]),
+        }
+    except Exception as e:
+        print(f"akshare market money flow failed: {e}", file=sys.stderr)
+        return {}
+
+
 def main():
     parser = argparse.ArgumentParser(description="Data completion")
     parser.add_argument("--source", choices=["akshare", "eastmoney"], default="akshare")
     parser.add_argument(
-        "--type", choices=["stocks", "industry", "sector_spot", "kline", "north_flow", "all"], default="all"
+        "--type",
+        choices=["stocks", "industry", "sector_spot", "kline", "north_flow", "money_flow", "all"],
+        default="all",
     )
     parser.add_argument("--code", type=str, default="")
     parser.add_argument("--start_date", type=str, default="")
@@ -243,6 +272,8 @@ def main():
         result["kline"] = complete_kline(args.code, args.start_date, args.end_date)
     if args.type == "north_flow":
         result["north_flow"] = complete_north_flow()
+    if args.type == "money_flow":
+        result["money_flow"] = complete_market_money_flow()
     return result
 
 

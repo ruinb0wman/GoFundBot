@@ -437,8 +437,8 @@ export class EastMoneyMarketProvider implements MarketProvider {
       const limitDown = Math.abs(toInt(data.f293));
       const total = upCount + downCount + flatCount;
 
-      // Sanity check: A-share SH market has ~2000 stocks, total > 3000 is suspicious
-      if (total > 0 && total < 3000 && (upCount > 0 || downCount > 0)) {
+      // Sanity check: covers SH+SZ combined (~5000 stocks)
+      if (total > 0 && total <= 6000 && (upCount > 0 || downCount > 0)) {
         return { upCount, downCount, flatCount, limitUp, limitDown, total };
       }
     } catch {

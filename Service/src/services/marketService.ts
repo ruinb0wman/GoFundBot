@@ -165,6 +165,23 @@ async function getNorthFlowFromAkshare(): Promise<NorthFlowDto> {
   };
 }
 
+async function getMarketMoneyFlowFromAkshare(): Promise<MarketMoneyFlowDto> {
+  const result = await runPython<Record<string, unknown>>('data_complete.py', {
+    args: ['--source', 'akshare', '--type', 'money_flow'],
+    timeoutMs: 30_000,
+  });
+
+  const mf = (result?.money_flow ?? {}) as Record<string, unknown>;
+  return {
+    date: String(mf.date ?? ''),
+    mainNetInflow: toNullableNumber(mf.mainNetInflow),
+    superLargeNetInflow: toNullableNumber(mf.superLargeNetInflow),
+    largeNetInflow: toNullableNumber(mf.largeNetInflow),
+    mediumNetInflow: toNullableNumber(mf.mediumNetInflow),
+    smallNetInflow: toNullableNumber(mf.smallNetInflow),
+  };
+}
+
 export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Promise<ServiceResult<KlineDto[]>> {
   const globalSymbol = assertGlobalIndexSymbol(symbol);
   const options = parseGlobalKlineOptions(query);
@@ -408,17 +425,44 @@ export async function getStockMoneyFlow(code: string, days?: number): Promise<Se
 }
 
 export async function getMarketMoneyFlow(): Promise<ServiceResult<MarketMoneyFlowDto>> {
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
-  const result = await cacheThrough('market:money-flow:market', ttl.marketMoneyFlow, () =>
-    chain.run('market.marketMoneyFlow', (provider) => {
+  const key = 'market:money-flow:market';
+
+  const cached = cache.get<ProviderChainResult<MarketMoneyFlowDto>>(key);
+  if (cached) return toServiceResult(cached);
+
+  try {
+    const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+    const result = await chain.run('market.marketMoneyFlow', (provider) => {
       if (!provider.marketMoneyFlow) {
         throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement marketMoneyFlow`, 501);
       }
       return provider.marketMoneyFlow();
-    })
-  );
+    });
+    if (result.data.date) {
+      return toServiceResult(cache.set(key, result, ttl.marketMoneyFlow));
+    }
+  } catch (err) {
+    logger.error('Market money flow providers failed, trying akshare fallback', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
-  return toServiceResult(result);
+  try {
+    const data = await getMarketMoneyFlowFromAkshare();
+    const result: ProviderChainResult<MarketMoneyFlowDto> = {
+      data,
+      provider: 'akshare',
+      fallback: true,
+      stale: false,
+      providerErrors: [],
+    };
+    return toServiceResult(cache.set(key, result, ttl.marketMoneyFlow));
+  } catch (fallbackErr) {
+    logger.error('Akshare market money flow fallback also failed', {
+      error: fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr),
+    });
+    throw new AppError('PROVIDER_UNAVAILABLE', 'All providers failed for market money flow', 503);
+  }
 }
 
 export async function getMarketBreadth(): Promise<ServiceResult<MarketBreadthDto>> {
