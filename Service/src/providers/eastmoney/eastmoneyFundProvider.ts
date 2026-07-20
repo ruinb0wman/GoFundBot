@@ -36,6 +36,17 @@ interface EastMoneyNavPoint {
 
 type EastMoneyAccNavPoint = [number, number];
 
+interface FundGzBatchItem {
+  bzdm: string;
+  jjjc?: string;
+  gzrq?: string;
+  dwjz?: string;
+  gsz?: string;
+  gszzl?: string;
+  gxrq?: string;
+  [key: string]: unknown;
+}
+
 const SCREENING_TYPE_MAP: Record<string, string> = {
   all: '',
   gp: 'gp',
@@ -89,18 +100,39 @@ export class EastMoneyFundProvider implements FundProvider {
   }
 
   async estimate(code: string): Promise<FundEstimateDto> {
-    const url = `https://fundgz.1234567.com.cn/js/${code}.js`;
-    const json = parseJsonpObject(await fetchText(url));
+    const batch = await this.fetchFundGuZhiBatch();
+    const fund = batch.find((item) => item.bzdm === code);
+    if (!fund) {
+      throw new AppError('PROVIDER_UNAVAILABLE', `Fund ${code} not found in FundGuZhi batch`, 404);
+    }
 
     return {
-      code: toStringValue(json.fundcode || code),
-      name: toNullableString(json.name),
-      navDate: toNullableString(json.jzrq),
-      nav: toNullableNumber(json.dwjz),
-      estimatedNav: toNullableNumber(json.gsz),
-      estimatedChangePercent: toNullableNumber(json.gszzl),
-      estimateTime: toNullableString(json.gztime),
+      code,
+      name: toNullableString(fund.jjjc),
+      navDate: toNullableString(fund.gzrq),
+      nav: toNullableNumber(fund.dwjz),
+      estimatedNav: toNullableNumber(fund.gsz),
+      estimatedChangePercent: parsePercent(fund.gszzl),
+      estimateTime: toNullableString(fund.gxrq),
     };
+  }
+
+  private _gzBatchCache: { data: FundGzBatchItem[]; expiresAt: number } | null = null;
+
+  private async fetchFundGuZhiBatch(): Promise<FundGzBatchItem[]> {
+    if (this._gzBatchCache && Date.now() < this._gzBatchCache.expiresAt) {
+      return this._gzBatchCache.data;
+    }
+    const url = `https://api.fund.eastmoney.com/FundGuZhi/GetFundGZList?type=1&sort=1&orderType=asc&canbuy=0&pageIndex=1&pageSize=50000`;
+    const text = await fetchText(url);
+    const json = JSON.parse(text) as Record<string, unknown>;
+    const data = json.Data as Record<string, unknown> | undefined;
+    const list = data?.list as FundGzBatchItem[] | undefined;
+    if (!Array.isArray(list) || list.length === 0) {
+      throw new AppError('PROVIDER_UNAVAILABLE', 'Empty FundGuZhi batch response', 502);
+    }
+    this._gzBatchCache = { data: list, expiresAt: Date.now() + 30_000 };
+    return list;
   }
 
   async navHistory(code: string, options: FundNavHistoryOptions = {}): Promise<FundNavHistoryDto> {
@@ -896,5 +928,14 @@ function toNullableNumber(value: unknown): number | null {
     return null;
   }
   const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function parsePercent(value: unknown): number | null {
+  if (value == null || value === '' || value === '---') {
+    return null;
+  }
+  const s = String(value).replace('%', '').trim();
+  const num = Number(s);
   return Number.isFinite(num) ? num : null;
 }

@@ -10,13 +10,17 @@ export class ProviderChain<P extends NamedProvider> {
 
   async run<T>(
     operation: string,
-    invoke: (provider: P) => Promise<T>
+    invoke: (provider: P) => Promise<T>,
+    validate?: (data: T) => boolean
   ): Promise<ProviderChainResult<T>> {
     const providerErrors: ProviderErrorSummary[] = [];
 
     for (const [index, provider] of this.providers.entries()) {
       try {
         const data = await invoke(provider);
+        if (validate && !validate(data)) {
+          throw new Error(`Validation failed for ${provider.name}: data is empty or invalid`);
+        }
         return {
           data,
           provider: provider.name,
