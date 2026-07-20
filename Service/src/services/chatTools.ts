@@ -1,4 +1,5 @@
 import { logger } from '../core/logger.js';
+import { cache } from '../core/cache.js';
 import { searchFunds, getFundDetail, getFundEstimate, getFundNavHistory, getFundHoldings, getFundManagers, getFundScreeningSnapshot } from './fundService.js';
 import type { FundScreeningSnapshotItemDto } from '../types/fund.js';
 import { fetchIndicesFromSina, getMarketSectorsFromAkshare, fetchGoldRealtime, getMarketIndices, getNorthFlow, getMarketBreadth, getMarketMoneyFlow } from './marketService.js';
@@ -526,15 +527,25 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
     }
   },
   get_industry_performance: async () => {
-    try {
-      const result = await getFundScreeningSnapshot({ pageSize: 500 });
-      const data = toolData(result) as { items?: FundScreeningSnapshotItemDto[] };
-      const items = data?.items ?? [];
-      if (items.length === 0) return { items: [], summary: { total: 0 }, error: '暂未获取到基金数据，请稍后重试' };
-      return buildIndustryPerformanceFromScreening(items);
-    } catch (error) {
-      logger.error('get_industry_performance error', { error: String(error) });
-      return { items: [], summary: { total: 0 }, error: String(error) };
+    const screeningCacheKey = 'fund:screening-snapshot::1nzf:500:500';
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const result = await getFundScreeningSnapshot({ pageSize: 500, limitPerType: 500 });
+        const data = toolData(result) as { items?: FundScreeningSnapshotItemDto[] };
+        const items = data?.items ?? [];
+        if (items.length > 0) {
+          return buildIndustryPerformanceFromScreening(items);
+        }
+        cache.delete(screeningCacheKey);
+        await new Promise(r => setTimeout(r, 1000));
+      } catch (error) {
+        if (attempt === 1) {
+          logger.error('get_industry_performance error', { error: String(error) });
+          return { items: [], summary: { total: 0 }, error: String(error) };
+        }
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
+    return { items: [], summary: { total: 0 }, error: '暂未获取到基金数据，请稍后重试' };
   },
 };

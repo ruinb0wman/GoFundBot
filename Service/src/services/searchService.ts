@@ -102,6 +102,111 @@ async function searchTavily(query: string, apiKey: string, maxResults: number): 
   return { success: true, results, provider: 'Tavily', search_time: (Date.now() - startTime) / 1000 };
 }
 
+// -------- Exa AI (MCP / JSON-RPC, free, no API key needed) --------
+// Reference: opencode uses this same endpoint for web search
+
+async function searchExa(query: string, apiKey: string, maxResults: number): Promise<SearchResponse> {
+  const baseUrl = apiKey
+    ? `https://mcp.exa.ai/mcp?exaApiKey=${encodeURIComponent(apiKey)}`
+    : 'https://mcp.exa.ai/mcp';
+  const startTime = Date.now();
+
+  let respText: string;
+  try {
+    respText = await fetchUrl(baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+          name: 'web_search_exa',
+          arguments: {
+            query,
+            type: 'auto',
+            numResults: maxResults,
+            livecrawl: 'fallback',
+          },
+        },
+      }),
+      timeoutMs: 25000,
+    });
+  } catch {
+    return { success: false, results: [], provider: 'Exa', search_time: (Date.now() - startTime) / 1000, error: 'Request failed' };
+  }
+
+  // Parse MCP response — JSON-RPC or SSE
+  const text = parseMcpResponse(respText);
+  if (!text) {
+    return { success: false, results: [], provider: 'Exa', search_time: (Date.now() - startTime) / 1000, error: 'No results in response' };
+  }
+
+  // Try to parse as JSON array of search results
+  try {
+    const json = JSON.parse(text);
+    if (Array.isArray(json)) {
+      const results: SearchResultItem[] = json.slice(0, maxResults).map((item: any) => ({
+        title: item.title ?? '',
+        snippet: (item.content ?? item.snippet ?? '').slice(0, 500),
+        url: item.url ?? '',
+        source: item.siteName ?? extractDomain(item.url ?? ''),
+        date: item.published_date ?? item.date ?? null,
+      }));
+      return { success: results.length > 0, results, provider: 'Exa', search_time: (Date.now() - startTime) / 1000 };
+    }
+  } catch {
+    // Not JSON, treat as plain text below
+  }
+
+  // Fallback: create a single result from the raw text
+  const results: SearchResultItem[] = [{
+    title: `搜索结果：${query.slice(0, 80)}`,
+    snippet: text.slice(0, 500),
+    url: '',
+    source: 'Exa',
+    date: null,
+  }];
+  return { success: true, results, provider: 'Exa', search_time: (Date.now() - startTime) / 1000 };
+}
+
+function parseMcpResponse(body: string): string | null {
+  const trimmed = body.trim();
+
+  // Try direct JSON-RPC response
+  if (trimmed.startsWith('{')) {
+    try {
+      const data = JSON.parse(trimmed);
+      const content = data?.result?.content;
+      if (Array.isArray(content)) {
+        const textItem = content.find((c: any) => typeof c.text === 'string' && c.text.length > 0);
+        if (textItem) return textItem.text;
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  // Try SSE lines (data: prefix)
+  for (const line of trimmed.split('\n')) {
+    const s = line.trim();
+    if (s.startsWith('data: ')) {
+      try {
+        const data = JSON.parse(s.substring(6));
+        const content = data?.result?.content;
+        if (Array.isArray(content)) {
+          const textItem = content.find((c: any) => typeof c.text === 'string' && c.text.length > 0);
+          if (textItem) return textItem.text;
+        }
+      } catch {
+        // continue
+      }
+    }
+  }
+
+  return null;
+}
+
 // -------- DuckDuckGo (lite HTML scrape-free via api.duckduckgo.com) --------
 
 async function searchDuckDuckGo(query: string, maxResults: number): Promise<SearchResponse> {
@@ -168,6 +273,7 @@ export async function searchWeb(query: string, maxResults = 5): Promise<SearchRe
   if (settings.tavilyKey) {
     providers.push(() => searchTavily(query, settings.tavilyKey, maxResults));
   }
+  providers.push(() => searchExa(query, process.env.EXA_API_KEY || '', maxResults));
   providers.push(() => searchDuckDuckGo(query, maxResults));
 
   for (const search of providers) {

@@ -117,7 +117,7 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 *   **数据获取**: akshare / 东方财富 eastmoney API
 *   **风险计算**: 夏普比率 / 最大回撤 / 波动率 / 年化收益（Python CLI + Service TypeScript 双实现）
 *   **行业分类**: 基金名称规则匹配 → 行业标签（Python CLI + Service TypeScript 双实现）
-*   **搜索引擎**: Bocha / Tavily / DuckDuckGo 多源降级搜索（search_service.py）
+ *   **搜索引擎**: Exa AI（MCP 协议）→ Bocha → Tavily → DuckDuckGo 多源降级搜索（Service/searchService.ts）
 
 ### 前端 (Frontend)
 *   **框架**: Vue 3 (Composition API + TypeScript, 全部 `<script setup lang="ts">`)
@@ -173,7 +173,7 @@ LLM_API_BASE=https://api.siliconflow.cn/v1
 LLM_MODEL=deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
 
 # 也可以直接在浏览器中访问 设置 → AI 模型 页面配置 LLM，无需修改 .env。
-# 搜索 API Key（选填，用于 AI 对话的新闻/政策搜索）可在 设置 → 搜索 页面配置。
+# 搜索 API Key（选填，用于 Exa/Bocha/Tavily 搜索）可在 设置 → 搜索 页面配置（Exa 免费无需 Key）。
 ```
 
 ### 4. 一键启动

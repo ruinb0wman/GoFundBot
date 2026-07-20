@@ -21,12 +21,30 @@ export interface ScreeningStatus {
   computed: boolean
 }
 
+const STORAGE_KEY = 'screening-last-sync'
+
 const syncing = ref(false)
-const lastSyncTime = ref<string | null>(null)
+const lastSyncTime = ref<string | null>(localStorage.getItem(STORAGE_KEY) || null)
 const computed = ref(false)
+
+function isBefore9am(time: string | null): boolean {
+  if (!time) return true
+  const nineAM = new Date()
+  nineAM.setHours(9, 0, 0, 0)
+  const t = new Date(time)
+  return t < nineAM
+}
+
+function persistSyncTime(time: string): void {
+  lastSyncTime.value = time
+  localStorage.setItem(STORAGE_KEY, time)
+}
 
 export function useScreeningDb() {
   async function syncFromServer(since?: string, force = false): Promise<number> {
+    if (!force && isBefore9am(lastSyncTime.value)) {
+      force = true
+    }
     syncing.value = true
     try {
       const params: Record<string, unknown> = {}
@@ -36,9 +54,8 @@ export function useScreeningDb() {
       const body = res.data as { data?: { unchanged?: boolean; funds: Partial<ScreeningFund>[]; total: number; sync_time: string } }
       const data = body.data ?? { unchanged: false, funds: [], total: 0, sync_time: '' }
 
-      // 数据未变，跳过写入和计算
       if (data.unchanged) {
-        if (data.sync_time) lastSyncTime.value = data.sync_time
+        if (data.sync_time) persistSyncTime(data.sync_time)
         return 0
       }
 
@@ -80,7 +97,7 @@ export function useScreeningDb() {
       await db.screeningFunds.clear()
       await db.screeningFunds.bulkPut(entries)
 
-      lastSyncTime.value = data.sync_time ?? new Date().toISOString()
+      persistSyncTime(data.sync_time ?? new Date().toISOString())
       computed.value = false
 
       await compute4433()

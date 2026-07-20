@@ -2,7 +2,7 @@ import { AppError } from '../../core/errors.js';
 import { fetchUrl } from '../../core/fetch.js';
 
 export async function fetchText(url: string, timeoutMs = 10000): Promise<string> {
-  return fetchUrl<string>(url, { timeoutMs, proxy: 'auto' });
+  return fetchUrl<string>(url, { timeoutMs, proxy: 'never', headers: { 'Referer': 'https://fund.eastmoney.com/' } });
 }
 
 export async function fetchJson(url: string, timeoutMs = 10000): Promise<Record<string, unknown>> {

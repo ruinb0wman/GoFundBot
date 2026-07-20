@@ -28,7 +28,7 @@ User data CRUD:   Frontend → IndexedDB (Dexie) — no server round-trip
 Backtest:         Express → PythonRunner.spawn('backtest.py') → stdout JSON → Frontend → Dexie
 Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → stdout JSON → Express
 Screening enrichment: Express → fetch NAV + fund list → TypeScript risk/industry → merge into sync
-Web search:       Express chatTools → searchService → Bocha/Tavily/DDG → ServiceResult
+Web search:       Express chatTools → searchService → Exa/Bocha/Tavily/DDG → ServiceResult
 Settings:         Frontend (localStorage) → PUT /api/settings → Express settingsService (memory cache)
 ```
 
@@ -79,7 +79,9 @@ Both services enforce single-file max 500 lines. Violations block CI.
 - **Vite proxy**: `Frontend/vite.config.ts` proxies `/api` → `localhost:3100`.
 - **Dexie.js**: All persistent data in IndexedDB, 10 tables in `Frontend/src/db/index.ts`.
 - **Settings endpoint**: `GET/PUT /api/settings` — 统一 LLM/Proxy/Search 配置内存缓存，前端 localStorage 同步。
-- **Search chain**: Bocha → Tavily → DuckDuckGo（自动降级，DDG 免费无需 Key）。
+- **Search chain**: Exa（MCP/JSON-RPC，免费无 Key）→ Bocha → Tavily → DuckDuckGo（自动降级）。
+- **Screening data refresh**: 筛选页 onMounted + localStorage 持久化 `lastSyncTime` → 检测过期（今日 9AM）→ 强制 `force=true` 全量刷新。AI chat `get_industry_performance` 共享同一缓存（cacheThrough TTL=次日 9AM）。
+- **Proxy**: 国内 API（东方财富）用 `proxy: 'never'` 直连；Yahoo Finance（被封）走 `proxy: 'auto'` 随代理配置。`eastmoneyRequest.ts` 统一添加 `Referer` 头防止反爬。
 
 ## Monorepo hot spots
 
@@ -95,7 +97,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `Scripts/cli/` | Python CLI scripts (backtest, fetch_fund, data_complete) |
 | `Scripts/cli/shared/` | Shared Python utilities (http_client) |
 | `Scripts/services/*.py` | Python computation modules (backtest.py, helpers.py) |
-| `Service/src/services/searchService.ts` | Search engine chain (Bocha → Tavily → DuckDuckGo) |
+| `Service/src/services/searchService.ts` | Search engine chain (Exa → Bocha → Tavily → DuckDuckGo) |
 | `Frontend/src/db/` | Dexie schema (index.ts) — all IndexedDB table definitions |
 | `Frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
 | `Frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
