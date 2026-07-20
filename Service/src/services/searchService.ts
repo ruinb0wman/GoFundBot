@@ -39,7 +39,6 @@ async function searchBocha(query: string, apiKey: string, maxResults: number): P
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, freshness: 'oneMonth', summary: true, count: Math.min(maxResults, 10) }),
       timeoutMs: 10000,
-      proxy: 'never',
     });
   } catch {
     return { success: false, results: [], provider: 'Bocha', search_time: (Date.now() - startTime) / 1000, error: 'Request failed' };
@@ -80,7 +79,6 @@ async function searchTavily(query: string, apiKey: string, maxResults: number): 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: maxResults, days: 3 }),
       timeoutMs: 10000,
-      proxy: 'never',
     });
   } catch {
     return { success: false, results: [], provider: 'Tavily', search_time: (Date.now() - startTime) / 1000, error: 'Request failed' };
@@ -113,7 +111,7 @@ async function searchDuckDuckGo(query: string, maxResults: number): Promise<Sear
   try {
     respText = await fetchUrl(
       `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
-      { timeoutMs: 10000, proxy: 'never' },
+      { timeoutMs: 10000 },
     );
   } catch {
     return { success: false, results: [], provider: 'DuckDuckGo', search_time: (Date.now() - startTime) / 1000, error: 'Request failed' };
