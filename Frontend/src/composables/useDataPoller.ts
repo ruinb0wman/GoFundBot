@@ -49,6 +49,7 @@ export function useDataPoller<T>(options: DataPollerOptions<T>): DataPollerResul
   }
 
   async function execute() {
+    updateTime.value = new Date().toISOString()
     loading.value = true
     try {
       const result = await fetcher()

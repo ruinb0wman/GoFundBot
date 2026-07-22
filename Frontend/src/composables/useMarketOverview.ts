@@ -168,7 +168,8 @@ export function useMarketOverview(props: any) {
   const volumePoller = useDataPoller<any[]>({
     fetcher: async () => {
       const res = await marketAPI.getVolume7Days()
-      return { success: true, data: (res.data.data ?? []).slice().reverse() }
+      const volumeData = (res.data.data ?? []).slice().reverse()
+      return { success: volumeData.length > 0, data: volumeData }
     },
     type: 'volume',
     successInterval: 600_000,
