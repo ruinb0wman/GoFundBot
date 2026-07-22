@@ -73,7 +73,7 @@
             </div>
           </div>
           <div class="sector-change" :class="{ 'up': sector.raw_change > 0, 'down': sector.raw_change < 0 }">
-            {{ sector.change_pct }}
+            {{ fmtPercent(sector.change_pct) }}
           </div>
         </div>
       </div>
@@ -170,7 +170,7 @@
                 </div>
               </div>
               <div class="modal-sector-change" :class="{ up: sector.raw_change > 0, down: sector.raw_change < 0 }">
-                {{ sector.change_pct }}
+                {{ fmtPercent(sector.change_pct) }}
               </div>
             </div>
           </div>
@@ -186,6 +186,7 @@ import { useI18n } from 'vue-i18n'
 import BButton from './BButton.vue'
 import { marketAPI } from '../services/api'
 import { useAdaptiveRefresh } from '../composables/useAdaptiveRefresh'
+import { fmtPercent } from '../utils/number'
 
 const { t } = useI18n()
 

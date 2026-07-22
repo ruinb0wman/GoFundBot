@@ -33,7 +33,7 @@
             <div v-for="item in indices.china" :key="item.name" class="index-card clickable" :class="getUpDnClass(item.change_pct)" @click="navigateToIndex(item)" :title="item.code ? t('market.clickForDetail') : ''">
             <div class="index-name">{{ item.name }}</div>
             <div class="index-price">{{ item.price }}</div>
-            <div class="index-change">{{ item.change_pct }}</div>
+            <div class="index-change">{{ fmtPercent(item.change_pct) }}</div>
           </div>
         </div>
       </div>
@@ -44,7 +44,7 @@
             <div v-for="item in indices.global" :key="item.name" class="index-card clickable" :class="getUpDnClass(item.change_pct)" @click="navigateToIndex(item)" :title="item.code ? t('market.clickForDetail') : ''">
             <div class="index-name">{{ item.name }}</div>
             <div class="index-price">{{ item.price }}</div>
-            <div class="index-change">{{ item.change_pct }}</div>
+            <div class="index-change">{{ fmtPercent(item.change_pct) }}</div>
           </div>
         </div>
       </div>
@@ -87,7 +87,7 @@
         <div v-for="item in goldRealtime" :key="item.name" class="gold-card" :class="{ 'up': item.change >= 0, 'down': item.change < 0, 'clickable': isGoldItem(item) }"             @click="isGoldItem(item) && openGoldHistory(item)" :title="isGoldItem(item) ? t('market.clickForHistory') : ''">
           <div class="gold-name">{{ item.name }}<span v-if="isGoldItem(item)" class="chart-hint"><LucideIcon name="TrendingUp" :size="14" /></span></div>
           <div class="gold-price">{{ item.price }} <span class="unit">{{ item.unit }}</span></div>
-          <div class="gold-change"><span>{{ item.change >= 0 ? '+' : '' }}{{ item.change }}</span><span class="pct">{{ item.change_pct }}</span></div>
+          <div class="gold-change"><span>{{ item.change >= 0 ? '+' : '' }}{{ item.change }}</span><span class="pct">{{ fmtPercent(item.change_pct) }}</span></div>
         </div>
       </div>
     </div>
@@ -142,6 +142,7 @@ import { useI18n } from 'vue-i18n'
 import BButton from './BButton.vue'
 import LucideIcon from './LucideIcon.vue'
 import VChart from 'vue-echarts'
+import { fmtPercent } from '../utils/number'
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"
 import { LineChart, BarChart } from "echarts/charts"
