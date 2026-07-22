@@ -8,6 +8,8 @@ import type { ServiceResult } from '../types/common.js';
 import { StockSdkMarketProvider } from '../providers/stock-sdk/stockSdkMarketProvider.js';
 import { EastMoneyMarketProvider } from '../providers/eastmoney/eastmoneyMarketProvider.js';
 import { YahooMarketProvider } from '../providers/yahoo/yahooMarketProvider.js';
+import { TencentMarketProvider } from '../providers/tencent/tencentMarketProvider.js';
+import { JoinQuantMarketProvider } from '../providers/joinquant/joinquantMarketProvider.js';
 import { isGlobalIndexSymbol } from '../providers/yahoo/yahooClient.js';
 import type {
   ConstituentListDto,
@@ -52,6 +54,8 @@ export interface KlineQuery {
   endDate?: string;
 }
 
+const tencentMarketProvider = new TencentMarketProvider();
+const joinQuantMarketProvider = new JoinQuantMarketProvider();
 const stockSdkMarketProvider = new StockSdkMarketProvider();
 const eastMoneyMarketProvider = new EastMoneyMarketProvider();
 const yahooMarketProvider = new YahooMarketProvider();
@@ -59,9 +63,9 @@ const yahooMarketProvider = new YahooMarketProvider();
 export async function getMarketQuotes(symbolsParam: string | undefined): Promise<ServiceResult<MarketQuoteDto[]>> {
   const symbols = parseSymbols(symbolsParam);
   const key = `market:quotes:${symbols.join(',')}`;
-  const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider, eastMoneyMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([tencentMarketProvider, stockSdkMarketProvider, eastMoneyMarketProvider]);
   const result = await cacheThrough(key, ttl.marketQuotes, () =>
-    chain.run('market.quotes', (provider) => provider.quotes(symbols))
+    chain.run('market.quotes', (provider) => provider.quotes(symbols), { timeoutMs: 5000 })
   );
 
   return toServiceResult(result);
@@ -76,8 +80,8 @@ export async function getMarketKline(symbol: string, query: KlineQuery): Promise
   if (cached) return toServiceResult(cached);
 
   try {
-    const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider, eastMoneyMarketProvider]);
-    const result = await chain.run('market.kline', (provider) => provider.kline(stockSymbol, options));
+    const chain = new ProviderChain<MarketProvider>([joinQuantMarketProvider, tencentMarketProvider, stockSdkMarketProvider, eastMoneyMarketProvider]);
+    const result = await chain.run('market.kline', (provider) => provider.kline(stockSymbol, options), { timeoutMs: 5000 });
     return toServiceResult(cache.set(key, result, ttl.marketKline));
   } catch (err) {
     logger.error('All kline providers failed, trying akshare fallback', {
@@ -402,7 +406,7 @@ export async function getMarketIndices(): Promise<ServiceResult<IndexListDto>> {
         throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement indices`, 501);
       }
       return provider.indices();
-    })
+    }, { timeoutMs: 5000 })
   );
 
   return toServiceResult(result);
@@ -441,6 +445,9 @@ export async function getMarketMoneyFlow(): Promise<ServiceResult<MarketMoneyFlo
     if (result.data.date) {
       return toServiceResult(cache.set(key, result, ttl.marketMoneyFlow));
     }
+    logger.warn('EastMoney market money flow returned empty date, trying akshare fallback', {
+      provider: result.provider,
+    });
   } catch (err) {
     logger.error('Market money flow providers failed, trying akshare fallback', {
       error: err instanceof Error ? err.message : String(err),

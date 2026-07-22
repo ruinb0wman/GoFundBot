@@ -18,7 +18,9 @@ import type {
   FundSearchResultDto,
 } from '../types/fund.js';
 import { EastMoneyFundProvider, fetchFundCodeSearchList } from '../providers/eastmoney/eastmoneyFundProvider.js';
+import { JoinQuantFundProvider } from '../providers/joinquant/joinquantFundProvider.js';
 import { StockSdkFundProvider } from '../providers/stock-sdk/stockSdkFundProvider.js';
+import { TencentFundProvider } from '../providers/tencent/tencentFundProvider.js';
 import type { FundNavHistoryOptions, FundProvider, ProviderChainResult } from '../providers/types.js';
 
 interface DateRange {
@@ -26,18 +28,20 @@ interface DateRange {
   endDate?: string;
 }
 
+const tencentFundProvider = new TencentFundProvider();
+const joinQuantFundProvider = new JoinQuantFundProvider();
 const stockSdkFundProvider = new StockSdkFundProvider();
 const eastMoneyFundProvider = new EastMoneyFundProvider();
 
 export async function getFundEstimate(code: string): Promise<ServiceResult<FundEstimateDto>> {
   const fundCode = assertFundCode(code);
-  const chain = new ProviderChain<FundProvider>([stockSdkFundProvider, eastMoneyFundProvider]);
+  const chain = new ProviderChain<FundProvider>([tencentFundProvider, stockSdkFundProvider, eastMoneyFundProvider]);
   const result = await cacheThrough(`fund:estimate:${fundCode}`, ttl.fundEstimate, () =>
-    chain.run(
-      'fund.estimate',
-      (provider) => provider.estimate(fundCode),
-      (data) => data.nav != null || data.estimatedNav != null
-    )
+      chain.run(
+        'fund.estimate',
+        (provider) => provider.estimate(fundCode),
+        { validate: (data) => data.nav != null || data.estimatedNav != null }
+      )
   );
 
   return toServiceResult(result);
@@ -179,9 +183,9 @@ export async function getFundNavHistory(
   assertDateRange(range);
   const options = normalizeDateRange(range);
   const key = `fund:nav-history:${fundCode}:${options.startDate ?? ''}:${options.endDate ?? ''}`;
-  const chain = new ProviderChain<FundProvider>([stockSdkFundProvider, eastMoneyFundProvider]);
+  const chain = new ProviderChain<FundProvider>([joinQuantFundProvider, tencentFundProvider, stockSdkFundProvider, eastMoneyFundProvider]);
   const result = await cacheThrough(key, ttl.fundNavHistory, () =>
-    chain.run('fund.navHistory', (provider) => provider.navHistory(fundCode, options))
+    chain.run('fund.navHistory', (provider) => provider.navHistory(fundCode, options), { timeoutMs: 8000 })
   );
 
   return toServiceResult(result);
@@ -189,9 +193,9 @@ export async function getFundNavHistory(
 
 export async function getFundRankHistory(code: string): Promise<ServiceResult<FundRankHistoryDto>> {
   const fundCode = assertFundCode(code);
-  const chain = new ProviderChain<FundProvider>([stockSdkFundProvider, eastMoneyFundProvider]);
+  const chain = new ProviderChain<FundProvider>([joinQuantFundProvider, tencentFundProvider, stockSdkFundProvider, eastMoneyFundProvider]);
   const result = await cacheThrough(`fund:rank-history:${fundCode}`, ttl.fundRankHistory, () =>
-    chain.run('fund.rankHistory', (provider) => provider.rankHistory(fundCode))
+    chain.run('fund.rankHistory', (provider) => provider.rankHistory(fundCode), { timeoutMs: 8000 })
   );
 
   return toServiceResult(result);

@@ -11,13 +11,17 @@ export class ProviderChain<P extends NamedProvider> {
   async run<T>(
     operation: string,
     invoke: (provider: P) => Promise<T>,
-    validate?: (data: T) => boolean
+    options?: { validate?: (data: T) => boolean; timeoutMs?: number }
   ): Promise<ProviderChainResult<T>> {
+    const { validate, timeoutMs } = options ?? {};
     const providerErrors: ProviderErrorSummary[] = [];
 
     for (const [index, provider] of this.providers.entries()) {
       try {
-        const data = await invoke(provider);
+        const promise = invoke(provider);
+        const data = timeoutMs != null
+          ? await withTimeout(promise, timeoutMs, `${operation}@${provider.name}`)
+          : await promise;
         if (validate && !validate(data)) {
           throw new Error(`Validation failed for ${provider.name}: data is empty or invalid`);
         }
@@ -39,6 +43,24 @@ export class ProviderChain<P extends NamedProvider> {
       503,
       { providerErrors }
     );
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          const err: AppError = new AppError('PROVIDER_TIMEOUT', `${label} timed out after ${ms}ms`, 504);
+          reject(err);
+        }, ms);
+      }),
+    ]);
+    return result;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 

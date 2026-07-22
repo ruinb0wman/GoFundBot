@@ -30,6 +30,8 @@ except ImportError:
 
 from _template import run_script  # noqa: E402
 
+from cli.shared.file_cache import file_cache  # noqa: E402
+
 _REQUESTS_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Referer": "https://data.eastmoney.com/",
@@ -97,6 +99,7 @@ def complete_kline(code: str, start_date: str = "", end_date: str = ""):
         return []
 
 
+@file_cache(key="stock_list", ttl_hours=24)
 def complete_stock_list():
     if not ak:
         return []
@@ -118,6 +121,7 @@ def complete_stock_list():
     return []
 
 
+@file_cache(key="industry_mapping", ttl_hours=24)
 def complete_industry_mapping():
     if not ak:
         return []
@@ -137,6 +141,7 @@ def complete_industry_mapping():
     return []
 
 
+@file_cache(key="sector_spot", ttl_hours=1)
 def complete_sector_spot():
     """
     Fetch real-time sector/industry board spot data from akshare (THS source).

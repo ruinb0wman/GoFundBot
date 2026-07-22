@@ -16,10 +16,15 @@ export interface SearchSettings {
   tavilyKey: string;
 }
 
+export interface JoinquantSettings {
+  apiKey: string;
+}
+
 export interface AppSettings {
   llm: LlmSettings;
   proxy: ProxySettings;
   search: SearchSettings;
+  joinquant: JoinquantSettings;
 }
 
 const defaultSettings: AppSettings = {
@@ -34,6 +39,9 @@ const defaultSettings: AppSettings = {
   search: {
     bochaKey: process.env.BOCHA_API_KEY || '',
     tavilyKey: process.env.TAVILY_API_KEY || '',
+  },
+  joinquant: {
+    apiKey: process.env.JOINQUANT_API_KEY || '',
   },
 };
 
@@ -62,6 +70,9 @@ export function updateSettings(partial: Partial<AppSettings>): AppSettings {
   }
   if (partial.search !== undefined) {
     _cache.search = { ..._cache.search, ...partial.search };
+  }
+  if (partial.joinquant !== undefined) {
+    _cache.joinquant = { ..._cache.joinquant, ...partial.joinquant };
   }
   logger.info('Settings updated', {
     llm: _cache.llm.apiKey ? 'configured' : 'not configured',

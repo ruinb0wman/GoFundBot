@@ -348,36 +348,16 @@ export class EastMoneyMarketProvider implements MarketProvider {
   // -----------------------------------------------------------------------
 
   async marketMoneyFlow(): Promise<MarketMoneyFlowDto> {
-    const [shData, szData] = await Promise.allSettled([
-      this.fetchMarketMoneyFlowForIndex('1.000001'),
-      this.fetchMarketMoneyFlowForIndex('0.399106'),
-    ]);
-
-    const sh = shData.status === 'fulfilled' ? shData.value : null;
-    const sz = szData.status === 'fulfilled' ? szData.value : null;
-
-    const sum = (a: number | null, b: number | null): number | null => {
-      if (a == null && b == null) return null;
-      return (a ?? 0) + (b ?? 0);
-    };
-
-    return {
-      date: sh?.date || sz?.date || '',
-      mainNetInflow: sum(sh?.mainNetInflow ?? null, sz?.mainNetInflow ?? null),
-      superLargeNetInflow: sum(sh?.superLargeNetInflow ?? null, sz?.superLargeNetInflow ?? null),
-      largeNetInflow: sum(sh?.largeNetInflow ?? null, sz?.largeNetInflow ?? null),
-      mediumNetInflow: sum(sh?.mediumNetInflow ?? null, sz?.mediumNetInflow ?? null),
-      smallNetInflow: sum(sh?.smallNetInflow ?? null, sz?.smallNetInflow ?? null),
-    };
-  }
-
-  private async fetchMarketMoneyFlowForIndex(secid: string): Promise<MarketMoneyFlowDto> {
-    const url = 'https://push2.eastmoney.com/api/qt/stock/fflow/daykline/get';
+    const url = 'https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get';
     const params = new URLSearchParams({
       fields1: 'f1,f2,f3,f7',
       fields2: 'f51,f52,f53,f54,f55,f56,f57',
       lmt: '1',
-      secid,
+      klt: '101',
+      secid: '1.000001',
+      secid2: '0.399001',
+      ut: 'b2884a393a59ad64002292a3e90d46a5',
+      _: String(Date.now()),
     });
 
     try {

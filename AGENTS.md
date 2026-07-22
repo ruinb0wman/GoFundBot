@@ -112,3 +112,24 @@ cd Service && npm test
 # Frontend (Vitest + @vue/test-utils)
 cd Frontend && npx vue-tsc --noEmit && npm test
 ```
+
+## Known issues
+
+### 今日资金流向 (market money flow)
+
+EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反爬封锁（SSL EOF），
+无法获取分订单规模（主力/超大单/大单/中单/小单）的沪深合计资金流数据。
+
+**现状**：`push2*` 全封锁后，无可用的大盘资金流分项数据源。
+
+尝试过的替代方案：
+- 10jqka (同花顺) —— 只有总净额，无主力/超大单/大单/中单/小单分项
+- baostock —— 无日度资金流向 API
+- tushare —— `moneyflow` 接口需 2000 积分（当前 token 权限不足），详见 `docs/tushare.md`
+
+**临时行为**：EastMoney 失败后直接返回空数据，前端显示"暂无数据"。
+待 tushare 权限开通后可接回完整分项数据。
+
+修改的文件：
+- `Service/src/providers/eastmoney/eastmoneyMarketProvider.ts` — 修正 `marketMoneyFlow()` API 参数（secid2 + klt）
+- `Service/src/providers/eastmoney/eastmoneyRequest.ts` — EastMoney 请求 proxy 模式改为 `'auto'`
