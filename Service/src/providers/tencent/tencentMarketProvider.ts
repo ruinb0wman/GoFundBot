@@ -71,11 +71,16 @@ export class TencentMarketProvider implements MarketProvider {
 }
 
 function toQtCode(symbol: string): string | null {
-  const normalized = symbol.trim().replace(/^(sh|sz|bj)/i, '').replace(/\.(SH|SZ|BJ|HK)$/i, '');
-  if (/^\d{5}$/.test(normalized)) return null;
-  if (/^6|^9/.test(normalized)) return `sh${normalized}`;
-  if (/^0|^2|^3/.test(normalized)) return `sz${normalized}`;
-  if (/^4|^8/.test(normalized)) return `bj${normalized}`;
+  const cleaned = symbol.trim().replace(/\.(SH|SZ|BJ|HK)$/i, '');
+  const m = cleaned.match(/^(sh|sz|bj)?(\d{6})$/i);
+  if (!m) return null;
+  const prefix = (m[1] ?? '').toLowerCase();
+  const numeric = m[2];
+  if (/^\d{5}$/.test(numeric)) return null;
+  if (prefix) return `${prefix}${numeric}`;
+  if (/^[69]/.test(numeric)) return `sh${numeric}`;
+  if (/^[023]/.test(numeric)) return `sz${numeric}`;
+  if (/^[48]/.test(numeric)) return `bj${numeric}`;
   return null;
 }
 
