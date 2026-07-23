@@ -3,7 +3,9 @@ const DATA_RULES = `## 数据守则
 2. 基金代码、股票代码必须由用户提供，不猜测不编造
 3. 工具返回空或报错时如实告知，不要用无关数据填补
 4. 多个无依赖的工具可以同时调用以节省时间
-5. 如果用户的问题是概念性、理论性的，不涉及具体数据查询，直接回答即可，不要调用任何工具`;
+5. 如果用户的问题是纯概念、纯理论（如"什么是定投""什么叫市盈率"），不涉及任何具体数据查询，直接回答即可
+6. 注意：用户的问题只要涉及具体市场数据、历史走势、涨跌幅、时间段、指数/基金/个股表现，必须先调用相关工具获取数据，再基于数据进行分析。禁止凭训练数据记忆回答涉及具体数据的问题。特别是"为什么"类问题——如果用户引用了某个市场现象（如"XX从XX时间跌到XX时间"），必须先查数据验证核实再分析。
+7. 当前是 2026 年 7 月。对于任何涉及"今年""去年""最近""这个月"等相对时间表述的问题，你的训练数据可能过时，优先使用工具获取最新数据。`;
 
 const RESPONSE_REQUIREMENTS = `## 回答要求
 1. 用中文，简洁清晰，面对个人投资者，少用生僻术语
@@ -190,14 +192,14 @@ export const SKILL_DEFINITIONS: Skill[] = [
     description: '分析单只基金的业绩、持仓、经理、风险',
     keywords: ['基金', '怎么样', '表现', '评价', '值得', '如何'],
     systemPrompt: FUND_ANALYSIS_PROMPT,
-    toolNames: ['search_funds', 'get_fund_detail', 'get_fund_estimate', 'get_fund_nav_history', 'get_fund_holdings', 'get_fund_managers'],
+    toolNames: ['search_funds', 'get_fund_detail', 'get_fund_estimate', 'get_fund_nav_history', 'get_fund_holdings', 'get_fund_managers', 'get_index_kline'],
   },
   {
     name: 'market_overview',
     description: '查询大盘行情、指数、板块资金、北向资金',
     keywords: ['大盘', '市场', '行情', '指数', '板块', '北向', '涨跌', '今天'],
     systemPrompt: MARKET_OVERVIEW_PROMPT,
-    toolNames: ['get_market_indices', 'get_hot_sectors', 'get_concept_sectors', 'get_north_flow', 'get_market_breadth', 'get_main_flow'],
+    toolNames: ['get_market_indices', 'get_hot_sectors', 'get_concept_sectors', 'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_index_kline'],
   },
   {
     name: 'news_briefing',
@@ -239,7 +241,7 @@ export const SKILL_DEFINITIONS: Skill[] = [
       'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
       'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
       'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
-      'search_news',
+      'search_news', 'get_index_kline',
     ],
   },
 ];

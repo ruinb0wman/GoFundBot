@@ -2,7 +2,7 @@ import { logger } from '../core/logger.js';
 import { cache } from '../core/cache.js';
 import { searchFunds, getFundDetail, getFundEstimate, getFundNavHistory, getFundHoldings, getFundManagers, getFundScreeningSnapshot } from './fundService.js';
 import type { FundScreeningSnapshotItemDto } from '../types/fund.js';
-import { fetchIndicesFromSina, getMarketSectorsFromAkshare, fetchGoldRealtime, getMarketIndices, getNorthFlow, getMarketBreadth, getMarketMoneyFlow } from './marketService.js';
+import { fetchIndicesFromSina, getMarketSectorsFromAkshare, fetchGoldRealtime, getMarketIndices, getNorthFlow, getMarketBreadth, getMarketMoneyFlow, getMarketKline } from './marketService.js';
 import { getStockReference } from './stockService.js';
 import { getFlashNews } from './newsService.js';
 import { runBacktest } from './pythonRunner.js';
@@ -283,6 +283,25 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
       parameters: { type: 'object', properties: {} },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'get_index_kline',
+      description: '获取股票指数历史K线数据（日K/周K/月K），用于分析指数历史走势、回撤幅度、修复时间等。'
+        + ' 支持A股主要指数（上证 sh000001、深证 sz399001、沪深300 sh000300、创业板 sz399006、科创50 sh000688）和全球指数。'
+        + ' 必须同时提供起始和结束日期。',
+      parameters: {
+        type: 'object',
+        properties: {
+          code: { type: 'string', description: '指数代码，A股示例：sh000300（沪深300）、sh000001（上证指数）、sz399006（创业板指）；全球指数示例：^DJI（道琼斯）、^IXIC（纳斯达克）、^HSI（恒生指数）' },
+          start_date: { type: 'string', description: '起始日期 YYYY-MM-DD，必须提供' },
+          end_date: { type: 'string', description: '结束日期 YYYY-MM-DD，必须提供' },
+          period: { type: 'string', enum: ['daily', 'weekly', 'monthly'], description: 'K线周期，默认 daily' },
+        },
+        required: ['code', 'start_date', 'end_date'],
+      },
+    },
+  },
 ];
 
 export async function executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
@@ -547,5 +566,30 @@ const toolHandlers: Record<string, (args: Record<string, unknown>) => Promise<un
       }
     }
     return { items: [], summary: { total: 0 }, error: '暂未获取到基金数据，请稍后重试' };
+  },
+
+  get_index_kline: async (args) => {
+    const code = args.code as string;
+    const startDate = args.start_date as string;
+    const endDate = args.end_date as string;
+    if (!code || !startDate || !endDate) {
+      return { error: '缺少必要参数: code, start_date, end_date' };
+    }
+    try {
+      const result = await getMarketKline(code, {
+        startDate,
+        endDate,
+        period: (args.period as string) || 'daily',
+      });
+      const data = toolData(result) as { items?: unknown[] };
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        return { code, start_date: startDate, end_date: endDate, kline: [], message: '未获取到数据' };
+      }
+      const items = Array.isArray(data) ? data : (data.items ?? []);
+      return { code, start_date: startDate, end_date: endDate, kline: items, count: items.length };
+    } catch (error) {
+      logger.error('get_index_kline error', { code, error: String(error) });
+      return { code, start_date: startDate, end_date: endDate, kline: [], error: String(error) };
+    }
   },
 };
