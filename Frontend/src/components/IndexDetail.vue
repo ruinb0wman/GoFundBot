@@ -74,19 +74,32 @@ const loading = ref(true)
 const error = ref('')
 const detail = ref<any>(null)
 const klineData = ref<any[]>([])
-const activePeriod = ref('daily')
+const activePeriod = ref('weekly')
 const periods = computed(() => [
   { key: 'daily', label: t('indexDetail.periodDaily') },
   { key: 'weekly', label: t('indexDetail.periodWeekly') },
   { key: 'monthly', label: t('indexDetail.periodMonthly') },
 ])
-const activeRange = ref('1y')
-const rangeOptions = computed(() => [
-  { key: '1y', label: t('indexDetail.range1y') },
-  { key: '3y', label: t('indexDetail.range3y') },
-  { key: '5y', label: t('indexDetail.range5y') },
-  { key: 'all', label: t('indexDetail.rangeAll') },
-])
+const activeRange = ref('3y')
+const rangeOptions = computed(() => {
+  const all = [
+    { key: '6m', label: t('indexDetail.range6m') },
+    { key: '1y', label: t('indexDetail.range1y') },
+    { key: '3y', label: t('indexDetail.range3y') },
+    { key: '5y', label: t('indexDetail.range5y') },
+    { key: 'all', label: t('indexDetail.rangeAll') },
+  ]
+  if (activePeriod.value === 'daily') {
+    return all.filter(r => r.key === '6m' || r.key === '1y')
+  }
+  if (activePeriod.value === 'weekly') {
+    return all.filter(r => r.key !== '6m')
+  }
+  if (activePeriod.value === 'monthly') {
+    return all.filter(r => r.key !== '6m' && r.key !== '1y')
+  }
+  return all
+})
 
 const activeMAs = ref<number[]>([5, 20])
 const toggleMA = (period: number) => {
@@ -195,13 +208,13 @@ const klineOption = computed(() => {
       {
         type: 'inside',
         xAxisIndex: [0, 1],
-        start: 50,
+        start: 0,
         end: 100,
         zoomOnMouseWheel: 'ctrl',
         moveOnMouseWheel: true,
         moveOnMouseMove: true,
       },
-      { type: 'slider', xAxisIndex: [0, 1], start: 50, end: 100, bottom: 0, height: 20 }
+      { type: 'slider', xAxisIndex: [0, 1], start: 0, end: 100, bottom: 0, height: 20 }
     ],
     series: [
       {
@@ -263,8 +276,12 @@ const fetchDetail = async () => {
 const computeStartDate = (range: string) => {
   if (range === 'all') return ''
   const d = new Date()
-  const years: Record<string, number> = { '1y': 1, '3y': 3, '5y': 5 }
-  d.setFullYear(d.getFullYear() - (years[range] || 1))
+  if (range === '6m') {
+    d.setMonth(d.getMonth() - 6)
+  } else {
+    const years: Record<string, number> = { '1y': 1, '3y': 3, '5y': 5 }
+    d.setFullYear(d.getFullYear() - (years[range] || 1))
+  }
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
@@ -289,6 +306,8 @@ const fetchKline = async () => {
 
 const switchPeriod = (key: string) => {
   activePeriod.value = key
+  const rangeMap: Record<string, string> = { daily: '1y', weekly: '3y', monthly: '5y' }
+  activeRange.value = rangeMap[key] || '1y'
   fetchKline()
 }
 

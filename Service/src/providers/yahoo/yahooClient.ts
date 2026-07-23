@@ -41,6 +41,10 @@ export const GLOBAL_INDEX_DEFS: Array<{ code: string; name: string; yahooSymbol:
   { code: 'SENSEX', name: '印度SENSEX', yahooSymbol: '^BSESN' },
 ];
 
+export const CODE_TO_YAHOO_MAP: Record<string, string> = Object.fromEntries(
+  GLOBAL_INDEX_DEFS.map(d => [d.code.toLowerCase(), d.yahooSymbol])
+);
+
 const RANGE_MAP: Record<string, string> = {
   daily: '1y',
   weekly: '5y',
@@ -55,12 +59,20 @@ const INTERVAL_MAP: Record<string, string> = {
 
 function toYahooSymbol(symbol: string): string | null {
   const lower = symbol.replace(/^(sh|sz|bj)/i, '').toLowerCase();
-  return YAHOO_SYMBOL_MAP[lower] ?? null;
+  return YAHOO_SYMBOL_MAP[lower] ?? CODE_TO_YAHOO_MAP[lower] ?? null;
 }
 
 export function isGlobalIndexSymbol(symbol: string): boolean {
   const lower = symbol.replace(/^(sh|sz|bj)/i, '').toLowerCase();
-  return lower in YAHOO_SYMBOL_MAP;
+  return lower in YAHOO_SYMBOL_MAP || lower in CODE_TO_YAHOO_MAP;
+}
+
+function getRangeForYears(years: number): string {
+  if (years <= 1) return '1y';
+  if (years <= 2) return '2y';
+  if (years <= 5) return '5y';
+  if (years <= 10) return '10y';
+  return 'max';
 }
 
 function toNum(val: unknown): number | null {
@@ -87,8 +99,21 @@ export async function fetchYahooChart(
     throw new AppError('INVALID_ARGUMENT', `Unsupported global index symbol: ${symbol}`, 400, { symbol });
   }
 
-  const range = RANGE_MAP[period] || '1y';
   const interval = INTERVAL_MAP[period] || '1d';
+
+  let range: string;
+  if (startDate) {
+    const start = parseDateNum(startDate);
+    if (start) {
+      const yearsNeeded = (Date.now() - start) / (365.25 * 24 * 60 * 60 * 1000);
+      range = getRangeForYears(yearsNeeded);
+    } else {
+      range = RANGE_MAP[period] || '1y';
+    }
+  } else {
+    range = RANGE_MAP[period] || '1y';
+  }
+
   const url = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${range}&interval=${interval}`;
 
   const text = await fetchUrl(url, {
@@ -214,4 +239,10 @@ export async function fetchYahooGlobalIndices(): Promise<GlobalIndexListDto> {
   }
 
   return { items: results };
+}
+
+export async function fetchGlobalIndexQuoteByCode(code: string): Promise<GlobalIndexDto | null> {
+  const def = GLOBAL_INDEX_DEFS.find(d => d.code === code.toUpperCase());
+  if (!def) return null;
+  return fetchSingleGlobalQuote(def);
 }

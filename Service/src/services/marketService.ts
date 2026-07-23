@@ -11,7 +11,7 @@ import { EastMoneyMarketProvider } from '../providers/eastmoney/eastmoneyMarketP
 import { YahooMarketProvider } from '../providers/yahoo/yahooMarketProvider.js';
 import { TencentMarketProvider } from '../providers/tencent/tencentMarketProvider.js';
 import { JoinQuantMarketProvider } from '../providers/joinquant/joinquantMarketProvider.js';
-import { isGlobalIndexSymbol } from '../providers/yahoo/yahooClient.js';
+import { isGlobalIndexSymbol, GLOBAL_INDEX_DEFS, fetchGlobalIndexQuoteByCode } from '../providers/yahoo/yahooClient.js';
 import type {
   ConstituentListDto,
   GlobalIndexListDto,
@@ -73,6 +73,9 @@ export async function getMarketQuotes(symbolsParam: string | undefined): Promise
 }
 
 export async function getMarketKline(symbol: string, query: KlineQuery): Promise<ServiceResult<KlineDto[]>> {
+  if (isGlobalIndexSymbol(symbol)) {
+    return getGlobalIndexKline(symbol, query);
+  }
   const stockSymbol = assertStockSymbol(symbol);
   const options = parseKlineOptions(query);
   const key = `market:kline:${stockSymbol}:${JSON.stringify(options)}`;
@@ -212,6 +215,75 @@ export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Pr
   return toServiceResult(result);
 }
 
+async function getGlobalIndexDetail(def: { code: string; name: string; yahooSymbol: string }): Promise<ServiceResult<IndexDetailDto>> {
+  const [quoteResult, klineResult] = await Promise.allSettled([
+    fetchGlobalIndexQuoteByCode(def.code),
+    getGlobalIndexKline(def.code, { period: 'daily' }),
+  ]);
+
+  let code = def.code;
+  let name = def.name;
+  let price: number | null = null;
+  let changeAmt: number | null = null;
+  let changePct: number | null = null;
+  let open: number | null = null;
+  let high: number | null = null;
+  let low: number | null = null;
+  let prevClose: number | null = null;
+  let volume: number | null = null;
+  let amount: number | null = null;
+  let market = '全球';
+
+  if (quoteResult.status === 'fulfilled' && quoteResult.value) {
+    const q = quoteResult.value;
+    price = q.price;
+    changeAmt = q.changeAmount;
+    changePct = q.changePercent;
+    open = q.open;
+    high = q.high;
+    low = q.low;
+    prevClose = q.prevClose;
+  }
+
+  if (klineResult.status === 'fulfilled' && klineResult.value.data?.length) {
+    const data = klineResult.value.data;
+    const latest = data[data.length - 1];
+    if (open == null) open = latest.open;
+    if (high == null) high = latest.high;
+    if (low == null) low = latest.low;
+    prevClose = data.length >= 2 ? data[data.length - 2].close : (prevClose ?? latest.close);
+  }
+
+  const amplitude = high != null && low != null && prevClose != null && prevClose !== 0
+    ? +(((high - low) / prevClose) * 100).toFixed(2)
+    : null;
+
+  const data: IndexDetailDto = {
+    code,
+    name,
+    price,
+    change_amt: changeAmt,
+    change_pct: changePct,
+    open,
+    high,
+    low,
+    prev_close: prevClose,
+    volume,
+    amount,
+    amplitude,
+    market,
+  };
+
+  return {
+    data,
+    provider: quoteResult.status === 'fulfilled' ? 'yahoo' : (klineResult.status === 'fulfilled' ? 'yahoo' : 'none'),
+    fallback: quoteResult.status !== 'fulfilled' || klineResult.status !== 'fulfilled',
+    cached: false,
+    stale: false,
+    updatedAt: new Date(),
+  };
+}
+
 function normalizeIndexSymbol(symbol: string): string {
   const m = symbol.match(/^(\d)\.(\d{6})$/);
   if (m) {
@@ -222,6 +294,11 @@ function normalizeIndexSymbol(symbol: string): string {
 }
 
 export async function getIndexDetail(symbol: string): Promise<ServiceResult<IndexDetailDto>> {
+  const globalDef = GLOBAL_INDEX_DEFS.find(d => d.code === symbol.toUpperCase());
+  if (globalDef) {
+    return getGlobalIndexDetail(globalDef);
+  }
+
   const normalized = normalizeIndexSymbol(symbol);
   const [quoteResult, klineResult] = await Promise.allSettled([
     getMarketQuotes(normalized),
