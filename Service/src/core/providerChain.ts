@@ -1,12 +1,16 @@
 import { AppError } from './errors.js';
 import type { ProviderChainResult, ProviderErrorSummary } from '../providers/types.js';
+import type { DataSourceScorer } from './dataSourceScorer.js';
 
 export interface NamedProvider {
   name: string;
 }
 
 export class ProviderChain<P extends NamedProvider> {
-  constructor(private readonly providers: P[]) {}
+  constructor(
+    private readonly providers: P[],
+    private readonly scorer?: DataSourceScorer,
+  ) {}
 
   async run<T>(
     operation: string,
@@ -16,7 +20,11 @@ export class ProviderChain<P extends NamedProvider> {
     const { validate, timeoutMs } = options ?? {};
     const providerErrors: ProviderErrorSummary[] = [];
 
-    for (const [index, provider] of this.providers.entries()) {
+    const orderedProviders = this.scorer
+      ? this.scorer.sortByScore(this.providers, operation)
+      : this.providers;
+
+    for (const [index, provider] of orderedProviders.entries()) {
       try {
         const promise = invoke(provider);
         const data = timeoutMs != null
@@ -25,6 +33,7 @@ export class ProviderChain<P extends NamedProvider> {
         if (validate && !validate(data)) {
           throw new Error(`Validation failed for ${provider.name}: data is empty or invalid`);
         }
+        this.scorer?.recordSuccess(provider.name, operation);
         return {
           data,
           provider: provider.name,
@@ -33,6 +42,7 @@ export class ProviderChain<P extends NamedProvider> {
           providerErrors,
         };
       } catch (error) {
+        this.scorer?.recordFailure(provider.name, operation);
         providerErrors.push(summarizeProviderError(provider.name, error));
       }
     }

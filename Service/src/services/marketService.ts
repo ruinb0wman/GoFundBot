@@ -2,6 +2,7 @@ import { cache, cacheThrough, ttl } from '../core/cache.js';
 import { AppError, assertCode } from '../core/errors.js';
 import { logger } from '../core/logger.js';
 import { ProviderChain } from '../core/providerChain.js';
+import { dataSourceScorer } from '../core/dataSourceScorer.js';
 import { runPython } from './pythonRunner.js';
 import { fetchUrl } from '../core/fetch.js';
 import type { ServiceResult } from '../types/common.js';
@@ -63,7 +64,7 @@ const yahooMarketProvider = new YahooMarketProvider();
 export async function getMarketQuotes(symbolsParam: string | undefined): Promise<ServiceResult<MarketQuoteDto[]>> {
   const symbols = parseSymbols(symbolsParam);
   const key = `market:quotes:${symbols.join(',')}`;
-  const chain = new ProviderChain<MarketProvider>([tencentMarketProvider, stockSdkMarketProvider, eastMoneyMarketProvider]);
+    const chain = new ProviderChain<MarketProvider>([tencentMarketProvider, stockSdkMarketProvider, eastMoneyMarketProvider], dataSourceScorer);
   const result = await cacheThrough(key, ttl.marketQuotes, () =>
     chain.run('market.quotes', (provider) => provider.quotes(symbols), { timeoutMs: 5000 })
   );
@@ -80,8 +81,8 @@ export async function getMarketKline(symbol: string, query: KlineQuery): Promise
   if (cached) return toServiceResult(cached);
 
   try {
-    const chain = new ProviderChain<MarketProvider>([joinQuantMarketProvider, tencentMarketProvider, stockSdkMarketProvider, eastMoneyMarketProvider]);
-    const result = await chain.run('market.kline', (provider) => provider.kline(stockSymbol, options), { timeoutMs: 5000 });
+    const chain = new ProviderChain<MarketProvider>([joinQuantMarketProvider, tencentMarketProvider, stockSdkMarketProvider, eastMoneyMarketProvider], dataSourceScorer);
+    const result = await chain.run('market.kline', (provider) => provider.kline(stockSymbol, options), { timeoutMs: 5000, validate: (data) => Array.isArray(data) && data.length > 0 });
     return toServiceResult(cache.set(key, result, ttl.marketKline));
   } catch (err) {
     logger.error('All kline providers failed, trying akshare fallback', {
@@ -91,55 +92,68 @@ export async function getMarketKline(symbol: string, query: KlineQuery): Promise
   }
 
   try {
-    const data = await getMarketKlineFromAkshare(stockSymbol, options);
+    const { data, source } = await getMarketKlineFromPython(stockSymbol, options);
     const result: ProviderChainResult<KlineDto[]> = {
       data,
-      provider: 'akshare',
+      provider: source,
       fallback: true,
       stale: false,
       providerErrors: [],
     };
     return toServiceResult(cache.set(key, result, ttl.marketKline));
   } catch (fallbackErr) {
-    logger.error('Akshare kline fallback also failed', {
+    logger.error('Python kline fallback also failed', {
       error: fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr),
     });
     throw new AppError('PROVIDER_UNAVAILABLE', 'All providers failed for market.kline', 503);
   }
 }
 
-async function getMarketKlineFromAkshare(stockSymbol: string, options: KlineOptions): Promise<KlineDto[]> {
+async function getMarketKlineFromPython(stockSymbol: string, options: KlineOptions): Promise<{ data: KlineDto[]; source: string }> {
+  const sources = ['baostock', 'akshare'];
+  for (const source of sources) {
+    const data = await _tryPythonKlineSource(source, stockSymbol, options);
+    if (data.length > 0) return { data, source };
+  }
+  return { data: [], source: 'none' };
+}
+
+async function _tryPythonKlineSource(source: string, stockSymbol: string, options: KlineOptions): Promise<KlineDto[]> {
   const startDate = options.startDate ?? '';
   const endDate = options.endDate ?? '';
-  const result = await runPython<Record<string, unknown>>('data_complete.py', {
-    args: [
-      '--source', 'akshare',
-      '--type', 'kline',
-      '--code', stockSymbol,
-      '--start_date', startDate,
-      '--end_date', endDate,
-    ],
-    timeoutMs: 60_000,
-  });
-  const rawItems = (result?.kline ?? []) as Record<string, unknown>[];
-  return rawItems.map((item) => {
-    const date = String(item.date ?? '');
-    const timestamp = date ? new Date(date).getTime() : null;
-    return {
-      code: stockSymbol,
-      date,
-      timestamp,
-      open: toNullableNumber(item.open),
-      close: toNullableNumber(item.close),
-      high: toNullableNumber(item.high),
-      low: toNullableNumber(item.low),
-      volume: toNullableNumber(item.volume),
-      amount: toNullableNumber(item.amount),
-      change: toNullableNumber(item.change),
-      changePercent: toNullableNumber(item.changePercent),
-      turnoverRate: null,
-    } as KlineDto;
-  });
+  try {
+    const result = await runPython<Record<string, unknown>>('data_complete.py', {
+      args: [
+        '--source', source,
+        '--type', 'kline',
+        '--code', stockSymbol,
+        '--start_date', startDate,
+        '--end_date', endDate,
+      ],
+      timeoutMs: 60_000,
+    });
+    const rawItems = (result?.kline ?? []) as Record<string, unknown>[];
+    return rawItems.map((item) => {
+      const date = String(item.date ?? '');
+      const timestamp = date ? new Date(date).getTime() : null;
+      return {
+        code: stockSymbol,
+        date,
+        timestamp,
+        open: toNullableNumber(item.open),
+        close: toNullableNumber(item.close),
+        high: toNullableNumber(item.high),
+        low: toNullableNumber(item.low),
+        volume: toNullableNumber(item.volume),
+        amount: toNullableNumber(item.amount),
+        change: toNullableNumber(item.change),
+        changePercent: toNullableNumber(item.changePercent),
+        turnoverRate: null,
+      } as KlineDto;
+    });
+  } catch {
+    return [];
+  }
 }
 
 async function getNorthFlowFromAkshare(): Promise<NorthFlowDto> {
@@ -190,7 +204,7 @@ export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Pr
   const globalSymbol = assertGlobalIndexSymbol(symbol);
   const options = parseGlobalKlineOptions(query);
   const key = `market:kline:global:${globalSymbol}:${JSON.stringify(options)}`;
-  const chain = new ProviderChain<MarketProvider>([yahooMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([yahooMarketProvider], dataSourceScorer);
   const result = await cacheThrough(key, ttl.marketGlobalKline, () =>
     chain.run('market.kline', (provider) => provider.kline(globalSymbol, options))
   );
@@ -370,7 +384,7 @@ function normalizeDate(value: string): string {
 }
 
 export async function getMarketSectors(): Promise<ServiceResult<SectorListDto>> {
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
   const result = await cacheThrough('market:sectors', ttl.marketQuotes, () =>
     chain.run('market.sectors', (provider) => {
       if (!provider.sectors) {
@@ -385,7 +399,7 @@ export async function getMarketSectors(): Promise<ServiceResult<SectorListDto>> 
 
 export async function getMarketSectorConstituents(code: string): Promise<ServiceResult<ConstituentListDto>> {
   const sectorCode = assertCode(code, 'code');
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
   const result = await cacheThrough(`market:sector:${sectorCode}:constituents`, ttl.marketQuotes, () =>
     chain.run('market.sectorConstituents', (provider) => {
       if (!provider.sectorConstituents) {
@@ -399,7 +413,7 @@ export async function getMarketSectorConstituents(code: string): Promise<Service
 }
 
 export async function getMarketIndices(): Promise<ServiceResult<IndexListDto>> {
-  const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider, eastMoneyMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([stockSdkMarketProvider, eastMoneyMarketProvider], dataSourceScorer);
   const result = await cacheThrough('market:indices', ttl.marketQuotes, () =>
     chain.run('market.indices', (provider) => {
       if (!provider.indices) {
@@ -415,7 +429,7 @@ export async function getMarketIndices(): Promise<ServiceResult<IndexListDto>> {
 export async function getStockMoneyFlow(code: string, days?: number): Promise<ServiceResult<StockMoneyFlowDto>> {
   const stockSymbol = assertStockSymbol(code);
   const key = `market:money-flow:${stockSymbol}:${days ?? 1}`;
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
   const result = await cacheThrough(key, ttl.marketMoneyFlow, () =>
     chain.run('market.moneyFlow', (provider) => {
       if (!provider.moneyFlow) {
@@ -435,7 +449,7 @@ export async function getMarketMoneyFlow(): Promise<ServiceResult<MarketMoneyFlo
   if (cached) return toServiceResult(cached);
 
   try {
-    const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+    const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
     const result = await chain.run('market.marketMoneyFlow', (provider) => {
       if (!provider.marketMoneyFlow) {
         throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement marketMoneyFlow`, 501);
@@ -473,7 +487,7 @@ export async function getMarketMoneyFlow(): Promise<ServiceResult<MarketMoneyFlo
 }
 
 export async function getMarketBreadth(): Promise<ServiceResult<MarketBreadthDto>> {
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
   const result = await cacheThrough('market:breadth', ttl.marketBreadth, () =>
     chain.run('market.breadth', (provider) => {
       if (!provider.breadth) {
@@ -493,7 +507,7 @@ export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {
   if (cached) return toServiceResult(cached);
 
   try {
-    const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider]);
+    const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
     const result = await chain.run('market.northFlow', (provider) => {
       if (!provider.northFlow) {
         throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement northFlow`, 501);
@@ -526,7 +540,7 @@ export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {
 }
 
 export async function getGlobalIndices(): Promise<ServiceResult<GlobalIndexListDto>> {
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider, yahooMarketProvider]);
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider, yahooMarketProvider], dataSourceScorer);
   const result = await cacheThrough('market:global-indices', ttl.marketGlobalIndices, () =>
     chain.run('market.globalIndices', (provider) => {
       if (!provider.globalIndices) {

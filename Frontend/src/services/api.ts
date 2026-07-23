@@ -134,4 +134,9 @@ export const settingsAPI = {
   update(data: Record<string, unknown>) { return api.put('/settings', data) },
 }
 
+export const datasourceScoresAPI = {
+  get() { return api.get('/datasource-scores') },
+  update(data: Record<string, unknown>) { return api.put('/datasource-scores', data) },
+}
+
 export default api

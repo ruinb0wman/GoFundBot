@@ -28,6 +28,11 @@ try:
 except ImportError:
     ak = None
 
+try:
+    import baostock as bs
+except ImportError:
+    bs = None
+
 from _template import run_script  # noqa: E402
 
 from cli.shared.file_cache import file_cache  # noqa: E402
@@ -97,6 +102,92 @@ def complete_kline(code: str, start_date: str = "", end_date: str = ""):
     except Exception as e:
         print(f"akshare kline failed: {e}", file=sys.stderr)
         return []
+
+
+def complete_kline_baostock(code: str, start_date: str = "", end_date: str = ""):
+    """
+    Fetch index daily kline from baostock (socket protocol, no HTTP anti-crawl issues).
+    Code format: sh000001 or sh.000001 both accepted.
+    """
+    if not bs:
+        return []
+    try:
+        dot_code = code if "." in code else code[:2] + "." + code[2:]
+        lg = bs.login()
+        if lg.error_code != "0":
+            return []
+
+        try:
+
+            def _fmt(v: str) -> str:
+                v = v.replace("-", "")
+                if len(v) == 8:
+                    return f"{v[:4]}-{v[4:6]}-{v[6:]}"
+                return v
+
+            rs = bs.query_history_k_data_plus(
+                dot_code,
+                "date,open,close,high,low,volume,amount,pctChg",
+                start_date=_fmt(start_date) if start_date else "",
+                end_date=_fmt(end_date) if end_date else "",
+                frequency="d",
+                adjustflag="3",
+            )
+
+            result = []
+            prev_close = None
+            while rs.next():
+                row = rs.get_row_data()
+                fields = rs.fields if hasattr(rs, "fields") else []
+                d = dict(zip(fields, row))
+
+                date_val = d.get("date", "")
+                if not date_val or date_val == "":
+                    continue
+
+                try:
+                    close_val = float(d["close"])
+                except (ValueError, TypeError):
+                    continue
+
+                if prev_close is not None:
+                    delta = close_val - prev_close
+                    pct = (delta / prev_close) * 100 if prev_close != 0 else 0.0
+                else:
+                    delta = 0.0
+                    pct = 0.0
+
+                result.append(
+                    {
+                        "code": code,
+                        "date": date_val,
+                        "open": _safe_float(d.get("open")),
+                        "close": close_val,
+                        "high": _safe_float(d.get("high")),
+                        "low": _safe_float(d.get("low")),
+                        "volume": int(_safe_float(d.get("volume", "0"))),
+                        "amount": _safe_float(d.get("amount")),
+                        "change": round(delta, 4),
+                        "changePercent": round(pct, 4),
+                    }
+                )
+                prev_close = close_val
+
+            return result
+        finally:
+            bs.logout()
+    except Exception as e:
+        print(f"baostock kline failed: {e}", file=sys.stderr)
+        return []
+
+
+def _safe_float(value: str | None) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
 
 
 @file_cache(key="stock_list", ttl_hours=24)
@@ -250,7 +341,7 @@ def complete_market_money_flow():
 
 def main():
     parser = argparse.ArgumentParser(description="Data completion")
-    parser.add_argument("--source", choices=["akshare", "eastmoney"], default="akshare")
+    parser.add_argument("--source", choices=["akshare", "eastmoney", "baostock"], default="akshare")
     parser.add_argument(
         "--type",
         choices=["stocks", "industry", "sector_spot", "kline", "north_flow", "money_flow", "all"],
@@ -274,7 +365,10 @@ def main():
     if args.type == "kline":
         if not args.code:
             return {"error": "--code is required for --type kline"}
-        result["kline"] = complete_kline(args.code, args.start_date, args.end_date)
+        if args.source == "baostock":
+            result["kline"] = complete_kline_baostock(args.code, args.start_date, args.end_date)
+        else:
+            result["kline"] = complete_kline(args.code, args.start_date, args.end_date)
     if args.type == "north_flow":
         result["north_flow"] = complete_north_flow()
     if args.type == "money_flow":
