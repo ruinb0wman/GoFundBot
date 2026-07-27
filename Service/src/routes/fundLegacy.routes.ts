@@ -190,12 +190,22 @@ fundLegacyRouter.get(
       acc_net_worth: i.accNav,
     }));
 
+    const estimateData = detail.sections.estimate.data;
+
     sendSuccess(res, {
       fund_code: code,
       fund_name: detail.sections.basic.data?.name ?? '',
       fund_type: detail.sections.basic.data?.type ?? '',
       net_worth_trend: trend,
       accumulated_net_worth: accumulated,
+      realtime_estimate: {
+        estimate_value: estimateData?.estimatedNav ?? null,
+        estimate_change: estimateData?.estimatedChangePercent ?? null,
+        estimate_time: estimateData?.estimateTime ?? null,
+        net_worth: estimateData?.nav ?? null,
+        net_worth_date: estimateData?.navDate ?? null,
+        name: estimateData?.name ?? null,
+      },
       risk_metrics: {},
       ranking: {},
       industry_tag: '',

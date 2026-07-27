@@ -35,7 +35,7 @@ const eastMoneyFundProvider = new EastMoneyFundProvider();
 
 export async function getFundEstimate(code: string): Promise<ServiceResult<FundEstimateDto>> {
   const fundCode = assertFundCode(code);
-  const chain = new ProviderChain<FundProvider>([tencentFundProvider, stockSdkFundProvider, eastMoneyFundProvider]);
+  const chain = new ProviderChain<FundProvider>([stockSdkFundProvider, eastMoneyFundProvider, tencentFundProvider]);
   const result = await cacheThrough(`fund:estimate:${fundCode}`, ttl.fundEstimate, () =>
       chain.run(
         'fund.estimate',
