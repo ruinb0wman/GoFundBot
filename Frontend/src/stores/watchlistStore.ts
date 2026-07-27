@@ -163,6 +163,13 @@ export const useWatchlistStore = defineStore('watchlist', {
             fund.net_worth_date = est.navDate
             fund.estimate_value = est.estimatedNav
             fund.estimate_change = est.estimatedChangePercent
+            if (fund.estimate_change == null) {
+              const estimateNav = Number(est.estimatedNav)
+              const officialNav = Number(est.nav)
+              if (Number.isFinite(estimateNav) && Number.isFinite(officialNav) && officialNav > 0) {
+                fund.estimate_change = ((estimateNav - officialNav) / officialNav) * 100
+              }
+            }
             fund.estimate_time = est.estimateTime
           }
         }
