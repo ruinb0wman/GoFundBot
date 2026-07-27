@@ -123,14 +123,20 @@ export class EastMoneyFundProvider implements FundProvider {
 
   private async estimateFromPingZhongData(code: string): Promise<FundEstimateDto> {
     const navData = await this.navHistory(code, {});
-    const latest = navData.items.length > 0 ? navData.items[navData.items.length - 1] : null;
+    const items = navData.items;
+    const latest = items.length > 0 ? items[items.length - 1] : null;
+    const prev = items.length > 1 ? items[items.length - 2] : null;
+    let change: number | null = null;
+    if (latest && prev && latest.nav > 0 && prev.nav > 0) {
+      change = ((latest.nav - prev.nav) / prev.nav) * 100;
+    }
     return {
       code,
       name: navData.name,
       navDate: latest?.date ?? null,
       nav: latest?.nav ?? null,
       estimatedNav: null,
-      estimatedChangePercent: null,
+      estimatedChangePercent: change,
       estimateTime: null,
     };
   }
