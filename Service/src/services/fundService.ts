@@ -1,6 +1,7 @@
 import { cacheThrough, ttl } from '../core/cache.js';
 import { AppError, assertCode } from '../core/errors.js';
 import { ProviderChain } from '../core/providerChain.js';
+import { logger } from '../core/logger.js';
 import type { ServiceResult } from '../types/common.js';
 import type {
   FundAssetAllocationDto,
@@ -185,7 +186,10 @@ export async function getFundNavHistory(
   const key = `fund:nav-history:${fundCode}:${options.startDate ?? ''}:${options.endDate ?? ''}`;
   const chain = new ProviderChain<FundProvider>([joinQuantFundProvider, tencentFundProvider, stockSdkFundProvider, eastMoneyFundProvider]);
   const result = await cacheThrough(key, ttl.fundNavHistory, () =>
-    chain.run('fund.navHistory', (provider) => provider.navHistory(fundCode, options), { timeoutMs: 8000 })
+    chain.run('fund.navHistory', (provider) => provider.navHistory(fundCode, options), {
+      timeoutMs: 8000,
+      validate: (data) => data.items.length > 0,
+    })
   );
 
   return toServiceResult(result);
@@ -364,7 +368,9 @@ export async function getFundDetail(code: string): Promise<ServiceResult<FundDet
       providers.push(result.provider);
     } else {
       const section = sectionNames[results.indexOf(r)] || 'unknown';
+      const reason = r.reason instanceof Error ? r.reason.message : String(r.reason);
       failedSections.push(section);
+      logger.error('Fund detail section failed', { fundCode, section, error: reason });
       (sections as Record<string, unknown>)[section] = {
         data: null,
         provider: null,
@@ -373,7 +379,7 @@ export async function getFundDetail(code: string): Promise<ServiceResult<FundDet
         updatedAt: null,
         error: {
           code: 'SECTION_FAILED',
-          message: r.reason instanceof Error ? r.reason.message : String(r.reason),
+          message: reason,
         },
       };
     }
@@ -553,7 +559,7 @@ async function getFundPositionTrend(code: string): Promise<ServiceResult<unknown
 
 async function getFundTotalReturnTrend(code: string): Promise<ServiceResult<unknown>> {
   const fundCode = assertFundCode(code);
-  const chain = new ProviderChain<FundProvider>([eastMoneyFundProvider]);
+  const chain = new ProviderChain<FundProvider>([eastMoneyFundProvider, tencentFundProvider, stockSdkFundProvider]);
   const result = await cacheThrough(`fund:totalReturn:${fundCode}`, ttl.fundBasic, () =>
     chain.run('fund.totalReturnTrend', (provider) => {
       if (!provider.totalReturnTrend) {

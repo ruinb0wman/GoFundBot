@@ -174,9 +174,9 @@ export function useFundDetail(props: any, emit: any) {
           return trend
             .filter((item: any) => {
               const ts = new Date(item.date).getTime()
-              return !isNaN(ts) && !isNaN(parseFloat(item.position_percentage))
+              return !isNaN(ts) && !isNaN(parseFloat(item.acc_net_worth))
             })
-            .map((item: any) => [new Date(item.date).getTime(), parseFloat(item.position_percentage) || 0])
+            .map((item: any) => [new Date(item.date).getTime(), parseFloat(item.acc_net_worth) || 0])
         }
         return trend
           .filter((item: any) => Array.isArray(item) && item.length >= 2 && !isNaN(item[0]) && !isNaN(parseFloat(item[1])))

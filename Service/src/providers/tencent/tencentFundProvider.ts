@@ -1,5 +1,5 @@
 import type { FundProvider, FundNavHistoryOptions } from '../types.js';
-import type { FundEstimateDto, FundNavHistoryDto, FundNavPointDto } from '../../types/fund.js';
+import type { FundEstimateDto, FundNavHistoryDto, FundNavPointDto, FundTotalReturnTrendDto } from '../../types/fund.js';
 import { fetchUrl } from '../../core/fetch.js';
 
 const ESTIMATE_URL = 'https://web.ifzq.gtimg.cn/app/fund/estimate';
@@ -67,6 +67,18 @@ export class TencentFundProvider implements FundProvider {
 
   async dividends(): Promise<never> {
     throw new Error('Tencent fund does not implement dividends');
+  }
+
+  async totalReturnTrend(code: string): Promise<FundTotalReturnTrendDto> {
+    const navData = await this.navHistory(code);
+    const items = navData.items;
+    if (items.length < 2) return { series: [] };
+    const firstNav = items[0].nav;
+    if (!firstNav || firstNav <= 0) return { series: [] };
+    const data = items
+      .filter(i => i.timestamp != null && i.nav > 0)
+      .map(i => [i.timestamp, ((i.nav - firstNav) / firstNav) * 100]);
+    return { series: [{ name: '本基金', data }] };
   }
 }
 

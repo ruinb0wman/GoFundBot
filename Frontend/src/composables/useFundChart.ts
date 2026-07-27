@@ -109,7 +109,10 @@ export function useFundChart(props) {
       .map(item => [item.x, item.y])
     const filtered = filterByDate(rawData, selectedRange.value).slice().sort((a, b) => a[0] - b[0])
 
-    if (filtered.length === 0) return { chartData: [], drawdownInfo: null, useRawValues: false }
+    if (filtered.length === 0) {
+      console.warn('[FundChart] No data after filter', { rawDataLength: rawData.length, selectedRange: selectedRange.value })
+      return { chartData: [], drawdownInfo: null, useRawValues: false }
+    }
 
     const startVal = filtered[0][1]
     const endVal = filtered[filtered.length - 1][1]

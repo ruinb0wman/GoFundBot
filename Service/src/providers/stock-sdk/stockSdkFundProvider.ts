@@ -6,6 +6,7 @@ import type {
   FundNavPointDto,
   FundRankHistoryDto,
   FundRankPointDto,
+  FundTotalReturnTrendDto,
 } from '../../types/fund.js';
 import type { FundNavHistoryOptions, FundProvider } from '../types.js';
 import { getStockSdk } from './stockSdkClient.js';
@@ -32,6 +33,19 @@ export class StockSdkFundProvider implements FundProvider {
   async dividends(code: string): Promise<FundDividendListDto> {
     assertStockSdkNotForcedToFail();
     return mapFundDividendList(await getStockSdk().fund.dividendList({ code, page: 'all' }));
+  }
+
+  async totalReturnTrend(code: string): Promise<FundTotalReturnTrendDto> {
+    assertStockSdkNotForcedToFail();
+    const navData = mapFundNavHistory(await getStockSdk().fund.navHistory(code));
+    const items = navData.items;
+    if (items.length < 2) return { series: [] };
+    const firstNav = items[0].nav;
+    if (!firstNav || firstNav <= 0) return { series: [] };
+    const data = items
+      .filter(i => i.timestamp != null && i.nav > 0)
+      .map(i => [i.timestamp, ((i.nav - firstNav) / firstNav) * 100]);
+    return { series: [{ name: '本基金', data }] };
   }
 }
 

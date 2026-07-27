@@ -24,6 +24,7 @@ import type {
   FundTotalReturnTrendDto,
 } from '../../types/fund.js';
 import { AppError } from '../../core/errors.js';
+import { fetchUrl } from '../../core/fetch.js';
 import type { FundNavHistoryOptions, FundProvider, FundScreeningSnapshotOptions } from '../types.js';
 import { fetchText, fetchJson, parseJsonpObject, parseJsJson, parseJsString, extractJsAssignment } from './eastmoneyRequest.js';
 
@@ -100,20 +101,37 @@ export class EastMoneyFundProvider implements FundProvider {
   }
 
   async estimate(code: string): Promise<FundEstimateDto> {
-    const batch = await this.fetchFundGuZhiBatch();
-    const fund = batch.find((item) => item.bzdm === code);
-    if (!fund) {
-      throw new AppError('PROVIDER_UNAVAILABLE', `Fund ${code} not found in FundGuZhi batch`, 404);
+    try {
+      const batch = await this.fetchFundGuZhiBatch();
+      const fund = batch.find((item) => item.bzdm === code);
+      if (fund) {
+        return {
+          code,
+          name: toNullableString(fund.jjjc),
+          navDate: toNullableString(fund.gzrq),
+          nav: toNullableNumber(fund.dwjz),
+          estimatedNav: toNullableNumber(fund.gsz),
+          estimatedChangePercent: parsePercent(fund.gszzl),
+          estimateTime: toNullableString(fund.gxrq),
+        };
+      }
+    } catch {
+      // batch unavailable (anti-crawl, network error, etc.) — fall through
     }
+    return this.estimateFromPingZhongData(code);
+  }
 
+  private async estimateFromPingZhongData(code: string): Promise<FundEstimateDto> {
+    const navData = await this.navHistory(code, {});
+    const latest = navData.items.length > 0 ? navData.items[navData.items.length - 1] : null;
     return {
       code,
-      name: toNullableString(fund.jjjc),
-      navDate: toNullableString(fund.gzrq),
-      nav: toNullableNumber(fund.dwjz),
-      estimatedNav: toNullableNumber(fund.gsz),
-      estimatedChangePercent: parsePercent(fund.gszzl),
-      estimateTime: toNullableString(fund.gxrq),
+      name: navData.name,
+      navDate: latest?.date ?? null,
+      nav: latest?.nav ?? null,
+      estimatedNav: null,
+      estimatedChangePercent: null,
+      estimateTime: null,
     };
   }
 
@@ -577,7 +595,11 @@ export class EastMoneyFundProvider implements FundProvider {
   // -----------------------------------------------------------------------
 
   private async fetchFundDetailScript(code: string): Promise<string> {
-    return fetchText(`https://fund.eastmoney.com/pingzhongdata/${code}.js`);
+    return fetchUrl<string>(`https://fund.eastmoney.com/pingzhongdata/${code}.js`, {
+      timeoutMs: 10000,
+      proxy: 'never',
+      headers: { 'Referer': 'https://fund.eastmoney.com/' },
+    });
   }
 }
 
