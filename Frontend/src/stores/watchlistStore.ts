@@ -166,7 +166,7 @@ export const useWatchlistStore = defineStore('watchlist', {
             if (fund.estimate_change == null) {
               const estimateNav = Number(est.estimatedNav)
               const officialNav = Number(est.nav)
-              if (Number.isFinite(estimateNav) && Number.isFinite(officialNav) && officialNav > 0) {
+              if (Number.isFinite(estimateNav) && Number.isFinite(officialNav) && estimateNav > 0 && officialNav > 0) {
                 fund.estimate_change = ((estimateNav - officialNav) / officialNav) * 100
               }
             }
