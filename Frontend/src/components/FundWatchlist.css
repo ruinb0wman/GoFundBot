@@ -10,9 +10,13 @@
 
 /* 对比切换按钮区域 */
 .compare-toggle-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border-default);
+  gap: 8px;
 }
 
 .toggle-icon {
@@ -90,6 +94,9 @@
   display: flex;
   gap: 6px;
 }
+
+.doc-link { display: inline-flex; align-items: center; color: var(--text-tertiary); transition: color 0.2s; }
+.doc-link:hover { color: var(--color-primary); }
 
 /* 旋转动画 */
 .rotating {

@@ -2,6 +2,9 @@
   <div class="sector-rank-container">
     <div class="section-header">
       <h3><LucideIcon name="Factory" :size="20" /> {{ t('sectorRank.title') }}</h3>
+      <a class="doc-link" href="/docs/market-sector-rank" target="_blank" title="查看文档">
+        <LucideIcon name="HelpCircle" :size="16" />
+      </a>
       <BButton circle icon="RefreshCw" :loading="loading" @click="fetchSectors" :title="t('sectorRank.refresh')" />
       <BButton
         circle

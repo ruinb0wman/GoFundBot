@@ -3,6 +3,11 @@
     <div class="market-section" v-if="showSSE30Min">
       <div class="section-header">
         <h3><LucideIcon name="TrendingDown" :size="20" /> {{ t('market.indexTrend1m') }}</h3>
+        <div class="header-actions">
+          <a class="doc-link" href="/docs/market-index-trend" target="_blank" title="查看文档">
+            <LucideIcon name="HelpCircle" :size="16" />
+          </a>
+        </div>
         <div class="tab-group">
           <span v-for="tab in tabs" :key="tab.key" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">{{ tab.name }}</span>
         </div>
@@ -20,6 +25,9 @@
       <div class="section-header">
         <h3><LucideIcon name="Globe" :size="20" /> {{ t('market.indices') }}</h3>
         <div class="header-actions">
+          <a class="doc-link" href="/docs/market-global" target="_blank" title="查看文档">
+            <LucideIcon name="HelpCircle" :size="16" />
+          </a>
           <span class="update-tag" :class="{ failed: indicesStatus === 'failed' }" v-if="indicesUpdateTime">
             {{ indicesStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(indicesUpdateTime) }}
           </span>
@@ -53,11 +61,16 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="BarChart3" :size="20" /> {{ t('market.volume') }}</h3>
-        <span class="update-tag" :class="{ failed: volumeStatus === 'failed' }" v-if="volumeUpdateTime">
+        <div class="header-actions">
+          <a class="doc-link" href="/docs/market-volume" target="_blank" title="查看文档">
+            <LucideIcon name="HelpCircle" :size="16" />
+          </a>
+          <span class="update-tag" :class="{ failed: volumeStatus === 'failed' }" v-if="volumeUpdateTime">
           {{ volumeStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(volumeUpdateTime) }}
         </span>
       </div>
-      <div class="chart-container volume-chart-container">
+    </div>
+    <div class="chart-container volume-chart-container">
         <v-chart class="chart" :option="volumeOption" autoresize :theme="echartThemeName" v-if="aVolume.length" />
         <div v-else class="empty-state">{{ t('market.noVolumeData') }}</div>
       </div>

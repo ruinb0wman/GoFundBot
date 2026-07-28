@@ -22,6 +22,9 @@
   color: var(--text-primary);
 }
 
+.doc-link { display: inline-flex; align-items: center; color: var(--text-tertiary); transition: color 0.2s; }
+.doc-link:hover { color: var(--color-primary); }
+
 .filter-panel {
   display: flex;
   flex-direction: column;

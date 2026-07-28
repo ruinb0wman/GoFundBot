@@ -8,6 +8,9 @@
         <span v-if="!loading && newsList.length" class="count-badge">{{ newsList.length }} {{ t('flashNews.itemCount') }}</span>
       </div>
       <div class="header-right">
+        <a class="doc-link" href="/docs/market-news" target="_blank" title="查看文档">
+          <LucideIcon name="HelpCircle" :size="16" />
+        </a>
         <span v-if="sourcesText" class="sources-tag" :title="sourcesText">{{ sourcesText }}</span>
         <BButton circle size="small" icon="RefreshCw" @click="resetAndFetch" :loading="loading" :title="t('flashNews.refresh')" />
       </div>
@@ -344,6 +347,9 @@ onMounted(() => {
 .count-badge { font-size: 11px; font-weight: 600; color: var(--color-primary); background: var(--color-primary-bg); padding: 2px 8px; border-radius: var(--radius-md); }
 
 .header-right { display: flex; align-items: center; gap: 8px; }
+
+.doc-link { display: inline-flex; align-items: center; color: var(--text-tertiary); transition: color 0.2s; }
+.doc-link:hover { color: var(--color-primary); }
 
 .sources-tag {
   font-size: 10px; color: var(--text-tertiary); background: var(--bg-subtle);

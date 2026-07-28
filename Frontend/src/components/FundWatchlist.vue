@@ -20,6 +20,9 @@
       <div v-if="compareMode && compareFunds.length === 1" class="compare-hint">
         {{ t('fund.watchlist.compareNeed', { count: 1 }) }}
       </div>
+      <a class="doc-link" href="/docs/market-watchlist" target="_blank" title="查看文档">
+        <LucideIcon name="HelpCircle" :size="16" />
+      </a>
     </div>
 
     <div class="watchlist-header">
