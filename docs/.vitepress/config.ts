@@ -7,8 +7,7 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: '首页', link: '/index' },
-      { text: '数据来源与运行时总览', link: '/data-sources-and-runtime' },
-      { text: 'Tushare 接入', link: '/tushare' },
+      { text: '技术架构总览', link: '/architecture/' },
     ],
     sidebar: [
       {
@@ -22,6 +21,21 @@ export default defineConfig({
           { text: '7×24 快讯', link: '/market-news' },
           { text: '行业板块排行', link: '/market-sector-rank' },
           { text: '我的自选', link: '/market-watchlist' },
+        ],
+      },
+      {
+        text: '架构',
+        items: [
+          { text: '技术架构总览', link: '/architecture/' },
+          { text: '数据源', link: '/architecture/data-sources' },
+          { text: '数据流向', link: '/architecture/data-flow' },
+          { text: '数据回退策略', link: '/architecture/fallback-strategy' },
+          { text: '模块数据源映射', link: '/architecture/module-data-sources' },
+          { text: '基金数据合并策略', link: '/architecture/fund-data-merge' },
+          { text: 'AI 分析框架总览', link: '/architecture/ai-overview' },
+          { text: 'AI 对话系统', link: '/architecture/ai-chat' },
+          { text: 'AI 基金分析与持仓分析', link: '/architecture/ai-fund-analysis' },
+          { text: '记忆与反思系统', link: '/architecture/ai-memory' },
         ],
       },
       {
