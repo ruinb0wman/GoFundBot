@@ -184,9 +184,10 @@ npm run dev
 
 同时启动：
 - **Service** (端口 3100) — Express 后端
-- **Frontend** (端口 5173) — Vue 开发服务器
+- **Frontend** (端口 5173) — Vue 开发服务器（代理 `/api` → 3100，`/docs` → 5174）
+- **Docs** (端口 5174) — VitePress 文档站
 
-启动成功后访问 `http://localhost:5173`。
+启动成功后访问 `http://localhost:5173`，文档站通过前端 `/docs/*` 路径代理访问。
 
 ### 5. 生产部署
 
@@ -258,7 +259,7 @@ GoFundBot/
 │   ├── Data/                    # 日志、缓存文件
 │   ├── search_service.py        # 搜索引擎模块（Bocha/Tavily/DuckDuckGo 多源降级）
 │   └── requirements.txt
-├── docs/                        # 文档和截图
+├── docs/                        # VitePress 文档站 + 截图
 ├── package.json                 # 根目录 — 一键启动脚本
 └── AGENTS.md                    # AI Agent 开发指南
 ```
@@ -291,12 +292,7 @@ HTTPS_PROXY=http://127.0.0.1:7890
 
 ### 个股资金流向说明
 
-个股资金流向数据通过 EastMoney push2 `fflow/daykline/get` 接口获取。
-字段含义：
-- 主力净流入 = 超大单净流入 + 大单净流入（≈ 机构资金）
-- 中单净流入 ≈ 大户资金
-- 小单净流入 ≈ 散户资金
-- 数值单位为元，Service 返回原始值。
+大盘资金流向的获取与分类标准详见 [`docs/market-money-flow.md`](docs/market-money-flow.md)。
 
 ## 📝 免责声明
 

@@ -56,6 +56,11 @@ cd Scripts
 echo '{"navHistory":[...]}' | Scripts/.venv/bin/python cli/backtest.py
 Scripts/.venv/bin/python cli/fetch_fund.py --code 019667
 Scripts/.venv/bin/python cli/data_complete.py --source akshare --type stocks
+
+# Docs (VitePress)
+cd docs && npm install
+npm run dev              # port 5174, proxied via Frontend /docs/*
+npm run build            # output in docs/.vitepress/dist/
 ```
 
 ## CI/CD
@@ -76,7 +81,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 - **Health check**: `GET /api/health` — includes cache stats.
 - **Cache TTLs**: fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
 - **Graceful shutdown**: Service handles `SIGTERM`/`SIGINT` — 10s wait, then force exit.
-- **Vite proxy**: `Frontend/vite.config.ts` proxies `/api` → `localhost:3100`.
+- **Vite proxy**: `Frontend/vite.config.ts` proxies `/api` → `localhost:3100`, `/docs` → `localhost:5174`.
 - **Dexie.js**: All persistent data in IndexedDB, 10 tables in `Frontend/src/db/index.ts`.
 - **Settings endpoint**: `GET/PUT /api/settings` — 统一 LLM/Proxy/Search 配置内存缓存，前端 localStorage 同步。
 - **Search chain**: Exa（MCP/JSON-RPC，免费无 Key）→ Bocha → Tavily → DuckDuckGo（自动降级）。
@@ -120,16 +125,12 @@ cd Frontend && npx vue-tsc --noEmit && npm test
 EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反爬封锁（SSL EOF），
 无法获取分订单规模（主力/超大单/大单/中单/小单）的沪深合计资金流数据。
 
-**现状**：`push2*` 全封锁后，无可用的大盘资金流分项数据源。
+**现状**：
+- EastMoney push2 不可用后自动走 Akshare 回退（`data_complete.py --source akshare --type money_flow`）
+- Akshare 返回格式与 EastMoney 一致（`MarketMoneyFlowDto`），覆盖 5 个字段
+- `getMarketMoneyFlow()` 在两种数据源均失败时返回空数据，前端显示"暂无数据"
 
-尝试过的替代方案：
-- 10jqka (同花顺) —— 只有总净额，无主力/超大单/大单/中单/小单分项
-- baostock —— 无日度资金流向 API
-- tushare —— `moneyflow` 接口需 2000 积分（当前 token 权限不足），详见 `docs/tushare.md`
-
-**临时行为**：EastMoney 失败后直接返回空数据，前端显示"暂无数据"。
-待 tushare 权限开通后可接回完整分项数据。
-
-修改的文件：
-- `Service/src/providers/eastmoney/eastmoneyMarketProvider.ts` — 修正 `marketMoneyFlow()` API 参数（secid2 + klt）
-- `Service/src/providers/eastmoney/eastmoneyRequest.ts` — EastMoney 请求 proxy 模式改为 `'auto'`
+**历史修复**：
+- **2026-07-28** — 前端资金流向图表修复：`categories` 从 `['主力', '机构', '大户', '散户']` 改为 `['机构', '大户', '中户', '散户']`，values 映射从 `[mainNetInflow, superLargeNetInflow, largeNetInflow, smallNetInflow]` 改为 `[superLargeNetInflow, largeNetInflow, mediumNetInflow, smallNetInflow]`
+  - 修复前：`mainNetInflow = superLargeNetInflow + largeNetInflow`，买入侧重复计算翻倍，且遗漏 `mediumNetInflow`
+  - 修复后：4 栏互斥，标签与订单分类对齐，详见 `docs/market-money-flow.md`

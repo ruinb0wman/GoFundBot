@@ -66,9 +66,14 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="TrendingUp" :size="20" /> {{ t('market.moneyFlow') }}</h3>
-        <span class="update-tag" :class="{ failed: moneyFlowStatus === 'failed' }" v-if="moneyFlowUpdateTime">
+        <div class="header-actions">
+          <a class="doc-link" href="/docs/market-money-flow" target="_blank" title="查看文档">
+            <LucideIcon name="HelpCircle" :size="16" />
+          </a>
+          <span class="update-tag" :class="{ failed: moneyFlowStatus === 'failed' }" v-if="moneyFlowUpdateTime">
           {{ moneyFlowStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(moneyFlowUpdateTime) }}
         </span>
+        </div>
       </div>
       <div class="flow-chart-container">
         <v-chart class="chart" :option="moneyFlowOption" autoresize :theme="echartThemeName" v-if="moneyFlow && moneyFlow.date" />
