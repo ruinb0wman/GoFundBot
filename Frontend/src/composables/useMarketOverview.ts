@@ -304,11 +304,11 @@ export function useMarketOverview(props: any) {
     const data = moneyFlow.value
     if (!data || !data.date) return {}
 
-    const categories = ['主力', '机构', '大户', '散户']
+    const categories = ['机构', '大户', '中户', '散户']
     const values = [
-      data.mainNetInflow,
       data.superLargeNetInflow,
       data.largeNetInflow,
+      data.mediumNetInflow,
       data.smallNetInflow,
     ]
     const valuesYi = values.map((v: number | null) => v != null ? v / 1e8 : 0)
