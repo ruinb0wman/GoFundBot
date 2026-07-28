@@ -8,10 +8,11 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/index' },
       { text: '技术架构总览', link: '/architecture/' },
+      { text: '基金筛选', link: '/fund-screening/index' },
     ],
     sidebar: [
       {
-        text: '市场数据',
+        text: '市场大盘',
         items: [
           { text: '市场指数近一月走势', link: '/market-index-trend' },
           { text: '全球行情', link: '/market-global' },
@@ -21,6 +22,16 @@ export default defineConfig({
           { text: '7×24 快讯', link: '/market-news' },
           { text: '行业板块排行', link: '/market-sector-rank' },
           { text: '我的自选', link: '/market-watchlist' },
+        ],
+      },
+      {
+        text: '基金筛选',
+        items: [
+          { text: '概览', link: '/fund-screening/index' },
+          { text: '数据流', link: '/fund-screening/data-flow' },
+          { text: '筛选面板', link: '/fund-screening/filter-system' },
+          { text: '指标丰富化', link: '/fund-screening/enrichment' },
+          { text: '4433法则', link: '/fund-screening/4433-rule' },
         ],
       },
       {
@@ -39,7 +50,7 @@ export default defineConfig({
         ],
       },
       {
-        text: '数据来源',
+        text: '问题探索',
         items: [
           { text: '数据来源与运行时总览', link: '/data-sources-and-runtime' },
           { text: 'Tushare 接入', link: '/tushare' },

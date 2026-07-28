@@ -87,6 +87,9 @@ Both services enforce single-file max 500 lines. Violations block CI.
 - **Search chain**: Exa（MCP/JSON-RPC，免费无 Key）→ Bocha → Tavily → DuckDuckGo（自动降级）。
 - **Screening data refresh**: 筛选页 onMounted + localStorage 持久化 `lastSyncTime` → 检测过期（今日 9AM）→ 强制 `force=true` 全量刷新。AI chat `get_industry_performance` 共享同一缓存（cacheThrough TTL=次日 9AM）。
 - **Proxy**: 国内 API（东方财富）用 `proxy: 'never'` 直连；Yahoo Finance（被封）走 `proxy: 'auto'` 随代理配置。`eastmoneyRequest.ts` 统一添加 `Referer` 头防止反爬。
+- **Docs**: VitePress 构建的文档站，配置在 `docs/.vitepress/config.ts`（nav + sidebar）。模块级详细文档按功能目录组织（如 `docs/fund-screening/`），在侧边栏对应分组。文档通过 Frontend `/docs/*` 代理访问。
+
+> 模块级详细文档见 `docs/` 目录（VitePress 构建），每个功能模块对应独立的 `.md` 文件或目录，侧边栏分组见 `docs/.vitepress/config.ts`。
 
 ## Monorepo hot spots
 
@@ -107,6 +110,10 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `Frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
 | `Frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
 | `Frontend/src/services/` | API client (api.ts, portfolioApi.ts, chatApi.ts) |
+| `docs/` | VitePress 文档站（`docs/.vitepress/config.ts` 导航/侧边栏配置） |
+| `docs/fund-screening/` | 基金筛选模块细分文档（概览/数据流/筛选面板/指标丰富化/4433法则） |
+| `docs/market-*.md` | 市场数据各功能模块说明文档 |
+| `docs/architecture/` | 技术架构文档（数据源/数据流/回退策略/AI分析等） |
 
 ## Testing
 

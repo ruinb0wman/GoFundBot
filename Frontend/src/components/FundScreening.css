@@ -1182,3 +1182,6 @@
 .type-checkbox {
   display: none;
 }
+
+.doc-link { display: inline-flex; align-items: center; color: var(--text-tertiary); transition: color 0.2s; }
+.doc-link:hover { color: var(--color-primary); }

@@ -15,6 +15,9 @@
           </span>
         </div>
         <div class="header-right">
+          <a class="doc-link" href="/docs/fund-screening" target="_blank" title="查看文档">
+            <LucideIcon name="HelpCircle" :size="16" />
+          </a>
           <BButton type="primary" :disabled="updateStatus.running" @click="openUpdateDialog" :title="t('fund.screening.updateTask')">
             <template #icon>
               <LucideIcon v-if="updateStatus.running" name="Hourglass" :size="14" />
