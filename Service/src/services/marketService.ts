@@ -664,7 +664,7 @@ export async function fetchGoldRealtime(): Promise<Record<string, any>> {
         name: d.showName || codeMap[code] || code,
         price: to2(d.q63),
         change: to2(d.q70),
-        change_pct: `${to2(d.q80)}%`,
+        change_pct: to2(d.q80),
         open: to2(d.q1),
         high: to2(d.q3),
         low: to2(d.q4),

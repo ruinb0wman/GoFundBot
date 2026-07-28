@@ -84,9 +84,14 @@
     <div class="market-section">
       <div class="section-header">
         <h3><LucideIcon name="Award" :size="20" /> {{ t('market.gold') }}</h3>
-        <span class="update-tag" :class="{ failed: goldStatus === 'failed' }" v-if="goldUpdateTime">
-          {{ goldStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(goldUpdateTime) }}
-        </span>
+        <div class="header-actions">
+          <a class="doc-link" href="/docs/market-gold" target="_blank" title="查看文档">
+            <LucideIcon name="HelpCircle" :size="16" />
+          </a>
+          <span class="update-tag" :class="{ failed: goldStatus === 'failed' }" v-if="goldUpdateTime">
+            {{ goldStatus === 'success' ? t('market.updatedAt') : t('market.fetchFailed') + ': ' }}{{ formatUpdateTime(goldUpdateTime) }}
+          </span>
+        </div>
       </div>
       <div class="gold-grid" v-if="goldRealtime.length">
         <div v-for="item in goldRealtime" :key="item.name" class="gold-card" :class="{ 'up': item.change >= 0, 'down': item.change < 0, 'clickable': isGoldItem(item) }"             @click="isGoldItem(item) && openGoldHistory(item)" :title="isGoldItem(item) ? t('market.clickForHistory') : ''">

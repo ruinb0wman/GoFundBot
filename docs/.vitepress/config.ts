@@ -10,6 +10,7 @@ export default defineConfig({
         text: '市场数据',
         items: [
           { text: '今日资金流向', link: '/market-money-flow' },
+          { text: '实时贵金属', link: '/market-gold' },
         ],
       },
       {
