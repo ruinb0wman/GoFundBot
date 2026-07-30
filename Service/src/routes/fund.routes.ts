@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { asyncHandler } from '../core/errors.js';
+import { AppError, asyncHandler } from '../core/errors.js';
 import { sendSuccess } from '../core/response.js';
 import {
   getFundAssetAllocation,
@@ -10,6 +10,7 @@ import {
   getFundBasic,
   getFundHoldings,
   getFundManagers,
+  getFundNavBatch,
   getFundNavHistory,
   getFundRankHistory,
   getFundScreeningSnapshot,
@@ -43,6 +44,20 @@ fundRouter.get(
   '/estimates',
   asyncHandler(async (req, res) => {
     sendSuccess(res, await getFundEstimates(firstQueryValue(req.query.codes)));
+  })
+);
+
+fundRouter.post(
+  '/nav-batch',
+  asyncHandler(async (req, res) => {
+    const codes = (req.body?.codes ?? []) as string[];
+    if (!Array.isArray(codes) || codes.length === 0) {
+      throw new AppError('INVALID_ARGUMENT', 'codes (array of 6-digit fund codes) is required in request body', 400);
+    }
+    if (codes.length > 5000) {
+      throw new AppError('INVALID_ARGUMENT', 'max 5000 codes allowed', 400);
+    }
+    sendSuccess(res, await getFundNavBatch(codes));
   })
 );
 

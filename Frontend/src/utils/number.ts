@@ -166,3 +166,77 @@ export function scoreClass(val: unknown): string {
   if (num >= 60) return 'score-mid'
   return 'score-low'
 }
+
+export function calcCalmar(
+  annualReturn: number | null | undefined,
+  maxDrawdown: number | null | undefined
+): number | null {
+  if (!isFiniteNumber(annualReturn) || !isFiniteNumber(maxDrawdown)) return null
+  if (isZero(maxDrawdown as number)) return null
+  return new Decimal(annualReturn as number).div(maxDrawdown as number).toNumber()
+}
+
+export interface RiskMetricsResult {
+  max_drawdown_1y: number | null
+  sharpe_ratio_1y: number | null
+  sharpe_ratio_3y: number | null
+  volatility_1y: number | null
+  calmar_ratio_1y: number | null
+}
+
+export function computeRiskMetricsLocal(
+  navPoints: { date: string; nav: number }[]
+): RiskMetricsResult {
+  const sorted = [...navPoints]
+    .filter(p => p.date && isFiniteNumber(p.nav))
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  const values = sorted.map(p => p.nav)
+
+  if (values.length < 10) {
+    return {
+      max_drawdown_1y: null, sharpe_ratio_1y: null, sharpe_ratio_3y: null,
+      volatility_1y: null, calmar_ratio_1y: null,
+    }
+  }
+
+  const now = Date.now()
+  const MIN_TRADING_1Y = 200
+  const MIN_TRADING_3Y = 600
+
+  function computePeriod(days: number, minTradingDays: number) {
+    const cutoff = now - days * 86400000
+    const periodPoints = sorted.filter(p => new Date(p.date).getTime() >= cutoff)
+    const periodValues = periodPoints.map(p => p.nav)
+    const tradingDays = periodValues.length
+
+    if (tradingDays < minTradingDays) {
+      return { annualRet: null, vol: null, sharpe: null, calmar: null, maxDd: null }
+    }
+
+    const dailyRet = calcDailyReturns(periodValues)
+    const annRet = calcAnnualReturn(periodValues[0], periodValues[periodValues.length - 1], tradingDays)
+    const vol = calcVolatility(dailyRet)
+    const maxDd = calcMaxDrawdown(periodValues)
+
+    if (vol != null && vol > 500) {
+      return { annualRet: null, vol: null, sharpe: null, calmar: null, maxDd: null }
+    }
+
+    const sharpe = calcSharpe(annRet, vol)
+    const calmar = calcCalmar(annRet, maxDd)
+
+    return { annualRet: annRet, vol, sharpe, calmar, maxDd }
+  }
+
+  const p1y = computePeriod(365, MIN_TRADING_1Y)
+  const p3y = computePeriod(1095, MIN_TRADING_3Y)
+
+  return {
+    max_drawdown_1y: p1y.maxDd,
+    sharpe_ratio_1y: p1y.sharpe,
+    sharpe_ratio_3y: p3y.sharpe,
+    volatility_1y: p1y.vol,
+    calmar_ratio_1y: p1y.calmar,
+  }
+}

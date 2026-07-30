@@ -2,7 +2,12 @@
 
 ## 一、概述
 
-从东方财富拿到原始的收益排行数据后，后端对每只基金调用 `enrichFund(code)` 进行丰富，结果存入内存 `enrichmentMap`。
+风险指标计算现在有**双路径**：
+
+- **新路径（默认）**：前端通过 `POST /api/funds/nav-batch` 批量获取 NAV 历史，本地 `computeRiskMetricsLocal()` 计算风险指标（`Frontend/src/utils/number.ts:188`）。结果持久化在 IndexedDB，每日首次加载时自动计算一次，全天使用缓存。
+- **旧路径（遗留）**：服务端 `enrichFund()` → `enrichmentMap`，保留向后兼容。服务重启不丢失风险指标（旧路径丢失时新路径自动补齐）。
+
+以下文档主要描述旧路径实现，新路径的本地计算逻辑与服务端 `computeRiskMetrics()` 等价。
 
 ## 二、enrichFund 流程
 

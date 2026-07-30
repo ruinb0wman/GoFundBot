@@ -18,7 +18,7 @@
           <a class="doc-link" href="/docs/fund-screening" target="_blank" title="查看文档">
             <LucideIcon name="HelpCircle" :size="16" />
           </a>
-          <BButton type="primary" :disabled="updateStatus.running" @click="openUpdateDialog" :title="t('fund.screening.updateTask')">
+          <BButton type="primary" :disabled="updateStatus.running || syncing" @click="openUpdateDialog" :title="t('fund.screening.updateTask')">
             <template #icon>
               <LucideIcon v-if="updateStatus.running" name="Hourglass" :size="14" />
               <LucideIcon v-else name="Download" :size="14" />
@@ -193,8 +193,8 @@
                 </div>
               </div>
             </div>
-            <BButton type="primary" icon="Search" @click="search(true)">查询</BButton>
-            <BButton @click="resetFilters">清空</BButton>
+            <BButton type="primary" icon="Search" @click="search(true)" :disabled="syncing">查询</BButton>
+            <BButton @click="resetFilters" :disabled="syncing">清空</BButton>
           </div>
 
           <!-- 已选类型标签 -->
@@ -329,6 +329,16 @@
     </div>
     </div>
 
+    <!-- 同步加载条 -->
+    <div v-if="syncing && !updateStatus.running" class="sync-loading-bar">
+      <div class="sync-loading-spinner"></div>
+      <div class="sync-loading-text">
+        <strong>正在同步数据...</strong>
+        <span v-if="!searched">首次加载基金数据，请稍候</span>
+        <span v-else>正在计算风险指标...</span>
+      </div>
+    </div>
+
     <!-- 筛选结果 -->
     <div class="results-section" v-if="results.length > 0 || loading">
       <div class="results-header">
@@ -430,7 +440,7 @@ defineOptions({ name: 'FundScreening' })
 const emit = defineEmits(['view-fund', 'add-to-compare'])
 
 const {
-  dbStatus, updateStatus, showUpdateDialog, updateTasks,
+  dbStatus, syncing, updateStatus, showUpdateDialog, updateTasks,
   hasSelectedUpdateTask, showIndustryDictDialog,
   showAdvanced, showTypeDropdown, typeDropdownRef, searchWrapRef,
   searchSuggestions, showSearchDropdown, advFilters, advancedFilterGroups,

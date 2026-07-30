@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { db, type ScreeningFund } from '../db'
-import { screeningAPI } from '../services/api'
+import { screeningAPI, fundAPI } from '../services/api'
+import { computeRiskMetricsLocal } from '../utils/number'
 
 export interface QueryResult {
   funds: ScreeningFund[]
@@ -22,10 +23,24 @@ export interface ScreeningStatus {
 }
 
 const STORAGE_KEY = 'screening-last-sync'
+const RISK_DATE_KEY = 'screening-risk-metrics-date'
 
 const syncing = ref(false)
 const lastSyncTime = ref<string | null>(localStorage.getItem(STORAGE_KEY) || null)
 const computed = ref(false)
+
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function isRiskMetricsFresh(): boolean {
+  const saved = localStorage.getItem(RISK_DATE_KEY)
+  return saved === todayStr()
+}
+
+function markRiskMetricsFresh(): void {
+  localStorage.setItem(RISK_DATE_KEY, todayStr())
+}
 
 function isBefore9am(time: string | null): boolean {
   if (!time) return true
@@ -38,6 +53,43 @@ function isBefore9am(time: string | null): boolean {
 function persistSyncTime(time: string): void {
   lastSyncTime.value = time
   localStorage.setItem(STORAGE_KEY, time)
+}
+
+async function fillMissingRiskMetrics(entries?: ScreeningFund[]): Promise<number> {
+  let funds: ScreeningFund[]
+  if (entries) {
+    funds = entries
+  } else {
+    funds = await db.screeningFunds
+      .filter(f => f.sharpe_ratio_1y === null)
+      .toArray()
+  }
+  if (funds.length === 0) return 0
+
+  const codes = funds.map(f => f.fund_code)
+  try {
+    const navRes = await fundAPI.getNavBatch(codes)
+    const navItems = (navRes.data as Record<string, unknown>)?.data as Record<string, { date: string; nav: number }[]> | undefined ?? {}
+    let riskCount = 0
+    for (const entry of funds) {
+      const navs = navItems[entry.fund_code]
+      if (navs && navs.length >= 10) {
+        const metrics = computeRiskMetricsLocal(navs)
+        entry.max_drawdown_1y = metrics.max_drawdown_1y
+        entry.sharpe_ratio_1y = metrics.sharpe_ratio_1y
+        entry.sharpe_ratio_3y = metrics.sharpe_ratio_3y
+        entry.volatility_1y = metrics.volatility_1y
+        entry.calmar_ratio_1y = metrics.calmar_ratio_1y
+        riskCount++
+      }
+    }
+    if (riskCount > 0) {
+      await db.screeningFunds.bulkPut(funds)
+    }
+    return riskCount
+  } catch {
+    return 0
+  }
 }
 
 export function useScreeningDb() {
@@ -56,46 +108,65 @@ export function useScreeningDb() {
 
       if (data.unchanged) {
         if (data.sync_time) persistSyncTime(data.sync_time)
-        return 0
+        if (!force && isRiskMetricsFresh()) return 0
+        const filled = await fillMissingRiskMetrics()
+        if (filled > 0) markRiskMetricsFresh()
+        return filled > 0 ? 1 : 0
       }
 
       const funds = data.funds
       if (funds.length === 0) return 0
 
-      const entries: ScreeningFund[] = funds.map((f: Partial<ScreeningFund>) => ({
-        fund_code: f.fund_code || '',
-        fund_name: f.fund_name || '',
-        fund_type: f.fund_type || null,
-        return_1m: f.return_1m ?? null,
-        return_3m: f.return_3m ?? null,
-        return_6m: f.return_6m ?? null,
-        return_1y: f.return_1y ?? null,
-        return_2y: f.return_2y ?? null,
-        return_3y: f.return_3y ?? null,
-        ytd: f.ytd ?? null,
-        since_inception: f.since_inception ?? null,
-        fee: f.fee ?? null,
-        nav: f.nav ?? null,
-        nav_date: f.nav_date ?? null,
-        source: f.source ?? null,
-        updated_time: f.updated_time ?? null,
-        max_drawdown_1y: f.max_drawdown_1y ?? null,
-        sharpe_ratio_1y: f.sharpe_ratio_1y ?? null,
-        sharpe_ratio_3y: f.sharpe_ratio_3y ?? null,
-        volatility_1y: f.volatility_1y ?? null,
-        calmar_ratio_1y: f.calmar_ratio_1y ?? null,
-        industry_tag_name: f.industry_tag_name ?? null,
-        rank_pct_1m: null,
-        rank_pct_3m: null,
-        rank_pct_6m: null,
-        rank_pct_1y: null,
-        rank_pct_2y: null,
-        rank_pct_3y: null,
-        pass_4433: -1,
-      }))
+      // 保存现有风险指标，避免 /sync 返回 null 时覆盖已算好的值
+      const oldRisk = new Map<string, ScreeningFund>()
+      if (!force) {
+        for (const f of await db.screeningFunds.toArray()) {
+          oldRisk.set(f.fund_code, f)
+        }
+      }
+
+      const entries: ScreeningFund[] = funds.map((f: Partial<ScreeningFund>) => {
+        const old = oldRisk.get(f.fund_code || '')
+        return {
+          fund_code: f.fund_code || '',
+          fund_name: f.fund_name || '',
+          fund_type: f.fund_type || null,
+          return_1m: f.return_1m ?? null,
+          return_3m: f.return_3m ?? null,
+          return_6m: f.return_6m ?? null,
+          return_1y: f.return_1y ?? null,
+          return_2y: f.return_2y ?? null,
+          return_3y: f.return_3y ?? null,
+          ytd: f.ytd ?? null,
+          since_inception: f.since_inception ?? null,
+          fee: f.fee ?? null,
+          nav: f.nav ?? null,
+          nav_date: f.nav_date ?? null,
+          source: f.source ?? null,
+          updated_time: f.updated_time ?? null,
+          max_drawdown_1y: f.max_drawdown_1y ?? old?.max_drawdown_1y ?? null,
+          sharpe_ratio_1y: f.sharpe_ratio_1y ?? old?.sharpe_ratio_1y ?? null,
+          sharpe_ratio_3y: f.sharpe_ratio_3y ?? old?.sharpe_ratio_3y ?? null,
+          volatility_1y: f.volatility_1y ?? old?.volatility_1y ?? null,
+          calmar_ratio_1y: f.calmar_ratio_1y ?? old?.calmar_ratio_1y ?? null,
+          industry_tag_name: f.industry_tag_name ?? old?.industry_tag_name ?? null,
+          rank_pct_1m: null,
+          rank_pct_3m: null,
+          rank_pct_6m: null,
+          rank_pct_1y: null,
+          rank_pct_2y: null,
+          rank_pct_3y: null,
+          pass_4433: -1,
+        }
+      })
 
       await db.screeningFunds.clear()
       await db.screeningFunds.bulkPut(entries)
+
+      if (force || !isRiskMetricsFresh()) {
+        const filled = await fillMissingRiskMetrics(entries)
+        if (filled > 0) markRiskMetricsFresh()
+      }
 
       persistSyncTime(data.sync_time ?? new Date().toISOString())
       computed.value = false

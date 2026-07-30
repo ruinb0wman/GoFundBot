@@ -66,6 +66,7 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 - 提供了4433法则、夏普比率、低波动策略等快速筛选策略，点击即可使用。
 - 提供了自定义筛选条件的选择，可以根据基金类型、收益率、回撤等选项筛选基金。
+- 风险指标（夏普/卡玛/波动率/最大回撤）由前端从 NAV 历史本地计算，不依赖服务端内存缓存。
 
 ![基金筛选.png](docs/images/基金筛选.png)
 
@@ -115,7 +116,7 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 *   **语言**: Python 3.11+
 *   **回测引擎**: 定投模拟（月/周/MA均线/价值平均）+ 策略推荐
 *   **数据获取**: akshare / 东方财富 eastmoney API
-*   **风险计算**: 夏普比率 / 最大回撤 / 波动率 / 年化收益（Python CLI + Service TypeScript 双实现）
+*   **风险计算**: 夏普比率 / 最大回撤 / 波动率 / 年化收益（Python CLI + Service TypeScript + 前端 TypeScript 三实现）
 *   **行业分类**: 基金名称规则匹配 → 行业标签（Python CLI + Service TypeScript 双实现）
  *   **搜索引擎**: Exa AI（MCP 协议）→ Bocha → Tavily → DuckDuckGo 多源降级搜索（Service/searchService.ts）
 

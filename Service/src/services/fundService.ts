@@ -195,6 +195,36 @@ export async function getFundNavHistory(
   return toServiceResult(result);
 }
 
+export async function getFundNavBatch(
+  codes: string[]
+): Promise<ServiceResult<Record<string, { date: string; nav: number }[]>>> {
+  const CONCURRENCY = 10;
+  const result: Record<string, { date: string; nav: number }[]> = {};
+
+  for (let i = 0; i < codes.length; i += CONCURRENCY) {
+    const chunk = codes.slice(i, i + CONCURRENCY);
+    await Promise.allSettled(
+      chunk.map(async (code) => {
+        try {
+          const nav = await getFundNavHistory(code, {});
+          result[code] = (nav.data?.items ?? []).map(p => ({ date: p.date, nav: p.nav }));
+        } catch {
+          // 单只基金 NAV 获取失败不影响其他
+        }
+      })
+    );
+  }
+
+  return {
+    data: result,
+    provider: 'batch',
+    fallback: false,
+    cached: false,
+    stale: false,
+    updatedAt: new Date(),
+  };
+}
+
 export async function getFundRankHistory(code: string): Promise<ServiceResult<FundRankHistoryDto>> {
   const fundCode = assertFundCode(code);
   const chain = new ProviderChain<FundProvider>([joinQuantFundProvider, tencentFundProvider, stockSdkFundProvider, eastMoneyFundProvider]);

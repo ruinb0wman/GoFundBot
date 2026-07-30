@@ -614,6 +614,7 @@ export function useFundScreening(emit) {
                 } catch (err) {
                     console.error('更新后同步失败:', err)
                 }
+                search()
                 fetchDbStatus()
             }
         } catch (err) {
@@ -923,12 +924,9 @@ export function useFundScreening(emit) {
             search()
 
             try {
-                const updated = await syncFromServer(lastSyncTime.value ?? undefined)
-                if (updated > 0) {
-                    // 后台数据有更新 → 刷新页面
-                    search()
-                    fetchDbStatus()
-                }
+                await syncFromServer(lastSyncTime.value ?? undefined)
+                search()
+                fetchDbStatus()
             } catch (err) {
                 console.error('后台同步失败:', err)
             }
@@ -957,6 +955,7 @@ export function useFundScreening(emit) {
 
     return {
         dbStatus,
+        syncing: dbSyncing,
         updateStatus,
         showUpdateDialog,
         updateTasks,

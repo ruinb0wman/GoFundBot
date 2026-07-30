@@ -50,6 +50,7 @@ export const fundAPI = {
   },
   analyzeFund(fundCode: string) { return api.get(`/fund/${fundCode}/analyze`) },
   getEstimates(codes: string[]) { return api.get(`/funds/estimates?codes=${codes.join(',')}`) },
+  getNavBatch(codes: string[]) { return api.post('/funds/nav-batch', { codes }) },
 }
 
 export const watchlistAPI = {

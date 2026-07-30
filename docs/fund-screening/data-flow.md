@@ -20,15 +20,24 @@
               → 类型字段丰富: fetchFundCodeSearchList() 补充 fund_type
           → 返回 FundScreeningSnapshotDto
         → 每条 mapping: enrichResponseFund(code, name, snapshotItem)
-          → getEnrichment(code) 从 enrichmentMap 读取
-          → 合并 snapshot + enrichment → 返回全量字段
+          → 合并 snapshot + enrichmentMap (若有) → 返回基础字段
       → 返回 funds[]
-    → 写入 IndexedDB: clear + bulkPut
+    → 写入 IndexedDB: clear + bulkPut (基础数据)
+    → 检测 localStorage('screening-risk-metrics-date') 是否今日已算过
+      → 今天已算 + 非 force → 跳过 NAV batch
+      → 未算过或 force → POST /api/funds/nav-batch
+        → 服务端 getFundNavBatch(codes) → 并发 10 取 NAV 历史
+        → 返回 { code: [{date, nav}] }
+      → 前端 computeRiskMetricsLocal(navs) → 本地计算风险指标
+      → bulkPut 写回 IndexedDB (含风险指标)
+      → 存入 localStorage('screening-risk-metrics-date') = 今日日期
     → compute4433(): 按 fund_type 分组 → 计算 rank_pct → 标记 pass_4433
     → 完成
 ```
 
-### 1.2 手动更新流程
+### 1.2 手动更新流程（遗留路径）
+
+> 风险指标已由前端本地计算，不再依赖服务端 `enrichmentMap`。手动按钮保留作为遗留入口。
 
 ```
 点击"更新数据" → openUpdateDialog() → 选择任务 → startUpdate()
@@ -42,6 +51,7 @@
         → 写入 enrichmentMap
       → GET /api/screening/progress (轮询进度)
     → 完成 → 前端 syncFromServer() 刷新 IndexedDB
+      → 同步时 force=true → 重新计算风险指标
 ```
 
 ### 1.3 筛选查询流程
@@ -86,13 +96,14 @@ GET https://fund.eastmoney.com/data/rankhandler.aspx
 
 ## 三、数据持久化
 
-三层存储：
+四层存储：
 
 | 层 | 位置 | 数据 | 生命周期 |
 |----|------|------|---------|
-| 后端内存 | `enrichmentMap` | 丰富化结果 | 进程生命周期/24h 后重新同步 |
-| 后端缓存 | `MemoryCache` | 排行快照 | TTL `getTtlUntil9AM()` 到次日 9AM |
-| 前端 IndexedDB | `db.screeningFunds` | 完整筛选数据 | 持久化，刷新不丢失 |
+| 后端内存 | `enrichmentMap` | 丰富化结果（遗留） | 进程生命周期，非必需 |
+| 后端缓存 | `MemoryCache` | 排行快照 + NAV 历史 | 排行快照 TTL→次日9AM，NAV 24h |
+| 前端 IndexedDB | `db.screeningFunds` | 完整筛选数据（含风险指标） | 持久化，刷新不丢失 |
+| 前端 localStorage | `screening-risk-metrics-date` | 风险指标计算日期标记 | 次日自动过期 |
 
 ## 四、回退机制
 
@@ -179,6 +190,6 @@ await Promise.allSettled(chunk.map(async (fund) => {
 
 ## 五、已知问题
 
-1. **同步耗时较长**：首次同步需逐只拉取 NAV 历史并计算风险指标，500+ 只基金约需几十秒（并发 10）。
-2. **IndexedDB 数据一致性**：手动更新完成后需 `syncFromServer()` 刷新才可见（自动触发 done 事件）。
-3. **行业分类依赖名称**：`classifyFundIndustry()` 基于基金名称关键词匹配，部分跨界基金分类可能不准确。
+1. **首次 NAV batch 耗时较长**：首次加载时服务端无 NAV 缓存，500+ 只基金约需几十秒（服务端并发 10 + 缓存写入），之后 24h 内秒级。
+2. **行业分类依赖名称**：`classifyFundIndustry()` 基于基金名称关键词匹配，部分跨界基金分类可能不准确。
+3. **服务端 enrichmentMap 降级**：`enrichmentMap` 不再是风险指标的必需路径，前端本地计算已覆盖。服务重启不影响筛选数据。

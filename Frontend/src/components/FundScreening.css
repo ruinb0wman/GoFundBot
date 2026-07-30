@@ -1185,3 +1185,44 @@
 
 .doc-link { display: inline-flex; align-items: center; color: var(--text-tertiary); transition: color 0.2s; }
 .doc-link:hover { color: var(--color-primary); }
+
+.sync-loading-bar {
+  margin: 0 24px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-elevated, #f8f9fa);
+  border: 1px solid var(--border-subtle, #e0e0e0);
+  border-radius: 8px;
+}
+
+.sync-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-subtle, #e0e0e0);
+  border-top-color: var(--color-primary, #4f46e5);
+  border-radius: 50%;
+  animation: sync-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes sync-spin {
+  to { transform: rotate(360deg); }
+}
+
+.sync-loading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sync-loading-text strong {
+  font-size: 13px;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.sync-loading-text span {
+  font-size: 12px;
+  color: var(--text-tertiary, #888);
+}

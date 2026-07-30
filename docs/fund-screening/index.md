@@ -10,14 +10,16 @@
 EastMoney rankhandler API
   ↓ GET https://fund.eastmoney.com/data/rankhandler.aspx
 Express 后端 -> screening.routes.ts
-  ↓ getFundScreeningSnapshot() 缓存 24h/TTL→次日9AM
-  ↓ enrichFund(code) 逐只丰富：NAV历史→风险指标 + 基金类型 + 行业标签
-  ↓ enrichmentMap (内存)
+  ↓ getFundScreeningSnapshot() 缓存到次日9AM
+  ↓ 合并 enrichmentMap (若有)
 GET /api/screening/sync
   ↓
-前端 useScreeningDb.syncFromServer()
-  ↓ bulkPut 写入 IndexedDB (screeningFunds 表)
-  ↓ compute4433() 计算同类排名百分位
+前端 syncFromServer()
+  ├→ bulkPut 写入 IndexedDB (基础数据)
+  ├→ POST /api/funds/nav-batch → 批量 NAV 历史
+  ├→ 前端 computeRiskMetricsLocal(navs) → 风险指标
+  ├→ bulkPut 写回 IndexedDB (含风险指标)
+  └→ compute4433() 同类排名百分位
   ↓
 useFundScreening 筛选面板 → 本地 queryFunds() 过滤 + 排序 + 分页
 ```
@@ -27,15 +29,19 @@ useFundScreening 筛选面板 → 本地 queryFunds() 过滤 + 排序 + 分页
 | 层 | 文件 | 职责 |
 |----|------|------|
 | Route | `Service/src/routes/screening.routes.ts` | 所有 `/api/screening/*` 端点 |
+| Route | `Service/src/routes/fund.routes.ts:50` | `POST /api/funds/nav-batch` 批量 NAV 接口 |
 | Service | `Service/src/services/fundService.ts:136` | `getFundScreeningSnapshot()` |
-| Service | `Service/src/services/screeningEnrichment.ts` | `enrichFund()` 丰富化编排 |
-| Service | `Service/src/services/riskMetricsService.ts:79` | `computeRiskMetrics()` |
+| Service | `Service/src/services/fundService.ts:198` | `getFundNavBatch()` 批量 NAV 获取 |
+| Service | `Service/src/services/screeningEnrichment.ts` | `enrichFund()` 丰富化编排（遗留） |
+| Service | `Service/src/services/riskMetricsService.ts:79` | `computeRiskMetrics()`（服务端实现，前端 `number.ts` 为等价实现） |
 | Service | `Service/src/services/industryService.ts:22` | `classifyFundIndustry()` |
 | Service | `Service/src/core/providerChain.ts:9` | `ProviderChain` 多提供商降级 |
 | Provider | `Service/src/providers/eastmoney/eastmoneyFundProvider.ts:230` | `screeningSnapshot()` 排行数据 |
 | Frontend API | `Frontend/src/services/api.ts:59` | `screeningAPI` |
+| Frontend API | `Frontend/src/services/api.ts:53` | `fundAPI.getNavBatch()` 批量 NAV 调用 |
 | Frontend Composable | `Frontend/src/composables/useFundScreening.ts` | 筛选面板状态逻辑 |
-| Frontend Composable | `Frontend/src/composables/useScreeningDb.ts` | IndexedDB 读写 + 4433 计算 |
+| Frontend Composable | `Frontend/src/composables/useScreeningDb.ts` | IndexedDB 读写 + 风险指标补齐 + 4433 计算 |
+| Frontend Util | `Frontend/src/utils/number.ts:188` | `computeRiskMetricsLocal()` 本地风险指标计算 |
 | Frontend 渲染 | `Frontend/src/components/FundScreening.vue` | 页面模板 |
 | Dexie 表 | `Frontend/src/db/index.ts:90` | `ScreeningFund` schema |
 
@@ -52,9 +58,10 @@ useFundScreening 筛选面板 → 本地 queryFunds() 过滤 + 排序 + 分页
 | GET | `/api/screening/strategies` | 筛选策略列表 |
 | POST | `/api/screening/available-types` | 可用基金类型列表 |
 | GET | `/api/screening/industry-tags` | 行业标签分组 |
-| POST | `/api/screening/fill-risk` | 补充缺失的风险指标 |
-| POST | `/api/screening/update-single/:code` | 单只基金更新 |
+| POST | `/api/screening/fill-risk` | 补充缺失的风险指标（遗留） |
+| POST | `/api/screening/update-single/:code` | 单只基金更新（遗留） |
 | POST | `/api/screening/recalculate-rankings` | 重算排名（客户端侧实现） |
+| POST | `/api/funds/nav-batch` | 批量 NAV 历史（前端计算风险指标用） |
 
 ## 五、IndexedDB Schema
 
