@@ -1,7 +1,7 @@
 <template>
   <div class="fund-manager-card">
     <div class="card-header">
-      <h3><LucideIcon name="UserCircle" :size="20" /> {{ t('fund.managerInfo.title') }}</h3>
+      <h3><LucideIcon name="UserCircle" :size="20" /> {{ '基金经理能力评估' }}</h3>
     </div>
     <div class="card-body">
       <div v-if="hasManagers" class="managers-container">
@@ -14,17 +14,17 @@
           <div class="manager-header">
             <div class="manager-basic">
               <div class="manager-name">
-                {{ manager.name || t('common.unknown') }}
+                {{ manager.name || '未知' }}
                 <span v-if="manager.star_rating" class="star-rating">
                   <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= manager.star_rating }"><LucideIcon name="Star" :size="14" :fill="i <= manager.star_rating ? 'currentColor' : 'none'" /></span>
                 </span>
               </div>
               <div class="manager-meta">
                 <span class="meta-item" v-if="manager.work_experience">
-                  <i class="icon"><LucideIcon name="Calendar" :size="14" /></i> {{ t('fund.managerInfo.experience') }} {{ manager.work_experience }}
+                  <i class="icon"><LucideIcon name="Calendar" :size="14" /></i> {{ '从业' }} {{ manager.work_experience }}
                 </span>
                 <span class="meta-item" v-if="manager.managed_fund_size">
-                  <i class="icon"><LucideIcon name="Coins" :size="14" /></i> {{ t('fund.managerInfo.managedScale') }} {{ manager.managed_fund_size }}
+                  <i class="icon"><LucideIcon name="Coins" :size="14" /></i> {{ '管理规模' }} {{ manager.managed_fund_size }}
                 </span>
               </div>
             </div>
@@ -32,24 +32,24 @@
 
           <!-- 能力评估雷达图 -->
           <div class="manager-ability" v-if="hasAbilityData(manager)">
-            <div class="section-title">{{ t('fund.managerInfo.capabilityEval') }}</div>
+            <div class="section-title">{{ '能力评估' }}</div>
             <div class="ability-chart-container">
               <div :ref="el => setChartRef(el, index)" class="ability-chart"></div>
             </div>
             <div class="ability-score" v-if="manager.ability_assessment?.average_score">
-              {{ t('fund.managerInfo.compositeScore') }}: <strong>{{ manager.ability_assessment.average_score }}</strong>
+              {{ '综合评分' }}: <strong>{{ manager.ability_assessment.average_score }}</strong>
             </div>
           </div>
 
           <!-- 任职业绩 -->
           <div class="manager-performance" v-if="hasPerformanceData(manager)">
-            <div class="section-title">{{ t('fund.managerInfo.tenurePerf') }}</div>
+            <div class="section-title">{{ '任职业绩' }}</div>
             <div class="performance-table">
               <table>
                 <thead>
                   <tr>
-                    <th>{{ t('fund.managerInfo.type') }}</th>
-                    <th>{{ t('fund.managerInfo.return') }}</th>
+                    <th>{{ '类型' }}</th>
+                    <th>{{ '收益' }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -66,7 +66,7 @@
         </div>
       </div>
       <div v-else class="no-data">
-        <p>{{ t('fund.managerInfo.empty') }}</p>
+        <p>{{ '暂无基金经理信息' }}</p>
       </div>
     </div>
   </div>
@@ -74,11 +74,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
-
-const { t } = useI18n()
 
 const props = withDefaults(defineProps<{ managers?: any[] }>(), { managers: () => [] })
 

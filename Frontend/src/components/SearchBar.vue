@@ -34,9 +34,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-
-const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   modelValue?: string
@@ -58,7 +55,7 @@ const props = withDefaults(defineProps<{
   iconSize: 16,
 })
 
-const placeholderText = computed(() => props.placeholder || t('searchBar.placeholder'))
+const placeholderText = computed(() => props.placeholder || '基金代码/名称')
 const inputRef = ref<HTMLInputElement | null>(null)
 const emit = defineEmits<{
   'update:modelValue': [value: string]

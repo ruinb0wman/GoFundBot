@@ -2,11 +2,11 @@
   <div class="daily-market-summary">
     <div class="summary-header">
       <div class="header-left">
-        <h3><LucideIcon name="Calendar" :size="20" /> {{ t('dailyMarket.title') }}</h3>
+        <h3><LucideIcon name="Calendar" :size="20" /> {{ '每日市场行情' }}</h3>
         <span class="date">{{ today }}</span>
       </div>
       <div class="header-actions">
-        <BButton v-if="data && !loading" type="primary" size="small" icon="RefreshCw" @click="refresh" :title="t('common.refresh')">{{ t('dailyMarket.refresh') }}</BButton>
+        <BButton v-if="data && !loading" type="primary" size="small" icon="RefreshCw" @click="refresh" :title="'刷新'">{{ '刷新' }}</BButton>
       </div>
     </div>
 
@@ -15,7 +15,7 @@
       <div class="progress-card">
         <div class="progress-header">
           <div class="pulse-dot"></div>
-          <span>{{ t('dailyMarket.generating') }}</span>
+          <span>{{ '正在生成今日市场分析' }}</span>
         </div>
 
         <!-- 步骤列表 -->
@@ -44,7 +44,7 @@
         <!-- 当前状态消息 -->
         <div class="current-status">
           <div class="status-message">{{ stepMessage }}</div>
-          <div class="status-hint">{{ t('dailyMarket.waitHint') }}</div>
+          <div class="status-hint">{{ '首次生成可能需要30-60秒，请耐心等待...' }}</div>
         </div>
       </div>
     </div>
@@ -54,7 +54,7 @@
       <div class="error-card">
         <div class="error-icon"><LucideIcon name="TriangleAlert" :size="24" /></div>
         <div class="error-message">{{ error }}</div>
-        <BButton type="danger" size="small" @click="() => fetchData(false)">{{ t('dailyMarket.regenerate') }}</BButton>
+        <BButton type="danger" size="small" @click="() => fetchData(false)">{{ '重新生成' }}</BButton>
       </div>
     </div>
 
@@ -62,7 +62,7 @@
     <div v-else-if="data" class="summary-content">
       <div class="market-sentiment" :class="sentimentClass">
         <span class="sentiment-icon"><LucideIcon :name="sentimentIcon" :size="24" /></span>
-        <span class="sentiment-label">{{ t('dailyMarket.sentiment') }}</span>
+        <span class="sentiment-label">{{ '市场情绪：' }}</span>
         <span class="sentiment-value">{{ data.market_sentiment }}</span>
       </div>
 
@@ -84,14 +84,14 @@
 
       <div class="sections">
         <div class="section hot-sectors">
-          <h4><span class="section-icon"><LucideIcon name="Flame" :size="16" /></span> {{ t('dailyMarket.hotSectors') }}</h4>
+          <h4><span class="section-icon"><LucideIcon name="Flame" :size="16" /></span> {{ '热门板块' }}</h4>
           <div class="tags">
             <span v-for="(sector, i) in data.hot_sectors" :key="i" class="tag">{{ sector }}</span>
           </div>
         </div>
 
         <div class="section key-news">
-          <h4><span class="section-icon"><LucideIcon name="Newspaper" :size="16" /></span> {{ t('dailyMarket.keyNews') }}</h4>
+          <h4><span class="section-icon"><LucideIcon name="Newspaper" :size="16" /></span> {{ '关键新闻' }}</h4>
           <ul class="news-list">
             <li v-for="(news, i) in data.key_news" :key="i">
               <span class="news-bullet">•</span>
@@ -101,7 +101,7 @@
         </div>
 
         <div class="section outlook">
-          <h4><span class="section-icon"><LucideIcon name="Telescope" :size="16" /></span> {{ t('dailyMarket.outlook') }}</h4>
+          <h4><span class="section-icon"><LucideIcon name="Telescope" :size="16" /></span> {{ '后市展望' }}</h4>
           <p class="outlook-text">{{ data.outlook }}</p>
         </div>
       </div>
@@ -112,10 +112,7 @@
 <script setup>
 import BButton from './BButton.vue'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { fundAPI } from '../services/api'
-
-const { t } = useI18n()
 
 const data = ref(null)
 const loading = ref(false)

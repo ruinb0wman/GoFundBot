@@ -4,7 +4,7 @@
       <div class="search-box">
         <SearchBar
           v-model="searchKeyword"
-          :placeholder="t('fund.search.placeholder')"
+          :placeholder="'输入基金代码或名称搜索...'"
           @search="performSearch"
           @focus="isFocused = true"
           @blur="onBlur"
@@ -13,8 +13,8 @@
           <template #dropdown v-if="showHistoryDropdown">
             <div class="history-dropdown" @mousedown.prevent>
               <div class="history-header">
-                <span>{{ t('fund.search.history') }}</span>
-                <BButton text size="small" @click="clearHistory">{{ t('fund.search.clear') }}</BButton>
+                <span>{{ '最近搜索' }}</span>
+                <BButton text size="small" @click="clearHistory">{{ '清空' }}</BButton>
               </div>
               <div
                 v-for="(item, index) in searchHistory"
@@ -29,12 +29,12 @@
             </div>
           </template>
         </SearchBar>
-        <BButton type="primary" @click="performSearch">{{ t('fund.search.searchBtn') }}</BButton>
+        <BButton type="primary" @click="performSearch">{{ '搜索' }}</BButton>
         <BButton
           circle
           @click="updateDatabase"
           :disabled="updating"
-          :title="dbStatus.has_cache ? `${dbStatus.count} ${t('fund.search.itemCount')} | ${t('common.updated')}: ${formatDate(dbStatus.last_update)}` : t('fund.search.updateDb')"
+          :title="dbStatus.has_cache ? `${dbStatus.count} ${'只基金'} | ${'更新'}: ${formatDate(dbStatus.last_update)}` : '更新基金数据库'"
         >
           <template #icon>
             <span v-if="updating" class="spinner"></span>
@@ -58,18 +58,15 @@
       </div>
     </div>
 
-    <div v-if="loading" class="loading">{{ t('fund.search.searching') }}</div>
+    <div v-if="loading" class="loading">{{ '搜索中...' }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { fundAPI } from '../services/api'
 import { useSearchHistory } from '../composables/useSearchHistory'
 import BButton from './BButton.vue'
-
-const { t } = useI18n()
 
 const props = defineProps({
   compact: {
@@ -141,13 +138,13 @@ async function updateDatabase() {
         last_update: response.data.last_update,
         has_cache: true
       }
-      alert(t('fund.search.updateSuccess', { count: response.data.count }))
+      alert(`✅ 更新成功！已加载 ${response.data.count} 只基金`)
     } else {
-      alert(t('fund.search.updateFailed', { error: response.data.error }))
+      alert(`❌ 更新失败: ${response.data.error}`)
     }
   } catch (error) {
     console.error('更新数据库失败:', error)
-    alert(t('fund.search.updateNetError'))
+    alert('❌ 更新失败，请检查网络连接')
   } finally {
     updating.value = false
   }
@@ -167,7 +164,7 @@ function selectFromHistory(item: { code: string; name: string; type: string }) {
 }
 
 function formatDate(dateStr: string) {
-  if (!dateStr) return t('common.unknown')
+  if (!dateStr) return '未知'
   return dateStr.split(' ')[0]
 }
 

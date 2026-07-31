@@ -1,7 +1,7 @@
 <template>
   <div class="same-type-container">
     <div class="section-header">
-      <h3><LucideIcon name="TrendingUp" :size="20" /> {{ t('fund.sameType.title') }}</h3>
+      <h3><LucideIcon name="TrendingUp" :size="20" /> {{ '同类型基金涨幅榜' }}</h3>
       <div class="period-tabs">
         <BButton
           v-for="(period, index) in periods"
@@ -33,7 +33,7 @@
       </div>
     </div>
     <div v-else class="empty-state">
-      <span>{{ t('common.noData') }}</span>
+      <span>{{ '暂无数据' }}</span>
     </div>
   </div>
 </template>
@@ -41,9 +41,6 @@
 <script setup lang="ts">
 import BButton from './BButton.vue'
 import { ref, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-
-const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   sameTypeFunds?: any[]

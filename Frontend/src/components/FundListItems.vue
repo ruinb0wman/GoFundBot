@@ -27,7 +27,7 @@
           circle size="small"
           :type="isInCompare(fund.fund_code) ? 'primary' : 'default'"
           @click.stop="$emit('add-to-compare', { code: fund.fund_code, name: fund.fund_name })"
-          :title="isInCompare(fund.fund_code) ? t('fund.listItem.addedToCompare') : t('fund.listItem.addToCompare')"
+          :title="isInCompare(fund.fund_code) ? '已添加到对比' : '添加到对比'"
         >
           <LucideIcon :name="isInCompare(fund.fund_code) ? 'Check' : 'Plus'" :size="14" />
         </BButton>
@@ -52,14 +52,14 @@
           circle size="small"
           v-if="addToRealtimeMode"
           @click.stop="$emit('add-to-realtime', fund)"
-          :title="t('fund.listItem.addToRealtime')"
+          :title="'添加到实时估值'"
           icon="Plus"
         />
         <template v-else>
           <BButton
             circle size="small"
             @click.stop="$emit('show-alert-settings', fund.fund_code)"
-            :title="t('fund.listItem.alertSettings')"
+            :title="'告警设置'"
             icon="Bell"
           />
 
@@ -70,12 +70,9 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
 import type { DraggingIndex, CompareFund } from '../types'
 import BButton from './BButton.vue'
 import BCheckbox from './BCheckbox.vue'
-
-const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   funds?: any[]

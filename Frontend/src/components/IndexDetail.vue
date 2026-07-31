@@ -1,6 +1,6 @@
 <template>
   <div class="index-detail">
-    <div v-if="loading" class="loading-state">{{ t('indexDetail.loading') }}</div>
+    <div v-if="loading" class="loading-state">{{ '加载中...' }}</div>
     <div v-else-if="error" class="error-state">{{ error }}</div>
     <template v-else-if="detail">
       <div class="detail-header">
@@ -13,7 +13,7 @@
           </div>
         </div>
         <div class="header-meta">
-          <span class="code">{{ t('indexDetail.code') }} {{ detail.code }}</span>
+          <span class="code">{{ '代码:' }} {{ detail.code }}</span>
           <span class="market">{{ detail.market }}</span>
         </div>
       </div>
@@ -34,18 +34,18 @@
         </div>
         <div class="kline-chart">
           <v-chart class="chart" :option="klineOption" autoresize :theme="echartThemeName" v-if="klineData.length" />
-          <div v-else class="empty-state">{{ t('indexDetail.noKline') }}</div>
+          <div v-else class="empty-state">{{ '暂无K线数据' }}</div>
         </div>
       </div>
 
       <div class="stats-section">
-        <div class="stat-card"><span class="stat-label">{{ t('indexDetail.open') }}</span><span class="stat-value">{{ detail.open || '--' }}</span></div>
-        <div class="stat-card"><span class="stat-label">{{ t('indexDetail.high') }}</span><span class="stat-value">{{ detail.high || '--' }}</span></div>
-        <div class="stat-card"><span class="stat-label">{{ t('indexDetail.low') }}</span><span class="stat-value">{{ detail.low || '--' }}</span></div>
-        <div class="stat-card"><span class="stat-label">{{ t('indexDetail.prevClose') }}</span><span class="stat-value">{{ detail.prev_close || '--' }}</span></div>
-        <div class="stat-card"><span class="stat-label">{{ t('indexDetail.volume') }}</span><span class="stat-value">{{ detail.volume || '--' }}</span></div>
-        <div class="stat-card"><span class="stat-label">{{ t('indexDetail.amount') }}</span><span class="stat-value">{{ detail.amount || '--' }}</span></div>
-        <div class="stat-card"><span class="stat-label">{{ t('indexDetail.amplitude') }}</span><span class="stat-value">{{ detail.amplitude ? detail.amplitude + '%' : '--' }}</span></div>
+        <div class="stat-card"><span class="stat-label">{{ '开盘' }}</span><span class="stat-value">{{ detail.open || '--' }}</span></div>
+        <div class="stat-card"><span class="stat-label">{{ '最高' }}</span><span class="stat-value">{{ detail.high || '--' }}</span></div>
+        <div class="stat-card"><span class="stat-label">{{ '最低' }}</span><span class="stat-value">{{ detail.low || '--' }}</span></div>
+        <div class="stat-card"><span class="stat-label">{{ '昨收' }}</span><span class="stat-value">{{ detail.prev_close || '--' }}</span></div>
+        <div class="stat-card"><span class="stat-label">{{ '成交量' }}</span><span class="stat-value">{{ detail.volume || '--' }}</span></div>
+        <div class="stat-card"><span class="stat-label">{{ '成交额' }}</span><span class="stat-value">{{ detail.amount || '--' }}</span></div>
+        <div class="stat-card"><span class="stat-label">{{ '振幅' }}</span><span class="stat-value">{{ detail.amplitude ? detail.amplitude + '%' : '--' }}</span></div>
       </div>
     </template>
   </div>
@@ -53,10 +53,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { marketAPI } from '../services/api'
 
-const { t } = useI18n()
 import { MA_PRESETS, calcMA } from '../utils/ma'
 import { fmtPercent } from '../utils/number'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
@@ -76,18 +74,18 @@ const detail = ref<any>(null)
 const klineData = ref<any[]>([])
 const activePeriod = ref('weekly')
 const periods = computed(() => [
-  { key: 'daily', label: t('indexDetail.periodDaily') },
-  { key: 'weekly', label: t('indexDetail.periodWeekly') },
-  { key: 'monthly', label: t('indexDetail.periodMonthly') },
+  { key: 'daily', label: '日K' },
+  { key: 'weekly', label: '周K' },
+  { key: 'monthly', label: '月K' },
 ])
 const activeRange = ref('3y')
 const rangeOptions = computed(() => {
   const all = [
-    { key: '6m', label: t('indexDetail.range6m') },
-    { key: '1y', label: t('indexDetail.range1y') },
-    { key: '3y', label: t('indexDetail.range3y') },
-    { key: '5y', label: t('indexDetail.range5y') },
-    { key: 'all', label: t('indexDetail.rangeAll') },
+    { key: '6m', label: '最近6个月' },
+    { key: '1y', label: '最近1年' },
+    { key: '3y', label: '最近3年' },
+    { key: '5y', label: '最近5年' },
+    { key: 'all', label: '所有' },
   ]
   if (activePeriod.value === 'daily') {
     return all.filter(r => r.key === '6m' || r.key === '1y')

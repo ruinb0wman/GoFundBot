@@ -1,68 +1,68 @@
 <template>
   <div class="settings-anomaly">
-    <h3 class="page-title"><LucideIcon name="BellRing" :size="22" /> {{ t('settings.anomaly.title') }}</h3>
+    <h3 class="page-title"><LucideIcon name="BellRing" :size="22" /> {{ '市场异动阈值配置' }}</h3>
 
-    <div v-if="loading" class="loading-state">{{ t('common.loading') }}</div>
+    <div v-if="loading" class="loading-state">{{ '加载中...' }}</div>
 
     <template v-else>
       <section class="config-section">
-        <h4 class="section-title">{{ t('settings.anomaly.indexSection') }}</h4>
+        <h4 class="section-title">{{ '指数异动' }}</h4>
         <div class="config-row">
-          <label>{{ t('settings.anomaly.indexSurge') }}</label>
+          <label>{{ '大涨阈值 (%)' }}</label>
           <BInputNumber v-model="form.index_surge_threshold" size="small" :min="0.1" :max="20" :step="0.1" />
         </div>
         <div class="config-row">
-          <label>{{ t('settings.anomaly.indexPlunge') }}</label>
+          <label>{{ '大跌阈值 (%)' }}</label>
           <BInputNumber v-model="form.index_plunge_threshold" size="small" :min="-20" :max="-0.1" :step="0.1" />
         </div>
       </section>
 
       <section class="config-section">
-        <h4 class="section-title">{{ t('settings.anomaly.volumeSection') }}</h4>
+        <h4 class="section-title">{{ '成交量异动' }}</h4>
         <div class="config-row">
-          <label>{{ t('settings.anomaly.volumeSurge') }}</label>
+          <label>{{ '放量倍数 (x)' }}</label>
           <BInputNumber v-model="form.volume_surge_ratio" size="small" :min="1.1" :max="10" :step="0.1" />
         </div>
         <div class="config-row">
-          <label>{{ t('settings.anomaly.volumeShrink') }}</label>
+          <label>{{ '缩量倍数 (x)' }}</label>
           <BInputNumber v-model="form.volume_shrink_ratio" size="small" :min="0.05" :max="0.95" :step="0.05" />
         </div>
       </section>
 
       <section class="config-section">
-        <h4 class="section-title">{{ t('settings.anomaly.sectorSection') }}</h4>
+        <h4 class="section-title">{{ '板块异动' }}</h4>
         <div class="config-row">
-          <label>{{ t('settings.anomaly.sectorSurge') }}</label>
+          <label>{{ '暴涨阈值 (%)' }}</label>
           <BInputNumber v-model="form.sector_surge_threshold" size="small" :min="0.1" :max="20" :step="0.1" />
         </div>
         <div class="config-row">
-          <label>{{ t('settings.anomaly.sectorPlunge') }}</label>
+          <label>{{ '暴跌阈值 (%)' }}</label>
           <BInputNumber v-model="form.sector_plunge_threshold" size="small" :min="-20" :max="-0.1" :step="0.1" />
         </div>
         <div class="config-row">
-          <label>{{ t('settings.anomaly.sectorInflow') }}</label>
+          <label>{{ '主力流入 (亿)' }}</label>
           <BInputNumber v-model="form.sector_inflow_threshold" size="small" :min="0" :max="1000" :step="1" />
         </div>
       </section>
 
       <section class="config-section">
-        <h4 class="section-title">{{ t('settings.anomaly.northSection') }}</h4>
+        <h4 class="section-title">{{ '北向资金异动' }}</h4>
         <div class="config-row">
-          <label>{{ t('settings.anomaly.northInflow') }}</label>
+          <label>{{ '大幅流入 (亿)' }}</label>
           <BInputNumber v-model="form.north_inflow_threshold" size="small" :min="0" :max="500" :step="1" />
         </div>
         <div class="config-row">
-          <label>{{ t('settings.anomaly.northOutflow') }}</label>
+          <label>{{ '大幅流出 (亿)' }}</label>
           <BInputNumber v-model="form.north_outflow_threshold" size="small" :min="-500" :max="-1" :step="1" />
         </div>
       </section>
 
       <div class="actions">
         <BButton type="primary" :disabled="saving" @click="saveConfig">
-          <LucideIcon name="Save" :size="16" /> {{ t('settings.anomaly.save') }}
+          <LucideIcon name="Save" :size="16" /> {{ '保存设置' }}
         </BButton>
         <BButton :disabled="saving" @click="resetDefaults">
-          <LucideIcon name="RotateCcw" :size="16" /> {{ t('settings.anomaly.resetDefaults') }}
+          <LucideIcon name="RotateCcw" :size="16" /> {{ '恢复默认值' }}
         </BButton>
       </div>
 
@@ -73,13 +73,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
 import BButton from '../components/BButton.vue'
 import BInputNumber from '../components/BInputNumber.vue'
 import LucideIcon from '../components/LucideIcon.vue'
 import { anomalyConfigAPI } from '../services/api'
-
-const { t } = useI18n()
 
 interface AnomalyForm {
   index_surge_threshold: number
@@ -122,7 +119,7 @@ const loadConfig = async () => {
       }
     }
   } catch {
-    message.value = t('settings.anomaly.saveFailed')
+    message.value = '保存失败'
     messageType.value = 'error'
   } finally {
     loading.value = false
@@ -134,10 +131,10 @@ const saveConfig = async () => {
   message.value = ''
   try {
     await anomalyConfigAPI.update({ ...form.value })
-    message.value = t('settings.anomaly.saved')
+    message.value = '设置已保存'
     messageType.value = 'success'
   } catch {
-    message.value = t('settings.anomaly.saveFailed')
+    message.value = '保存失败'
     messageType.value = 'error'
   } finally {
     saving.value = false
@@ -154,7 +151,7 @@ const resetDefaults = async () => {
         form.value[key] = data[key]!
       }
     }
-    message.value = t('settings.anomaly.saved')
+    message.value = '设置已保存'
     messageType.value = 'success'
   } catch {
     form.value = { ...defaults }

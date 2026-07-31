@@ -16,7 +16,6 @@ VXETable.setup({
 
 import { clientLogger, initClientLogger } from './core/logger'
 import router from './router/index'
-import i18n from './locales/index'
 
 initClientLogger()
 
@@ -24,7 +23,6 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(VXETable)
 app.use(router)
-app.use(i18n)
 
 app.config.errorHandler = (err, instance, _info) => {
   clientLogger.error('Vue error', {

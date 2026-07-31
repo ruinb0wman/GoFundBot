@@ -1,12 +1,12 @@
 <template>
   <div class="asset-allocation-card">
     <div class="card-header">
-      <h3><LucideIcon name="BarChart3" :size="20" /> {{ t('fund.assetAllocation.title') }}</h3>
+      <h3><LucideIcon name="BarChart3" :size="20" /> {{ '资产配置' }}</h3>
     </div>
     <div class="card-body">
       <div v-if="hasData" class="allocation-content">
         <div class="chart-container">
-          <div v-if="hasLeverage" class="leverage-badge"><LucideIcon name="TriangleAlert" :size="14" /> {{ t('fund.assetAllocation.leverage') }}</div>
+          <div v-if="hasLeverage" class="leverage-badge"><LucideIcon name="TriangleAlert" :size="14" /> {{ '该基金存在杠杆' }}</div>
           <div ref="chartEl" class="allocation-chart"></div>
         </div>
         <div class="legend-info">
@@ -18,7 +18,7 @@
         </div>
       </div>
       <div v-else class="no-data">
-        <p>{{ t('fund.assetAllocation.empty') }}</p>
+        <p>{{ '暂无资产配置数据' }}</p>
       </div>
     </div>
   </div>
@@ -26,11 +26,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
-
-const { t } = useI18n()
 
 const props = withDefaults(defineProps<{ assetAllocation?: Record<string, any> }>(), { assetAllocation: () => ({}) })
 

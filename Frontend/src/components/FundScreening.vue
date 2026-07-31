@@ -5,7 +5,7 @@
       <div class="header-actions">
         <div class="header-left">
           <span class="stat-chip">
-            <LucideIcon name="Package" :size="14" /> {{ dbStatus.basic_count || 0 }} {{ t('fund.screening.fundCount') }}
+            <LucideIcon name="Package" :size="14" /> {{ dbStatus.basic_count || 0 }} {{ '只基金' }}
           </span>
           <span class="stat-chip complete">
             <LucideIcon name="Check" :size="14" /> {{ dbStatus.complete_count || 0 }} 完整
@@ -18,12 +18,12 @@
           <a class="doc-link" href="/docs/fund-screening" target="_blank" title="查看文档">
             <LucideIcon name="HelpCircle" :size="16" />
           </a>
-          <BButton type="primary" :disabled="updateStatus.running || syncing" @click="openUpdateDialog" :title="t('fund.screening.updateTask')">
+          <BButton type="primary" :disabled="updateStatus.running || syncing" @click="openUpdateDialog" :title="'选择要执行的更新任务'">
             <template #icon>
               <LucideIcon v-if="updateStatus.running" name="Hourglass" :size="14" />
               <LucideIcon v-else name="Download" :size="14" />
             </template>
-            {{ updateStatus.running ? t('fund.screening.updating') : t('fund.screening.updateData') }}
+            {{ updateStatus.running ? '更新中...' : '更新数据' }}
           </BButton>
         </div>
       </div>
@@ -45,7 +45,7 @@
         <span class="inline-current">{{ updateStatus.current_fund || updateStatus.message }}</span>
         <span class="inline-count">
           <template v-if="updateStatus.total">{{ updateStatus.progress }}/{{ updateStatus.total }}</template>
-          <template v-else>{{ t('fund.screening.processed') }} {{ updateStatus.success_count || 0 }}</template>
+          <template v-else>{{ '已处理' }} {{ updateStatus.success_count || 0 }}</template>
         </span>
       </div>
       <div class="progress-bar" :class="{ indeterminate: isProgressIndeterminate }">
@@ -55,7 +55,7 @@
           :style="{ width: progressPercent + '%' }"
         ></div>
       </div>
-      <BButton type="warning" size="small" @click="stopUpdate" icon="Square">{{ t('fund.screening.stop') }}</BButton>
+      <BButton type="warning" size="small" @click="stopUpdate" icon="Square">{{ '停止' }}</BButton>
     </div>
 
     <!-- 筛选面板 -->
@@ -67,7 +67,7 @@
             <div ref="searchWrapRef" style="display:contents">
               <SearchBar
                 v-model="filters.keyword"
-                :placeholder="t('searchBar.placeholder')"
+                :placeholder="'基金代码/名称'"
                 :clearable="true"
                 @search="search(true)"
                 @focus="onSearchFocus"
@@ -369,8 +369,6 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { useI18n } from 'vue-i18n'
-const { t } = useI18n()
 import { useFundScreening } from '../composables/useFundScreening'
 import BButton from './BButton.vue'
 import BInputNumber from './BInputNumber.vue'

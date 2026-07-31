@@ -1,7 +1,7 @@
 <template>
   <div class="market-dashboard">
     <div class="dashboard-header">
-      <h2><LucideIcon name="TrendingUp" :size="22" /> {{ t('market.realtimeData') }}</h2>
+      <h2><LucideIcon name="TrendingUp" :size="22" /> {{ '市场实时数据' }}</h2>
       <div class="tab-switch">
         <button
           v-for="tab in tabs"
@@ -56,20 +56,17 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import MarketOverview from './MarketOverview.vue'
 import FlashNews from './FlashNews.vue'
 import SectorRank from './SectorRank.vue'
 
-const { t } = useI18n()
-
 const activeTab = ref('overview')
 
 const tabs = computed(() => [
-  { key: 'overview', label: t('market.overview'), icon: 'Globe' },
-  { key: 'sectors', label: t('market.sectors'), icon: 'Factory' },
-  { key: 'news', label: t('market.news'), icon: 'Newspaper' },
-  { key: 'gold', label: t('market.goldTab'), icon: 'Award' }
+  { key: 'overview', label: '综合概览', icon: 'Globe' },
+  { key: 'sectors', label: '板块排行', icon: 'Factory' },
+  { key: 'news', label: '7×24 快讯', icon: 'Newspaper' },
+  { key: 'gold', label: '贵金属', icon: 'Award' }
 ])
 </script>
 

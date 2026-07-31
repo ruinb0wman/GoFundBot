@@ -1,7 +1,7 @@
 <template>
   <div class="fund-scale-card">
     <div class="card-header">
-      <h3><LucideIcon name="TrendingUp" :size="20" /> {{ t('fund.scaleChange.title') }}</h3>
+      <h3><LucideIcon name="TrendingUp" :size="20" /> {{ '基金规模变动' }}</h3>
     </div>
     <div class="card-body">
       <div v-if="hasData" class="scale-content">
@@ -10,9 +10,9 @@
           <table>
             <thead>
               <tr>
-                <th>{{ t('common.date') }}</th>
-                <th>{{ t('fund.scaleChange.scale') }}</th>
-                <th>{{ t('fund.scaleChange.change') }}</th>
+                <th>{{ '日期' }}</th>
+                <th>{{ '规模(亿元)' }}</th>
+                <th>{{ '环比变化' }}</th>
               </tr>
             </thead>
             <tbody>
@@ -26,7 +26,7 @@
         </div>
       </div>
       <div v-else class="no-data">
-        <p>{{ t('fund.scaleChange.empty') }}</p>
+        <p>{{ '暂无规模变动数据' }}</p>
       </div>
     </div>
   </div>
@@ -34,11 +34,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 
-const { t } = useI18n()
 import type { FluctuationScale } from '../types'
 
 const props = withDefaults(defineProps<{

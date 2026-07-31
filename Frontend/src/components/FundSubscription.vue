@@ -1,7 +1,7 @@
 <template>
   <div class="subscription-card">
     <div class="card-header">
-      <h3><LucideIcon name="Coins" :size="20" /> {{ t('fund.subscription.title') }}</h3>
+      <h3><LucideIcon name="Coins" :size="20" /> {{ '申购赎回情况' }}</h3>
     </div>
     <div class="card-body">
       <div v-if="hasRedemptionData" class="subscription-content">
@@ -10,11 +10,11 @@
           <table>
             <thead>
               <tr>
-                <th>{{ t('common.date') }}</th>
-                <th>{{ t('fund.subscription.purchase') }}</th>
-                <th>{{ t('fund.subscription.redemption') }}</th>
-                <th>{{ t('fund.subscription.net') }}</th>
-                <th>{{ t('fund.subscription.totalShares') }}</th>
+                <th>{{ '日期' }}</th>
+                <th>{{ '期间申购(亿)' }}</th>
+                <th>{{ '期间赎回(亿)' }}</th>
+                <th>{{ '净申购(亿)' }}</th>
+                <th>{{ '总份额(亿)' }}</th>
               </tr>
             </thead>
             <tbody>
@@ -30,7 +30,7 @@
         </div>
       </div>
       <div v-else class="no-data">
-        <p>{{ t('fund.subscription.empty') }}</p>
+        <p>{{ '暂无申购赎回数据' }}</p>
       </div>
     </div>
   </div>
@@ -38,11 +38,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 
-const { t } = useI18n()
 import type { SubscriptionRedemption } from '../types'
 
 const props = withDefaults(defineProps<{

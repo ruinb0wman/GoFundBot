@@ -1,18 +1,18 @@
 <template>
   <div class="settings-proxy">
     <section class="setting-section">
-      <h3>{{ t('settings.proxy.title') }}</h3>
-      <p class="section-desc">{{ t('settings.proxy.desc') }}</p>
+      <h3>{{ '网络代理配置' }}</h3>
+      <p class="section-desc">{{ '配置 HTTP 代理，用于访问东方财富等外部数据源（本机网络 DNS 劫持时需要）' }}</p>
 
       <div class="field-group">
         <label class="field-label">
           <LucideIcon name="Globe" :size="16" />
-          {{ t('settings.proxy.url') }}
+          {{ '代理地址' }}
         </label>
         <input
           type="text"
           v-model="form.url"
-          :placeholder="t('settings.proxy.urlPlaceholder')"
+          :placeholder="'http://127.0.0.1:7890'"
           class="field-input"
         />
       </div>
@@ -20,14 +20,14 @@
       <div class="checkbox-group">
         <label class="checkbox-label">
           <input type="checkbox" v-model="enabled" @change="onEnabledChange" />
-          <span>{{ t('settings.proxy.disabled') }}</span>
+          <span>{{ '不使用代理' }}</span>
         </label>
       </div>
 
       <div class="action-row">
         <button class="save-btn" @click="handleSave" :disabled="saving">
           <LucideIcon name="Save" :size="16" />
-          {{ t('common.save') }}
+          {{ '保存' }}
         </button>
         <span v-if="status" class="status-msg" :class="{ success: status === 'saved', error: status === 'error' }">
           {{ statusText }}
@@ -39,10 +39,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useProxyConfig } from '../composables/useProxyConfig'
 
-const { t } = useI18n()
 const { config, saveConfig, syncFromBackend } = useProxyConfig()
 
 const enabled = ref(!!config.value.url)
@@ -68,10 +66,10 @@ async function handleSave() {
   try {
     await saveConfig({ url: form.url.trim() })
     status.value = 'saved'
-    statusText.value = t('settings.proxy.saved')
+    statusText.value = '代理配置已保存'
   } catch {
     status.value = 'error'
-    statusText.value = t('common.saveFailed')
+    statusText.value = '保存失败'
   } finally {
     saving.value = false
     setTimeout(() => { status.value = '' }, 2000)

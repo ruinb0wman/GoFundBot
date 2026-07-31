@@ -1,7 +1,7 @@
 <template>
   <div class="fund-ranking-card">
     <div class="card-header" :class="{ 'header-expanded': isExpanded }">
-      <h3><LucideIcon name="Trophy" :size="20" /> {{ t('fund.rankingTrend.title') }}</h3>
+      <h3><LucideIcon name="Trophy" :size="20" /> {{ '同类排名走势' }}</h3>
       <div class="time-ranges">
         <span
           v-for="range in timeRanges"
@@ -19,10 +19,10 @@
           <table>
             <thead>
               <tr>
-                <th>{{ t('common.date') }}</th>
-                <th>{{ t('common.rank') }}</th>
-                <th>{{ t('fund.rankingTrend.total') }}</th>
-                <th>{{ t('fund.rankingTrend.beat') }}</th>
+                <th>{{ '日期' }}</th>
+                <th>{{ '排名' }}</th>
+                <th>{{ '同类总数' }}</th>
+                <th>{{ '击败同类' }}</th>
               </tr>
             </thead>
             <tbody>
@@ -39,7 +39,7 @@
         </div>
       </div>
       <div v-else class="no-data">
-        <p>{{ t('fund.rankingTrend.empty') }}</p>
+        <p>{{ '暂无同类排名数据' }}</p>
       </div>
     </div>
   </div>
@@ -47,12 +47,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
 import Decimal from 'decimal.js'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
-
-const { t } = useI18n()
 
 const props = defineProps({
   rateInSimilarType: { type: Array, default: () => [] },

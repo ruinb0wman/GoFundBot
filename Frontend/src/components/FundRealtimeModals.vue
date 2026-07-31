@@ -3,7 +3,7 @@
     <div v-if="funds" />
     <BaseModal :visible="addFundModalOpen" width="520" @close="emit('close-add-fund')">
       <template #header>
-        <h3>{{ t('fund.realtimeModal.title') }}</h3>
+        <h3>{{ '添加基金' }}</h3>
       </template>
       <FundSearch
         :select-mode="true"
@@ -11,22 +11,22 @@
         @fund-selected="emit('select-fund', $event)"
       />
       <template #footer>
-        <BButton @click="emit('close-add-fund')">{{ t('fund.realtimeModal.cancel') }}</BButton>
-        <BButton type="primary" @click="emit('confirm-add-fund')" :disabled="!selectedFunds?.length">{{ t('fund.realtimeModal.confirmAdd') }}</BButton>
+        <BButton @click="emit('close-add-fund')">{{ '取消' }}</BButton>
+        <BButton type="primary" @click="emit('confirm-add-fund')" :disabled="!selectedFunds?.length">{{ '确定添加' }}</BButton>
       </template>
     </BaseModal>
 
     <BaseModal :visible="holdingModal?.open" width="560" height="auto" @close="emit('close-holding')">
       <template #header>
         <div>
-          <div class="modal-kicker">{{ t('fund.realtimeModal.trade') }}</div>
+          <div class="modal-kicker">{{ '买卖交易' }}</div>
           <h3 style="margin:0">{{ holdingModal.fund?.name }} <span class="fund-code-sm">#{{ holdingModal.fund?.code }}</span></h3>
         </div>
       </template>
       <div class="holding-summary-card">
         <div class="fund-nav-info">
           <div>
-            <span class="nav-label">{{ t('fund.realtimeModal.prevNav') }}</span>
+            <span class="nav-label">{{ '上一交易日净值' }}</span>
             <span class="nav-value">{{ holdingModal.fund?.dwjz || '-' }}</span>
           </div>
           <span class="nav-date" v-if="holdingModal.fund?.jzrq">{{ holdingModal.fund.jzrq }}</span>
@@ -34,11 +34,11 @@
       </div>
       <div class="elegant-trade-box">
         <div class="trade-toggle">
-          <div class="trade-toggle-btn buy" :class="{ active: tradeForm?.type === 'buy' }" @click="emit('trade-type', 'buy')">{{ t('fund.realtimeModal.buyMore') }}</div>
-          <div class="trade-toggle-btn sell" :class="{ active: tradeForm?.type === 'sell' }" @click="emit('trade-type', 'sell')">{{ t('fund.realtimeModal.sellLess') }}</div>
+          <div class="trade-toggle-btn buy" :class="{ active: tradeForm?.type === 'buy' }" @click="emit('trade-type', 'buy')">{{ '加仓买入' }}</div>
+          <div class="trade-toggle-btn sell" :class="{ active: tradeForm?.type === 'sell' }" @click="emit('trade-type', 'sell')">{{ '减仓卖出' }}</div>
         </div>
         <div class="form-group elegant-input-group">
-          <label>{{ t('fund.realtimeModal.tradeDate') }}</label>
+          <label>{{ '交易日期' }}</label>
           <BDatePicker
             :modelValue="tradeForm?.tradeDate"
             @update:modelValue="emit('update-trade-date', $event)"
@@ -47,15 +47,15 @@
           />
         </div>
         <div class="trade-nav-derived" v-if="getTradeNav?.() > 0">
-          <span>{{ t('fund.realtimeModal.refNav') }} ¥{{ fmtNumber(getTradeNav?.() ?? 0, 4) }}</span>
-          <span class="nav-date-hint" v-if="tradeForm?.tradeDate === todayDate">{{ t('fund.realtimeModal.navHint') }}</span>
+          <span>{{ '参考净值：' }} ¥{{ fmtNumber(getTradeNav?.() ?? 0, 4) }}</span>
+          <span class="nav-date-hint" v-if="tradeForm?.tradeDate === todayDate">{{ '净值状态仅供参考' }}</span>
         </div>
         <div class="form-group elegant-input-group">
-          <label>{{ tradeForm?.type === 'buy' ? t('fund.realtimeModal.increaseAmount') : t('fund.realtimeModal.decreaseShares') }}</label>
+          <label>{{ tradeForm?.type === 'buy' ? '加仓金额' : '减仓份额' }}</label>
           <BInputNumber
             :modelValue="tradeForm?.inputValue"
             @update:modelValue="emit('update-trade-value', $event)"
-            :placeholder="tradeForm?.type === 'buy' ? t('fund.realtimeModal.increaseAmountPlaceholder') : t('fund.realtimeModal.decreaseSharesPlaceholder')"
+            :placeholder="tradeForm?.type === 'buy' ? '请输入加仓金额' : '请输入减仓份额'"
             :controls="false"
           >
             <template #prefix v-if="tradeForm?.type === 'buy'">¥</template>
@@ -63,7 +63,7 @@
         </div>
       </div>
       <template #footer>
-        <BButton @click="emit('close-holding')">{{ t('fund.realtimeModal.cancel') }}</BButton>
+        <BButton @click="emit('close-holding')">{{ '取消' }}</BButton>
         <BButton :type="tradeForm?.type === 'sell' ? 'danger' : 'primary'" @click="emit('save-trade')" :disabled="!canSubmitTrade?.()">{{ submitButtonText?.() }}</BButton>
       </template>
     </BaseModal>
@@ -71,54 +71,54 @@
     <BaseModal :visible="tradeHistoryModal?.open" width="680" height="auto" @close="emit('close-trade-history')">
       <template #header>
         <div>
-          <div class="modal-kicker">{{ t('fund.realtimeModal.holdingRecords') }}</div>
+          <div class="modal-kicker">{{ '持仓记录' }}</div>
           <h3 style="margin:0">{{ tradeHistoryModal.fund?.name }} <span class="fund-code-sm">#{{ tradeHistoryModal.fund?.code }}</span></h3>
         </div>
       </template>
       <div class="history-tabs">
-        <div class="history-tab" :class="{ active: historyTab === 'all' }" @click="historyTab = 'all'">{{ t('fund.realtimeModal.tabAll') }}</div>
-        <div class="history-tab" :class="{ active: historyTab === 'trade' }" @click="historyTab = 'trade'">{{ t('fund.realtimeModal.tabTrade') }}</div>
-        <div class="history-tab" :class="{ active: historyTab === 'adjust' }" @click="historyTab = 'adjust'">{{ t('fund.realtimeModal.tabAdjust') }}</div>
+        <div class="history-tab" :class="{ active: historyTab === 'all' }" @click="historyTab = 'all'">{{ '全部' }}</div>
+        <div class="history-tab" :class="{ active: historyTab === 'trade' }" @click="historyTab = 'trade'">{{ '买卖' }}</div>
+        <div class="history-tab" :class="{ active: historyTab === 'adjust' }" @click="historyTab = 'adjust'">{{ '费用' }}</div>
       </div>
       <div class="trade-history-table" v-if="filteredRecords.length">
         <div class="trade-history-row trade-history-head">
-          <span>{{ t('fund.realtimeModal.type') }}</span><span>{{ t('fund.realtimeModal.time') }}</span><span>{{ t('fund.realtimeModal.amount') }}</span><span>{{ t('fund.realtimeModal.price') }}</span><span>{{ t('fund.realtimeModal.shares') }}</span><span>{{ t('fund.realtimeModal.status') }}</span>
+          <span>{{ '类型' }}</span><span>{{ '时间' }}</span><span>{{ '金额' }}</span><span>{{ '价格' }}</span><span>{{ '份额' }}</span><span>{{ '状态' }}</span>
         </div>
         <div class="trade-history-row" v-for="record in filteredRecords" :key="record.id">
-          <span v-if="record.type === 'fee'" class="trade-type fee">{{ t('fund.realtimeModal.fee') }}</span>
-          <span v-else-if="record.type === 'dividend'" class="trade-type dividend">{{ t('fund.realtimeModal.dividend') }}</span>
-          <span v-else class="trade-type" :class="record.type">{{ record.type === 'buy' ? t('fund.realtimeModal.buy') : t('fund.realtimeModal.sell') }}</span>
+          <span v-if="record.type === 'fee'" class="trade-type fee">{{ '手续费' }}</span>
+          <span v-else-if="record.type === 'dividend'" class="trade-type dividend">{{ '分红再投' }}</span>
+          <span v-else class="trade-type" :class="record.type">{{ record.type === 'buy' ? '买' : '卖' }}</span>
           <span>{{ record.tradeDate || '-' }}</span>
           <span>¥{{ formatMoney?.(record.amount) }}</span>
           <span>{{ record.nav != null && record.nav > 0 ? fmtNumber(record.nav, 4) : '-' }}</span>
           <span>{{ record.share > 0 ? formatShare?.(record.share) : '-' }}</span>
-          <span class="trade-status" :class="record.status">{{ record.status === 'pending' ? t('fund.realtimeModal.pending') : t('fund.realtimeModal.updated') }}</span>
+          <span class="trade-status" :class="record.status">{{ record.status === 'pending' ? '挂起' : '已更新' }}</span>
         </div>
       </div>
-      <div class="trade-history-empty" v-else>{{ t('fund.realtimeModal.noRecords') }}</div>
+      <div class="trade-history-empty" v-else>{{ '暂无记录' }}</div>
     </BaseModal>
 
     <BaseModal :visible="showGroupModal" width="420" height="auto" @close="emit('close-group')">
       <template #header>
-        <h3 style="margin:0">{{ editingGroup ? t('fund.realtimeModal.renameGroup') : t('fund.realtimeModal.newGroup') }}</h3>
+        <h3 style="margin:0">{{ editingGroup ? '重命名分组' : '新建分组' }}</h3>
       </template>
       <div style="margin-bottom:12px">
         <BInput
           :modelValue="groupName"
           @update:modelValue="emit('update-group-name', $event)"
-          :placeholder="t('fund.realtimeModal.groupPlaceholder')"
+          :placeholder="'请输入分组名称'"
           autofocus
           @keydown="(e) => e.key === 'Enter' && emit('save-group')"
         />
       </div>
       <div class="rebalance-section">
         <div class="rebalance-header">
-          <span>{{ t('fund.realtimeModal.rebalanceSettings') }}</span>
+          <span>{{ '再平衡设置' }}</span>
           <BSwitch :modelValue="rebalanceForm?.enabled" @update:modelValue="emit('update-rebalance', 'enabled', $event)" />
         </div>
         <div v-if="rebalanceForm?.enabled" class="rebalance-fields">
           <div class="form-group elegant-input-group">
-            <label>{{ t('fund.realtimeModal.rebalanceTarget') }}</label>
+            <label>{{ '目标占比（每只基金）' }}</label>
             <BInputNumber
               :modelValue="rebalanceForm?.target"
               @update:modelValue="emit('update-rebalance', 'target', $event)"
@@ -128,7 +128,7 @@
             </BInputNumber>
           </div>
           <div class="form-group elegant-input-group">
-            <label>{{ t('fund.realtimeModal.rebalanceUpper') }}</label>
+            <label>{{ '上限阈值' }}</label>
             <BInputNumber
               :modelValue="rebalanceForm?.upper"
               @update:modelValue="emit('update-rebalance', 'upper', $event)"
@@ -138,7 +138,7 @@
             </BInputNumber>
           </div>
           <div class="form-group elegant-input-group">
-            <label>{{ t('fund.realtimeModal.rebalanceLower') }}</label>
+            <label>{{ '下限阈值' }}</label>
             <BInputNumber
               :modelValue="rebalanceForm?.lower"
               @update:modelValue="emit('update-rebalance', 'lower', $event)"
@@ -150,21 +150,21 @@
         </div>
       </div>
       <template #footer>
-        <BButton @click="emit('close-group')">{{ t('fund.realtimeModal.cancel') }}</BButton>
-        <BButton type="primary" @click="emit('save-group')" :disabled="!groupName?.trim()">{{ editingGroup ? t('fund.realtimeModal.save') : t('fund.realtimeModal.create') }}</BButton>
+        <BButton @click="emit('close-group')">{{ '取消' }}</BButton>
+        <BButton type="primary" @click="emit('save-group')" :disabled="!groupName?.trim()">{{ editingGroup ? '保存' : '创建' }}</BButton>
       </template>
     </BaseModal>
 
     <BaseModal :visible="adjustmentModal?.open" width="560" height="auto" @close="emit('close-adjustment')">
       <template #header>
         <div>
-          <div class="modal-kicker">{{ t('fund.realtimeModal.adjustment') }}</div>
+          <div class="modal-kicker">{{ '调整' }}</div>
           <h3 style="margin:0">{{ adjustmentModal.fund?.name }} <span class="fund-code-sm">#{{ adjustmentModal.fund?.code }}</span></h3>
         </div>
       </template>
       <div class="set-holding-form">
         <div class="form-group elegant-input-group">
-          <label>{{ t('fund.realtimeModal.tradeDate') }}</label>
+          <label>{{ '交易日期' }}</label>
           <BDatePicker
             :modelValue="adjustmentForm?.tradeDate"
             @update:modelValue="emit('update-adjustment-date', $event)"
@@ -173,18 +173,18 @@
           />
         </div>
         <div class="form-group elegant-input-group">
-          <label>{{ t('fund.realtimeModal.adjustmentType') }}</label>
+          <label>{{ '调整类型' }}</label>
           <div class="trade-toggle">
-            <div class="trade-toggle-btn fee" :class="{ active: adjustmentForm?.subtype === 'fee' }" @click="emit('update-adjustment-subtype', 'fee')">{{ t('fund.realtimeModal.fee') }}</div>
-            <div class="trade-toggle-btn dividend" :class="{ active: adjustmentForm?.subtype === 'dividend' }" @click="emit('update-adjustment-subtype', 'dividend')">{{ t('fund.realtimeModal.dividend') }}</div>
+            <div class="trade-toggle-btn fee" :class="{ active: adjustmentForm?.subtype === 'fee' }" @click="emit('update-adjustment-subtype', 'fee')">{{ '手续费' }}</div>
+            <div class="trade-toggle-btn dividend" :class="{ active: adjustmentForm?.subtype === 'dividend' }" @click="emit('update-adjustment-subtype', 'dividend')">{{ '分红再投' }}</div>
           </div>
         </div>
         <div class="form-group elegant-input-group">
-          <label>{{ adjustmentForm?.subtype === 'dividend' ? t('fund.realtimeModal.dividendAmount') : t('fund.realtimeModal.adjustmentAmount') }}</label>
+          <label>{{ adjustmentForm?.subtype === 'dividend' ? '再投金额' : '调整金额' }}</label>
           <BInputNumber
             :modelValue="adjustmentForm?.amount"
             @update:modelValue="emit('update-adjustment-amount', $event)"
-            :placeholder="t('fund.realtimeModal.adjustmentExpense')"
+            :placeholder="'手续费金额'"
             :controls="false"
             :min="0"
           >
@@ -192,27 +192,27 @@
           </BInputNumber>
         </div>
         <div v-if="adjustmentForm?.subtype === 'dividend'" class="form-group elegant-input-group">
-          <label>{{ t('fund.realtimeModal.dividendShares') }}</label>
+          <label>{{ '再投份额' }}</label>
           <BInputNumber
             :modelValue="adjustmentForm?.share"
             @update:modelValue="emit('update-adjustment-share', $event)"
-            :placeholder="t('fund.realtimeModal.dividendSharesPlaceholder')"
+            :placeholder="'请输入再投份额'"
             :controls="false"
             :min="0"
           />
         </div>
         <div class="form-group elegant-input-group">
-          <label>{{ t('fund.realtimeModal.adjustmentNote') }}</label>
+          <label>{{ '备注' }}</label>
           <BInput
             :modelValue="adjustmentForm?.note"
             @update:modelValue="emit('update-adjustment-note', $event)"
-            :placeholder="t('fund.realtimeModal.adjustmentNotePlaceholder')"
+            :placeholder="'可选备注'"
           />
         </div>
       </div>
       <template #footer>
-        <BButton @click="emit('close-adjustment')">{{ t('fund.realtimeModal.cancel') }}</BButton>
-        <BButton type="primary" @click="emit('save-adjustment')">{{ t('fund.realtimeModal.saveAdjustment') }}</BButton>
+        <BButton @click="emit('close-adjustment')">{{ '取消' }}</BButton>
+        <BButton type="primary" @click="emit('save-adjustment')">{{ '保存调整' }}</BButton>
       </template>
     </BaseModal>
   </div>
@@ -220,7 +220,6 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import BButton from './BButton.vue'
 import BaseModal from './BaseModal.vue'
 import BDatePicker from './BDatePicker.vue'
@@ -229,7 +228,6 @@ import BInputNumber from './BInputNumber.vue'
 import BSwitch from './BSwitch.vue'
 import FundSearch from './FundSearch.vue'
 import { fmtNumber } from '../utils/number'
-const { t } = useI18n()
 defineOptions({ name: 'FundRealtimeModals' })
 
 const historyTab = ref('all')
@@ -391,7 +389,6 @@ const filteredRecords = computed(() => {
   font-weight: 700;
   display: block;
 }
-
 
 .modal-date {
   width: 100%;

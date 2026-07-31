@@ -1,8 +1,8 @@
 <template>
   <div class="settings-general">
     <section class="setting-section">
-      <h3>{{ t('settings.general.appearance') }}</h3>
-      <p class="section-desc">{{ t('settings.general.themeDesc') }}</p>
+      <h3>{{ '外观' }}</h3>
+      <p class="section-desc">{{ '选择主题显示模式' }}</p>
       <div class="option-group">
         <button
           v-for="opt in themeOptions"
@@ -16,55 +16,25 @@
         </button>
       </div>
     </section>
-
-    <section class="setting-section">
-      <h3>{{ t('settings.general.language') }}</h3>
-      <p class="section-desc">{{ t('settings.general.langDesc') }}</p>
-      <div class="option-group">
-        <button
-          v-for="opt in localeOptions"
-          :key="opt.value"
-          class="option-btn"
-          :class="{ active: currentLocale.startsWith(opt.value) }"
-          @click="setLocale(opt.value === 'zh' ? 'zh-CN' : 'en')"
-        >
-          <span>{{ opt.label }}</span>
-        </button>
-      </div>
-    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useTheme } from '../composables/useTheme'
-import { getCurrentLocale, setLocale as setAppLocale } from '../locales/index'
 
-const { t } = useI18n()
 const { savedTheme, toggleTheme } = useTheme()
 
-const currentLocale = computed(() => getCurrentLocale())
-
 const themeOptions = computed(() => [
-  { value: 'light', icon: 'Sun', label: t('theme.light') },
-  { value: 'dark', icon: 'Moon', label: t('theme.dark') },
-  { value: 'auto', icon: 'Monitor', label: t('theme.auto') },
-])
-
-const localeOptions = computed(() => [
-  { value: 'zh', label: t('locale.zh') },
-  { value: 'en', label: t('locale.en') },
+  { value: 'light', icon: 'Sun', label: '浅色模式' },
+  { value: 'dark', icon: 'Moon', label: '深色模式' },
+  { value: 'auto', icon: 'Monitor', label: '跟随系统' },
 ])
 
 function setTheme(mode: string) {
   while (savedTheme.value !== mode) {
     toggleTheme()
   }
-}
-
-function setLocale(locale: string) {
-  setAppLocale(locale)
 }
 </script>
 

@@ -1,24 +1,24 @@
 <template>
   <div class="portfolio-card">
     <div class="card-header">
-      <h3><LucideIcon name="TrendingUp" :size="20" /> {{ t('fund.portfolio.title') }}</h3>
+      <h3><LucideIcon name="TrendingUp" :size="20" /> {{ '持仓明细' }}</h3>
     </div>
     <div class="card-body">
       <div class="portfolio-content">
         <div v-if="hasStockData" class="stock-list">
           <div class="portfolio-header">
-            <span class="col-rank">{{ t('common.rank') }}</span>
-            <span class="col-code">{{ t('common.code') }}</span>
-            <span class="col-name">{{ t('common.name') }}</span>
-            <span v-if="hasRatioData" class="col-ratio">{{ t('common.ratio') }}</span>
-            <span class="col-industry">{{ t('common.industry') }}</span>
+            <span class="col-rank">{{ '排名' }}</span>
+            <span class="col-code">{{ '代码' }}</span>
+            <span class="col-name">{{ '名称' }}</span>
+            <span v-if="hasRatioData" class="col-ratio">{{ '占比' }}</span>
+            <span class="col-industry">{{ '行业' }}</span>
           </div>
           <div
             v-for="(stock, index) in stockList"
             :key="stock.code || index"
             class="portfolio-item stock-clickable"
             @click.stop="$emit('stock-click', stock)"
-            :title="t('fund.portfolio.clickDetail')"
+            :title="'点击查看个股详情'"
           >
             <span class="col-rank">{{ index + 1 }}</span>
             <span class="col-code">{{ stock.code }}</span>
@@ -28,7 +28,7 @@
           </div>
         </div>
         <div v-else class="no-data">
-          <p>{{ t('fund.portfolio.empty') }}</p>
+          <p>{{ '暂无股票持仓数据' }}</p>
         </div>
       </div>
     </div>
@@ -37,10 +37,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import type { Portfolio, PortfolioHolding } from '../types'
-
-const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   portfolio?: Portfolio

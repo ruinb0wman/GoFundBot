@@ -3,7 +3,6 @@ import Decimal from 'decimal.js'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
-import { translate } from '../locales/index'
 import { MA_PRESETS, calcMA } from '../utils/ma'
 export function useFundChart(props) {
   const chartEl = ref(null)
@@ -23,11 +22,11 @@ export function useFundChart(props) {
     return `rgba(${r},${g},${b},${alpha})`
   }
   const timeRanges = [
-    { label: translate('fund.detail.month3'), value: '3m' },
-    { label: translate('fund.detail.month6'), value: '6m' },
-    { label: translate('fund.detail.year1'), value: '1y' },
-    { label: translate('fund.detail.year3'), value: '3y' },
-    { label: translate('fund.detail.sinceInception'), value: 'all' }
+    { label: '近3月', value: '3m' },
+    { label: '近6月', value: '6m' },
+    { label: '近1年', value: '1y' },
+    { label: '近3年', value: '3y' },
+    { label: '成立来', value: 'all' }
   ]
   const setTimeRange = (range) => {
     selectedRange.value = range

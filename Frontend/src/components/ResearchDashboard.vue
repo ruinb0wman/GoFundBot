@@ -2,12 +2,12 @@
   <div class="research-dashboard">
     <div class="research-header">
       <div>
-        <h2>{{ t('research.title') }}</h2>
-        <p>{{ t('research.desc') }}</p>
+        <h2>{{ '投研看板' }}</h2>
+        <p>{{ '基金市场统计、基金分组看板和 ETF 每日跟踪' }}</p>
       </div>
       <div class="header-actions">
         <span v-if="updatedAt" class="updated-time">更新 {{ formatDateTime(updatedAt) }}</span>
-        <BButton type="primary" icon="RefreshCw" :disabled="loading" @click="refreshDashboard">{{ loading ? t('research.refreshing') : t('common.refresh') }}</BButton>
+        <BButton type="primary" icon="RefreshCw" :disabled="loading" @click="refreshDashboard">{{ loading ? '刷新中...' : '刷新' }}</BButton>
       </div>
     </div>
 
@@ -23,37 +23,37 @@
       </BButton>
     </div>
 
-    <div v-if="loading" class="state-card">{{ t('research.loading') }}</div>
+    <div v-if="loading" class="state-card">{{ '正在加载投研数据...' }}</div>
     <div v-else-if="error" class="state-card error">{{ error }}</div>
     <template v-else>
       <section v-show="activeTab === 'market'" class="tab-section">
         <div class="metric-grid">
           <div class="metric-card">
-            <span class="metric-label">{{ t('research.totalFunds') }}</span>
+            <span class="metric-label">{{ '基金总数' }}</span>
             <strong>{{ summary.total_funds || 0 }}</strong>
           </div>
           <div class="metric-card">
-            <span class="metric-label">{{ t('research.riskCoverage') }}</span>
+            <span class="metric-label">{{ '风险指标覆盖' }}</span>
             <strong>{{ formatPercent(summary.risk_ready_rate) }}</strong>
             <small>{{ summary.risk_ready || 0 }} 只</small>
           </div>
           <div class="metric-card">
-            <span class="metric-label">{{ t('research.passRate4433') }}</span>
+            <span class="metric-label">{{ '4433 通过率' }}</span>
             <strong>{{ formatPercent(summary.pass_4433_rate) }}</strong>
             <small>{{ summary.pass_4433 || 0 }} 只</small>
           </div>
           <div class="metric-card">
-            <span class="metric-label">{{ t('research.positiveReturn1y') }}</span>
+            <span class="metric-label">{{ '近 1 年正收益占比' }}</span>
             <strong>{{ formatPercent(summary.positive_1y_rate) }}</strong>
           </div>
           <div class="metric-card">
-            <span class="metric-label">{{ t('research.medianReturn1y') }}</span>
+            <span class="metric-label">{{ '近 1 年收益中位数' }}</span>
             <strong :class="returnClass(summary.return_1y_median)">
               {{ formatPercent(summary.return_1y_median) }}
             </strong>
           </div>
           <div class="metric-card">
-            <span class="metric-label">{{ t('research.medianReturn3m') }}</span>
+            <span class="metric-label">{{ '近 3 月收益中位数' }}</span>
             <strong :class="returnClass(summary.return_3m_median)">
               {{ formatPercent(summary.return_3m_median) }}
             </strong>
@@ -325,8 +325,6 @@
 
 <script setup>
 import BButton from './BButton.vue'
-import { useI18n } from 'vue-i18n'
-const { t } = useI18n()
 import { useResearchDashboard } from '../composables/useResearchDashboard'
 
 const emit = defineEmits(['view-fund'])

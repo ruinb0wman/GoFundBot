@@ -1,17 +1,17 @@
 <template>
   <div class="alert-badge-wrapper" ref="wrapperRef">
-    <button class="alert-bell" @click="toggle" :title="`${t('alert.settings')} (${unreadCount})`">
+    <button class="alert-bell" @click="toggle" :title="`${'告警设置'} (${unreadCount})`">
       <LucideIcon :name="unreadCount > 0 ? 'BellRing' : 'Bell'" :size="18" />
       <span v-if="unreadCount > 0" class="badge-dot">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
     </button>
     <Transition name="alert-dropdown">
       <div v-if="open" class="alert-dropdown">
         <div class="dropdown-header">
-          <span class="dropdown-title">{{ t('alert.list') }}</span>
+          <span class="dropdown-title">{{ '告警列表' }}</span>
           <BButton circle size="small" @click="close">&times;</BButton>
         </div>
         <div class="dropdown-body">
-          <div v-if="store.rules.length === 0" class="empty-state">{{ t('alert.empty') }}</div>
+          <div v-if="store.rules.length === 0" class="empty-state">{{ '暂无告警规则' }}</div>
           <div v-for="rule in store.rules" :key="rule.id" class="rule-item">
             <div class="rule-info">
               <span class="rule-fund">{{ rule.fund_code }}</span>
@@ -23,7 +23,7 @@
         </div>
         <div class="dropdown-footer">
           <BButton type="primary" size="small" @click="refreshCheck" :disabled="store.loading">
-            <LucideIcon name="RefreshCw" :size="14" :class="{ spinning: store.loading }" /> {{ t('alert.check') }}
+            <LucideIcon name="RefreshCw" :size="14" :class="{ spinning: store.loading }" /> {{ '检查' }}
           </BButton>
         </div>
       </div>
@@ -35,11 +35,8 @@
 import BButton from './BButton.vue'
 import BSwitch from './BSwitch.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useAlertStore } from '../stores/alertStore'
 import { useNotification } from '../composables/useNotification'
-
-const { t } = useI18n()
 
 const store = useAlertStore()
 const { notifyAlert } = useNotification()
@@ -50,7 +47,7 @@ const wrapperRef = ref<HTMLElement | null>(null)
 const unreadCount = ref(0)
 
 const typeLabel = (type: string) => {
-  const labels: Record<string, string> = { price_up: t('alert.priceUp'), price_down: t('alert.priceDown'), return_above: t('alert.returnAbove'), return_below: t('alert.returnBelow') }
+  const labels: Record<string, string> = { price_up: '涨超', price_down: '跌超', return_above: '收益大于', return_below: '收益小于' }
   return labels[type] || type
 }
 
@@ -173,7 +170,6 @@ onUnmounted(() => {
 .rule-type.price_up, .rule-type.return_above { background: var(--color-danger-bg); color: var(--color-danger); }
 .rule-type.price_down, .rule-type.return_below { background: var(--color-success-bg); color: var(--color-success); }
 .rule-threshold { color: var(--text-tertiary); }
-
 
 .dropdown-footer {
   padding: 8px 16px;

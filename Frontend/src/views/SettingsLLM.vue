@@ -1,21 +1,21 @@
 <template>
   <div class="settings-llm">
     <section class="setting-section">
-      <h3>{{ t('settings.llm.title') }}</h3>
+      <h3>{{ 'AI 服务配置' }}</h3>
 
       <div class="field-group">
         <label class="field-label">
           <LucideIcon name="Key" :size="16" />
-          {{ t('settings.llm.apiKey') }}
+          {{ 'API 密钥' }}
         </label>
         <div class="input-with-toggle">
           <input
             :type="showKey ? 'text' : 'password'"
             v-model="form.apiKey"
-            :placeholder="t('settings.llm.apiKeyPlaceholder')"
+            :placeholder="'输入你的 API Key（以 sk- 开头）'"
             class="field-input"
           />
-          <button class="toggle-btn" @click="showKey = !showKey" :title="showKey ? t('settings.llm.hideKey') : t('settings.llm.showKey')">
+          <button class="toggle-btn" @click="showKey = !showKey" :title="showKey ? '隐藏' : '显示'">
             <LucideIcon :name="showKey ? 'EyeOff' : 'Eye'" :size="18" />
           </button>
         </div>
@@ -24,12 +24,12 @@
       <div class="field-group">
         <label class="field-label">
           <LucideIcon name="Globe" :size="16" />
-          {{ t('settings.llm.apiBase') }}
+          {{ 'API 地址' }}
         </label>
         <input
           type="text"
           v-model="form.apiBase"
-          :placeholder="t('settings.llm.apiBasePlaceholder')"
+          :placeholder="'https://api.siliconflow.cn/v1'"
           class="field-input"
         />
       </div>
@@ -37,12 +37,12 @@
       <div class="field-group">
         <label class="field-label">
           <LucideIcon name="Cpu" :size="16" />
-          {{ t('settings.llm.model') }}
+          {{ '模型' }}
         </label>
         <input
           type="text"
           v-model="form.model"
-          :placeholder="t('settings.llm.modelPlaceholder')"
+          :placeholder="'Qwen/Qwen2.5-7B-Instruct'"
           class="field-input"
         />
       </div>
@@ -50,10 +50,10 @@
       <div class="action-row">
         <button class="save-btn" @click="handleSave">
           <LucideIcon name="Save" :size="16" />
-          {{ t('common.save') }}
+          {{ '保存' }}
         </button>
         <span v-if="status" class="status-msg" :class="{ success: status === 'saved' }">
-          {{ status === 'saved' ? t('settings.llm.saved') : '' }}
+          {{ status === 'saved' ? '配置已保存' : '' }}
         </span>
       </div>
     </section>
@@ -62,10 +62,8 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useLLMConfig } from '../composables/useLLMConfig'
 
-const { t } = useI18n()
 const { config, saveConfig } = useLLMConfig()
 
 const showKey = ref(false)

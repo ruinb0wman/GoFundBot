@@ -16,7 +16,7 @@
       <BInput
         v-model="keyword"
         class="search-input"
-        :placeholder="t('logs.searchPlaceholder')"
+        :placeholder="'搜索关键词...'"
         @input="onSearchInput"
       />
       <BButton size="small" @click="loadLogs" :disabled="loading">
@@ -27,15 +27,15 @@
     <div class="stats-row">
       <div class="stat-card stat-error">
         <span class="stat-num">{{ stats.error || 0 }}</span>
-        <span class="stat-label">{{ t('logs.statError') }}</span>
+        <span class="stat-label">{{ '错误' }}</span>
       </div>
       <div class="stat-card stat-warn">
         <span class="stat-num">{{ stats.warn || 0 }}</span>
-        <span class="stat-label">{{ t('logs.statWarn') }}</span>
+        <span class="stat-label">{{ '警告' }}</span>
       </div>
       <div class="stat-card stat-info">
         <span class="stat-num">{{ stats.info || 0 }}</span>
-        <span class="stat-label">{{ t('logs.statInfo') }}</span>
+        <span class="stat-label">{{ '信息' }}</span>
       </div>
     </div>
 
@@ -48,31 +48,31 @@
         class="log-table"
       >
         <template #loading>
-          <div class="vxe-loading">{{ t('logs.loading') }}</div>
+          <div class="vxe-loading">{{ '加载中...' }}</div>
         </template>
         <VxeColumn type="seq" width="50" />
-        <VxeColumn field="time" :title="t('logs.time')" width="180">
+        <VxeColumn field="time" :title="'时间'" width="180">
           <template #default="{ row }">
             <span class="cell-time">{{ formatTime(row.time) }}</span>
           </template>
         </VxeColumn>
-        <VxeColumn field="source" :title="t('logs.source')" width="110" />
-        <VxeColumn field="level" :title="t('logs.level')" width="80">
+        <VxeColumn field="source" :title="'来源'" width="110" />
+        <VxeColumn field="level" :title="'级别'" width="80">
           <template #default="{ row }">
             <span :class="['level-badge', 'level-' + (row.level || 'info')]">
               {{ row.level }}
             </span>
           </template>
         </VxeColumn>
-        <VxeColumn field="message" :title="t('logs.message')" min-width="200" show-overflow="tooltip" />
-        <VxeColumn :title="t('logs.context')" width="100">
+        <VxeColumn field="message" :title="'消息'" min-width="200" show-overflow="tooltip" />
+        <VxeColumn :title="'上下文'" width="100">
           <template #default="{ row }">
             <BButton
               v-if="row.context || row.module"
               size="small"
               @click="expandRow(row)"
             >
-              {{ t('logs.view') }}
+              {{ '查看' }}
             </BButton>
           </template>
         </VxeColumn>
@@ -80,42 +80,42 @@
     </div>
 
     <div class="pagination-row" v-if="total > limit">
-      <span class="page-info">{{ t('logs.total') }} {{ total }} {{ t('logs.items') }}</span>
-      <BButton size="small" :disabled="offset <= 0" @click="prevPage">{{ t('logs.prevPage') }}</BButton>
+      <span class="page-info">{{ '共' }} {{ total }} {{ '条' }}</span>
+      <BButton size="small" :disabled="offset <= 0" @click="prevPage">{{ '上一页' }}</BButton>
       <span class="page-num">{{ currentPage }} / {{ maxPage }}</span>
-      <BButton size="small" :disabled="offset + limit >= total" @click="nextPage">{{ t('logs.nextPage') }}</BButton>
+      <BButton size="small" :disabled="offset + limit >= total" @click="nextPage">{{ '下一页' }}</BButton>
     </div>
 
     <div class="analysis-section">
-      <h3>{{ t('logs.aiAnalysis') }}</h3>
+      <h3>{{ 'AI 日志分析' }}</h3>
       <BButton type="primary" size="small" @click="runAnalysis" :disabled="analyzing">
         <LucideIcon name="Sparkles" :size="16" />
-        {{ analyzing ? t('logs.analyzing') : t('logs.startAnalysis') }}
+        {{ analyzing ? '分析中...' : '开始分析' }}
       </BButton>
       <div v-if="analyzing" class="analysis-loading">
-        {{ t('logs.analyzingLogs') }}
+        {{ '正在分析日志...' }}
       </div>
       <div v-if="analysisError" class="analysis-error">{{ analysisError }}</div>
       <div v-if="analysisResult" class="analysis-report">
         <div class="report-summary">
-          <p>{{ t('logs.totalLogs') }} <strong>{{ analysisResult.total }}</strong></p>
-          <p>{{ t('logs.statError') }}: <strong class="text-error">{{ analysisResult.error_count }}</strong></p>
-          <p>{{ t('logs.statWarn') }}: <strong class="text-warn">{{ analysisResult.warn_count }}</strong></p>
+          <p>{{ '总日志:' }} <strong>{{ analysisResult.total }}</strong></p>
+          <p>{{ '错误' }}: <strong class="text-error">{{ analysisResult.error_count }}</strong></p>
+          <p>{{ '警告' }}: <strong class="text-warn">{{ analysisResult.warn_count }}</strong></p>
         </div>
         <div v-if="analysisResult.patterns" class="report-section">
-          <h4>{{ t('logs.errorPatterns') }}</h4>
+          <h4>{{ '错误模式' }}</h4>
           <ul>
             <li v-for="(p, i) in analysisResult.patterns" :key="i">{{ p }}</li>
           </ul>
         </div>
         <div v-if="analysisResult.suggestions" class="report-section">
-          <h4>{{ t('logs.optimizationSuggestions') }}</h4>
+          <h4>{{ '优化建议' }}</h4>
           <ul>
             <li v-for="(s, i) in analysisResult.suggestions" :key="i">{{ s }}</li>
           </ul>
         </div>
         <div v-if="analysisResult.critical" class="report-section section-critical">
-          <h4>{{ t('logs.criticalItems') }}</h4>
+          <h4>{{ '需立即处理' }}</h4>
           <ul>
             <li v-for="(c, i) in analysisResult.critical" :key="i">{{ c }}</li>
           </ul>
@@ -141,10 +141,7 @@ import BButton from '../components/BButton.vue'
 import BInput from '../components/BInput.vue'
 import BDatePicker from '../components/BDatePicker.vue'
 import { ref, onMounted, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { VxeTable, VxeColumn } from 'vxe-table'
-
-const { t } = useI18n()
 
 const source = ref('backend')
 const dateStr = ref(new Date().toISOString().slice(0, 10))
@@ -247,8 +244,6 @@ async function runAnalysis() {
 
 onMounted(loadLogs)
 </script>
-
-
 
 <style scoped>
 .logs-page {

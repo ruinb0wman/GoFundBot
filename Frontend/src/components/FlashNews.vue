@@ -4,15 +4,15 @@
     <!-- 头部 -->
     <div class="news-header-bar">
       <div class="header-left">
-        <h3 class="header-title"><LucideIcon name="Newspaper" :size="18" /> {{ t('flashNews.title') }}</h3>
-        <span v-if="!loading && newsList.length" class="count-badge">{{ newsList.length }} {{ t('flashNews.itemCount') }}</span>
+        <h3 class="header-title"><LucideIcon name="Newspaper" :size="18" /> {{ '7×24 快讯' }}</h3>
+        <span v-if="!loading && newsList.length" class="count-badge">{{ newsList.length }} {{ '条' }}</span>
       </div>
       <div class="header-right">
         <a class="doc-link" href="/docs/market-news" target="_blank" title="查看文档">
           <LucideIcon name="HelpCircle" :size="16" />
         </a>
         <span v-if="sourcesText" class="sources-tag" :title="sourcesText">{{ sourcesText }}</span>
-        <BButton circle size="small" icon="RefreshCw" @click="resetAndFetch" :loading="loading" :title="t('flashNews.refresh')" />
+        <BButton circle size="small" icon="RefreshCw" @click="resetAndFetch" :loading="loading" :title="'刷新快讯'" />
       </div>
     </div>
 
@@ -29,13 +29,13 @@
     <div v-else-if="error && !newsList.length" class="error-state">
       <span class="error-icon"><LucideIcon name="TriangleAlert" :size="20" /></span>
       <span class="error-text">{{ error }}</span>
-      <BButton type="danger" size="small" @click="resetAndFetch">{{ t('common.retry') }}</BButton>
+      <BButton type="danger" size="small" @click="resetAndFetch">{{ '重试' }}</BButton>
     </div>
 
     <!-- 空 -->
     <div v-else-if="!newsList.length && !loading" class="empty-state">
       <span class="empty-icon"><LucideIcon name="MailOpen" :size="28" /></span>
-      <span>{{ t('flashNews.noData') }}</span>
+      <span>{{ '暂无快讯数据' }}</span>
     </div>
 
     <!-- 列表 -->
@@ -64,10 +64,10 @@
 
       <!-- 底部加载状态 -->
       <div v-if="loadingMore" class="loading-more">
-        <span class="loading-dot"></span> {{ t('flashNews.loadMore') }}
+        <span class="loading-dot"></span> {{ '加载更多快讯...' }}
       </div>
       <div v-else-if="!hasMore && newsList.length > 0" class="loading-more end">
-        — {{ t('flashNews.allLoaded') }} —
+        — {{ '已加载全部快讯' }} —
       </div>
     </div>
 
@@ -75,7 +75,7 @@
     <div v-if="dataPoller.updateTime.value" class="news-footer">
       <span class="footer-dot online" :class="{'stale': dataPoller.status.value === 'failed'}"></span>
       <span :class="{ 'failed-text': dataPoller.status.value === 'failed' }">
-        {{ dataPoller.status.value === 'success' ? t('flashNews.updatedAt') : '获取失败' }} {{ formatUpdateTime(dataPoller.updateTime.value) }}
+        {{ dataPoller.status.value === 'success' ? '更新于' : '获取失败' }} {{ formatUpdateTime(dataPoller.updateTime.value) }}
       </span>
     </div>
 
@@ -98,7 +98,7 @@
               >{{ modal.news.evaluate }}</span>
             </div>
             <div v-if="modal.news?.related_stocks?.length" class="modal-stocks">
-              <span class="modal-stocks-label">{{ t('flashNews.relatedStocks') }}</span>
+              <span class="modal-stocks-label">{{ '相关股票' }}</span>
               <div class="modal-stocks-list">
                 <span
                   v-for="stock in modal.news.related_stocks"
@@ -124,13 +124,10 @@
 <script setup lang="ts">
 import BButton from './BButton.vue'
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { marketAPI } from '../services/api'
 import { useDataPoller } from '../composables/useDataPoller'
 
 const props = withDefaults(defineProps<{ count?: number; autoRefresh?: boolean; refreshInterval?: number }>(), { count: 30, autoRefresh: true, refreshInterval: 60000 })
-
-const { t } = useI18n()
 
 const MAX_LEN = 35
 const PAGE_SIZE = 50
@@ -244,11 +241,11 @@ const fetchNews = async (page = 1, append = false) => {
         setTimeout(() => { newsList.value.forEach((n: any) => (n._isNew = false)) }, 2000)
       })
     } else if (page === 1) {
-      error.value = response.data.error || t('flashNews.error')
+      error.value = response.data.error || '获取快讯失败'
     }
   } catch (e) {
     if (page === 1) {
-      error.value = t('flashNews.networkError')
+      error.value = '网络异常，请稍后重试'
     }
   } finally {
     loading.value = false
@@ -357,8 +354,6 @@ onMounted(() => {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-
-
 .skeleton-list { padding: 10px 14px; }
 .skeleton-item { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
 .skeleton-line { height: 10px; border-radius: 5px; margin-bottom: 6px;
@@ -374,7 +369,6 @@ onMounted(() => {
   gap: 8px; padding: 40px 20px; color: var(--text-tertiary);
 }
 .error-icon, .empty-icon { display: inline-flex; align-items: center; }
-
 
 .news-list { flex: 1; overflow-y: auto; padding: 2px 0; }
 .news-list::-webkit-scrollbar { width: 4px; }

@@ -5,7 +5,6 @@ import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
 import { fundAPI } from '../services/api'
 import { exportToCSV } from '../utils/exportUtils'
-import { translate } from '../locales/index'
 import {
   calcReturn, fmtPercent, fmtNumber, fmtDrawdown,
   isZero, sharpeClass, scoreClass
@@ -29,9 +28,9 @@ export function useFundComparison(props: any, emit: any) {
   ]
 
   const timeRanges = [
-    { label: translate('fund.detail.month3'), value: '3m' }, { label: translate('fund.detail.month6'), value: '6m' },
-    { label: translate('fund.detail.year1'), value: '1y' }, { label: translate('fund.detail.year3'), value: '3y' },
-    { label: translate('fund.detail.sinceInception'), value: 'all' }
+    { label: '近3月', value: '3m' }, { label: '近6月', value: '6m' },
+    { label: '近1年', value: '1y' }, { label: '近3年', value: '3y' },
+    { label: '成立来', value: 'all' }
   ]
 
   const selectedFunds: any = ref([])

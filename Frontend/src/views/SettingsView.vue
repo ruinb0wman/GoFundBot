@@ -21,19 +21,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
 const tabs = computed(() => [
-  { name: 'settings-general', icon: 'Settings', label: t('common.settings') },
-  { name: 'settings-llm', icon: 'Brain', label: t('settings.llmTab') },
-  { name: 'settings-proxy', icon: 'Network', label: t('settings.proxyTab') },
+  { name: 'settings-general', icon: 'Settings', label: '设置' },
+  { name: 'settings-llm', icon: 'Brain', label: 'AI 配置' },
+  { name: 'settings-proxy', icon: 'Network', label: '代理设置' },
   { name: 'settings-search', icon: 'Search', label: '搜索' },
-  { name: 'settings-logs', icon: 'FileText', label: t('logs.title') },
-  { name: 'settings-anomaly', icon: 'BellRing', label: t('settings.anomalyTab') },
+  { name: 'settings-logs', icon: 'FileText', label: '日志' },
+  { name: 'settings-anomaly', icon: 'BellRing', label: '异动配置' },
 ])
 </script>
 

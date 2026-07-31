@@ -1,9 +1,9 @@
 <template>
   <div class="evaluation-card">
     <div class="card-header">
-      <h3><LucideIcon name="BarChart3" :size="20" /> {{ t('fund.evaluation.title') }}</h3>
+      <h3><LucideIcon name="BarChart3" :size="20" /> {{ '基金综合评价' }}</h3>
       <div class="avg-score" v-if="avgScore">
-        <span class="score-label">{{ t('fund.managerInfo.compositeScore') }}</span>
+        <span class="score-label">{{ '综合评分' }}</span>
         <span class="score-value" :class="getScoreClass(avgScore)">{{ avgScore }}</span>
       </div>
     </div>
@@ -11,7 +11,7 @@
       <div v-if="hasEvalData || hasRedemptionData" class="evaluation-content">
         <!-- 雷达图 + 指标详情 -->
         <div v-if="hasEvalData" class="eval-section">
-          <div class="section-title">{{ t('fund.managerInfo.capabilityEval') }}</div>
+          <div class="section-title">{{ '能力评估' }}</div>
           <div class="eval-grid">
             <div ref="radarChartEl" class="radar-chart"></div>
             <div class="eval-details">
@@ -35,17 +35,17 @@
 
         <!-- 申购赎回情况 -->
         <div v-if="hasRedemptionData" class="redemption-section">
-          <div class="section-title">{{ t('fund.evaluation.subscription') }}</div>
+          <div class="section-title">{{ '申购赎回情况' }}</div>
           <div ref="redemptionChartEl" class="redemption-chart"></div>
           <div class="redemption-table">
             <table>
               <thead>
                 <tr>
-                  <th>{{ t('common.date') }}</th>
-                  <th>{{ t('fund.subscription.purchase') }}</th>
-                  <th>{{ t('fund.subscription.redemption') }}</th>
-                  <th>{{ t('fund.subscription.net') }}</th>
-                  <th>{{ t('fund.subscription.totalShares') }}</th>
+                  <th>{{ '日期' }}</th>
+                  <th>{{ '期间申购(亿)' }}</th>
+                  <th>{{ '期间赎回(亿)' }}</th>
+                  <th>{{ '净申购(亿)' }}</th>
+                  <th>{{ '总份额(亿)' }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -62,7 +62,7 @@
         </div>
       </div>
       <div v-else class="no-data">
-        <p>{{ t('fund.evaluation.empty') }}</p>
+        <p>{{ '暂无评价数据' }}</p>
       </div>
     </div>
   </div>
@@ -70,11 +70,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
-
-const { t } = useI18n()
 
 const props = withDefaults(defineProps<{ fundEvaluation?: Record<string, any>; performanceEvaluation?: Record<string, any>; subscriptionRedemption?: Record<string, any> }>(), { fundEvaluation: () => ({}), performanceEvaluation: () => ({}), subscriptionRedemption: () => ({}) })
 

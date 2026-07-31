@@ -4,7 +4,6 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { screeningAPI, fundAPI } from '../services/api'
 import { useScreeningDb } from './useScreeningDb'
 import { useWatchlistStore } from '../stores/watchlistStore'
-import { translate } from '../locales/index'
 import { fmtNumber, returnClass as calcReturnClass } from '../utils/number'
 
 export function useFundScreening(emit) {
@@ -541,10 +540,10 @@ export function useFundScreening(emit) {
         } catch (err) {
             updateStatus.value.running = false
             if (err.response?.status === 409) {
-                alert(translate('fund.screening.updateInProgress'))
+                alert('更新任务已在进行中')
             } else {
                 console.error('启动更新失败:', err)
-                alert(translate('fund.screening.updateFailed'))
+                alert('启动更新失败')
             }
         }
     }

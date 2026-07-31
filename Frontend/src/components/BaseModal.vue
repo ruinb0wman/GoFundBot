@@ -6,7 +6,7 @@
           <slot name="header">
             <h3>{{ title }}</h3>
           </slot>
-          <button v-if="closable" class="base-modal-close" @click="onClose" :aria-label="t('common.close')">×</button>
+          <button v-if="closable" class="base-modal-close" @click="onClose" :aria-label="'关闭'">×</button>
         </div>
         <div class="base-modal-body" :class="{ 'no-header': !hasHeader }">
           <slot />
@@ -21,9 +21,6 @@
 
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-
-const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   visible: boolean

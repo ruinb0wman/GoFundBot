@@ -5,7 +5,7 @@
       <div class="header-content">
         <div class="header-left">
           <h1>GoFundBot</h1>
-          <p>{{ t('app.subtitle') }}</p>
+          <p>{{ '智能基金分析 · 实时市场追踪' }}</p>
         </div>
         <div class="header-search">
           <FundSearch @fund-selected="handleHeaderSearch" :compact="true" />
@@ -13,14 +13,14 @@
         <div class="header-right">
           <HamburgerButton :isOpen="drawerOpen" @toggle="drawerOpen = !drawerOpen" />
           <div class="mode-switch" :class="{ 'mobile-hidden': isMobile }">
-            <button class="mode-btn" :class="{ active: route.name === 'dashboard' }" @click="resetToDashboard"><LucideIcon name="Home" :size="16" /> {{ t('nav.dashboard') }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'screening' }" @click="router.push({ name: 'screening' })"><LucideIcon name="Search" :size="16" /> {{ t('nav.screening') }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'backtest' || route.name === 'backtest-fund' }" @click="router.push({ name: 'backtest' })"><LucideIcon name="Coins" :size="16" /> {{ t('nav.backtest') }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'portfolio' }" @click="router.push({ name: 'portfolio' })"><LucideIcon name="BarChart3" :size="16" /> {{ t('nav.portfolio') }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'research' }" @click="router.push({ name: 'research' })"><LucideIcon name="TrendingUp" :size="16" /> {{ t('nav.research') }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'dashboard' }" @click="resetToDashboard"><LucideIcon name="Home" :size="16" /> {{ '市场大盘' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'screening' }" @click="router.push({ name: 'screening' })"><LucideIcon name="Search" :size="16" /> {{ '基金筛选' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'backtest' || route.name === 'backtest-fund' }" @click="router.push({ name: 'backtest' })"><LucideIcon name="Coins" :size="16" /> {{ '定投回测' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'portfolio' }" @click="router.push({ name: 'portfolio' })"><LucideIcon name="BarChart3" :size="16" /> {{ '估值与持仓' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'research' }" @click="router.push({ name: 'research' })"><LucideIcon name="TrendingUp" :size="16" /> {{ '投研看板' }}</button>
           </div>
           <AlertBadge />
-          <button class="header-icon-btn" @click="router.push('/settings')" :title="t('common.settings')">
+          <button class="header-icon-btn" @click="router.push('/settings')" :title="'设置'">
             <LucideIcon name="Settings" :size="20" />
           </button>
         </div>
@@ -67,7 +67,7 @@
     </main>
 
     <footer class="app-footer" :class="{ 'mobile-hidden': isMobile }">
-      <p>{{ t('app.footer', { time: currentTime }) }}</p>
+      <p>{{ `数据来源：天天基金 / 东方财富 / 百度股市通 | 更新时间：${currentTime}` }}</p>
     </footer>
 
     <MobileDrawer :isOpen="drawerOpen" :activeRoute="String(route.name || '')" @close="drawerOpen = false" />
@@ -77,7 +77,6 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
 import LucideIcon from './components/LucideIcon.vue'
 import OfflineBanner from './components/OfflineBanner.vue'
 import FundSearch from './components/FundSearch.vue'
@@ -97,7 +96,6 @@ import { useAppSettings } from './composables/useAppSettings'
 
 defineOptions({ name: 'App' })
 
-const { t } = useI18n()
 const { settings, syncToExpress } = useAppSettings()
 
 const {

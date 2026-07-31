@@ -1,7 +1,7 @@
 <template>
   <div class="holder-structure-card">
     <div class="card-header">
-      <h3><LucideIcon name="Users" :size="20" /> {{ t('fund.holderStructure.title') }}</h3>
+      <h3><LucideIcon name="Users" :size="20" /> {{ '持有人结构' }}</h3>
     </div>
     <div class="card-body">
       <div v-if="hasData" class="holder-content">
@@ -12,7 +12,7 @@
           <table>
             <thead>
               <tr>
-                <th>{{ t('common.date') }}</th>
+                <th>{{ '日期' }}</th>
                 <th v-for="serie in series" :key="serie.name">
                   <span class="legend-dot" :style="{ background: getColor(serie.name) }"></span>
                   {{ formatLegendName(serie.name) }}
@@ -31,7 +31,7 @@
         </div>
       </div>
       <div v-else class="no-data">
-        <p>{{ t('fund.holderStructure.empty') }}</p>
+        <p>{{ '暂无持有人结构数据' }}</p>
       </div>
     </div>
   </div>
@@ -39,11 +39,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
-
-const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   holderStructure?: Record<string, any>
