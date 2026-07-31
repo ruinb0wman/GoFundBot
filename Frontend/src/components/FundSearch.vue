@@ -220,7 +220,7 @@ function selectFund(fund: any) {
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: 10000;
   margin-top: 4px;
 }
 
@@ -229,7 +229,7 @@ function selectFund(fund: any) {
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: 10000;
   margin-top: 4px;
   background: var(--bg-card);
   border: 1px solid var(--border-default);

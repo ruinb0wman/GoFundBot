@@ -29,7 +29,7 @@ const chatStore = useChatStore()
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 6000;
+  z-index: 1000;
 }
 
 .chat-bubble-btn {
