@@ -32,28 +32,6 @@ export function useFundScreening(emit) {
 
     const showUpdateDialog = ref(false)
 
-    /**
-     * @deprecated 行业字典确认弹窗实际不可达：
-     * - 后端 /screening/update 忽略 build_industry_dictionary（screening.routes.ts）
-     * - 前端 updateTasks.industry 恒为 undefined，askIndustryDictionary() 永远不会被调用
-     * 确认后删除：本块 + FundScreening.vue 中 showIndustryDictDialog 弹窗及解构。
-     */
-    const showIndustryDictDialog = ref(false)
-    let resolveIndustryDictPromise = null
-    const resolveIndustryDict = (value) => {
-        showIndustryDictDialog.value = false
-        if (resolveIndustryDictPromise) {
-            resolveIndustryDictPromise(value)
-            resolveIndustryDictPromise = null
-        }
-    }
-    const askIndustryDictionary = () => {
-        return new Promise((resolve) => {
-            resolveIndustryDictPromise = resolve
-            showIndustryDictDialog.value = true
-        })
-    }
-
     const showAdvanced = ref(false)
     const showTypeDropdown = ref(false)
     const typeDropdownRef = ref(null)
@@ -939,7 +917,6 @@ export function useFundScreening(emit) {
         syncing: dbSyncing,
         updateStatus,
         showUpdateDialog,
-        showIndustryDictDialog,
         showAdvanced,
         showTypeDropdown,
         typeDropdownRef,
@@ -978,7 +955,6 @@ export function useFundScreening(emit) {
         sortOrder,
         pageSize,
 
-        resolveIndustryDict,
         onSearchFocus,
         selectSearchSuggestion,
         handleSearchClickOutside,

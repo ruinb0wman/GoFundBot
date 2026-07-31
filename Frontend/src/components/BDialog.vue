@@ -1,13 +1,29 @@
 <template>
   <Teleport to="body">
-    <Transition name="bdialog-fade">
-      <div v-if="visible" class="bdialog-overlay" @click.self="onCancel">
-        <div class="bdialog-box">
-          <div class="bdialog-header">{{ title }}</div>
-          <div class="bdialog-body">{{ message }}</div>
-          <div class="bdialog-footer">
-            <BButton @click="onCancel">{{ cancelText }}</BButton>
-            <BButton :type="danger ? 'danger' : 'primary'" @click="onConfirm">{{ confirmText }}</BButton>
+    <Transition name="confirm-fade">
+      <div v-if="visible" class="confirm-mask" @click.self="emit('cancel')">
+        <div class="confirm-dialog" role="dialog" :aria-label="title">
+          <div class="dialog-head">
+            <div>
+              <h3>{{ title }}</h3>
+              <p v-if="subtitle">{{ subtitle }}</p>
+            </div>
+            <BButton v-if="closable" circle size="small" @click="emit('cancel')">×</BButton>
+          </div>
+          <div class="confirm-body">
+            <div
+              v-for="(opt, i) in options"
+              :key="String(opt.value ?? opt.title ?? i)"
+              class="confirm-option"
+              :class="{ danger: opt.danger }"
+              @click="emit('select', opt.value)"
+            >
+              <span class="confirm-option-icon"><LucideIcon :name="opt.icon" :size="20" /></span>
+              <div>
+                <strong>{{ opt.title }}</strong>
+                <em v-if="opt.desc">{{ opt.desc }}</em>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -17,86 +33,136 @@
 
 <script setup lang="ts">
 import BButton from './BButton.vue'
+import LucideIcon from './LucideIcon.vue'
+
+export interface ConfirmDialogOption {
+  icon: string
+  title: string
+  desc?: string
+  value?: unknown
+  danger?: boolean
+}
 
 withDefaults(defineProps<{
   visible: boolean
   title?: string
-  message?: string
-  confirmText?: string
-  cancelText?: string
-  danger?: boolean
+  subtitle?: string
+  options?: ConfirmDialogOption[]
+  closable?: boolean
 }>(), {
   title: '确认',
-  message: '确定执行此操作吗？',
-  confirmText: '确定',
-  cancelText: '取消',
-  danger: false,
+  subtitle: '',
+  options: () => [],
+  closable: true,
 })
 
 const emit = defineEmits<{
-  (e: 'confirm'): void
+  (e: 'select', value?: unknown): void
   (e: 'cancel'): void
 }>()
-
-function onConfirm() {
-  emit('confirm')
-}
-
-function onCancel() {
-  emit('cancel')
-}
 </script>
 
 <style scoped>
-.bdialog-overlay {
+.confirm-mask {
   position: fixed;
   inset: 0;
-  z-index: 7000;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-overlay, rgba(0, 0, 0, 0.5));
-  backdrop-filter: blur(2px);
+  padding: 20px;
+  background: var(--bg-overlay);
 }
 
-.bdialog-box {
-  width: 320px;
-  max-width: 90vw;
-  background: var(--bg-card, #202127);
-  border: 1px solid var(--border-default, #3c3f44);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+.confirm-dialog {
+  width: min(480px, 100%);
+  background: var(--bg-card);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
-.bdialog-header {
-  padding: 16px 20px 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary, #dfdfd6);
-}
-
-.bdialog-body {
-  padding: 12px 20px 20px;
-  font-size: 13px;
-  color: var(--text-secondary, #98989f);
-  line-height: 1.5;
-}
-
-.bdialog-footer {
+.dialog-head {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 0 20px 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.bdialog-fade-enter-active,
-.bdialog-fade-leave-active {
+.dialog-head h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.dialog-head p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.confirm-body {
+  padding: 16px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.confirm-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-option:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.confirm-option.danger {
+  border-color: var(--color-danger, #e5534b);
+}
+
+.confirm-option.danger:hover {
+  border-color: var(--color-danger, #e5534b);
+  background: var(--color-danger-bg, rgba(229, 83, 75, 0.08));
+}
+
+.confirm-option-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.confirm-option strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.confirm-option em {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.confirm-fade-enter-active,
+.confirm-fade-leave-active {
   transition: opacity 0.15s ease;
 }
 
-.bdialog-fade-enter-from,
-.bdialog-fade-leave-to {
+.confirm-fade-enter-from,
+.confirm-fade-leave-to {
   opacity: 0;
 }
 </style>

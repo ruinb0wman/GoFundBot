@@ -46,11 +46,12 @@
     <BDialog
       :visible="deleteTarget !== null"
       :title="t('chat.deleteConfirmTitle')"
-      :message="t('chat.deleteConfirmMessage')"
-      danger
-      :confirmText="t('chat.delete')"
-      :cancelText="t('chat.cancel')"
-      @confirm="confirmDelete"
+      :subtitle="t('chat.deleteConfirmMessage')"
+      :options="[
+        { icon: 'Trash2', title: t('chat.delete'), value: 'confirm', danger: true },
+        { icon: 'X', title: t('chat.cancel'), value: 'cancel' },
+      ]"
+      @select="handleDeleteDialogSelect"
       @cancel="deleteTarget = null"
     />
 
@@ -359,6 +360,14 @@ async function confirmDelete() {
     await chatStore.deleteSession(deleteTarget.value.id)
   }
   deleteTarget.value = null
+}
+
+function handleDeleteDialogSelect(value: unknown) {
+  if (value === 'confirm') {
+    confirmDelete()
+  } else {
+    deleteTarget.value = null
+  }
 }
 
 function formatTime(ts: number): string {

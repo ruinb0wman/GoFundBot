@@ -29,65 +29,15 @@
       </div>
     </div>
 
-    <!-- 自定义确认弹窗（替换浏览器 confirm） -->
-    <!-- @deprecated 行业字典确认弹窗实际不可达：后端 /screening/update 忽略 build_industry_dictionary，
-         updateTasks.industry 恒为 undefined，askIndustryDictionary() 永远不会被调用。确认后删除。 -->
-    <div v-if="showIndustryDictDialog" class="modal-mask" style="z-index: 1100;" @click.self="resolveIndustryDict(false)">
-      <div class="confirm-dialog">
-        <div class="dialog-head">
-          <div>
-            <h3>刷新基金所属板块</h3>
-            <p>请选择是否重新构建股票行业字典</p>
-          </div>
-          <BButton circle size="small" @click="resolveIndustryDict(false)">×</BButton>
-        </div>
-        <div class="confirm-body">
-          <div class="confirm-option" @click="resolveIndustryDict(true)">
-            <span class="confirm-option-icon"><LucideIcon name="RefreshCw" :size="20" /></span>
-            <div>
-              <strong>确定，重新构建字典</strong>
-              <em>先刷新股票行业字典，再重新分配基金所属板块</em>
-            </div>
-          </div>
-          <div class="confirm-option" @click="resolveIndustryDict(false)">
-            <span class="confirm-option-icon"><LucideIcon name="ClipboardList" :size="20" /></span>
-            <div>
-              <strong>取消，复用现有字典</strong>
-              <em>复用现有字典，只重新分配基金所属板块</em>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 更新数据确认弹窗：三个选项在后端均触发同一全量更新（/screening/update 忽略 tasks），故改为单一确认 -->
-    <div v-if="showUpdateDialog" class="modal-mask" @click.self="closeUpdateDialog">
-      <div class="confirm-dialog">
-        <div class="dialog-head">
-          <div>
-            <h3>更新数据</h3>
-            <p>全量更新所有基金：拉取快照 → 重算风险指标（回撤/夏普/卡玛）→ 更新板块分类，耗时较长。</p>
-          </div>
-          <BButton circle size="small" @click="closeUpdateDialog">×</BButton>
-        </div>
-        <div class="confirm-body">
-          <div class="confirm-option" @click="startUpdate">
-            <span class="confirm-option-icon"><LucideIcon name="RefreshCw" :size="20" /></span>
-            <div>
-              <strong>确认，开始更新</strong>
-              <em>从快照数据源批量拉取基金排行、收益、类型，并重算指标与板块分类</em>
-            </div>
-          </div>
-          <div class="confirm-option" @click="closeUpdateDialog">
-            <span class="confirm-option-icon"><LucideIcon name="X" :size="20" /></span>
-            <div>
-              <strong>取消</strong>
-              <em>保持现有数据不变</em>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- 更新数据确认弹窗：三个任务选项在后端均触发同一全量更新（/screening/update 忽略 tasks），故为单一确认 -->
+    <BDialog
+      :visible="showUpdateDialog"
+      title="更新数据"
+      subtitle="全量更新所有基金：拉取快照 → 重算风险指标（回撤/夏普/卡玛）→ 更新板块分类，耗时较长。"
+      :options="updateDialogOptions"
+      @select="handleUpdateDialogSelect"
+      @cancel="closeUpdateDialog"
+    />
 
     <!-- 进行中的更新 — 内联进度条 -->
     <div v-if="updateStatus.running" class="inline-update-bar">
@@ -425,13 +375,13 @@ import { useFundScreening } from '../composables/useFundScreening'
 import BButton from './BButton.vue'
 import BInputNumber from './BInputNumber.vue'
 import BCheckbox from './BCheckbox.vue'
+import BDialog from './BDialog.vue'
 
 defineOptions({ name: 'FundScreening' })
 const emit = defineEmits(['view-fund', 'add-to-compare'])
 
 const {
   dbStatus, syncing, updateStatus, showUpdateDialog,
-  showIndustryDictDialog,
   showAdvanced, showTypeDropdown, typeDropdownRef, searchWrapRef,
   searchSuggestions, showSearchDropdown, advFilters, advancedFilterGroups,
   filters, fundTypeCategories, expandedGroups, sectorExpanded,
@@ -441,7 +391,7 @@ const {
   displayFundTypeGroups, displaySectorGroups, visibleSectorGroups,
   fundTypeGroups, sectorGroups,
 
-  resolveIndustryDict, onSearchFocus, selectSearchSuggestion,
+  onSearchFocus, selectSearchSuggestion,
   removeFundType, toggleSingleType, toggleCategoryTypes,
   isCatAllSelected, isCatPartialSelected,
   openUpdateDialog, closeUpdateDialog, startUpdate, stopUpdate,
@@ -452,6 +402,15 @@ const {
   getReturnClass, getSharpeClass, getCalmarClass,
   handlePrimaryIndustryClick, isGroupActive, isInWatchlist,
 } = useFundScreening(emit)
+
+const updateDialogOptions = [
+  { icon: 'RefreshCw', title: '确认，开始更新', desc: '从快照数据源批量拉取基金排行、收益、类型，并重算指标与板块分类', value: 'confirm' },
+  { icon: 'X', title: '取消', desc: '保持现有数据不变', value: 'cancel' },
+]
+const handleUpdateDialogSelect = (value) => {
+  if (value === 'confirm') startUpdate()
+  else closeUpdateDialog()
+}
 </script>
 
 <style src="./FundScreening.css" scoped></style>
