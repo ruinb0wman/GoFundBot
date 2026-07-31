@@ -52,7 +52,7 @@ describe('marketStore', () => {
   })
 
   it('fetches flash news with count and page params', async () => {
-    mockGetFlashNews.mockResolvedValue({ data: { news: [{ title: 'News 1' }] } })
+    mockGetFlashNews.mockResolvedValue({ data: { data: { items: [{ title: 'News 1' }] } } })
     const { useMarketStore } = await import('../../stores/marketStore')
     const store = useMarketStore()
     await store.fetchFlashNews(10, 1)
@@ -61,7 +61,7 @@ describe('marketStore', () => {
   })
 
   it('fetches sectors', async () => {
-    mockGetSectorRank.mockResolvedValue({ data: [{ name: 'Tech' }] })
+    mockGetSectorRank.mockResolvedValue({ data: { data: [{ name: 'Tech' }] } })
     const { useMarketStore } = await import('../../stores/marketStore')
     const store = useMarketStore()
     await store.fetchSectors(50)

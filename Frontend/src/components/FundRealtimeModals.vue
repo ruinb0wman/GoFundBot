@@ -46,7 +46,7 @@
             class="modal-date"
           />
         </div>
-        <div class="trade-nav-derived" v-if="getTradeNav?.() > 0">
+        <div class="trade-nav-derived" v-if="(getTradeNav?.() ?? 0) > 0">
           <span>{{ '参考净值：' }} ¥{{ fmtNumber(getTradeNav?.() ?? 0, 4) }}</span>
           <span class="nav-date-hint" v-if="tradeForm?.tradeDate === todayDate">{{ '净值状态仅供参考' }}</span>
         </div>
@@ -54,7 +54,7 @@
           <label>{{ tradeForm?.type === 'buy' ? '加仓金额' : '减仓份额' }}</label>
           <BInputNumber
             :modelValue="tradeForm?.inputValue"
-            @update:modelValue="emit('update-trade-value', $event)"
+            @update:modelValue="emit('update-trade-value', String($event ?? ''))"
             :placeholder="tradeForm?.type === 'buy' ? '请输入加仓金额' : '请输入减仓份额'"
             :controls="false"
           >
@@ -105,7 +105,7 @@
       <div style="margin-bottom:12px">
         <BInput
           :modelValue="groupName"
-          @update:modelValue="emit('update-group-name', $event)"
+          @update:modelValue="emit('update-group-name', String($event ?? ''))"
           :placeholder="'请输入分组名称'"
           autofocus
           @keydown="(e) => e.key === 'Enter' && emit('save-group')"
@@ -183,7 +183,7 @@
           <label>{{ adjustmentForm?.subtype === 'dividend' ? '再投金额' : '调整金额' }}</label>
           <BInputNumber
             :modelValue="adjustmentForm?.amount"
-            @update:modelValue="emit('update-adjustment-amount', $event)"
+            @update:modelValue="emit('update-adjustment-amount', String($event ?? ''))"
             :placeholder="'手续费金额'"
             :controls="false"
             :min="0"
@@ -195,7 +195,7 @@
           <label>{{ '再投份额' }}</label>
           <BInputNumber
             :modelValue="adjustmentForm?.share"
-            @update:modelValue="emit('update-adjustment-share', $event)"
+            @update:modelValue="emit('update-adjustment-share', String($event ?? ''))"
             :placeholder="'请输入再投份额'"
             :controls="false"
             :min="0"
@@ -205,7 +205,7 @@
           <label>{{ '备注' }}</label>
           <BInput
             :modelValue="adjustmentForm?.note"
-            @update:modelValue="emit('update-adjustment-note', $event)"
+            @update:modelValue="emit('update-adjustment-note', String($event ?? ''))"
             :placeholder="'可选备注'"
           />
         </div>
@@ -228,6 +228,7 @@ import BInputNumber from './BInputNumber.vue'
 import BSwitch from './BSwitch.vue'
 import FundSearch from './FundSearch.vue'
 import { fmtNumber } from '../utils/number'
+import type { PortfolioGroupRebalance } from '../types'
 defineOptions({ name: 'FundRealtimeModals' })
 
 const historyTab = ref('all')
@@ -261,7 +262,7 @@ const emit = defineEmits<{
   (e: 'select-fund', fund: any): void
   (e: 'confirm-add-fund'): void
   (e: 'close-holding'): void
-  (e: 'trade-type', type: string): void
+  (e: 'trade-type', type: 'buy' | 'sell'): void
   (e: 'update-trade-date', date: string): void
   (e: 'update-trade-value', value: string): void
   (e: 'save-trade'): void
@@ -269,7 +270,7 @@ const emit = defineEmits<{
   (e: 'close-group'): void
   (e: 'update-group-name', name: string): void
   (e: 'save-group'): void
-  (e: 'update-rebalance', field: string, value: any): void
+  (e: 'update-rebalance', field: keyof PortfolioGroupRebalance, value: boolean | number | null): void
   (e: 'close-adjustment'): void
   (e: 'save-adjustment'): void
   (e: 'update-adjustment-date', date: string): void

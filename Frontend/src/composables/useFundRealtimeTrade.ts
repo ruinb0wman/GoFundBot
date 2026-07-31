@@ -6,16 +6,17 @@ import {
   getHoldingProfitTotal, hasFreshEstimate,
   getFundTrendSeries, buildTradeRecord, genTxnId,
 } from './useFundRealtimeBase'
+import type { RealtimeFund, RealtimeHolding, PendingTxn, RealtimeTradeRecord } from '../types'
 
 export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs, extra = {}) {
   const { refreshHoldings } = extra
-  const holdingModal = ref({ open: false, fund: null })
-  const tradeForm = ref({ type: 'buy', inputValue: '', tradeDate: todayDate.value })
-  const pendingTxns = ref([])
-  const tradeRecords = ref([])
-  const tradeHistoryModal = ref({ open: false, fund: null })
-  const adjustmentModal = ref({ open: false, fund: null })
-  const adjustmentForm = ref({ tradeDate: todayDate.value, amount: '', note: '', subtype: 'fee', share: '' })
+  const holdingModal = ref<{ open: boolean; fund: RealtimeFund | null }>({ open: false, fund: null })
+  const tradeForm = ref<{ type: 'buy' | 'sell'; inputValue: string; tradeDate: string }>({ type: 'buy', inputValue: '', tradeDate: todayDate.value })
+  const pendingTxns = ref<PendingTxn[]>([])
+  const tradeRecords = ref<RealtimeTradeRecord[]>([])
+  const tradeHistoryModal = ref<{ open: boolean; fund: RealtimeFund | null }>({ open: false, fund: null })
+  const adjustmentModal = ref<{ open: boolean; fund: RealtimeFund | null }>({ open: false, fund: null })
+  const adjustmentForm = ref<{ tradeDate: string; amount: string; note: string; subtype: string; share: string }>({ tradeDate: todayDate.value, amount: '', note: '', subtype: 'fee', share: '' })
   const showPending = ref(false)
 
   const upsertTradeRecord = (record) => {

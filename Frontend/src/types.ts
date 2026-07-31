@@ -85,3 +85,75 @@ export interface RebalanceWarning {
   threshold: number
   type: 'upper' | 'lower'
 }
+
+export interface RealtimeFund {
+  code: string
+  name: string
+  type?: string
+  dwjz?: string
+  prevDwjz?: string
+  gsz?: string
+  gztime?: string
+  jzrq?: string
+  gszzl?: number
+  holdings?: unknown[]
+  netWorthTrend?: unknown[]
+  totalReturnTrend?: unknown[]
+}
+
+export interface RealtimeHolding {
+  share: number
+  cost: number
+  total_fee?: number
+}
+
+export interface PortfolioGroup {
+  id: number | string
+  name: string
+  rebalance_enabled?: boolean | number
+  rebalance_target?: number | null
+  rebalance_upper?: number | null
+  rebalance_lower?: number | null
+}
+
+export interface PendingTxn {
+  id: string
+  type: 'buy' | 'sell'
+  fundCode: string
+  fundName: string
+  inputValue: number
+  tradeDate: string
+  nav?: number
+  createdAt?: string
+}
+
+export interface RealtimeTradeRecord {
+  id: string
+  txnId?: string
+  dbId?: number
+  fundCode: string
+  fundName: string
+  type: 'buy' | 'sell' | 'fee' | 'dividend'
+  tradeDate: string | null
+  amount: number
+  share: number
+  nav: number | null
+  status: string
+  note?: string
+  createdAt?: string
+  settledAt?: string
+}
+
+export interface SearchFundItem {
+  CODE: string
+  NAME: string
+}
+
+export interface ContextMenuState {
+  show: boolean
+  x: number
+  y: number
+  groupId: number | string | null
+}
+
+export type RealtimeFundGroupMap = Record<string, number | string>

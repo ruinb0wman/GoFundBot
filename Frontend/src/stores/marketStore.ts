@@ -40,7 +40,7 @@ export const useMarketStore = defineStore('market', {
     },
     async fetchSectors(limit = 90) {
       const res = await marketAPI.getSectorRank(limit)
-      this.sectors = ((res.data as { data?: { items?: SectorItem[] } })?.data?.items || []) as SectorItem[]
+      this.sectors = ((res.data as { data?: SectorItem[] })?.data || []) as SectorItem[]
     },
   },
 })

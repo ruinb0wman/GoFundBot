@@ -1,11 +1,20 @@
 // @ts-nocheck
 import Decimal from 'decimal.js'
-import { computed } from 'vue'
+import { computed, type Ref } from 'vue'
 import { metricBySort, getHoldingEstimatedAmount, getHoldingProfitToday, getHoldingProfitTotal, getHoldingProfitBeforeFee, getHoldingFee, getPreviousPrice, getValueClass } from './useFundRealtimeBase'
+import type { RealtimeFund, RealtimeHolding, PortfolioGroup, RealtimeFundGroupMap, RebalanceWarning } from '../types'
 
 export function useFundRealtimeComputeds({
   funds, holdings, fundOrder, sortBy, activeTab,
   portfolioGroups, fundGroupMap
+}: {
+  funds: Ref<RealtimeFund[]>
+  holdings: Ref<Record<string, RealtimeHolding>>
+  fundOrder: Ref<string[]>
+  sortBy: Ref<string>
+  activeTab: Ref<string>
+  portfolioGroups: Ref<PortfolioGroup[]>
+  fundGroupMap: Ref<RealtimeFundGroupMap>
 }) {
   const isTradingTime = computed(() => {
     const now = new Date()
@@ -68,8 +77,8 @@ export function useFundRealtimeComputeds({
     return funds.value.some(f => /红利|低波|价值|股息|高股息/.test(f.name || ''))
   })
 
-  const groupRebalanceStatus = computed(() => {
-    const result = {}
+  const groupRebalanceStatus = computed<Record<string | number, { upperWarnings: RebalanceWarning[]; lowerWarnings: RebalanceWarning[] }>>(() => {
+    const result: Record<string | number, { upperWarnings: RebalanceWarning[]; lowerWarnings: RebalanceWarning[] }> = {}
     for (const group of portfolioGroups.value) {
       if (!group.rebalance_enabled) continue
       const target = group.rebalance_target
@@ -110,8 +119,8 @@ export function useFundRealtimeComputeds({
     return result
   })
 
-  const groupRebalanceWarningCount = computed(() => {
-    const counts = {}
+  const groupRebalanceWarningCount = computed<Record<string | number, number>>(() => {
+    const counts: Record<string | number, number> = {}
     for (const [groupId, status] of Object.entries(groupRebalanceStatus.value)) {
       counts[groupId] = status.upperWarnings.length + status.lowerWarnings.length
     }

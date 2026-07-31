@@ -9,17 +9,18 @@ import {
   mapFundDetailToRealtime, hasFreshEstimate,
 } from './useFundRealtimeBase'
 import { useFundRealtimeComputeds } from './useFundRealtimeComputeds'
+import type { RealtimeFund, RealtimeHolding, SearchFundItem, PortfolioGroup, RealtimeFundGroupMap } from '../types'
 
 export function useFundRealtimeData(emit, extra = {}) {
-  const { portfolioGroups = ref([]), fundGroupMap = ref({}) } = extra
-  const funds = ref([])
-  const holdings = ref({})
-  const collapsedCodes = ref(new Set())
+  const { portfolioGroups = ref<PortfolioGroup[]>([]), fundGroupMap = ref<RealtimeFundGroupMap>({}) } = extra
+  const funds = ref<RealtimeFund[]>([])
+  const holdings = ref<Record<string, RealtimeHolding>>({})
+  const collapsedCodes = ref(new Set<string>())
   const refreshing = ref(false)
   const refreshMs = ref(180000)
   const searchTerm = ref('')
-  const searchResults = ref([])
-  const selectedFunds = ref([])
+  const searchResults = ref<SearchFundItem[]>([])
+  const selectedFunds = ref<SearchFundItem[]>([])
   const showDropdown = ref(false)
   const addFundModalOpen = ref(false)
   const username = ref('guest')
@@ -33,7 +34,7 @@ export function useFundRealtimeData(emit, extra = {}) {
   const timeTimer = ref(null)
   const searchLoading = ref(false)
   const todayDate = ref(new Date().toISOString().slice(0, 10))
-  const fundOrder = ref([])
+  const fundOrder = ref<string[]>([])
   const dragIndex = ref(null)
   const dragOverIndex = ref(null)
   const base = useFundRealtimeComputeds({

@@ -2,24 +2,90 @@
 import Decimal from 'decimal.js'
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { screeningAPI, fundAPI } from '../services/api'
-import { useScreeningDb } from './useScreeningDb'
+import { useScreeningDb, type ScreeningStatus } from './useScreeningDb'
 import { useWatchlistStore } from '../stores/watchlistStore'
 import { fmtNumber, returnClass as calcReturnClass } from '../utils/number'
+import type { ScreeningFund } from '../db'
 
-export function useFundScreening(emit) {
+interface ScreeningSearchItem {
+  CODE: string
+  NAME?: string
+  TYPE?: string
+}
+
+interface IndustryTag {
+  name: string
+  count?: number
+}
+
+interface IndustryTagGroup {
+  name: string
+  count?: number
+  tags: IndustryTag[]
+}
+
+interface FundTypeCategory {
+  name: string
+  icon: string
+  expanded: boolean
+  types: Array<{ value: string; label: string }>
+}
+
+interface QuickTypeCategory {
+  name: string
+  icon: string
+  patterns: string[]
+}
+
+interface GridSortParams {
+  field?: string
+  property?: string
+  order?: string
+  column?: { field?: string }
+}
+
+interface ScreeningFilters {
+  keyword: string
+  fund_types: string[]
+  industry_tags: string[]
+  return_1y_min: number | null
+  return_1y_max: number | null
+  max_drawdown_max: number | null
+  sharpe_min: number | null
+  volatility_max: number | null
+  calmar_min: number | null
+}
+
+interface ScreeningUpdateStatus {
+  running: boolean
+  progress: number
+  total: number
+  current_fund: string
+  success_count: number
+  fail_count: number
+  message: string
+}
+
+export function useFundScreening(emit: (event: string, ...args: unknown[]) => void) {
     const {
         syncFromServer, getStatus: getLocalStatus,
         queryFunds, syncing: dbSyncing,
         lastSyncTime, computed: dbComputed
     } = useScreeningDb()
 
-    const dbStatus = ref({
+    const dbStatus = ref<ScreeningStatus>({
         basic_count: 0,
+        complete_count: 0,
+        pass_4433_count: 0,
+        risk_metrics_count: 0,
+        type_counts: {},
         latest_update: null,
-        type_counts: {}
+        sync_time: null,
+        syncing: false,
+        computed: false,
     })
 
-    const updateStatus = ref({
+    const updateStatus = ref<ScreeningUpdateStatus>({
         running: false,
         progress: 0,
         total: 0,
@@ -33,12 +99,12 @@ export function useFundScreening(emit) {
 
     const showAdvanced = ref(false)
     const showTypeDropdown = ref(false)
-    const typeDropdownRef = ref(null)
-    const searchWrapRef = ref(null)
+    const typeDropdownRef = ref<HTMLElement | null>(null)
+    const searchWrapRef = ref<HTMLElement | null>(null)
 
-    const searchSuggestions = ref([])
+    const searchSuggestions = ref<ScreeningSearchItem[]>([])
     const showSearchDropdown = ref(false)
-    let searchDebounce = null
+    let searchDebounce: ReturnType<typeof setTimeout> | null = null
 
     const onSearchFocus = () => {
         if (searchSuggestions.value.length > 0) {
@@ -46,19 +112,19 @@ export function useFundScreening(emit) {
         }
     }
 
-    const selectSearchSuggestion = (item) => {
+    const selectSearchSuggestion = (item: ScreeningSearchItem) => {
         filters.keyword = item.CODE
         showSearchDropdown.value = false
         search(true)
     }
 
-    const handleSearchClickOutside = (e) => {
-        if (searchWrapRef.value && !searchWrapRef.value.contains(e.target)) {
+    const handleSearchClickOutside = (e: MouseEvent) => {
+        if (searchWrapRef.value && !searchWrapRef.value.contains(e.target as Node)) {
             showSearchDropdown.value = false
         }
     }
 
-    const advFilters = reactive({
+    const advFilters = reactive<Record<string, number | null | boolean>>({
         return_1m_min: null,
         return_1m_max: null,
         return_3m_min: null,
@@ -136,7 +202,7 @@ export function useFundScreening(emit) {
         }
     ]
 
-    const filters = reactive({
+    const filters = reactive<ScreeningFilters>({
         keyword: '',
         fund_types: [],
         industry_tags: [],
@@ -148,7 +214,7 @@ export function useFundScreening(emit) {
         calmar_min: null
     })
 
-    const fundTypeCategories = [
+    const fundTypeCategories: FundTypeCategory[] = [
         {
             name: '偏股型',
             icon: 'TrendingUp',
@@ -189,7 +255,7 @@ export function useFundScreening(emit) {
     ]
 
     const fundTypeOptions = computed(() => {
-        const allTypes = []
+        const allTypes: Array<{ value: string; label: string }> = []
         fundTypeCategories.forEach(cat => {
             cat.types.forEach(t => allTypes.push(t))
         })
@@ -200,15 +266,15 @@ export function useFundScreening(emit) {
     const sortOrder = ref('desc')
 
     const quickTypeFilter = ref('')
-    const availableTypes = ref([])
-    const activeQuickDropdown = ref(null)
+    const availableTypes = ref<string[]>([])
+    const activeQuickDropdown = ref<string | null>(null)
 
-    const fundTypeGroups = ref([])
-    const sectorGroups = ref([])
-    const ungroupedTags = ref([])
-    const expandedGroups = ref(new Set())
+    const fundTypeGroups = ref<IndustryTagGroup[]>([])
+    const sectorGroups = ref<IndustryTagGroup[]>([])
+    const ungroupedTags = ref<IndustryTag[]>([])
+    const expandedGroups = ref<Set<string>>(new Set())
     const sectorExpanded = ref(true)
-    const screeningGridRef = ref(null)
+    const screeningGridRef = ref<any>(null)
 
     const fallbackSectorBuckets = [
         { name: '全球市场', patterns: ['全球', '海外', '港股', '美股', '日本', '印度', '越南', '德国', '法国', '英国', '韩国', '东南亚', '新兴市场', '纳斯达克', '标普', '恒生', '中概'] },
@@ -219,7 +285,7 @@ export function useFundScreening(emit) {
         { name: '固收与策略', patterns: ['债券', '纯债', '短债', '可转债', '货币', '红利', '量化', '价值', '成长', '低波', '策略'] },
     ]
 
-    const getFallbackSectorName = (tagName) => {
+    const getFallbackSectorName = (tagName: string) => {
         const text = String(tagName || '')
         const bucket = fallbackSectorBuckets.find(item =>
             item.patterns.some(pattern => text.includes(pattern))
@@ -227,13 +293,13 @@ export function useFundScreening(emit) {
         return bucket ? bucket.name : '其他主题'
     }
 
-    const isBroadIndexTag = (tagName) => {
+    const isBroadIndexTag = (tagName: string) => {
         const text = String(tagName || '')
         const patterns = ['沪深300', '中证500', '上证50', '创业板', '科创50', '中证1000', '中证2000', '宽基', '指数', '联接']
         return patterns.some(pattern => text.includes(pattern))
     }
 
-    const normalizeIndustryGroup = (group) => {
+    const normalizeIndustryGroup = (group: IndustryTagGroup) => {
         const groupName = group.name || '其他主题'
         const rawTags = Array.isArray(group.tags) ? group.tags : []
         const childTags = rawTags
@@ -247,12 +313,12 @@ export function useFundScreening(emit) {
     }
 
     const displaySectorGroups = computed(() => {
-        const grouped = new Map()
-        const addGroup = (group) => {
+        const grouped = new Map<string, IndustryTagGroup>()
+        const addGroup = (group: IndustryTagGroup) => {
             const normalized = normalizeIndustryGroup(group)
             const existing = grouped.get(normalized.name)
             if (existing) {
-                existing.count += normalized.count
+                existing.count = (existing.count || 0) + (normalized.count || 0)
                 existing.tags.push(...normalized.tags)
             } else {
                 grouped.set(normalized.name, normalized)
@@ -267,8 +333,8 @@ export function useFundScreening(emit) {
             if (!grouped.has(groupName)) {
                 grouped.set(groupName, { name: groupName, count: 0, tags: [] })
             }
-            const group = grouped.get(groupName)
-            group.count += tag.count || 0
+            const group = grouped.get(groupName)!
+            group.count = (group.count || 0) + (tag.count || 0)
             group.tags.push(tag)
         })
 
@@ -303,14 +369,14 @@ export function useFundScreening(emit) {
         return groups.sort((a, b) => (b.count || 0) - (a.count || 0))
     })
 
-    const toggleGroup = (name) => {
+    const toggleGroup = (name: string) => {
         const s = new Set(expandedGroups.value)
         if (s.has(name)) s.delete(name)
         else s.add(name)
         expandedGroups.value = s
     }
 
-    const handlePrimaryIndustryClick = (group) => {
+    const handlePrimaryIndustryClick = (group: IndustryTagGroup) => {
         if (group.tags.length) {
             toggleGroup(group.name)
         } else {
@@ -318,7 +384,7 @@ export function useFundScreening(emit) {
         }
     }
 
-    const isGroupActive = (group) => {
+    const isGroupActive = (group: IndustryTagGroup) => {
         if (expandedGroups.value.has(group.name)) return true
         if (group.tags.length) {
             return group.tags.some(tag => filters.industry_tags.includes(tag.name))
@@ -327,7 +393,7 @@ export function useFundScreening(emit) {
     }
 
     const allSelectableTags = computed(() => {
-        const result = []
+        const result: IndustryTag[] = []
         for (const g of displayFundTypeGroups.value) {
             for (const t of g.tags) result.push(t)
         }
@@ -342,7 +408,7 @@ export function useFundScreening(emit) {
         return displaySectorGroups.value.slice(0, 8)
     })
 
-    const quickTypeCategories = [
+    const quickTypeCategories: QuickTypeCategory[] = [
         {
             name: '偏股型',
             icon: 'TrendingUp',
@@ -370,7 +436,7 @@ export function useFundScreening(emit) {
         }
     ]
 
-    const getTypeCategoryName = (type) => {
+    const getTypeCategoryName = (type: string) => {
         for (const cat of quickTypeCategories) {
             if (cat.patterns.some(p => type.includes(p))) {
                 return cat.name
@@ -379,7 +445,7 @@ export function useFundScreening(emit) {
         return null
     }
 
-    const toggleQuickDropdown = (categoryName) => {
+    const toggleQuickDropdown = (categoryName: string) => {
         if (activeQuickDropdown.value === categoryName) {
             activeQuickDropdown.value = null
         } else {
@@ -391,7 +457,7 @@ export function useFundScreening(emit) {
         activeQuickDropdown.value = null
     }
 
-    const getFilteredCategoryTypes = (category) => {
+    const getFilteredCategoryTypes = (category: QuickTypeCategory) => {
         return (category.patterns || []).map(p => ({
             value: p,
             label: p,
@@ -399,12 +465,12 @@ export function useFundScreening(emit) {
         }))
     }
 
-    const isCategoryTypeActive = (category) => {
+    const isCategoryTypeActive = (category: QuickTypeCategory) => {
         if (!quickTypeFilter.value) return false
         return getTypeCategoryName(quickTypeFilter.value) === category.name
     }
 
-    const hasCategoryActiveType = (category) => {
+    const hasCategoryActiveType = (category: QuickTypeCategory) => {
         return getFilteredCategoryTypes(category).length > 0
     }
 
@@ -417,13 +483,13 @@ export function useFundScreening(emit) {
     const totalCount = ref(0)
     const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value))
 
-    const results = ref([])
+    const results = ref<ScreeningFund[]>([])
     const loading = ref(false)
     const searched = ref(false)
 
-    const watchlistCodes = ref(new Set())
+    const watchlistCodes = ref<Set<string>>(new Set())
 
-    const isInWatchlist = (code) => watchlistCodes.value.has(code)
+    const isInWatchlist = (code: string) => watchlistCodes.value.has(code)
 
     const fetchWatchlistCodes = async () => {
         try {
@@ -498,15 +564,21 @@ export function useFundScreening(emit) {
         return !updateStatus.value.total || updateStatus.value.total === 0
     })
 
-    let statusPollTimer = null
+    let statusPollTimer: ReturnType<typeof setInterval> | null = null
 
     const fetchDbStatus = async () => {
         try {
             const status = await getLocalStatus()
             dbStatus.value = {
                 basic_count: status.basic_count,
-                latest_update: status.latest_update,
+                complete_count: status.complete_count,
+                pass_4433_count: status.pass_4433_count,
+                risk_metrics_count: status.risk_metrics_count,
                 type_counts: status.type_counts,
+                latest_update: status.latest_update,
+                sync_time: status.sync_time,
+                syncing: status.syncing,
+                computed: status.computed,
             }
         } catch (err) {
             console.error('获取状态失败:', err)
@@ -539,7 +611,7 @@ export function useFundScreening(emit) {
             startStatusPoll()
         } catch (err) {
             updateStatus.value.running = false
-            if (err.response?.status === 409) {
+            if ((err as { response?: { status?: number } })?.response?.status === 409) {
                 alert('更新任务已在进行中')
             } else {
                 console.error('启动更新失败:', err)
@@ -595,7 +667,7 @@ export function useFundScreening(emit) {
     }
 
     const buildFilterParams = () => {
-        const params = {}
+        const params: Record<string, unknown> = {}
         if (filters.keyword) params.keyword = filters.keyword
         if (filters.fund_types.length) params.fund_types = [...filters.fund_types]
         if (filters.industry_tags.length) params.industry_tags = [...filters.industry_tags]
@@ -603,7 +675,7 @@ export function useFundScreening(emit) {
         for (const [key, value] of Object.entries(advFilters)) {
             if (typeof value === 'boolean') {
                 if (value) params[key] = value
-            } else if (value !== null && value !== '' && Number.isFinite(Number(value))) {
+            } else if (value !== null && Number.isFinite(Number(value))) {
                 params[key] = Number(value)
             }
         }
@@ -635,7 +707,7 @@ export function useFundScreening(emit) {
         }
     }
 
-    const toggleIndustryTag = (name) => {
+    const toggleIndustryTag = (name: string) => {
         const idx = filters.industry_tags.indexOf(name)
         if (idx > -1) {
             filters.industry_tags.splice(idx, 1)
@@ -671,7 +743,7 @@ export function useFundScreening(emit) {
             totalCount.value = result.total
 
             if (!quickTypeFilter.value) {
-                const types = new Set()
+                const types = new Set<string>()
                 result.funds.forEach(f => {
                     if (f.fund_type) types.add(f.fund_type)
                 })
@@ -688,16 +760,16 @@ export function useFundScreening(emit) {
         }
     }
 
-    const setQuickTypeFilter = (type) => {
+    const setQuickTypeFilter = (type: string) => {
         quickTypeFilter.value = type
         activeQuickDropdown.value = null
         currentPage.value = 1
         search()
     }
 
-    const getShortTypeName = (type) => {
+    const getShortTypeName = (type: string) => {
         if (!type) return '未知'
-        const shortNames = {
+        const shortNames: Record<string, string> = {
             '混合型-偏股': '偏股混合',
             '混合型-灵活': '灵活配置',
             '混合型-偏债': '偏债混合',
@@ -717,12 +789,12 @@ export function useFundScreening(emit) {
         return shortNames[type] || type.replace('型-', '-').replace('型', '')
     }
 
-    const removeFundType = (type) => {
+    const removeFundType = (type: string) => {
         const idx = filters.fund_types.indexOf(type)
         if (idx > -1) filters.fund_types.splice(idx, 1)
     }
 
-    const toggleSingleType = (type) => {
+    const toggleSingleType = (type: string) => {
         const idx = filters.fund_types.indexOf(type)
         if (idx > -1) {
             filters.fund_types.splice(idx, 1)
@@ -731,7 +803,7 @@ export function useFundScreening(emit) {
         }
     }
 
-    const toggleCategoryTypes = (cat) => {
+    const toggleCategoryTypes = (cat: FundTypeCategory) => {
         const typeVals = cat.types.map(t => t.value)
         const allSelected = typeVals.every(v => filters.fund_types.includes(v))
         if (allSelected) {
@@ -748,19 +820,19 @@ export function useFundScreening(emit) {
         }
     }
 
-    const isCatAllSelected = (cat) => cat.types.every(t => filters.fund_types.includes(t.value))
-    const isCatPartialSelected = (cat) => {
+    const isCatAllSelected = (cat: FundTypeCategory) => cat.types.every(t => filters.fund_types.includes(t.value))
+    const isCatPartialSelected = (cat: FundTypeCategory) => {
         const s = cat.types.filter(t => filters.fund_types.includes(t.value)).length
         return s > 0 && s < cat.types.length
     }
 
-    const handleTypeDropdownClick = (e) => {
-        if (typeDropdownRef.value && !typeDropdownRef.value.contains(e.target)) {
+    const handleTypeDropdownClick = (e: MouseEvent) => {
+        if (typeDropdownRef.value && !typeDropdownRef.value.contains(e.target as Node)) {
             showTypeDropdown.value = false
         }
     }
 
-    const handleGridSort = (params = {}) => {
+    const handleGridSort = (params: GridSortParams = {}) => {
         const field = params.field || params.property || params.column?.field
         if (!field) return
         const nextOrder = params.order || (sortBy.value === field && sortOrder.value === 'desc' ? 'asc' : 'desc')
@@ -769,16 +841,16 @@ export function useFundScreening(emit) {
         search(true)
     }
 
-    const handleGridCellClick = ({ row, column }) => {
+    const handleGridCellClick = ({ row, column }: { row: ScreeningFund; column?: { title?: string; field?: string } }) => {
         if (column?.title === '操作') return
         viewFundDetail(row)
     }
 
-    const viewFundDetail = (fund) => {
+    const viewFundDetail = (fund: ScreeningFund) => {
         emit('view-fund', fund.fund_code)
     }
 
-    const toggleWatchlist = async (fund) => {
+    const toggleWatchlist = async (fund: ScreeningFund) => {
         const code = fund.fund_code
         const watched = isInWatchlist(code)
         const store = useWatchlistStore()
@@ -788,7 +860,7 @@ export function useFundScreening(emit) {
                 watchlistCodes.value.delete(code)
                 watchlistCodes.value = new Set(watchlistCodes.value)
             } else {
-                await store.addFund(code, fund.fund_name, fund.fund_type)
+                await store.addFund(code, fund.fund_name, fund.fund_type ?? undefined)
                 watchlistCodes.value = new Set([...watchlistCodes.value, code])
             }
         } catch (err) {
@@ -796,14 +868,14 @@ export function useFundScreening(emit) {
         }
     }
 
-    const addToCompare = (fund) => {
+    const addToCompare = (fund: ScreeningFund) => {
         emit('add-to-compare', {
             code: fund.fund_code,
             name: fund.fund_name
         })
     }
 
-    const formatPercent = (value, isNegative = false) => {
+    const formatPercent = (value: number | null | undefined, isNegative = false) => {
         if (value === null || value === undefined) return '--'
         const num = Number(value)
         if (!Number.isFinite(num)) return '--'
@@ -813,17 +885,17 @@ export function useFundScreening(emit) {
         return `${prefix}${formatted}%`
     }
 
-    const formatNumber = (value) => fmtNumber(value, 2)
+    const formatNumber = (value: unknown) => fmtNumber(value, 2)
 
-    const formatDate = (dateStr) => {
+    const formatDate = (dateStr: string) => {
         if (!dateStr) return '--'
         const date = new Date(dateStr)
         return date.toLocaleString('zh-CN')
     }
 
-    const getReturnClass = (value) => calcReturnClass(value)
+    const getReturnClass = (value: number | null | undefined) => calcReturnClass(value)
 
-    const getSharpeClass = (value) => {
+    const getSharpeClass = (value: number | null | undefined) => {
         if (value === null || value === undefined) return ''
         if (value >= 1.5) return 'excellent'
         if (value >= 1) return 'good'
@@ -831,7 +903,7 @@ export function useFundScreening(emit) {
         return 'poor'
     }
 
-    const getCalmarClass = (value) => {
+    const getCalmarClass = (value: number | null | undefined) => {
         if (value === null || value === undefined) return ''
         if (value >= 2) return 'excellent'
         if (value >= 1) return 'good'
@@ -839,7 +911,7 @@ export function useFundScreening(emit) {
         return 'poor'
     }
 
-    const changePage = (page) => {
+    const changePage = (page: number) => {
         currentPage.value = page
         search()
     }
@@ -850,7 +922,7 @@ export function useFundScreening(emit) {
     }
 
     watch(() => filters.keyword, (val) => {
-        clearTimeout(searchDebounce)
+        clearTimeout(searchDebounce ?? undefined)
         const kw = (val || '').trim()
         if (!kw || kw.length < 2) {
             searchSuggestions.value = []

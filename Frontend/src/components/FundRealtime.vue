@@ -190,7 +190,7 @@
       @close-group="closeGroupModal"
       @save-group="saveGroup"
       @update-group-name="(n) => groupName = n"
-      @update-rebalance="(field, val) => rebalanceForm[field] = val"
+      @update-rebalance="updateRebalanceForm"
       @open-add-group="openAddGroupModal"
       @close-adjustment="closeAdjustmentModal"
       @save-adjustment="saveAdjustment"
@@ -252,7 +252,7 @@ const {
   pickSearchCandidate, confirmAddFund, batchAddFunds,
   refreshAll, startRefreshTimer, removeFund, openFundDetail,
   onDragStart, onDragOver, onDragEnd, openAddGroupModal, openEditGroupModal,
-  closeGroupModal, saveGroup, deleteGroup, assignFundToGroup,
+  closeGroupModal, saveGroup, deleteGroup, assignFundToGroup, updateRebalanceForm,
   openGroupContextMenu, closeContextMenu, renameGroupFromMenu, deleteGroupFromMenu,
   openHoldingModal, openTradeHistory, closeTradeHistory, openTradeModal,
   openAdjustmentModal, closeAdjustmentModal, saveAdjustment,

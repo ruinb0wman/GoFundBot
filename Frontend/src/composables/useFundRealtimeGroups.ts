@@ -1,15 +1,20 @@
 // @ts-nocheck
 import { ref, nextTick, onMounted } from 'vue'
 import { portfolioAPI } from '../services/portfolioApi'
+import type { PortfolioGroup, ContextMenuState, RealtimeFundGroupMap, PortfolioGroupRebalance } from '../types'
 
 export function useFundRealtimeGroups() {
-  const portfolioGroups = ref([])
-  const fundGroupMap = ref({})
+  const portfolioGroups = ref<PortfolioGroup[]>([])
+  const fundGroupMap = ref<RealtimeFundGroupMap>({})
   const showGroupModal = ref(false)
-  const editingGroup = ref(null)
+  const editingGroup = ref<PortfolioGroup | null>(null)
   const groupName = ref('')
-  const rebalanceForm = ref({ enabled: false, target: null, upper: null, lower: null })
-  const contextMenu = ref({ show: false, x: 0, y: 0, groupId: null })
+  const rebalanceForm = ref<PortfolioGroupRebalance>({ enabled: false, target: null, upper: null, lower: null })
+  const contextMenu = ref<ContextMenuState>({ show: false, x: 0, y: 0, groupId: null })
+
+  const updateRebalanceForm = (field: keyof PortfolioGroupRebalance, value: boolean | number | null) => {
+    rebalanceForm.value[field as keyof PortfolioGroupRebalance] = value as never
+  }
 
   onMounted(async () => {
     try {
@@ -174,6 +179,7 @@ export function useFundRealtimeGroups() {
 
   return {
     portfolioGroups, fundGroupMap, showGroupModal, editingGroup, groupName, rebalanceForm, contextMenu,
+    updateRebalanceForm,
     openAddGroupModal, openEditGroupModal, closeGroupModal, saveGroup, deleteGroup,
     assignFundToGroup, openGroupContextMenu, closeContextMenu, renameGroupFromMenu, deleteGroupFromMenu,
   }
