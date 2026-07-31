@@ -22,6 +22,7 @@ import { systemRouter } from './routes/system.routes.js';
 import { chatRouter } from './routes/chat.routes.js';
 import { analysisMemoryRouter } from './routes/analysisMemory.routes.js';
 import { datasourceScoresRouter } from './routes/datasource-scores.routes.js';
+import { logsRouter } from './routes/logs.routes.js';
 
 export function createApp() {
   const app = express();
@@ -59,6 +60,7 @@ export function createApp() {
   app.use('/api/chat', chatRouter);
   app.use('/api/analysis-memory', analysisMemoryRouter);
   app.use('/api/datasource-scores', datasourceScoresRouter);
+  app.use('/api/logs', logsRouter);
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);

@@ -2,8 +2,7 @@
   <div class="logs-page">
     <div class="logs-toolbar">
       <select v-model="source" class="tb-select" @change="loadLogs">
-        <option value="scripts">Backend</option>
-        <option value="service">DataService</option>
+        <option value="dataservice">DataService</option>
         <option value="frontend">Frontend</option>
       </select>
       <BDatePicker v-model="dateStr" class="tb-input" @change="loadLogs" />
@@ -143,7 +142,7 @@ import BDatePicker from '../components/BDatePicker.vue'
 import { ref, onMounted, computed } from 'vue'
 import { VxeTable, VxeColumn } from 'vxe-table'
 
-const source = ref('backend')
+const source = ref('dataservice')
 const dateStr = ref(new Date().toISOString().slice(0, 10))
 const levelFilter = ref('')
 const keyword = ref('')
@@ -198,9 +197,10 @@ async function loadLogs() {
     const res = await fetch(`/api/logs/read?${params}`)
     const json = await res.json()
     if (json.success) {
-      entries.value = json.data
-      total.value = json.total
-      stats.value = json.counts || {}
+      const data = json.data ?? {}
+      entries.value = data.entries ?? []
+      total.value = data.total ?? 0
+      stats.value = data.counts || {}
     }
   } catch (e: any) {
     console.error('加载日志失败', e)
