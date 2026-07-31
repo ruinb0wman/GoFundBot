@@ -43,7 +43,7 @@
 | 路由 | 服务函数 | ProviderChain | Cache TTL |
 |------|---------|--------------|-----------|
 | `GET /api/screening/sync` | (screening router) | eastmoney screeningSnapshot | 次日 9AM |
-| `POST /api/screening/query` | (screening router) | 前端 Dexie + 富化数据 | — |
+| `POST /api/screening/query` | (screening router) | 前端 Dexie + 富化数据（**deprecated**） | — |
 | `GET /api/screening/fund/:code` | (screening router) | enrichFund(Nav + type + risk + industry) | 24h |
 
 ## 研究模块

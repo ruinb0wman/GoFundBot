@@ -14,8 +14,11 @@
         → getFundScreeningSnapshot({ limitPerType: 500 })
           → cacheThrough(`fund:screening-snapshot:*`, TTL=次日9AM)
             → EastMoneyFundProvider.screeningSnapshot()
-              → 遍历基金类型 (股票/混合/债券/指数/FOF/QDII)
-              → 每类型 fetchFundRankingPage(type, page, 500, sort)
+              → 遍历池桶 (共 8 桶, 各 ≤500)
+                ├─ 6 类开放基金排行 dt=kf (股票/混合/债券/指数/FOF/QDII)
+                │    每类型 fetchFundRankingPage(type, page, 500, sort)
+                ├─ 货币型 dt=hb (7日年化, mapMoneyFundRow 解析)
+                └─ REITs/商品 fetchReitsPool (fundcode_search + pingzhongdata 净值算收益)
               → 合并去重 (appendUniqueFundItems)
               → 类型字段丰富: fetchFundCodeSearchList() 补充 fund_type
           → 返回 FundScreeningSnapshotDto
@@ -58,11 +61,9 @@
 
 ```
 用户点击"查询" → search(true)
-  → 关键词搜索 → POST /api/screening/query (keyword)
-    → searchFunds(keyword) → EastMoney 本地 searchList
-    → enrichResponseFund → 返回
-  → 条件筛选 → useScreeningDb.queryFunds(filters, sortBy, page)
-    → IndexedDB 本地过滤: fund_type/industry_tag/return/sharpe... 等 30+ 条件
+  → 关键词联想 → fundAPI.searchFunds(kw) → GET /api/fund/search (EastMoney 本地 searchList)
+  → 条件筛选（含关键词）→ useScreeningDb.queryFunds(filters, sortBy, page)
+    → IndexedDB 本地过滤: fund_type/industry_tag/keyword/return/sharpe... 等 30+ 条件
     → 内存排序 + 分页切片 → 返回前端
   → 表格渲染 (vxe-grid)
 ```
