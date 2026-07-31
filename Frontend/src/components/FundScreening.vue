@@ -30,6 +30,8 @@
     </div>
 
     <!-- 自定义确认弹窗（替换浏览器 confirm） -->
+    <!-- @deprecated 行业字典确认弹窗实际不可达：后端 /screening/update 忽略 build_industry_dictionary，
+         updateTasks.industry 恒为 undefined，askIndustryDictionary() 永远不会被调用。确认后删除。 -->
     <div v-if="showIndustryDictDialog" class="modal-mask" style="z-index: 1100;" @click.self="resolveIndustryDict(false)">
       <div class="confirm-dialog">
         <div class="dialog-head">
@@ -58,43 +60,31 @@
       </div>
     </div>
 
+    <!-- 更新数据确认弹窗：三个选项在后端均触发同一全量更新（/screening/update 忽略 tasks），故改为单一确认 -->
     <div v-if="showUpdateDialog" class="modal-mask" @click.self="closeUpdateDialog">
-      <div class="update-dialog">
+      <div class="confirm-dialog">
         <div class="dialog-head">
           <div>
-            <h3>选择更新内容</h3>
-            <p>只执行你这次需要的任务，减少不必要的等待。</p>
+            <h3>更新数据</h3>
+            <p>全量更新所有基金：拉取快照 → 重算风险指标（回撤/夏普/卡玛）→ 更新板块分类，耗时较长。</p>
           </div>
           <BButton circle size="small" @click="closeUpdateDialog">×</BButton>
         </div>
-
-        <div class="task-list">
-          <div class="task-item">
-            <BCheckbox v-model="updateTasks.basic" class="task-checkbox" />
-            <span>
-              <strong>更新基础数据</strong>
-              <em>从快照数据源批量拉取基金排行、收益、类型（500只/批），仅补缺失或超7天</em>
-            </span>
+        <div class="confirm-body">
+          <div class="confirm-option" @click="startUpdate">
+            <span class="confirm-option-icon"><LucideIcon name="RefreshCw" :size="20" /></span>
+            <div>
+              <strong>确认，开始更新</strong>
+              <em>从快照数据源批量拉取基金排行、收益、类型，并重算指标与板块分类</em>
+            </div>
           </div>
-          <div class="task-item">
-            <BCheckbox v-model="updateTasks.indicators" class="task-checkbox" />
-            <span>
-              <strong>计算基金指标</strong>
-              <em>同类排名 · 风险指标（回撤/夏普/卡玛）· 板块表现汇总</em>
-            </span>
+          <div class="confirm-option" @click="closeUpdateDialog">
+            <span class="confirm-option-icon"><LucideIcon name="X" :size="20" /></span>
+            <div>
+              <strong>取消</strong>
+              <em>保持现有数据不变</em>
+            </div>
           </div>
-          <div class="task-item">
-            <BCheckbox v-model="updateTasks.market" class="task-checkbox" />
-            <span>
-              <strong>更新股市行情</strong>
-              <em>构建股票行业字典 · 根据重仓股刷新基金行业分类</em>
-            </span>
-          </div>
-        </div>
-
-        <div class="dialog-actions">
-          <BButton @click="closeUpdateDialog">取消</BButton>
-          <BButton type="primary" :disabled="!hasSelectedUpdateTask" @click="startUpdate">开始更新</BButton>
         </div>
       </div>
     </div>
@@ -440,8 +430,8 @@ defineOptions({ name: 'FundScreening' })
 const emit = defineEmits(['view-fund', 'add-to-compare'])
 
 const {
-  dbStatus, syncing, updateStatus, showUpdateDialog, updateTasks,
-  hasSelectedUpdateTask, showIndustryDictDialog,
+  dbStatus, syncing, updateStatus, showUpdateDialog,
+  showIndustryDictDialog,
   showAdvanced, showTypeDropdown, typeDropdownRef, searchWrapRef,
   searchSuggestions, showSearchDropdown, advFilters, advancedFilterGroups,
   filters, fundTypeCategories, expandedGroups, sectorExpanded,

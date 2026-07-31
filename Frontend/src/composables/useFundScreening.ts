@@ -30,15 +30,14 @@ export function useFundScreening(emit) {
         message: ''
     })
 
-    const selectedFundTypes = ref([])
     const showUpdateDialog = ref(false)
-    const updateTasks = reactive({
-        basic: true,
-        indicators: true,
-        market: true
-    })
-    const hasSelectedUpdateTask = computed(() => Object.values(updateTasks).some(Boolean))
 
+    /**
+     * @deprecated 行业字典确认弹窗实际不可达：
+     * - 后端 /screening/update 忽略 build_industry_dictionary（screening.routes.ts）
+     * - 前端 updateTasks.industry 恒为 undefined，askIndustryDictionary() 永远不会被调用
+     * 确认后删除：本块 + FundScreening.vue 中 showIndustryDictDialog 弹窗及解构。
+     */
     const showIndustryDictDialog = ref(false)
     let resolveIndustryDictPromise = null
     const resolveIndustryDict = (value) => {
@@ -548,14 +547,6 @@ export function useFundScreening(emit) {
     }
 
     const startUpdate = async () => {
-        if (!hasSelectedUpdateTask.value) {
-            alert(translate('fund.screening.selectTask'))
-            return
-        }
-        let buildIndustryDictionary = false
-        if (updateTasks.industry) {
-            buildIndustryDictionary = await askIndustryDictionary()
-        }
         try {
             showUpdateDialog.value = false
             updateStatus.value = {
@@ -567,17 +558,7 @@ export function useFundScreening(emit) {
                 fail_count: 0,
                 message: '正在启动更新任务...'
             }
-            await screeningAPI.startUpdate({
-                fund_types: selectedFundTypes.value,
-                build_industry_dictionary: buildIndustryDictionary,
-                tasks: {
-                    basic: updateTasks.basic,
-                    rankings: updateTasks.indicators,
-                    risk: updateTasks.indicators,
-                    industry_performance: updateTasks.indicators,
-                    industry: updateTasks.market
-                }
-            })
+            await screeningAPI.startUpdate({})
             startStatusPoll()
         } catch (err) {
             updateStatus.value.running = false
@@ -958,8 +939,6 @@ export function useFundScreening(emit) {
         syncing: dbSyncing,
         updateStatus,
         showUpdateDialog,
-        updateTasks,
-        hasSelectedUpdateTask,
         showIndustryDictDialog,
         showAdvanced,
         showTypeDropdown,
