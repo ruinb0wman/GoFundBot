@@ -48,6 +48,9 @@ interface FundGzBatchItem {
   [key: string]: unknown;
 }
 
+// EastMoney 开放基金排行 (dt=kf) 支持的类型全集: gp/hh/zq/zs/qdii/fof。
+// hb 走货币基金排行 (dt=hb)；reits 无排行接口，由 pingzhongdata 净值计算。
+// lof/货币/REITs 在 dt=kf 排行接口均返回 0，lof 已移除（死配置）。
 const SCREENING_TYPE_MAP: Record<string, string> = {
   all: '',
   gp: 'gp',
@@ -55,8 +58,9 @@ const SCREENING_TYPE_MAP: Record<string, string> = {
   zq: 'zq',
   zs: 'zs',
   qdii: 'qdii',
-  lof: 'lof',
   fof: 'fof',
+  hb: 'hb',
+  reits: 'reits',
 };
 
 export class EastMoneyFundProvider implements FundProvider {
@@ -237,9 +241,26 @@ export class EastMoneyFundProvider implements FundProvider {
     const failedPages: FundScreeningSnapshotDto['failedPages'] = [];
 
     for (const type of types) {
+      if (type === 'reits') {
+        try {
+          appendUniqueFundItems(await fetchReitsPool(limitPerType), seen, items);
+        } catch (error) {
+          failedPages.push({
+            type,
+            page: 1,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        continue;
+      }
+
+      // 货币型走货币基金排行 (dt=hb)，按 7 日年化排序；其余走开放基金排行 (dt=kf)
+      const dt = type === 'hb' ? 'hb' : 'kf';
+      const typeSort = type === 'hb' ? '7nzf' : sort;
+
       let firstPage: FundRankingPage | null = null;
       try {
-        firstPage = await fetchFundRankingPage(type, 1, pageSize, sort);
+        firstPage = await fetchFundRankingPage(type, 1, pageSize, typeSort, dt);
         appendUniqueFundItems(firstPage.items, seen, items);
       } catch (error) {
         failedPages.push({
@@ -258,7 +279,7 @@ export class EastMoneyFundProvider implements FundProvider {
       const pages = Array.from({ length: Math.max(0, totalPages - 1) }, (_, idx) => idx + 2);
       for (const pageBatch of chunkArray(pages, 4)) {
         const results = await Promise.allSettled(
-          pageBatch.map((page) => fetchFundRankingPage(type, page, pageSize, sort))
+          pageBatch.map((page) => fetchFundRankingPage(type, page, pageSize, typeSort, dt))
         );
         results.forEach((result, idx) => {
           const page = pageBatch[idx];
@@ -802,8 +823,10 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+const DEFAULT_SCREENING_TYPES = ['gp', 'hh', 'zq', 'zs', 'qdii', 'fof', 'hb', 'reits'];
+
 function normalizeScreeningTypes(types: string[] | undefined): string[] {
-  const raw = types && types.length > 0 ? types : ['gp', 'hh', 'zq', 'zs', 'qdii', 'fof'];
+  const raw = types && types.length > 0 ? types : DEFAULT_SCREENING_TYPES;
   const result: string[] = [];
   for (const type of raw) {
     const normalized = String(type || '').trim().toLowerCase();
@@ -811,7 +834,7 @@ function normalizeScreeningTypes(types: string[] | undefined): string[] {
       result.push(normalized);
     }
   }
-  return result.length > 0 ? result : ['gp', 'hh', 'zq', 'zs', 'qdii', 'fof'];
+  return result.length > 0 ? result : DEFAULT_SCREENING_TYPES;
 }
 
 function normalizePageSize(value: number | undefined): number {
@@ -826,11 +849,12 @@ async function fetchFundRankingPage(
   fundType: string,
   page: number,
   pageSize: number,
-  sort: string
+  sort: string,
+  dt = 'kf'
 ): Promise<FundRankingPage> {
   const params = new URLSearchParams({
     op: 'ph',
-    dt: 'kf',
+    dt,
     ft: SCREENING_TYPE_MAP[fundType] ?? '',
     rs: '',
     gs: '0',
@@ -859,9 +883,10 @@ async function fetchFundRankingPage(
 
   const updatedAt = new Date().toISOString();
   const rows = Array.isArray(data.datas) ? data.datas : [];
+  const rowMapper = dt === 'hb' ? mapMoneyFundRow : mapRankingRow;
   return {
     total: Number(data.allRecords) || rows.length,
-    items: rows.map((row) => mapRankingRow(row, updatedAt)).filter((item): item is FundScreeningSnapshotItemDto => Boolean(item)),
+    items: rows.map((row) => rowMapper(row, updatedAt)).filter((item): item is FundScreeningSnapshotItemDto => Boolean(item)),
   };
 }
 
@@ -889,6 +914,149 @@ function mapRankingRow(row: string, updatedAt: string): FundScreeningSnapshotIte
     source: 'eastmoney.rankhandler',
     updatedAt,
   };
+}
+
+/**
+ * 货币基金排行 (dt=hb) 行解析。与开放基金 (dt=kf) 行格式不同：
+ *   [0]代码 [1]名称 [2]拼音 [3]日期 [4]万份收益 [5]7日年化 [6]近1周 [7]近1月
+ *   [8]近3月 [9]近6月 [10]近1年 [11]近2年 [12]近3年 [13]今年来 [14]成立来 ...
+ * 货币基金单位净值恒为 1，nav 取 1，区间收益字段含义与开放基金一致。
+ */
+function mapMoneyFundRow(row: string, updatedAt: string): FundScreeningSnapshotItemDto | null {
+  const parts = String(row).split(',');
+  if (parts.length < 17) {
+    return null;
+  }
+
+  return {
+    code: parts[0].padStart(6, '0'),
+    name: parts[1] || '',
+    type: null,
+    navDate: emptyToNull(parts[3]),
+    nav: 1,
+    return1m: parseRankingNumber(parts[7]),
+    return3m: parseRankingNumber(parts[8]),
+    return6m: parseRankingNumber(parts[9]),
+    return1y: parseRankingNumber(parts[10]),
+    return2y: parseRankingNumber(parts[11]),
+    return3y: parseRankingNumber(parts[12]),
+    ytd: parseRankingNumber(parts[13]),
+    sinceInception: parseRankingNumber(parts[14]),
+    fee: null,
+    source: 'eastmoney.rankhandler.moneyfund',
+    updatedAt,
+  };
+}
+
+interface NavReturnPoint {
+  date: string;
+  nav: number;
+}
+
+/**
+ * 从净值序列计算各区间收益率（%）。REITs 无排行接口，只能由 pingzhongdata
+ * 净值历史推算，口径与排行 API 的区间涨幅一致。
+ */
+function computePeriodReturnsFromNav(points: NavReturnPoint[]): {
+  return1m: number | null;
+  return3m: number | null;
+  return6m: number | null;
+  return1y: number | null;
+  return2y: number | null;
+  return3y: number | null;
+  ytd: number | null;
+  sinceInception: number | null;
+} {
+  const sorted = points
+    .filter(p => p.date && Number.isFinite(p.nav))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const empty = {
+    return1m: null, return3m: null, return6m: null,
+    return1y: null, return2y: null, return3y: null,
+    ytd: null, sinceInception: null,
+  };
+  if (sorted.length < 2) {
+    return empty;
+  }
+
+  const latest = sorted[sorted.length - 1];
+
+  const daysAgo = (days: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    return formatChinaDate(d.getTime());
+  };
+
+  const since = (cutoffDate: string | null): number | null => {
+    let baseNav: number;
+    if (cutoffDate) {
+      const idx = sorted.findIndex(p => p.date >= cutoffDate);
+      baseNav = idx <= 0 ? sorted[0].nav : sorted[idx - 1].nav;
+    } else {
+      baseNav = sorted[0].nav;
+    }
+    if (baseNav <= 0) return null;
+    return Math.round(((latest.nav / baseNav - 1) * 100) * 100) / 100;
+  };
+
+  const currentYear = new Date().getFullYear();
+  return {
+    return1m: since(daysAgo(30)),
+    return3m: since(daysAgo(90)),
+    return6m: since(daysAgo(180)),
+    return1y: since(daysAgo(365)),
+    return2y: since(daysAgo(730)),
+    return3y: since(daysAgo(1095)),
+    ytd: since(`${currentYear}-01-01`),
+    sinceInception: since(null),
+  };
+}
+
+/**
+ * REITs / 商品基金池。这两类无排行接口，从 fundcode_search 取代码列表，
+ * 逐个 pingzhongdata 拉净值历史计算区间收益。量小（约 90 支），并发受限。
+ */
+async function fetchReitsPool(limitPerType: number): Promise<FundScreeningSnapshotItemDto[]> {
+  const list = await fetchFundCodeSearchList();
+  const reits = list.filter(f => f.type === 'Reits' || f.type === '商品');
+  const limit = limitPerType > 0 ? Math.min(limitPerType, reits.length) : reits.length;
+  const selected = reits.slice(0, limit);
+  const updatedAt = new Date().toISOString();
+
+  const CONCURRENCY = 8;
+  const result: FundScreeningSnapshotItemDto[] = [];
+  for (let i = 0; i < selected.length; i += CONCURRENCY) {
+    const chunk = selected.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(
+      chunk.map(async (fund) => {
+        const script = await fetchText(`https://fund.eastmoney.com/pingzhongdata/${fund.code}.js`);
+        const name = parseJsString(script, 'fS_name') || fund.name;
+        const navTrend = parseJsJson<EastMoneyNavPoint[]>(script, 'Data_netWorthTrend');
+        const points = (navTrend ?? [])
+          .map(p => ({ date: p.x ? formatChinaDate(p.x) : '', nav: p.y != null ? Number(p.y) : NaN }))
+          .filter(p => p.date && Number.isFinite(p.nav));
+        const latest = points.length > 0 ? points[points.length - 1] : null;
+        return {
+          code: fund.code,
+          name,
+          type: fund.type,
+          navDate: latest?.date ?? null,
+          nav: latest?.nav ?? null,
+          ...computePeriodReturnsFromNav(points),
+          fee: null,
+          source: 'eastmoney.reits.pingzhongdata',
+          updatedAt,
+        };
+      }),
+    );
+    for (const r of settled) {
+      if (r.status === 'fulfilled') {
+        result.push(r.value);
+      }
+    }
+  }
+  return result;
 }
 
 function parseRankingNumber(value: string | undefined): number | null {

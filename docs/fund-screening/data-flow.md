@@ -76,19 +76,24 @@ GET https://fund.eastmoney.com/data/rankhandler.aspx
 ?op=ph&dt=kf&ft={typeCode}&sc={sortField}&st=desc&pi={page}&pn={pageSize}
 ```
 
-字段映射见 `Service/src/providers/eastmoney/eastmoneyFundProvider.ts:868` `mapRankingRow()`。
+开放基金排行 `dt=kf` 字段映射见 `Service/src/providers/eastmoney/eastmoneyFundProvider.ts` `mapRankingRow()`。
+货币基金排行 `dt=hb` 行格式不同，见 `mapMoneyFundRow()`（货币基金单位净值恒为 1）。
 
 ### 2.2 基金类型映射
 
-| 前端分类 | ft 参数 | 说明 |
-|---------|---------|------|
-| 股票型 | `gp` | 股票型基金 |
-| 混合型 | `hh` | 混合型（偏股/偏债/灵活/平衡） |
-| 债券型 | `zq` | 债券型 |
-| 指数型 | `zs` | 股票指数 |
-| QDII | `qdii` | QDII |
-| FOF | `fof` | FOF |
-| 货币型 | `hb` | 货币型 |
+| 池桶 | 参数 | 数据源 | 说明 |
+|------|------|--------|------|
+| 股票型 | `dt=kf&ft=gp` | 开放基金排行 | 股票型基金 |
+| 混合型 | `dt=kf&ft=hh` | 开放基金排行 | 混合型（偏股/偏债/灵活/平衡） |
+| 债券型 | `dt=kf&ft=zq` | 开放基金排行 | 债券型 |
+| 指数型 | `dt=kf&ft=zs` | 开放基金排行 | 股票指数 |
+| QDII | `dt=kf&ft=qdii` | 开放基金排行 | QDII |
+| FOF | `dt=kf&ft=fof` | 开放基金排行 | FOF |
+| 货币型 | `dt=hb&ft=hb&sc=7nzf` | 货币基金排行 | 按 7 日年化排序 |
+| REITs/商品 | — | `pingzhongdata` 净值 | 无排行接口，由净值历史算区间收益 |
+
+> `dt=kf` 排行接口实测不支持 `lof`/`hb`/REITs（均返回 0 条）；LOF 归入各自投资类型。
+> 每类默认取 ≤500 支（`limitPerType`），共 8 桶。
 
 ### 2.3 搜索结果 API
 

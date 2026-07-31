@@ -195,6 +195,10 @@ screeningRouter.post(
   }),
 );
 
+/**
+ * @deprecated 前端筛选已改为 IndexedDB 本地查询（useScreeningDb.queryFunds），
+ * 本路由不再被前端调用，仅保留兼容旧调用方。
+ */
 screeningRouter.post(
   '/query',
   asyncHandler(async (req, res) => {

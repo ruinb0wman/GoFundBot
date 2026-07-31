@@ -54,7 +54,7 @@ useFundScreening 筛选面板 → 本地 queryFunds() 过滤 + 排序 + 分页
 | GET | `/api/screening/progress` | 后台更新进度 |
 | POST | `/api/screening/update` | 启动后台更新任务 |
 | POST | `/api/screening/stop` | 停止后台更新 |
-| POST | `/api/screening/query` | 条件查询（关键词/基金类型/分页） |
+| POST | `/api/screening/query` | 条件查询（**deprecated**，前端已改用本地 IndexedDB 查询） |
 | GET | `/api/screening/strategies` | 筛选策略列表 |
 | POST | `/api/screening/available-types` | 可用基金类型列表 |
 | GET | `/api/screening/industry-tags` | 行业标签分组 |
