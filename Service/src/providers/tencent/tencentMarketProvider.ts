@@ -140,10 +140,16 @@ function parseQtQuotes(
       market: detectMarket(rawQtCode),
       assetType: 'stock',
       source: 'tencent.quotes',
+      date: toQuoteDate(parts[30] ?? ''),
     });
   }
 
   return results;
+}
+
+function toQuoteDate(value: string): string {
+  const match = value.match(/^(\d{4})(\d{2})(\d{2})/);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : '';
 }
 
 function toNullableNum(value: unknown): number | null {

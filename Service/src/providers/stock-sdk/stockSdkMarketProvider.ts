@@ -15,8 +15,14 @@ export class StockSdkMarketProvider implements MarketProvider {
 
   async quotes(symbols: string[]): Promise<MarketQuoteDto[]> {
     assertStockSdkNotForcedToFail();
-    const raw = await getStockSdk().quotes.cnSimple(symbols);
-    return raw.map(mapMarketQuote);
+    const sdk = getStockSdk();
+    try {
+      const raw = await sdk.quotes.cn(symbols);
+      return raw.map(mapMarketQuote);
+    } catch {
+      const raw = await sdk.quotes.cnSimple(symbols);
+      return raw.map(mapMarketQuote);
+    }
   }
 
   async kline(symbol: string, options: KlineOptions): Promise<KlineDto[]> {
@@ -83,7 +89,19 @@ function mapMarketQuote(raw: unknown): MarketQuoteDto {
     market: toStringValue(item.market),
     assetType: toStringValue(item.assetType),
     source: toOptionalString(item.source),
+    date: toQuoteDate(item),
   };
+}
+
+function toQuoteDate(item: Record<string, unknown>): string {
+  const ts = toNullableNumber(item.timestamp);
+  if (ts) {
+    const date = new Date(ts).toISOString().slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
+  }
+  const time = toStringValue(item.time);
+  const match = time.match(/^(\d{4})(\d{2})(\d{2})/);
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : '';
 }
 
 function mapKline(raw: unknown): KlineDto {

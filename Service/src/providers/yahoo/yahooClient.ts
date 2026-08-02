@@ -81,6 +81,13 @@ function toNum(val: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function toQuoteDate(val: unknown): string {
+  const ts = toNum(val);
+  if (!ts) return '';
+  const date = new Date(ts * 1000).toISOString().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
+}
+
 function parseDateNum(dateStr: string): number | null {
   const clean = dateStr.replace(/-/g, '');
   if (clean.length < 8) return null;
@@ -214,6 +221,7 @@ async function fetchSingleGlobalQuote(def: { code: string; name: string; yahooSy
         low: toNum(meta.regularMarketDayLow),
         prevClose,
         market: '全球',
+        date: toQuoteDate(meta.regularMarketTime),
       };
     } catch {
       if (attempt < maxRetries - 1) {

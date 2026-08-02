@@ -50,6 +50,7 @@ export interface MarketQuoteDto {
   market: string;
   assetType: string;
   source?: string;
+  date?: string;
 }
 
 export interface KlineDto {
@@ -183,6 +184,7 @@ export interface GlobalIndexDto {
   low: number | null;
   prevClose: number | null;
   market: string | null;
+  date?: string;
 }
 
 export interface GlobalIndexListDto {

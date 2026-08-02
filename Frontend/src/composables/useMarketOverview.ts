@@ -201,6 +201,21 @@ export function useMarketOverview(props: any) {
     }
   })
 
+  const chinaIndicesDate = computed(() => {
+    const dates = indices.value.china.map((i: any) => i.date).filter(Boolean) as string[]
+    return dates.length ? dates.sort().slice(-1)[0] : ''
+  })
+
+  const globalIndicesDate = computed(() => {
+    const dates = indices.value.global.map((i: any) => i.date).filter(Boolean) as string[]
+    return dates.length ? dates.sort().slice(-1)[0] : ''
+  })
+
+  const goldDataTime = computed(() => {
+    const times = goldRealtime.value.map((i: any) => i.update_time).filter(Boolean) as string[]
+    return times.length ? times.sort().slice(-1)[0] : ''
+  })
+
   const currentChartOption = computed(() => {
     echartThemeName.value
     const data = indicesIntraday.value[activeTab.value]
@@ -297,6 +312,16 @@ export function useMarketOverview(props: any) {
     if (!dateStr) return ''
     const parts = dateStr.split('-')
     return parts.length >= 3 ? `${parts[1]}-${parts[2]}` : dateStr
+  }
+
+  const formatDataDate = (value: string) => {
+    if (!value) return ''
+    const trimmed = String(value).trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+    const date = new Date(trimmed)
+    if (Number.isNaN(date.getTime())) return trimmed
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
   }
 
   const moneyFlowOption = computed(() => {
@@ -397,10 +422,11 @@ export function useMarketOverview(props: any) {
     moneyFlowLoading: moneyFlowPoller.loading,
 
     loading, fetchAll, marketIndex, indices,
+    chinaIndicesDate, globalIndicesDate, goldDataTime,
     goldRealtime, aVolume, moneyFlow, moneyFlowOption,
     goldModal, goldDays, goldModalHistory, metalChartOption,
     openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
-    formatDate, getChangeClass, getUpDnClass, navigateToIndex,
+    formatDate, formatDataDate, getChangeClass, getUpDnClass, navigateToIndex,
     volumeOption, tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate,
     currentChartOption, echartThemeName, anomalies, anomaliesLoading, fetchAnomalies,
   }

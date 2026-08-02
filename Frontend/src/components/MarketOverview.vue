@@ -14,6 +14,7 @@
         <span class="update-tag" :class="{ failed: klineStatus === 'failed' || !hasCurrentData }" v-if="klineUpdateTime">
           {{ (klineStatus === 'success' && hasCurrentData) ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(klineUpdateTime) }}
         </span>
+        <span class="date-tag" v-if="latestKlineDate">{{ '数据日期' }} {{ formatDataDate(latestKlineDate) }}</span>
       </div>
       <div class="chart-container sse-chart-container">
         <v-chart class="chart" :option="currentChartOption" autoresize :theme="echartThemeName" v-if="hasCurrentData" />
@@ -36,7 +37,7 @@
       </div>
 
       <div class="market-sub-section">
-        <h4 class="sub-title"><span class="flag">🇨🇳</span> {{ '中国市场' }} <span class="sub-desc">{{ 'A股 / 港股' }}</span></h4>
+        <h4 class="sub-title"><span class="flag">🇨🇳</span> {{ '中国市场' }} <span class="sub-desc">{{ 'A股 / 港股' }}</span><span class="date-tag" v-if="chinaIndicesDate">{{ '数据日期' }} {{ formatDataDate(chinaIndicesDate) }}</span></h4>
         <div class="index-grid china-grid" v-if="indices.china.length">
             <div v-for="item in indices.china" :key="item.name" class="index-card clickable" :class="getUpDnClass(item.change_pct)" @click="navigateToIndex(item)" :title="item.code ? '点击查看详情' : ''">
             <div class="index-name">{{ item.name }}</div>
@@ -47,7 +48,7 @@
       </div>
 
       <div class="market-sub-section">
-        <h4 class="sub-title"><span class="flag"><LucideIcon name="Globe" :size="16" /></span> {{ '全球指数' }}</h4>
+        <h4 class="sub-title"><span class="flag"><LucideIcon name="Globe" :size="16" /></span> {{ '全球指数' }}<span class="date-tag" v-if="globalIndicesDate">{{ '数据日期' }} {{ formatDataDate(globalIndicesDate) }}</span></h4>
         <div class="index-grid global-grid" v-if="indices.global.length">
             <div v-for="item in indices.global" :key="item.name" class="index-card clickable" :class="getUpDnClass(item.change_pct)" @click="navigateToIndex(item)" :title="item.code ? '点击查看详情' : ''">
             <div class="index-name">{{ item.name }}</div>
@@ -68,6 +69,7 @@
           <span class="update-tag" :class="{ failed: volumeStatus === 'failed' }" v-if="volumeUpdateTime">
           {{ volumeStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(volumeUpdateTime) }}
         </span>
+        <span class="date-tag" v-if="aVolume.length && aVolume[0].date">{{ '数据日期' }} {{ formatDataDate(aVolume[0].date) }}</span>
       </div>
     </div>
     <div class="chart-container volume-chart-container">
@@ -86,6 +88,7 @@
           <span class="update-tag" :class="{ failed: moneyFlowStatus === 'failed' }" v-if="moneyFlowUpdateTime">
           {{ moneyFlowStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(moneyFlowUpdateTime) }}
         </span>
+        <span class="date-tag" v-if="moneyFlow && moneyFlow.date">{{ '数据日期' }} {{ formatDataDate(moneyFlow.date) }}</span>
         </div>
       </div>
       <div class="flow-chart-container">
@@ -104,6 +107,7 @@
           <span class="update-tag" :class="{ failed: goldStatus === 'failed' }" v-if="goldUpdateTime">
             {{ goldStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(goldUpdateTime) }}
           </span>
+          <span class="date-tag" v-if="goldDataTime">{{ '数据时间' }} {{ formatDataDate(goldDataTime) }}</span>
         </div>
       </div>
       <div class="gold-grid" v-if="goldRealtime.length">
@@ -203,7 +207,8 @@ const {
   aVolume, volumeOption, echartThemeName,
   moneyFlow, moneyFlowOption, moneyFlowStatus, moneyFlowUpdateTime, moneyFlowLoading,
   tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate,
-  currentChartOption, getUpDnClass, navigateToIndex, formatDate,
+  chinaIndicesDate, globalIndicesDate, goldDataTime,
+  currentChartOption, getUpDnClass, navigateToIndex, formatDate, formatDataDate,
   anomalies, anomaliesLoading, fetchAnomalies,
 } = useMarketOverview(props)
 </script>

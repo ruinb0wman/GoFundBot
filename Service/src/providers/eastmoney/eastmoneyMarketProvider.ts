@@ -41,7 +41,7 @@ export class EastMoneyMarketProvider implements MarketProvider {
     const params = new URLSearchParams({
       fltt: '2',
       invt: '2',
-      fields: 'f2,f3,f4,f5,f6,f12,f14,f15,f16,f17,f18',
+      fields: 'f2,f3,f4,f5,f6,f12,f14,f15,f16,f17,f18,f124',
       secids: secids.join(','),
       _: String(Date.now()),
     });
@@ -71,6 +71,7 @@ export class EastMoneyMarketProvider implements MarketProvider {
         market: originalSymbol.startsWith('sh') ? '上海' : '深圳',
         assetType: 'index',
         source: 'eastmoney.quotes',
+        date: toQuoteDate(item.f124),
       };
     });
   }
@@ -488,7 +489,7 @@ export class EastMoneyMarketProvider implements MarketProvider {
     const params = new URLSearchParams({
       fltt: '2',
       invt: '2',
-      fields: 'f2,f3,f4,f12,f14,f15,f16,f17,f18,f371',
+      fields: 'f2,f3,f4,f12,f14,f15,f16,f17,f18,f371,f124',
       secids: secids.join(','),
       _: String(Date.now()),
     });
@@ -509,6 +510,7 @@ export class EastMoneyMarketProvider implements MarketProvider {
       low: toNum(item.f17),
       prevClose: toNum(item.f18),
       market: 'global',
+      date: toQuoteDate(item.f124),
     }));
 
     return { items };
@@ -574,6 +576,13 @@ function toMoneyFlowNum(value: unknown): number | null {
   if (value == null || value === '' || value === '-') return null;
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
+}
+
+function toQuoteDate(value: unknown): string {
+  const ts = toNum(value);
+  if (!ts) return '';
+  const date = new Date(ts * 1000).toISOString().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
 }
 
 function toEastMoneySecid(code: string): string {

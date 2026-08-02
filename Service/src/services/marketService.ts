@@ -1050,6 +1050,7 @@ export async function getCombinedIndices(): Promise<Record<string, unknown>> {
         change_pct: q.changePercent ?? null,
         change_amount: q.change ?? null,
         market: knownIdx?.market ?? 'A股',
+        date: q.date ?? '',
       });
     }
   }
@@ -1063,6 +1064,7 @@ export async function getCombinedIndices(): Promise<Record<string, unknown>> {
         change_pct: null,
         change_amount: null,
         market: idx.market,
+        date: '',
       });
     }
   }
@@ -1075,6 +1077,7 @@ export async function getCombinedIndices(): Promise<Record<string, unknown>> {
       change_pct: item.changePercent ?? null,
       change_amount: item.changeAmount ?? null,
       market: '全球',
+      date: item.date ?? '',
     }));
     indices.push(...globalItems);
   }
