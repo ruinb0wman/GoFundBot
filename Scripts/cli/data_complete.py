@@ -9,10 +9,11 @@ args:
   --start_date                   Start date YYYYMMDD (optional, kline only)
   --end_date                     End date YYYYMMDD (optional, kline only)
 
-stdout: {"success": true, "data": {"stocks": [...], "industries": [...], "sector_spot": [...], "kline": [...]}}
+stdout: {"success": true, "data": {"stocks": [...], "industries": [...], "sector_spot": {"date": "...", "items": [...]}, "kline": [...]}}
 """
 
 import argparse
+import datetime
 import os
 import sys
 
@@ -236,10 +237,12 @@ def complete_industry_mapping():
 def complete_sector_spot():
     """
     Fetch real-time sector/industry board spot data from akshare (THS source).
-    Returns list of sectors sorted by change percent descending.
+    Returns dict with keys:
+      - date: 数据对应的最近交易日 (YYYY-MM-DD), 无法获取时为空串
+      - items: 板块列表, sorted by change percent descending
     """
     if not ak:
-        return []
+        return {"date": "", "items": []}
     try:
         df = ak.stock_board_industry_summary_ths()
         rows = []
@@ -260,10 +263,24 @@ def complete_sector_spot():
                     "raw_main_inflow": raw_inflow,
                 }
             )
-        return rows
+        return {"date": _latest_trade_date(), "items": rows}
     except Exception as e:
         print(f"akshare sector spot failed: {e}", file=sys.stderr)
-    return []
+    return {"date": "", "items": []}
+
+
+def _latest_trade_date():
+    """最近一个交易日 (YYYY-MM-DD), 基于新浪交易日历。失败时返回空串。"""
+    try:
+        if not ak:
+            return ""
+        cal = ak.tool_trade_date_hist_sina()
+        today = datetime.date.today()
+        past = [d for d in cal["trade_date"] if d <= today]
+        return str(max(past)) if past else ""
+    except Exception as e:
+        print(f"akshare trade date fetch failed: {e}", file=sys.stderr)
+        return ""
 
 
 def complete_north_flow():

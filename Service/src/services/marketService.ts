@@ -820,6 +820,7 @@ export interface SectorSpotItem {
 export async function getMarketSectorsFromAkshare(limit = 90): Promise<{
   items: SectorSpotItem[];
   source: string;
+  data_date?: string;
   error?: string;
 }> {
   const clampedLimit = Math.min(Math.max(limit, 1), 120);
@@ -829,8 +830,11 @@ export async function getMarketSectorsFromAkshare(limit = 90): Promise<{
     const result = await getMarketSectors();
     const items = result.data.items ?? [];
     if (items.length > 0) {
+      const dates = items.map(s => s.date).filter((d): d is string => !!d);
+      const dataDate = dates.length ? dates.sort().slice(-1)[0] : '';
       return {
         source: result.provider,
+        data_date: dataDate,
         items: items.slice(0, clampedLimit).map(s => ({
           name: s.name,
           code: s.code,
@@ -853,11 +857,14 @@ export async function getMarketSectorsFromAkshare(limit = 90): Promise<{
       args: ['--source', 'akshare', '--type', 'sector_spot'],
       timeoutMs: 60_000,
     });
-    const sectors = (spotResult?.sector_spot ?? []) as SectorSpotItem[];
-    if (sectors.length > 0) {
+    const rawSpot = spotResult?.sector_spot;
+    const spotItems = Array.isArray(rawSpot) ? rawSpot : (rawSpot as { items?: SectorSpotItem[] } | undefined)?.items ?? [];
+    const spotDate = Array.isArray(rawSpot) ? '' : (rawSpot as { date?: string } | undefined)?.date ?? '';
+    if (spotItems.length > 0) {
       return {
         source: 'akshare_thailand',
-        items: sectors.slice(0, clampedLimit),
+        data_date: spotDate,
+        items: spotItems.slice(0, clampedLimit),
       };
     }
   } catch (err) {
@@ -869,6 +876,7 @@ export async function getMarketSectorsFromAkshare(limit = 90): Promise<{
   return {
     source: 'failed',
     items: [],
+    data_date: '',
     error: '所有板块数据源均不可用',
   };
 }

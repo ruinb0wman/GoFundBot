@@ -93,7 +93,7 @@ marketRouter.get(
         error: result.error,
         total_count: 0,
         update_time: new Date().toISOString(),
-        data_date: '',
+        data_date: result.data_date || '',
         source: result.source,
       });
       return;
@@ -103,7 +103,7 @@ marketRouter.get(
       data: result.items,
       total_count: result.items.length,
       update_time: new Date().toISOString(),
-      data_date: '',
+      data_date: result.data_date || '',
       source: result.source,
     });
   })

@@ -7,11 +7,31 @@
 
 .section-header {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border-default);
+}
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-header-actions {
+  justify-content: space-between;
+}
+
+.section-header-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.section-header-meta {
+  flex-wrap: wrap;
 }
 
 .section-header h3 {
@@ -520,8 +540,8 @@
 }
 
 @media (max-width: 1280px) {
-  .section-header {
-    gap: 8px;
+  .section-header-row {
+    gap: 6px;
   }
 
   .filter-row {
@@ -542,10 +562,6 @@
 
   .modal-sector-list {
     grid-template-columns: 1fr;
-  }
-
-  .section-header {
-    align-items: center;
   }
 
   .filter-row {

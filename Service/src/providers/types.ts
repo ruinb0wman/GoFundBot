@@ -76,6 +76,7 @@ export interface SectorDto {
   changePercent: number | null;
   mainNetInflow: number | null;
   turnoverRate: number | null;
+  date?: string;
 }
 
 export interface SectorListDto {

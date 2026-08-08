@@ -1,28 +1,34 @@
 ﻿<template>
   <div class="sector-rank-container">
     <div class="section-header">
-      <h3><LucideIcon name="Factory" :size="20" /> {{ '行业板块排行' }}</h3>
-      <a class="doc-link" href="/docs/market-sector-rank" target="_blank" title="查看文档">
-        <LucideIcon name="HelpCircle" :size="16" />
-      </a>
-      <BButton circle icon="RefreshCw" :loading="loading" @click="fetchSectors" :title="'刷新板块数据'" />
-      <BButton
-        circle
-        icon="Maximize2"
-        @click="openSectorModal()"
-        :disabled="!sectors.length"
-        :title="'放大查看板块排行'"
-      />
-      <span v-if="isFromCache && sectors.length" class="data-source-badge stale" :title="'本地缓存'">
-        <LucideIcon name="Package" :size="14" /> {{ '本地缓存' }}
-      </span>
-      <span v-if="dataDate" class="data-date" :title="'数据对应的交易日'">
-        <LucideIcon v-if="isStale" name="Calendar" :size="14" /> {{ dataDate }}
-      </span>
-      <span class="update-tag" v-if="adaptiveRefresh.lastSuccessTime.value && sectors.length">
-        {{ '更新于' }} {{ formatUpdateTime(adaptiveRefresh.lastSuccessTime.value) }}
-      </span>
-      <span v-if="adaptiveRefresh.isStale.value && sectors.length" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ '超时' }}</span>
+      <div class="section-header-row section-header-actions">
+        <h3><LucideIcon name="Factory" :size="20" /> {{ '行业板块排行' }}</h3>
+        <a class="doc-link" href="/docs/market-sector-rank" target="_blank" title="查看文档">
+          <LucideIcon name="HelpCircle" :size="16" />
+        </a>
+        <div class="section-header-buttons">
+          <BButton circle icon="RefreshCw" :loading="loading" @click="fetchSectors" :title="'刷新板块数据'" />
+          <BButton
+            circle
+            icon="Maximize2"
+            @click="openSectorModal()"
+            :disabled="!sectors.length"
+            :title="'放大查看板块排行'"
+          />
+        </div>
+      </div>
+      <div class="section-header-row section-header-meta">
+        <span v-if="isFromCache && sectors.length" class="data-source-badge stale" :title="'本地缓存'">
+          <LucideIcon name="Package" :size="14" /> {{ '本地缓存' }}
+        </span>
+        <span v-if="dataDate" class="data-date" :title="'数据对应的交易日'">
+          <LucideIcon v-if="isStale" name="Calendar" :size="14" /> {{ '数据日期' }} {{ dataDate }}
+        </span>
+        <span class="update-tag" v-if="adaptiveRefresh.lastSuccessTime.value && sectors.length">
+          {{ '更新于' }} {{ formatUpdateTime(adaptiveRefresh.lastSuccessTime.value) }}
+        </span>
+        <span v-if="adaptiveRefresh.isStale.value && sectors.length" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ '超时' }}</span>
+      </div>
     </div>
     <div class="filter-panel">
       <div class="market-stats" v-if="sectors.length">

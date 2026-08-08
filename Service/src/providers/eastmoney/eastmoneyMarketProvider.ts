@@ -140,43 +140,21 @@ export class EastMoneyMarketProvider implements MarketProvider {
 
   async sectors(): Promise<SectorListDto> {
     try {
-      // Step 1: get BK sector codes from clist/get (no cb param — plain JSON)
-      const listUrl = 'https://push2.eastmoney.com/api/qt/clist/get';
-      const listParams = new URLSearchParams({
-        fid: 'f3',
+      const url = 'https://push2.eastmoney.com/api/qt/clist/get';
+      const params = new URLSearchParams({
+        pn: '1',
+        pz: '100',
         po: '1',
         np: '1',
         fltt: '2',
         invt: '2',
+        fid: 'f3',
         fs: 'm:90+t:2',
-        fields: 'f12,f14',
-        pn: '1',
-        pz: '500',
-      });
-
-      const listResp = await fetchJson(`${listUrl}?${listParams.toString()}`);
-      const listData = (listResp.data ?? listResp) as Record<string, unknown>;
-      const listDiff = (listData.diff ?? []) as Record<string, unknown>[];
-      const listArr: Record<string, unknown>[] = Array.isArray(listDiff) ? listDiff : Object.values(listDiff);
-
-      const bkCodes = listArr
-        .map((item) => toString(item.f12 ?? ''))
-        .filter((code) => code.startsWith('BK'));
-
-      if (bkCodes.length === 0) return { items: [] };
-
-      // Step 2: batch-query sector quotes via ulist.np/get (same reliable endpoint as indices())
-      const secids = bkCodes.slice(0, 200).map((code) => `90.${code}`);
-      const quoteUrl = 'https://push2.eastmoney.com/api/qt/ulist.np/get';
-      const quoteParams = new URLSearchParams({
-        fltt: '2',
-        invt: '2',
-        fields: 'f2,f3,f4,f12,f14,f62,f8',
-        secids: secids.join(','),
+        fields: 'f2,f3,f4,f8,f12,f14,f62,f124',
         _: String(Date.now()),
       });
 
-      const respData = await fetchJson(`${quoteUrl}?${quoteParams.toString()}`);
+      const respData = await fetchJson(`${url}?${params.toString()}`);
       const dataNode = (respData.data ?? respData) as Record<string, unknown>;
       const diff = (dataNode.diff ?? []) as Record<string, unknown>[];
       const diffArr: Record<string, unknown>[] = Array.isArray(diff) ? diff : Object.values(diff);
@@ -188,6 +166,7 @@ export class EastMoneyMarketProvider implements MarketProvider {
         changePercent: toNum(bk.f3),
         mainNetInflow: toNum(bk.f62),
         turnoverRate: toNum(bk.f8),
+        date: toQuoteDate(bk.f124),
       }));
 
       return { items };

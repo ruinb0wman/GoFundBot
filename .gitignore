@@ -14,3 +14,5 @@ Scripts/Data
 .claude/
 .codegraph/
 .coverage
+docs/.vitepress/dist/
+docs/.vitepress/cache/
