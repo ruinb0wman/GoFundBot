@@ -11,9 +11,10 @@ import { EastMoneyMarketProvider } from '../providers/eastmoney/eastmoneyMarketP
 import { YahooMarketProvider } from '../providers/yahoo/yahooMarketProvider.js';
 import { TencentMarketProvider } from '../providers/tencent/tencentMarketProvider.js';
 import { JoinQuantMarketProvider } from '../providers/joinquant/joinquantMarketProvider.js';
-import { isGlobalIndexSymbol, GLOBAL_INDEX_DEFS, fetchGlobalIndexQuoteByCode } from '../providers/yahoo/yahooClient.js';
+import { isGlobalIndexSymbol, GLOBAL_INDEX_DEFS, fetchGlobalIndexQuoteByCode, fetchCryptoQuotes, isCryptoSymbol } from '../providers/yahoo/yahooClient.js';
 import type {
   ConstituentListDto,
+  GlobalIndexDto,
   GlobalIndexListDto,
   IndexDto,
   IndexListDto,
@@ -75,6 +76,9 @@ export async function getMarketQuotes(symbolsParam: string | undefined): Promise
 export async function getMarketKline(symbol: string, query: KlineQuery): Promise<ServiceResult<KlineDto[]>> {
   if (isGlobalIndexSymbol(symbol)) {
     return getGlobalIndexKline(symbol, query);
+  }
+  if (isCryptoSymbol(symbol)) {
+    return getCryptoKline(symbol, query);
   }
   const stockSymbol = assertStockSymbol(symbol);
   const options = parseKlineOptions(query);
@@ -215,6 +219,60 @@ export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Pr
   return toServiceResult(result);
 }
 
+export async function getCryptoKline(symbol: string, query: KlineQuery): Promise<ServiceResult<KlineDto[]>> {
+  const cryptoSymbol = symbol.toUpperCase();
+  const options = parseGlobalKlineOptions(query);
+  const key = `market:kline:crypto:${cryptoSymbol}:${JSON.stringify(options)}`;
+
+  const cached = cache.get<ProviderChainResult<KlineDto[]>>(key);
+  if (cached) return toServiceResult(cached);
+
+  try {
+    const { fetchCryptoKline } = await import('../providers/yahoo/yahooClient.js');
+    const points = await fetchCryptoKline(cryptoSymbol, options.period);
+
+    const data: KlineDto[] = points.map(point => ({
+      code: cryptoSymbol,
+      date: point.timestamp ? new Date(point.timestamp).toISOString().slice(0, 10) : '',
+      timestamp: point.timestamp,
+      open: point.open,
+      close: point.close,
+      high: point.high,
+      low: point.low,
+      volume: point.volume,
+      amount: null,
+      change: null,
+      changePercent: null,
+      turnoverRate: null,
+    }));
+
+    // Calculate change and changePercent
+    for (let i = 1; i < data.length; i++) {
+      const prev = data[i - 1].close;
+      const curr = data[i].close;
+      if (prev != null && curr != null && prev !== 0) {
+        data[i].change = Math.round((curr - prev) * 100) / 100;
+        data[i].changePercent = Math.round(((curr - prev) / prev) * 10000) / 100;
+      }
+    }
+
+    const result: ProviderChainResult<KlineDto[]> = {
+      data,
+      provider: 'yahoo',
+      fallback: false,
+      stale: false,
+      providerErrors: [],
+    };
+    return toServiceResult(cache.set(key, result, ttl.marketGlobalKline));
+  } catch (err) {
+    logger.error('Crypto kline fetch failed', {
+      symbol: cryptoSymbol,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw new AppError('PROVIDER_UNAVAILABLE', `Failed to fetch crypto kline for ${cryptoSymbol}`, 503);
+  }
+}
+
 async function getGlobalIndexDetail(def: { code: string; name: string; yahooSymbol: string }): Promise<ServiceResult<IndexDetailDto>> {
   const [quoteResult, klineResult] = await Promise.allSettled([
     fetchGlobalIndexQuoteByCode(def.code),
@@ -297,6 +355,10 @@ export async function getIndexDetail(symbol: string): Promise<ServiceResult<Inde
   const globalDef = GLOBAL_INDEX_DEFS.find(d => d.code === symbol.toUpperCase());
   if (globalDef) {
     return getGlobalIndexDetail(globalDef);
+  }
+
+  if (isCryptoSymbol(symbol)) {
+    return getCryptoIndexDetail(symbol);
   }
 
   const normalized = normalizeIndexSymbol(symbol);
@@ -628,6 +690,105 @@ export async function getGlobalIndices(): Promise<ServiceResult<GlobalIndexListD
   );
 
   return toServiceResult(result);
+}
+
+export async function getCryptoQuotes(): Promise<ServiceResult<GlobalIndexListDto>> {
+  const key = 'market:crypto-quotes';
+  const cached = cache.get<ProviderChainResult<GlobalIndexListDto>>(key);
+  if (cached) return toServiceResult(cached);
+
+  try {
+    const data = await fetchCryptoQuotes();
+    const result: ProviderChainResult<GlobalIndexListDto> = {
+      data,
+      provider: 'yahoo',
+      fallback: false,
+      stale: false,
+      providerErrors: [],
+    };
+    return toServiceResult(cache.set(key, result, ttl.marketGlobalIndices));
+  } catch (err) {
+    logger.error('Crypto quotes fetch failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw new AppError('PROVIDER_UNAVAILABLE', 'Failed to fetch crypto quotes', 503);
+  }
+}
+
+export async function getCryptoIndexDetail(symbol: string): Promise<ServiceResult<IndexDetailDto>> {
+  const cryptoDef = (await import('../providers/yahoo/yahooClient.js')).CRYPTO_DEFS.find(d => d.code === symbol.toUpperCase());
+  if (!cryptoDef) {
+    throw new AppError('INVALID_ARGUMENT', `Unsupported crypto symbol: ${symbol}`, 400, { symbol });
+  }
+
+  const [quoteResult, klineResult] = await Promise.allSettled([
+    fetchCryptoQuotes(),
+    getMarketKline(cryptoDef.code, { period: 'daily' }),
+  ]);
+
+  let code = cryptoDef.code;
+  let name = cryptoDef.name;
+  let price: number | null = null;
+  let changeAmt: number | null = null;
+  let changePct: number | null = null;
+  let open: number | null = null;
+  let high: number | null = null;
+  let low: number | null = null;
+  let prevClose: number | null = null;
+  let volume: number | null = null;
+  let amount: number | null = null;
+  let market = '加密货币';
+
+  if (quoteResult.status === 'fulfilled') {
+    const q = quoteResult.value.items.find((i: GlobalIndexDto) => i.code === cryptoDef.code);
+    if (q) {
+      price = q.price;
+      changeAmt = q.changeAmount;
+      changePct = q.changePercent;
+      open = q.open;
+      high = q.high;
+      low = q.low;
+      prevClose = q.prevClose;
+    }
+  }
+
+  if (klineResult.status === 'fulfilled' && klineResult.value.data?.length) {
+    const data = klineResult.value.data;
+    const latest = data[data.length - 1];
+    if (open == null) open = latest.open;
+    if (high == null) high = latest.high;
+    if (low == null) low = latest.low;
+    prevClose = data.length >= 2 ? data[data.length - 2].close : (prevClose ?? latest.close);
+  }
+
+  const amplitude = high != null && low != null && prevClose != null && prevClose !== 0
+    ? +(((high - low) / prevClose) * 100).toFixed(2)
+    : null;
+
+  const data: IndexDetailDto = {
+    code,
+    name,
+    price,
+    change_amt: changeAmt,
+    change_pct: changePct,
+    open,
+    high,
+    low,
+    prev_close: prevClose,
+    volume,
+    amount,
+    amplitude,
+    market,
+  };
+
+  return {
+    data,
+    provider: 'yahoo',
+    fallback: quoteResult.status !== 'fulfilled' || klineResult.status !== 'fulfilled',
+    cached: false,
+    stale: false,
+    updatedAt: new Date(),
+  };
 }
 
 export async function fetchGoldRealtime(): Promise<Record<string, any>> {

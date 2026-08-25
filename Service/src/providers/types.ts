@@ -186,6 +186,8 @@ export interface GlobalIndexDto {
   prevClose: number | null;
   market: string | null;
   date?: string;
+  /** ISO 完整时间（含时分秒），来自交易所最近成交时间 */
+  updateTime?: string;
 }
 
 export interface GlobalIndexListDto {

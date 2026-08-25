@@ -5,6 +5,8 @@ import {
   fetchGoldRealtime,
   getAVolume7Days,
   getCombinedIndices,
+  getCryptoIndexDetail,
+  getCryptoQuotes,
   getGlobalIndexKline,
   getGlobalIndices,
   getGoldHistory,
@@ -186,6 +188,20 @@ marketRouter.get(
   '/indices/combined',
   asyncHandler(async (_req, res) => {
     res.json(await getCombinedIndices());
+  })
+);
+
+marketRouter.get(
+  '/crypto',
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, await getCryptoQuotes());
+  })
+);
+
+marketRouter.get(
+  '/crypto/:symbol/detail',
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await getCryptoIndexDetail(routeParam(req.params.symbol)));
   })
 );
 

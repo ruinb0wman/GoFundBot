@@ -186,10 +186,21 @@ export function useMarketOverview(props: any) {
     failureInterval: 60_000,
   })
 
+  const cryptoPoller = useDataPoller<any[]>({
+    fetcher: async () => {
+      const res = await marketAPI.getCryptoQuotes()
+      return { success: res.data.success, data: res.data.data?.items ?? [] }
+    },
+    type: 'crypto',
+    successInterval: 300_000, // 5 minutes for crypto (24/7 market)
+    failureInterval: 60_000,
+  })
+
   const marketIndex = computed(() => indicesPoller.data.value ?? [])
   const goldRealtime = computed(() => goldPoller.data.value ?? [])
   const aVolume = computed(() => volumePoller.data.value ?? [])
   const moneyFlow = computed(() => moneyFlowPoller.data.value)
+  const cryptoData = computed(() => cryptoPoller.data.value ?? [])
 
   const indices = computed(() => {
     const all = marketIndex.value
@@ -213,6 +224,11 @@ export function useMarketOverview(props: any) {
 
   const goldDataTime = computed(() => {
     const times = goldRealtime.value.map((i: any) => i.update_time).filter(Boolean) as string[]
+    return times.length ? times.sort().slice(-1)[0] : ''
+  })
+
+  const cryptoDataTime = computed(() => {
+    const times = cryptoData.value.map((i: any) => i.updateTime).filter(Boolean) as string[]
     return times.length ? times.sort().slice(-1)[0] : ''
   })
 
@@ -281,7 +297,8 @@ export function useMarketOverview(props: any) {
     klinePoller.loading.value ||
     goldPoller.loading.value ||
     volumePoller.loading.value ||
-    moneyFlowPoller.loading.value
+    moneyFlowPoller.loading.value ||
+    cryptoPoller.loading.value
   )
 
   const fetchAll = () => {
@@ -290,6 +307,7 @@ export function useMarketOverview(props: any) {
     goldPoller.refresh()
     volumePoller.refresh()
     moneyFlowPoller.refresh()
+    cryptoPoller.refresh()
   }
 
   const getChangeClass = (change: string) => {
@@ -420,10 +438,13 @@ export function useMarketOverview(props: any) {
     moneyFlowStatus: moneyFlowPoller.status,
     moneyFlowUpdateTime: moneyFlowPoller.updateTime,
     moneyFlowLoading: moneyFlowPoller.loading,
+    cryptoStatus: cryptoPoller.status,
+    cryptoUpdateTime: cryptoPoller.updateTime,
+    cryptoLoading: cryptoPoller.loading,
 
     loading, fetchAll, marketIndex, indices,
-    chinaIndicesDate, globalIndicesDate, goldDataTime,
-    goldRealtime, aVolume, moneyFlow, moneyFlowOption,
+    chinaIndicesDate, globalIndicesDate, goldDataTime, cryptoDataTime,
+    goldRealtime, aVolume, moneyFlow, moneyFlowOption, cryptoData,
     goldModal, goldDays, goldModalHistory, metalChartOption,
     openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
     formatDate, formatDataDate, getChangeClass, getUpDnClass, navigateToIndex,

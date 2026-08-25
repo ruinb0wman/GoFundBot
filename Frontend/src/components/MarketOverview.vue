@@ -121,6 +121,27 @@
 
     <div class="market-section">
       <div class="section-header">
+        <h3><LucideIcon name="Bitcoin" :size="20" /> {{ '加密货币' }}</h3>
+        <div class="header-actions">
+          <span class="update-tag" :class="{ failed: cryptoStatus === 'failed' }" v-if="cryptoUpdateTime">
+            {{ cryptoStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(cryptoUpdateTime) }}
+          </span>
+          <span class="date-tag" v-if="cryptoDataTime">{{ '数据时间' }} {{ formatDataDate(cryptoDataTime) }}</span>
+        </div>
+      </div>
+      <div class="index-grid global-grid" v-if="cryptoData.length">
+        <div v-for="item in cryptoData" :key="item.code" class="index-card clickable"
+             :class="getUpDnClass(item.changePercent)" @click="navigateToIndex(item)" :title="'点击查看详情'">
+          <div class="index-name">{{ item.name }}</div>
+          <div class="index-price">${{ formatCryptoPrice(item.price) }}</div>
+          <div class="index-change">{{ fmtPercent(item.changePercent) }}</div>
+        </div>
+      </div>
+      <div v-else class="empty-state">{{ cryptoLoading ? '加载中...' : '暂无加密货币数据' }}</div>
+    </div>
+
+    <div class="market-section">
+      <div class="section-header">
         <h3><LucideIcon name="BellRing" :size="20" /> {{ '市场异动' }}</h3>
         <div class="header-actions">
           <BButton size="small" icon="RefreshCw" :loading="anomaliesLoading" @click="fetchAnomalies" :disabled="anomaliesLoading" />
@@ -206,11 +227,19 @@ const {
   openGoldHistory, closeGoldHistory, isGoldItem, fetchMetalHistoryForModal,
   aVolume, volumeOption, echartThemeName,
   moneyFlow, moneyFlowOption, moneyFlowStatus, moneyFlowUpdateTime, moneyFlowLoading,
+  cryptoData, cryptoStatus, cryptoUpdateTime, cryptoLoading,
   tabs, activeTab, activeTabName, hasCurrentData, latestKlineDate,
-  chinaIndicesDate, globalIndicesDate, goldDataTime,
+  chinaIndicesDate, globalIndicesDate, goldDataTime, cryptoDataTime,
   currentChartOption, getUpDnClass, navigateToIndex, formatDate, formatDataDate,
   anomalies, anomaliesLoading, fetchAnomalies,
 } = useMarketOverview(props)
+
+const formatCryptoPrice = (price: number | null) => {
+  if (price == null) return '--'
+  if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (price >= 1) return price.toFixed(2)
+  return price.toFixed(4)
+}
 </script>
 
 <style scoped>

@@ -41,6 +41,13 @@ export const GLOBAL_INDEX_DEFS: Array<{ code: string; name: string; yahooSymbol:
   { code: 'SENSEX', name: '印度SENSEX', yahooSymbol: '^BSESN' },
 ];
 
+export const CRYPTO_DEFS: Array<{ code: string; name: string; yahooSymbol: string; icon: string }> = [
+  { code: 'BTC', name: '比特币', yahooSymbol: 'BTC-USD', icon: '₿' },
+  { code: 'ETH', name: '以太坊', yahooSymbol: 'ETH-USD', icon: 'Ξ' },
+  { code: 'SOL', name: 'Solana', yahooSymbol: 'SOL-USD', icon: '◎' },
+  { code: 'BNB', name: '币安币', yahooSymbol: 'BNB-USD', icon: '◆' },
+];
+
 export const CODE_TO_YAHOO_MAP: Record<string, string> = Object.fromEntries(
   GLOBAL_INDEX_DEFS.map(d => [d.code.toLowerCase(), d.yahooSymbol])
 );
@@ -88,6 +95,13 @@ function toQuoteDate(val: unknown): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
 }
 
+function toQuoteTime(val: unknown): string {
+  const ts = toNum(val);
+  if (!ts) return '';
+  const iso = new Date(ts * 1000).toISOString();
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(iso) ? iso : '';
+}
+
 function parseDateNum(dateStr: string): number | null {
   const clean = dateStr.replace(/-/g, '');
   if (clean.length < 8) return null;
@@ -105,7 +119,16 @@ export async function fetchYahooChart(
   if (!yahooSymbol) {
     throw new AppError('INVALID_ARGUMENT', `Unsupported global index symbol: ${symbol}`, 400, { symbol });
   }
+  return fetchYahooChartBySymbol(yahooSymbol, symbol, period, startDate, endDate);
+}
 
+async function fetchYahooChartBySymbol(
+  yahooSymbol: string,
+  displaySymbol: string,
+  period: string = 'daily',
+  startDate?: string,
+  endDate?: string,
+): Promise<ChartPoint[]> {
   const interval = INTERVAL_MAP[period] || '1d';
 
   let range: string;
@@ -133,7 +156,7 @@ export async function fetchYahooChart(
   const chart = payload.chart as Record<string, unknown> | undefined;
   const resultArr = (chart?.result ?? []) as Record<string, unknown>[];
   if (!resultArr.length) {
-    throw new AppError('PROVIDER_UNAVAILABLE', `Yahoo Finance returned empty result for ${symbol}`, 502, { symbol });
+    throw new AppError('PROVIDER_UNAVAILABLE', `Yahoo Finance returned empty result for ${displaySymbol}`, 502, { symbol: displaySymbol });
   }
 
   const result = resultArr[0];
@@ -222,6 +245,7 @@ async function fetchSingleGlobalQuote(def: { code: string; name: string; yahooSy
         prevClose,
         market: '全球',
         date: toQuoteDate(meta.regularMarketTime),
+        updateTime: toQuoteTime(meta.regularMarketTime),
       };
     } catch {
       if (attempt < maxRetries - 1) {
@@ -253,4 +277,38 @@ export async function fetchGlobalIndexQuoteByCode(code: string): Promise<GlobalI
   const def = GLOBAL_INDEX_DEFS.find(d => d.code === code.toUpperCase());
   if (!def) return null;
   return fetchSingleGlobalQuote(def);
+}
+
+export async function fetchCryptoQuotes(): Promise<GlobalIndexListDto> {
+  const results: GlobalIndexDto[] = [];
+  const concurrency = 2;
+
+  for (let i = 0; i < CRYPTO_DEFS.length; i += concurrency) {
+    const batch = CRYPTO_DEFS.slice(i, i + concurrency);
+    const batchResults = await Promise.allSettled(
+      batch.map((def) => fetchSingleGlobalQuote({ code: def.code, name: def.name, yahooSymbol: def.yahooSymbol }))
+    );
+    for (const r of batchResults) {
+      if (r.status === 'fulfilled' && r.value) {
+        results.push({
+          ...r.value,
+          market: '加密货币',
+        });
+      }
+    }
+  }
+
+  return { items: results };
+}
+
+export async function fetchCryptoKline(symbol: string, period: string = 'daily'): Promise<ChartPoint[]> {
+  const def = CRYPTO_DEFS.find(d => d.code === symbol.toUpperCase());
+  if (!def) {
+    throw new AppError('INVALID_ARGUMENT', `Unsupported crypto symbol: ${symbol}`, 400, { symbol });
+  }
+  return fetchYahooChartBySymbol(def.yahooSymbol, def.code, period);
+}
+
+export function isCryptoSymbol(symbol: string): boolean {
+  return CRYPTO_DEFS.some(d => d.code === symbol.toUpperCase());
 }
