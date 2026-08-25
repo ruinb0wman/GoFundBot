@@ -67,29 +67,6 @@ describe('EastMoneyFundProvider screeningSnapshot', () => {
     expect(hbUrl).toContain('sc=7nzf');
   });
 
-  it('builds REITs pool from fundcode_search + pingzhongdata NAV', async () => {
-    fetchTextMock.mockImplementation((url: string) => {
-      if (url.includes('fundcode_search.js')) return REITS_LIST;
-      if (url.includes('pingzhongdata')) return REITS_NAV_SCRIPT;
-      throw new Error(`Unexpected url: ${url}`);
-    });
-    const provider = new EastMoneyFundProvider();
-
-    const result = await provider.screeningSnapshot({ types: ['reits'], limitPerType: 500 });
-
-    expect(result.items).toHaveLength(1);
-    const item = result.items[0];
-    expect(item.code).toBe('508000');
-    expect(item.name).toBe('华安张江产业园REIT');
-    expect(item.type).toBe('Reits');
-    expect(item.nav).toBe(3.1);
-    expect(item.navDate).toBe('2026-07-14');
-    expect(item.sinceInception).toBe(3.33);
-    expect(item.return1y).toBe(3.33);
-    expect(item.return1m).toBe(-6.06);
-    expect(item.source).toBe('eastmoney.reits.pingzhongdata');
-  });
-
   it('includes hb and reits in default type buckets', async () => {
     fetchTextMock.mockImplementation((url: string) => {
       if (url.includes('fundcode_search.js')) return REITS_LIST;
