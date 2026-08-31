@@ -1,0 +1,74 @@
+/* @gofund/ui — 暗色主题设计 token
+ * 来源：Frontend/src/App.css `:root[data-theme="dark"]`
+ * 通过 html[data-theme="dark"] 属性切换 */
+:root[data-theme="dark"] {
+  --bg-page: #1b1b1f;
+  --bg-primary: #1b1b1f;
+  --bg-card: #202127;
+  --bg-elevated: #202127;
+  --bg-hover: #2a2b31;
+  --bg-subtle: #161618;
+  --bg-overlay: rgba(0, 0, 0, 0.70);
+  --bg-gradient: linear-gradient(135deg, #202127 0%, #1b1b1f 100%);
+  --text-primary: #dfdfd6;
+  --text-secondary: #98989f;
+  --text-tertiary: #6a6a71;
+  --text-disabled: #4a4a52;
+  --text-inverse: #1b1b1f;
+  --border-default: #3c3f44;
+  --border-subtle: #2e2e32;
+  --border-strong: #a8b1ff;
+  --color-primary: #a8b1ff;
+  --color-primary-hover: #5c73e7;
+  --color-primary-bg: rgba(100, 108, 255, 0.12);
+  --color-primary-border: rgba(100, 108, 255, 0.30);
+  --color-success: #3dd68c;
+  --color-success-bg: rgba(16, 185, 129, 0.12);
+  --color-success-border: rgba(16, 185, 129, 0.25);
+  --color-danger: #f66f81;
+  --color-danger-bg: rgba(244, 63, 94, 0.12);
+  --color-danger-border: rgba(244, 63, 94, 0.25);
+  --color-warning: #f9b44e;
+  --color-warning-bg: rgba(234, 179, 8, 0.12);
+  --color-warning-border: rgba(234, 179, 8, 0.25);
+  --color-info: #5c73e7;
+  --color-info-bg: rgba(100, 108, 255, 0.10);
+  --chart-1: #a8b1ff;
+  --chart-2: #3dd68c;
+  --chart-3: #f9b44e;
+  --chart-4: #f66f81;
+  --chart-5: #38bdf8;
+  --chart-6: #c8abfa;
+  --chart-7: #fb923c;
+  --chart-8: #f67373;
+  --chart-9: #f0abfc;
+  --chart-10: #6a6a71;
+  --chart-bg: #202127;
+  --chart-grid: #2e2e32;
+  --chart-axis-label: #98989f;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.50);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.60);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --font-xs: 12px;
+  --font-sm: 13px;
+  --font-base: 14px;
+  --font-md: 15px;
+  --font-lg: 18px;
+  --font-xl: 24px;
+
+  --primary-color: var(--color-primary);
+  --primary-gradient: var(--bg-gradient);
+  --success-color: var(--color-success);
+  --danger-color: var(--color-danger);
+  --warning-color: var(--color-warning);
+}

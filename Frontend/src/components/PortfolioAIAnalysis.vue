@@ -113,8 +113,8 @@
 </template>
 
 <script setup lang="ts">
-import LucideIcon from './LucideIcon.vue'
-import BButton from './BButton.vue'
+
+import { LucideIcon, BButton } from '@gofund/ui'
 import { usePortfolioAIAnalysis } from '../composables/usePortfolioAIAnalysis'
 
 const props = defineProps<{

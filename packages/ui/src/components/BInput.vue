@@ -2,6 +2,8 @@
 import { ref, computed, useSlots, onMounted, nextTick } from 'vue'
 import LucideIcon from './LucideIcon.vue'
 
+defineOptions({ name: 'BInput' })
+
 type BInputType = 'text' | 'textarea' | 'password'
 type BInputSize = 'large' | 'default' | 'small'
 

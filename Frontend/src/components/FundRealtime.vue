@@ -204,12 +204,10 @@
 </template>
 
 <script setup lang="ts">
+import { BButton, BCard, BInputNumber, BFileInput } from '@gofund/ui'
 import { computed, onMounted, watch, nextTick } from 'vue'
 import { useFundMiniChart } from '../composables/useFundMiniChart'
-import BButton from './BButton.vue'
-import BCard from './BCard.vue'
-import BInputNumber from './BInputNumber.vue'
-import BFileInput from './BFileInput.vue'
+
 import PortfolioAIAnalysis from './PortfolioAIAnalysis.vue'
 import { useFundRealtime } from '../composables/useFundRealtime'
 import FundRealtimeModals from './FundRealtimeModals.vue'

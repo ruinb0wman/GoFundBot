@@ -13,6 +13,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+defineOptions({ name: 'SkeletonCard' })
+
 const props = withDefaults(defineProps<{
   lines?: number
   widths?: string[] | null

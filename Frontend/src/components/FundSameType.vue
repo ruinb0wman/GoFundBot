@@ -39,7 +39,8 @@
 </template>
 
 <script setup lang="ts">
-import BButton from './BButton.vue'
+
+import { BButton } from '@gofund/ui'
 import { ref, computed } from 'vue'
 
 const props = withDefaults(defineProps<{

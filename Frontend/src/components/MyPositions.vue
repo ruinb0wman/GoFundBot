@@ -179,11 +179,8 @@
 </template>
 
 <script setup>
-import BButton from './BButton.vue'
-import BInput from './BInput.vue'
-import BInputNumber from './BInputNumber.vue'
-import BDatePicker from './BDatePicker.vue'
-import BTimePicker from './BTimePicker.vue'
+
+import { BButton, BInput, BInputNumber, BDatePicker, BTimePicker } from '@gofund/ui'
 import { useMyPositions } from '../composables/useMyPositions'
 
 const {

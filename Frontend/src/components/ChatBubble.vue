@@ -17,8 +17,9 @@
 </template>
 
 <script setup lang="ts">
+import { LucideIcon } from '@gofund/ui'
 import { useChatStore } from '../stores/chatStore'
-import LucideIcon from './LucideIcon.vue'
+
 import ChatPanel from './ChatPanel.vue'
 
 const chatStore = useChatStore()

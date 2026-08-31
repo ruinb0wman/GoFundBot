@@ -1,4 +1,6 @@
 <script setup lang="ts">
+defineOptions({ name: 'BSwitch' })
+
 type BSwitchSize = 'default' | 'small'
 
 const props = withDefaults(defineProps<{

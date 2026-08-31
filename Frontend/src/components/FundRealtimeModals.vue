@@ -219,13 +219,9 @@
 </template>
 
 <script setup lang="ts">
+import { BButton, BaseModal, BDatePicker, BInput, BInputNumber, BSwitch } from '@gofund/ui'
 import { ref, computed } from 'vue'
-import BButton from './BButton.vue'
-import BaseModal from './BaseModal.vue'
-import BDatePicker from './BDatePicker.vue'
-import BInput from './BInput.vue'
-import BInputNumber from './BInputNumber.vue'
-import BSwitch from './BSwitch.vue'
+
 import FundSearch from './FundSearch.vue'
 import { fmtNumber } from '../utils/number'
 import type { PortfolioGroupRebalance } from '../types'

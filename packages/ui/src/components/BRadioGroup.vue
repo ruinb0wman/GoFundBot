@@ -2,6 +2,8 @@
 import { computed, provide } from 'vue'
 import type { ComputedRef } from 'vue'
 
+defineOptions({ name: 'BRadioGroup' })
+
 type BRadioSize = 'large' | 'default' | 'small'
 
 interface RadioGroupContext {

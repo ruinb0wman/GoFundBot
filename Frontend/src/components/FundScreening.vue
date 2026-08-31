@@ -369,11 +369,8 @@
 
 <script setup lang="ts">
 // @ts-nocheck
+import { BButton, BInputNumber, BCheckbox, BDialog } from '@gofund/ui'
 import { useFundScreening } from '../composables/useFundScreening'
-import BButton from './BButton.vue'
-import BInputNumber from './BInputNumber.vue'
-import BCheckbox from './BCheckbox.vue'
-import BDialog from './BDialog.vue'
 
 defineOptions({ name: 'FundScreening' })
 const emit = defineEmits(['view-fund', 'add-to-compare'])

@@ -70,9 +70,8 @@
 </template>
 
 <script setup lang="ts">
+import { BButton, BCheckbox } from '@gofund/ui'
 import type { DraggingIndex, CompareFund } from '../types'
-import BButton from './BButton.vue'
-import BCheckbox from './BCheckbox.vue'
 
 const props = withDefaults(defineProps<{
   funds?: any[]

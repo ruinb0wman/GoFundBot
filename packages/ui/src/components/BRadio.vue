@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, inject, type ComputedRef } from 'vue'
 
+defineOptions({ name: 'BRadio' })
+
 type BRadioSize = 'large' | 'default' | 'small'
 
 interface RadioGroupContext {

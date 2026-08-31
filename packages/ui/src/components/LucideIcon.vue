@@ -1,6 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import * as icons from '@lucide/vue'
+
+defineOptions({ name: 'LucideIcon' })
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -9,7 +11,7 @@ const props = defineProps({
   strokeWidth: { type: [Number, String], default: 2 },
 })
 
-const icon = computed(() => icons[props.name] || null)
+const icon = computed(() => (icons as Record<string, any>)[props.name] || null)
 </script>
 
 <template>

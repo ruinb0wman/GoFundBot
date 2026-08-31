@@ -1,4 +1,5 @@
 // Frontend/src/main.js
+import { LucideIcon } from '@gofund/ui'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import VXETable from 'vxe-table'
@@ -32,7 +33,6 @@ app.config.errorHandler = (err, instance, _info) => {
   })
 }
 
-import LucideIcon from './components/LucideIcon.vue'
 app.component('LucideIcon', LucideIcon)
 
 import SearchBar from './components/SearchBar.vue'

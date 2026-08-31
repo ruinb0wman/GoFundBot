@@ -13,6 +13,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      '@gofund/ui': resolve(__dirname, '../packages/ui/src/index.ts'),
+      '@gofund/ui/style.css': resolve(__dirname, '../packages/ui/src/index.css'),
     },
   },
 })

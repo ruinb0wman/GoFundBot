@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, useSlots } from 'vue'
 
+defineOptions({ name: 'BCard' })
+
 type ShadowMode = 'always' | 'hover' | 'never'
 
 const props = withDefaults(defineProps<{

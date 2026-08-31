@@ -167,8 +167,8 @@
 </template>
 
 <script setup lang="ts">
+import { BButton } from '@gofund/ui'
 import { useFundAIAnalysis } from '../composables/useFundAIAnalysis'
-import BButton from './BButton.vue'
 
 const props = defineProps({
   fundCode: { type: String, required: true }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import LucideIcon from './LucideIcon.vue'
 
+defineOptions({ name: 'BTimePicker' })
+
 const props = withDefaults(defineProps<{
   modelValue?: string
   placeholder?: string

@@ -184,10 +184,10 @@
 </template>
 
 <script setup lang="ts">
+import { BButton, LucideIcon } from '@gofund/ui'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import BButton from './BButton.vue'
-import LucideIcon from './LucideIcon.vue'
+
 import VChart from 'vue-echarts'
 import { fmtPercent } from '../utils/number'
 import { use } from "echarts/core"

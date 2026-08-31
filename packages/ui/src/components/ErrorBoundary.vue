@@ -9,7 +9,10 @@
 
 <script setup lang="ts">
 import BButton from './BButton.vue'
+import LucideIcon from './LucideIcon.vue'
 import { ref, onErrorCaptured } from 'vue'
+
+defineOptions({ name: 'ErrorBoundary' })
 
 const hasError = ref(false)
 

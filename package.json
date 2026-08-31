@@ -1,6 +1,9 @@
 {
   "name": "gofundbot",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "setup:venv": "test -d Scripts/.venv || python3 -m venv Scripts/.venv && Scripts/.venv/bin/pip install -r Scripts/requirements.txt -r Scripts/requirements-dev.txt || Scripts/.venv/bin/pip install -r Scripts/requirements.txt -r Scripts/requirements-dev.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn",
     "setup:precommit": "Scripts/.venv/bin/pre-commit install --install-hooks",

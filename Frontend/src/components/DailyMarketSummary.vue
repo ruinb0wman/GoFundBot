@@ -110,7 +110,8 @@
 </template>
 
 <script setup>
-import BButton from './BButton.vue'
+
+import { BButton } from '@gofund/ui'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { fundAPI } from '../services/api'
 

@@ -1,0 +1,4 @@
+/* @gofund/ui — 全局样式入口
+ * 引入设计 token（明暗主题）+ 基线样式（重置/工具类/关键帧） */
+@import './tokens/index.css';
+@import './styles/base.css';

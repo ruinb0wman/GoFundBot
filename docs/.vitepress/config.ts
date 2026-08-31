@@ -56,6 +56,13 @@ export default defineConfig({
           { text: 'Tushare 接入', link: '/tushare' },
         ],
       },
+      {
+        text: 'UI 组件库',
+        items: [
+          { text: '组件抽离计划', link: '/ui/extraction-plan' },
+          { text: '组件与接入文档', link: '/ui/components' },
+        ],
+      },
     ],
   },
 })

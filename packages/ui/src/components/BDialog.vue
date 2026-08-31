@@ -35,6 +35,8 @@
 import BButton from './BButton.vue'
 import LucideIcon from './LucideIcon.vue'
 
+defineOptions({ name: 'BDialog' })
+
 export interface ConfirmDialogOption {
   icon: string
   title: string

@@ -324,13 +324,9 @@
 </template>
 
 <script setup lang="ts">
+import { BButton, BInputNumber, BRadioGroup, BRadio, BDatePicker } from '@gofund/ui'
 import { useFundBacktest } from '../composables/useFundBacktest'
 import FundSearch from './FundSearch.vue'
-import BButton from './BButton.vue'
-import BInputNumber from './BInputNumber.vue'
-import BRadioGroup from './BRadioGroup.vue'
-import BRadio from './BRadio.vue'
-import BDatePicker from './BDatePicker.vue'
 
 const props = defineProps({
   fundCode: {

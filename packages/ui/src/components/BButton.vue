@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import LucideIcon from './LucideIcon.vue'
 
+defineOptions({ name: 'BButton' })
+
 type BButtonType = 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
 type BButtonSize = 'large' | 'default' | 'small'
 

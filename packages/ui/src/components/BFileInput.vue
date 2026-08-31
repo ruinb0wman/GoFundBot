@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue'
 
+defineOptions({ name: 'BFileInput' })
+
 const props = withDefaults(defineProps<{
   accept?: string
   multiple?: boolean

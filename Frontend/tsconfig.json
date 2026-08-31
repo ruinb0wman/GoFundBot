@@ -14,7 +14,9 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@gofund/ui": ["../packages/ui/src/index.ts"],
+      "@gofund/ui/style.css": ["../packages/ui/src/index.css"]
     },
     "types": ["vitest/globals"]
   },

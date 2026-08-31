@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, useSlots } from 'vue'
 
+defineOptions({ name: 'BInputNumber' })
+
 type BInputNumberSize = 'large' | 'default' | 'small'
 type ControlsPosition = 'default' | 'right'
 
@@ -94,8 +96,6 @@ const atMax = computed(() => props.modelValue != null && props.modelValue >= pro
 
 const hasPrefix = computed(() => !!slots.prefix)
 const hasSuffix = computed(() => !!slots.suffix)
-
-
 
 const wrapperClasses = computed(() => {
   const cls = ['b-input-number', `b-input-number--${props.size}`]

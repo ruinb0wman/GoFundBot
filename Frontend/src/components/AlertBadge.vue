@@ -32,8 +32,8 @@
 </template>
 
 <script setup lang="ts">
-import BButton from './BButton.vue'
-import BSwitch from './BSwitch.vue'
+
+import { BButton, BSwitch } from '@gofund/ui'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAlertStore } from '../stores/alertStore'
 import { useNotification } from '../composables/useNotification'

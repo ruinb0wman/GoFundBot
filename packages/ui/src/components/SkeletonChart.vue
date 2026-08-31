@@ -19,6 +19,8 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'SkeletonChart' })
+
 withDefaults(defineProps<{
   height?: number
   width?: number

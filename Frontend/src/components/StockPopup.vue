@@ -80,8 +80,8 @@
 </template>
 
 <script setup lang="ts">
-import BButton from './BButton.vue'
-import LucideIcon from './LucideIcon.vue'
+
+import { BButton, LucideIcon } from '@gofund/ui'
 import { useStockPopup } from '../composables/useStockPopup'
 import { fmtNumber } from '../utils/number'
 

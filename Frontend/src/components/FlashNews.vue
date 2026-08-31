@@ -122,7 +122,8 @@
 </template>
 
 <script setup lang="ts">
-import BButton from './BButton.vue'
+
+import { BButton } from '@gofund/ui'
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { marketAPI } from '../services/api'
 import { useDataPoller } from '../composables/useDataPoller'

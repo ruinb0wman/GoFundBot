@@ -63,10 +63,10 @@
 </template>
 
 <script setup lang="ts">
+import { BButton } from '@gofund/ui'
 import { ref, computed, watch, onMounted } from 'vue'
 import { fundAPI } from '../services/api'
 import { useSearchHistory } from '../composables/useSearchHistory'
-import BButton from './BButton.vue'
 
 const props = defineProps({
   compact: {

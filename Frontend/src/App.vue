@@ -77,15 +77,15 @@
 </template>
 
 <script setup lang="ts">
-import LucideIcon from './components/LucideIcon.vue'
-import OfflineBanner from './components/OfflineBanner.vue'
+
+import { LucideIcon, OfflineBanner, ErrorBoundary } from '@gofund/ui'
 import FundSearch from './components/FundSearch.vue'
 import FundWatchlist from './components/FundWatchlist.vue'
 import FundComparison from './components/FundComparison.vue'
 import HamburgerButton from './components/HamburgerButton.vue'
 import MobileDrawer from './components/MobileDrawer.vue'
 import BottomNav from './components/BottomNav.vue'
-import ErrorBoundary from './components/ErrorBoundary.vue'
+
 import FlashNews from './components/FlashNews.vue'
 import SectorRank from './components/SectorRank.vue'
 import AlertBadge from './components/AlertBadge.vue'

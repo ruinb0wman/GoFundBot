@@ -1,0 +1,58 @@
+{
+  "name": "@gofund/ui",
+  "version": "1.0.0",
+  "description": "GoFundBot 前端基础组件库 — Vue 3 + TypeScript，CSS 变量双主题设计系统",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./style.css": "./dist/style.css",
+    "./tokens.css": "./dist/style.css",
+    "./components/*": {
+      "types": "./dist/components/*.d.ts",
+      "import": "./dist/components/*.js"
+    },
+    "./composables/*": {
+      "types": "./dist/composables/*.d.ts",
+      "import": "./dist/composables/*.js"
+    },
+    "./*": "./dist/*"
+  },
+  "files": ["dist"],
+  "sideEffects": ["**/*.css", "**/style.css", "**/tokens.css"],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build && vue-tsc --noEmit",
+    "prepare": "npm run build",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@lucide/vue": "^1.21.0",
+    "vue": "^3.3.4"
+  },
+  "devDependencies": {
+    "@lucide/vue": "^1.21.0",
+    "@types/node": "^26.0.1",
+    "@typescript-eslint/parser": "^8.22.0",
+    "@vitejs/plugin-vue": "^4.3.4",
+    "@vue/test-utils": "^2.4.11",
+    "eslint": "^9.18.0",
+    "globals": "^15.14.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^4.4.5",
+    "vite-plugin-dts": "^3.9.1",
+    "vitest": "^4.1.9",
+    "vue": "^3.3.4",
+    "vue-eslint-parser": "^9.4.3",
+    "vue-tsc": "^3.3.5"
+  }
+}

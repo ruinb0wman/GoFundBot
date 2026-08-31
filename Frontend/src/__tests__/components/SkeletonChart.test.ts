@@ -1,6 +1,6 @@
+import { SkeletonChart } from '@gofund/ui'
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import SkeletonChart from '../../components/SkeletonChart.vue'
 
 describe('SkeletonChart', () => {
   it('renders with default props', () => {

@@ -28,7 +28,8 @@
 </template>
 
 <script setup lang="ts">
-import BButton from './BButton.vue'
+
+import { BButton } from '@gofund/ui'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 

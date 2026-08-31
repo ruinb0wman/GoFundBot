@@ -324,7 +324,8 @@
 </template>
 
 <script setup>
-import BButton from './BButton.vue'
+
+import { BButton } from '@gofund/ui'
 import { useResearchDashboard } from '../composables/useResearchDashboard'
 
 const emit = defineEmits(['view-fund'])

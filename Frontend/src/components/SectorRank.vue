@@ -190,8 +190,9 @@
 </template>
 
 <script setup lang="ts">
+import { BButton } from '@gofund/ui'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import BButton from './BButton.vue'
+
 import { marketAPI } from '../services/api'
 import { useAdaptiveRefresh } from '../composables/useAdaptiveRefresh'
 import { fmtPercent } from '../utils/number'

@@ -1,0 +1,76 @@
+/* @gofund/ui — 明色主题设计 token
+ * 来源：Frontend/src/App.css `:root`（Ant Design 色板 + Tailwind 灰阶）
+ * 用法：引入 tokens.css 后，暗色主题通过 html[data-theme="dark"] 切换 */
+:root {
+  --bg-page: #f5f7fa;
+  --bg-primary: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-hover: #f0f2f5;
+  --bg-subtle: #f3f4f6;
+  --bg-overlay: rgba(0, 0, 0, 0.45);
+  --bg-gradient: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --text-disabled: #d1d5db;
+  --text-inverse: #ffffff;
+  --border-default: #e5e7eb;
+  --border-subtle: #f0f0f0;
+  --border-strong: #1677ff;
+  --color-primary: #1677ff;
+  --color-primary-hover: #0958d9;
+  --color-primary-bg: #eef4ff;
+  --color-primary-border: #91bffa;
+  --color-success: #52c41a;
+  --color-success-bg: #f6ffed;
+  --color-success-border: #b7eb8f;
+  --color-danger: #ff4d4f;
+  --color-danger-bg: #fff1f0;
+  --color-danger-border: #ffa39e;
+  --color-warning: #faad14;
+  --color-warning-bg: #fff7e6;
+  --color-warning-border: #ffd591;
+  --color-info: #13c2c2;
+  --color-info-bg: #e6fffb;
+  --chart-1: #1677ff;
+  --chart-2: #52c41a;
+  --chart-3: #faad14;
+  --chart-4: #ff4d4f;
+  --chart-5: #73c0de;
+  --chart-6: #3ba272;
+  --chart-7: #fc8452;
+  --chart-8: #9a60b4;
+  --chart-9: #ea7ccc;
+  --chart-10: #bfbfbf;
+  --chart-bg: #ffffff;
+  --chart-grid: #e5e7eb;
+  --chart-axis-label: #6b7280;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* 补充：间距 / 字号 scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --font-xs: 12px;
+  --font-sm: 13px;
+  --font-base: 14px;
+  --font-md: 15px;
+  --font-lg: 18px;
+  --font-xl: 24px;
+
+  /* 兼容别名（含历史命名） */
+  --primary-color: var(--color-primary);
+  --primary-gradient: var(--bg-gradient);
+  --success-color: var(--color-success);
+  --danger-color: var(--color-danger);
+  --warning-color: var(--color-warning);
+}

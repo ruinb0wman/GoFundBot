@@ -111,6 +111,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `Frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
 | `Frontend/src/services/` | API client (api.ts, portfolioApi.ts, chatApi.ts) |
 | `docs/` | VitePress 文档站（`docs/.vitepress/config.ts` 导航/侧边栏配置） |
+| `packages/ui/` | **UI 组件库 `@gofund/ui`** — B* 系列表单控件与浮层/反馈组件、设计 token（明暗双主题）、composables；Vite lib mode 构建（组件级 chunk + dts）；Frontend 经 vite/tsconfig 别名直连 `packages/ui/src/index.ts`（`@gofund/ui`），开发 HMR 与构建均从源；`file:../packages/ui` 仅为发布用依赖声明 |
 | `docs/fund-screening/` | 基金筛选模块细分文档（概览/数据流/筛选面板/指标丰富化/4433法则） |
 | `docs/market-*.md` | 市场数据各功能模块说明文档 |
 | `docs/architecture/` | 技术架构文档（数据源/数据流/回退策略/AI分析等） |

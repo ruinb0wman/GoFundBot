@@ -72,10 +72,9 @@
 </template>
 
 <script setup lang="ts">
+import { BButton, BInputNumber, LucideIcon } from '@gofund/ui'
 import { ref, onMounted } from 'vue'
-import BButton from '../components/BButton.vue'
-import BInputNumber from '../components/BInputNumber.vue'
-import LucideIcon from '../components/LucideIcon.vue'
+
 import { anomalyConfigAPI } from '../services/api'
 
 interface AnomalyForm {

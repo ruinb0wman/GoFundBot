@@ -1,4 +1,6 @@
 <script setup lang="ts">
+defineOptions({ name: 'BCheckbox' })
+
 type BCheckboxSize = 'default' | 'small'
 
 const props = withDefaults(defineProps<{

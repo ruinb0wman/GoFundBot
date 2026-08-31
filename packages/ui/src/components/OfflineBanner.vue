@@ -8,7 +8,10 @@
 </template>
 
 <script setup lang="ts">
+import LucideIcon from './LucideIcon.vue'
 import { useOnlineStatus } from '../composables/useOnlineStatus'
+
+defineOptions({ name: 'OfflineBanner' })
 
 const { isOnline } = useOnlineStatus()
 </script>

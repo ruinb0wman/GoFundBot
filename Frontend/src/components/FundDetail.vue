@@ -112,9 +112,8 @@
 </template>
 
 <script setup lang="ts">
-import BButton from './BButton.vue'
-import BCard from './BCard.vue'
-import LucideIcon from './LucideIcon.vue'
+
+import { BButton, BCard, LucideIcon, SkeletonCard, SkeletonChart } from '@gofund/ui'
 import FundBasicInfo from './FundBasicInfo.vue'
 import FundChart from './FundChart.vue'
 import FundRankingTrend from './FundRankingTrend.vue'
@@ -128,8 +127,7 @@ import FundSubscription from './FundSubscription.vue'
 import FundSameType from './FundSameType.vue'
 import FundAIAnalysis from './FundAIAnalysis.vue'
 import StockPopup from './StockPopup.vue'
-import SkeletonCard from './SkeletonCard.vue'
-import SkeletonChart from './SkeletonChart.vue'
+
 import { useFundDetail } from '../composables/useFundDetail'
 
 const props = defineProps({ fundCode: { type: String, default: '' } })

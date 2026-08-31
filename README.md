@@ -265,6 +265,25 @@ GoFundBot/
 └── AGENTS.md                    # AI Agent 开发指南
 ```
 
+## 🧩 UI 组件库抽离计划
+
+为提升前端组件复用性，将 `Frontend/src/components/` 中的自定义基础组件抽离为独立 UI 库（monorepo workspace `packages/@gofund/ui`，Vite lib mode 构建）。
+
+| 状态 | 组件 | 说明 |
+|------|------|------|
+| ✅ 首批已抽离 | B* 系列表单控件 + 浮层/反馈组件 | 已迁至 `packages/@gofund/ui`（Vite lib mode 构建，组件级 chunk + dts）：BButton、BInput、BInputNumber、BDatePicker、BTimePicker、BRadio、BRadioGroup、BCheckbox、BSwitch、BFileInput、BaseModal、BDialog、BCard、SkeletonCard、SkeletonChart、ErrorBoundary、OfflineBanner（含 LucideIcon、useOnlineStatus） |
+| ⏳ 待后续处理 | AlertBadge、MobileDrawer、BottomNav、HamburgerButton | 与业务/路由耦合，需先解耦（详见下方分项说明） |
+
+**待后续处理组件 —— 暂缓原因与解耦建议：**
+
+- **AlertBadge**（告警铃铛）— 依赖 `alertStore`（Pinia）+ `useNotification`，需将告警规则数据抽象为 props/插槽外部注入后再抽离。
+- **MobileDrawer**（移动端抽屉导航）— 硬编码路由导航项 + 依赖 `useRouter`，需将 `items` 导航配置改为外部 props 传入。
+- **BottomNav**（移动端底部导航）— 依赖 `useRoute`/`useRouter`/`useBreakpoint`，导航项需外部注入。
+- **HamburgerButton**（汉堡按钮）— 本身较纯（props: `isOpen` + emit: `toggle`），仅与 MobileDrawer 配套使用，建议随其一起迁移。
+
+> 首批组件已抽离完成（`packages/@gofund/ui`，Frontend 通过 `file:` 依赖 + Vite/TS 别名直接引用包源码）；
+> 抽离进展持续同步更新本节；详细组件级文档见文档站 [`docs/ui/extraction-plan.md`](docs/ui/extraction-plan.md)。
+
 ## ⚠️ 已知限制
 
 ### Yahoo Finance API 需要代理

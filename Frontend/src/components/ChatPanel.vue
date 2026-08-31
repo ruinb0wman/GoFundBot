@@ -189,12 +189,10 @@
 </template>
 
 <script setup lang="ts">
+import { BButton, BDialog, LucideIcon } from '@gofund/ui'
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
-import BButton from './BButton.vue'
-import BDialog from './BDialog.vue'
-import LucideIcon from './LucideIcon.vue'
 
 defineEmits<{ close: [] }>()
 

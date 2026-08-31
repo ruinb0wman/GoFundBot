@@ -1,107 +1,7 @@
-/* 全局重置 */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-/* 基础样式 */
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.6;
-  color: var(--text-primary, #1f2937);
-  background-color: var(--bg-page, #f5f7fa);
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-subtle, #f1f1f1);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--text-disabled, #888);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary, #555);
-}
-
-/* Lucide 图标与文字对齐 */
-svg.lucide, .lucide {
-  vertical-align: middle;
-  flex-shrink: 0;
-}
-
-.lucide-icon-fallback {
-  color: var(--color-danger);
-  font-size: 12px;
-}
-
-/* 工具类 */
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-left { text-align: left; }
-
-.mt-1 { margin-top: 0.25rem; }
-.mt-2 { margin-top: 0.5rem; }
-.mt-3 { margin-top: 1rem; }
-.mt-4 { margin-top: 1.5rem; }
-.mt-5 { margin-top: 2rem; }
-
-.mb-1 { margin-bottom: 0.25rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-3 { margin-bottom: 1rem; }
-.mb-4 { margin-bottom: 1.5rem; }
-.mb-5 { margin-bottom: 2rem; }
-
-.p-1 { padding: 0.25rem; }
-.p-2 { padding: 0.5rem; }
-.p-3 { padding: 1rem; }
-.p-4 { padding: 1.5rem; }
-.p-5 { padding: 2rem; }
-
-/* 响应式容器 */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .container {
-    padding: 0 10px;
-  }
-}
-
-/* ── 移动端触摸适配 ── */
-@media (max-width: 768px) {
-  button, a, .clickable, input, select, textarea {
-    min-height: 44px;
-  }
-
-  table, .vxe-table--wrapper {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .vxe-table--body-wrapper {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-}
+/* 全局样式入口
+ * 设计 token（明暗主题）+ 基线样式（重置/滚动条/工具类/关键帧）由 @gofund/ui 提供，
+ * 本项目仅保留 vxe-table 集成相关的暗色覆盖与移动端表格适配。 */
+@import '@gofund/ui/style.css';
 
 /* ── VXETable dark mode overrides (CSS variable approach) ── */
 [data-theme="dark"] {
@@ -166,4 +66,23 @@ svg.lucide, .lucide {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
   color: #fff;
+}
+
+/* ── 移动端触摸适配（vxe 表格横向滚动） ── */
+@media (max-width: 768px) {
+  button, a, .clickable, input, select, textarea {
+    min-height: 44px;
+  }
+
+  table, .vxe-table--wrapper {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .vxe-table--body-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
 }

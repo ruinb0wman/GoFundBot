@@ -175,11 +175,11 @@
 </template>
 
 <script setup>
+import { BButton, BInput, SkeletonCard } from '@gofund/ui'
 import { useFundWatchlist } from '../composables/useFundWatchlist'
-import BButton from './BButton.vue'
-import BInput from './BInput.vue'
+
 import FundListItems from './FundListItems.vue'
-import SkeletonCard from './SkeletonCard.vue'
+
 import AlertSettings from './AlertSettings.vue'
 
 const props = defineProps({

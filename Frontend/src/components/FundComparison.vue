@@ -176,8 +176,8 @@
 </template>
 
 <script setup lang="ts">
-import LucideIcon from './LucideIcon.vue'
-import BButton from './BButton.vue'
+
+import { LucideIcon, BButton } from '@gofund/ui'
 import { useFundComparison } from '../composables/useFundComparison'
 
 const props = defineProps({

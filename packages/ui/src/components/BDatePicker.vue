@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import LucideIcon from './LucideIcon.vue'
 
+defineOptions({ name: 'BDatePicker' })
+
 const props = withDefaults(defineProps<{
   modelValue?: string
   placeholder?: string
