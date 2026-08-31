@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { chatAPI, type ChatSessionDto, type ChatMessageDto, type ToolCallInfo, type SkillInfo } from '../services/chatApi'
 import { db } from '../db'
 import { useLLMConfig } from '../composables/useLLMConfig'
+import { buildActiveStrategyContext } from '../db/strategyMemory'
 
 export interface DisplayMessage {
   id: string
@@ -33,6 +34,7 @@ export const useChatStore = defineStore('chat', {
     initialized: false,
     currentSkill: null as string | null,
     selectedSkill: null as string | null,
+    channel: 'chat',
     skillOptions: [
       { name: 'auto', label: '自动' },
       { name: 'fund_analysis', label: '基金分析' },
@@ -40,6 +42,7 @@ export const useChatStore = defineStore('chat', {
       { name: 'news_briefing', label: '快讯新闻' },
       { name: 'fund_screening', label: '基金筛选' },
       { name: 'investment_strategy', label: '定投策略' },
+      { name: 'strategy', label: '策略' },
     ] as { name: string; label: string }[],
   }),
 
@@ -72,19 +75,32 @@ export const useChatStore = defineStore('chat', {
   },
 
   actions: {
-    async init() {
-      if (this.initialized) return
-      this.initialized = true
-      const result = await chatAPI.getSessions()
+    async init(channel = 'chat') {
+      await this.setChannel(channel)
+    },
+
+    /** Switch the whole chat context to a channel (chat / strategy). */
+    async setChannel(channel: string) {
+      if (this.channel === channel && this.initialized) return
+      this.channel = channel
+      this.currentSessionId = null
+      this.messages = []
+      this.isStreaming = false
+      this.streamingContent = ''
+      this.activeToolCalls = []
+      this.sessionTotalTokens = 0
+      this.retryMessage = ''
+      const result = await chatAPI.getSessions(channel)
       this.sessions = result.data || []
       if (this.sessions.length > 0) {
         await this.switchSession(this.sessions[0].id)
       }
+      this.initialized = true
     },
 
     async createSession() {
       try {
-        const result = await chatAPI.createSession()
+        const result = await chatAPI.createSession(this.channel)
         this.sessions.unshift(result.data)
         await this.switchSession(result.data.id)
         return result.data
@@ -175,7 +191,10 @@ export const useChatStore = defineStore('chat', {
       this.retryMessage = ''
       this.currentSkill = null
 
-      const skillParam = this.selectedSkill && this.selectedSkill !== 'auto' ? this.selectedSkill : undefined
+      const skillParam = this.channel === 'strategy'
+        ? 'strategy'
+        : (this.selectedSkill && this.selectedSkill !== 'auto' ? this.selectedSkill : undefined)
+      const strategyContext = await buildActiveStrategyContext()
 
       await chatAPI.sendMessage(conversationMessages, {
         onToken: (token: string, full: string) => {
@@ -247,7 +266,7 @@ export const useChatStore = defineStore('chat', {
           }
           await this.refreshSessions()
         },
-      }, skillParam, useLLMConfig().config.value)
+      }, skillParam, useLLMConfig().config.value, strategyContext)
     },
 
     finalizeStream() {
@@ -265,7 +284,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     async refreshSessions() {
-      const result = await chatAPI.getSessions()
+      const result = await chatAPI.getSessions(this.channel)
       this.sessions = result.data || []
     },
 

@@ -37,6 +37,7 @@ export interface AnalystInput {
   industryTag?: string;
   marketContext?: string;
   pastContext?: string;
+  strategyContext?: string;
 }
 
 interface AnalystReport {
@@ -80,6 +81,13 @@ export interface LLMConfig {
 function getClient(config: LLMConfig): OpenAI {
   const apiBase = config.apiBase || 'https://api.siliconflow.cn/v1';
   return new OpenAI({ apiKey: config.apiKey, baseURL: apiBase });
+}
+
+/** Build a "user strategy" section appended to analyst prompts, if provided. */
+export function strategyNote(ctx?: string): string {
+  const trimmed = ctx?.trim();
+  if (!trimmed) return '';
+  return `## 用户投资策略\n分析师给出评价与建议时需贴合用户的策略取向（投资期限、风险偏好、风格偏好等），但不得为迎合策略而歪曲数据。\n${trimmed}`;
 }
 
 async function callAnalyst(
@@ -134,6 +142,7 @@ async function callSupervisor(
   reports: AnalystReport[],
   fundInfo: string,
   llmConfig: LLMConfig,
+  strategyContext?: string,
 ): Promise<SupervisorOutput | null> {
   const client = getClient(llmConfig);
   const model = llmConfig.model || 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B';
@@ -144,7 +153,8 @@ async function callSupervisor(
     )
     .join('\n\n');
 
-  const userPrompt = `基金信息：\n${fundInfo}\n\n分析师报告：\n${reportsStr}\n\n请综合四位分析师观点，输出最终裁决JSON。`;
+  const strategyCtx = strategyNote(strategyContext);
+  const userPrompt = `基金信息：\n${fundInfo}\n\n分析师报告：\n${reportsStr}\n\n${strategyCtx}\n\n请综合四位分析师观点，输出最终裁决JSON。`;
 
   try {
     const response = await client.chat.completions.create({
@@ -177,21 +187,29 @@ export async function analyzeFund(input: AnalystInput, llmConfig?: LLMConfig): P
     input.riskMetrics ? `风险指标：${JSON.stringify(input.riskMetrics, null, 2)}` : '',
     input.netWorthTrend ? `净值数据：${input.netWorthTrend.length} 个数据点` : '',
     `行业标签：${input.industryTag ?? '未知'}`,
+    strategyNote(input.strategyContext),
   ]
     .filter(Boolean)
     .join('\n');
 
-  const holdingExtra = input.holdings
-    ? `持仓数据：\n${input.holdings.map((h) => `- ${h.name ?? h.code ?? '未知'}: ${h.ratio ? (h.ratio * 100).toFixed(2) + '%' : '未知'}`).join('\n')}`
-    : '暂无持仓数据';
+  const holdingExtra = [
+    input.holdings
+      ? `持仓数据：\n${input.holdings.map((h) => `- ${h.name ?? h.code ?? '未知'}: ${h.ratio ? (h.ratio * 100).toFixed(2) + '%' : '未知'}`).join('\n')}`
+      : '暂无持仓数据',
+    strategyNote(input.strategyContext),
+  ].filter(Boolean).join('\n');
 
-  const managerExtra = input.managers
-    ? `经理信息：\n${input.managers.map((m) => `- ${m.name ?? '未知'}：从业${m.workExperience ?? '未知'}年，管理规模${m.managedFundSize ?? '未知'}`).join('\n')}`
-    : '暂无经理信息';
+  const managerExtra = [
+    input.managers
+      ? `经理信息：\n${input.managers.map((m) => `- ${m.name ?? '未知'}：从业${m.workExperience ?? '未知'}年，管理规模${m.managedFundSize ?? '未知'}`).join('\n')}`
+      : '暂无经理信息',
+    strategyNote(input.strategyContext),
+  ].filter(Boolean).join('\n');
 
   const marketExtra = [
     input.marketContext ?? `行业标签：${input.industryTag ?? '未知'}`,
     input.pastContext ?? '',
+    strategyNote(input.strategyContext),
   ].filter(Boolean).join('\n\n');
 
   const [perfReport, holdingReport, managerReport, marketReport] = await Promise.all([
@@ -203,7 +221,7 @@ export async function analyzeFund(input: AnalystInput, llmConfig?: LLMConfig): P
 
   const reports = [perfReport, holdingReport, managerReport, marketReport];
 
-  const supervisor = await callSupervisor(reports, fundInfo, config);
+  const supervisor = await callSupervisor(reports, fundInfo, config, input.strategyContext);
 
   return {
     fund_code: input.fundCode,
@@ -223,24 +241,33 @@ export async function* analyzeFundStream(
   yield { stage: 'stage', content: 'performance分析师工作中...' };
   const fundInfo =
     `代码：${input.fundCode}\n名称：${input.fundName}\n类型：${input.fundType ?? '未知'}`;
-  const perfExtra = input.riskMetrics
-    ? JSON.stringify(input.riskMetrics, null, 2)
-    : '暂无风险数据';
+  const perfExtra = [
+    input.riskMetrics
+      ? JSON.stringify(input.riskMetrics, null, 2)
+      : '暂无风险数据',
+    strategyNote(input.strategyContext),
+  ].filter(Boolean).join('\n');
 
   const perfReport = await callAnalyst('performance', PERFORMANCE_PROMPT, fundInfo, perfExtra, config);
   yield { stage: 'token', content: JSON.stringify(perfReport) };
 
   yield { stage: 'stage', content: 'holding分析师工作中...' };
-  const holdingExtra = input.holdings
-    ? JSON.stringify(input.holdings)
-    : '暂无持仓数据';
+  const holdingExtra = [
+    input.holdings
+      ? JSON.stringify(input.holdings)
+      : '暂无持仓数据',
+    strategyNote(input.strategyContext),
+  ].filter(Boolean).join('\n');
   const holdingReport = await callAnalyst('holding', HOLDING_PROMPT, fundInfo, holdingExtra, config);
   yield { stage: 'token', content: JSON.stringify(holdingReport) };
 
   yield { stage: 'stage', content: 'manager分析师工作中...' };
-  const managerExtra = input.managers
-    ? JSON.stringify(input.managers)
-    : '暂无经理信息';
+  const managerExtra = [
+    input.managers
+      ? JSON.stringify(input.managers)
+      : '暂无经理信息',
+    strategyNote(input.strategyContext),
+  ].filter(Boolean).join('\n');
   const managerReport = await callAnalyst('manager', MANAGER_PROMPT, fundInfo, managerExtra, config);
   yield { stage: 'token', content: JSON.stringify(managerReport) };
 
@@ -248,13 +275,14 @@ export async function* analyzeFundStream(
   const marketExtra = [
     input.marketContext ?? `行业标签：${input.industryTag ?? '未知'}`,
     input.pastContext ?? '',
+    strategyNote(input.strategyContext),
   ].filter(Boolean).join('\n\n');
   const marketReport = await callAnalyst('market', MARKET_PROMPT, fundInfo, marketExtra, config);
   yield { stage: 'token', content: JSON.stringify(marketReport) };
 
   yield { stage: 'stage', content: '总监合成最终报告...' };
   const reports = [perfReport, holdingReport, managerReport, marketReport];
-  const supervisor = await callSupervisor(reports, fundInfo, config);
+  const supervisor = await callSupervisor(reports, fundInfo, config, input.strategyContext);
   yield { stage: 'result', content: JSON.stringify(supervisor) };
 
   yield { stage: 'done', content: '' };

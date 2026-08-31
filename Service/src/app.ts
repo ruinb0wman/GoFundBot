@@ -21,6 +21,7 @@ import { settingsRouter } from './routes/settings.routes.js';
 import { systemRouter } from './routes/system.routes.js';
 import { chatRouter } from './routes/chat.routes.js';
 import { analysisMemoryRouter } from './routes/analysisMemory.routes.js';
+import { strategyRouter } from './routes/strategy.routes.js';
 import { datasourceScoresRouter } from './routes/datasource-scores.routes.js';
 import { logsRouter } from './routes/logs.routes.js';
 
@@ -59,6 +60,7 @@ export function createApp() {
   app.use('/api', systemRouter);
   app.use('/api/chat', chatRouter);
   app.use('/api/analysis-memory', analysisMemoryRouter);
+  app.use('/api/strategy', strategyRouter);
   app.use('/api/datasource-scores', datasourceScoresRouter);
   app.use('/api/logs', logsRouter);
 

@@ -1,15 +1,15 @@
 <template>
-  <div class="chat-panel" :class="{ 'chat-panel--wide': chatStore.isWideMode }" @click.stop>
+  <div class="chat-panel" :class="{ 'chat-panel--wide': chatStore.isWideMode, 'chat-panel--embedded': embedded }" @click.stop>
     <!-- Header -->
     <div class="chat-header">
       <div class="chat-header-left">
-        <BButton circle size="small" :icon="chatStore.isWideMode ? 'PanelRightClose' : 'PanelRightOpen'" @click="chatStore.toggleWideMode()" :title="chatStore.isWideMode ? '窄屏模式' : '宽屏模式'" />
+        <BButton v-if="!embedded" circle size="small" :icon="chatStore.isWideMode ? 'PanelRightClose' : 'PanelRightOpen'" @click="chatStore.toggleWideMode()" :title="chatStore.isWideMode ? '窄屏模式' : '宽屏模式'" />
         <LucideIcon name="Bot" :size="18" />
-        <span class="chat-title">{{ 'AI 助手' }}</span>
+        <span class="chat-title">{{ panelTitle }}</span>
       </div>
       <div class="chat-header-actions">
         <BButton circle size="small" icon="Plus" @click="handleNewSession" :title="'新对话'" />
-        <BButton circle size="small" icon="Minimize2" @click="$emit('close')" :title="'最小化'" />
+        <BButton v-if="!embedded" circle size="small" icon="Minimize2" @click="$emit('close')" :title="'最小化'" />
       </div>
     </div>
 
@@ -61,8 +61,8 @@
       <div class="chat-messages" ref="messagesRef">
       <div v-if="chatStore.messages.length === 0 && !chatStore.isStreaming" class="chat-welcome">
         <LucideIcon name="Bot" :size="40" />
-        <h3>{{ '您好！我是 GoFundBot 助手' }}</h3>
-        <p>{{ '我可以帮您查询基金数据、市场行情、运行回测分析等。' }}</p>
+        <h3>{{ isStrategyMode ? '您好！我是策略顾问' : '您好！我是 GoFundBot 助手' }}</h3>
+        <p>{{ isStrategyMode ? '我可以帮您讨论、制定和完善投资策略，并参考您已保存的策略记忆。' : '我可以帮您查询基金数据、市场行情、运行回测分析等。' }}</p>
         <div class="welcome-suggestions">
           <BButton
             v-for="(s, i) in suggestions"
@@ -107,6 +107,12 @@
 
           <!-- Markdown content -->
           <div v-if="msg.content" class="message-text" v-html="renderMarkdown(msg.content)" />
+          <!-- Save as strategy (strategy channel only) -->
+          <div v-if="isStrategyMode && msg.role === 'assistant' && msg.content && msg.id !== '__streaming__'" class="message-save-actions">
+            <button class="save-strategy-btn" @click="saveDraft(msg.content)">
+              <LucideIcon name="BookmarkPlus" :size="13" /> {{ '保存为策略' }}
+            </button>
+          </div>
           <!-- Per-message token usage -->
           <div v-if="msg.usage" class="message-usage">
             ↑ {{ formatTokens(msg.usage.inputTokens) }} · ↓ {{ formatTokens(msg.usage.outputTokens) }}
@@ -131,7 +137,7 @@
       <!-- Skill bar -->
       <div class="chat-skill-bar" v-if="!chatStore.isStreaming" @click.stop>
         <span class="skill-label">{{ '技能' }}</span>
-        <div class="skill-dropdown-wrapper" @click="showSkillPicker = !showSkillPicker">
+        <div v-if="!isStrategyMode" class="skill-dropdown-wrapper" @click="showSkillPicker = !showSkillPicker">
           <span class="skill-current" :class="{ 'skill-auto': !chatStore.currentSkill }">
             {{ currentSkillLabel }}
           </span>
@@ -148,6 +154,7 @@
             </div>
           </div>
         </div>
+        <span v-else class="skill-current">策略</span>
         <span v-if="chatStore.sessionTotalTokens > 0" class="session-tokens">
           {{ formatTokens(chatStore.sessionTotalTokens) }}
         </span>
@@ -194,7 +201,15 @@ import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
 
-defineEmits<{ close: [] }>()
+const props = withDefaults(defineProps<{
+  channel?: string
+  forceSkill?: string
+  embedded?: boolean
+}>(), {
+  channel: 'chat',
+  forceSkill: undefined,
+  embedded: false,
+})
 
 const chatStore = useChatStore()
 const inputMessage = ref('')
@@ -208,6 +223,12 @@ const hasRunningToolCall = computed(() =>
   chatStore.activeToolCalls.some(t => t.status === 'running')
 )
 
+const emit = defineEmits<{ close: []; 'save-draft': [draft: { title: string; content: string }] }>()
+
+const panelTitle = computed(() => props.forceSkill === 'strategy' ? '策略讨论' : 'AI 助手')
+
+const isStrategyMode = computed(() => props.forceSkill === 'strategy')
+
 const currentSkillLabel = computed(() => {
   if (!chatStore.currentSkill) return '自动'
   const opt = chatStore.skillOptions.find(s => s.name === chatStore.currentSkill)
@@ -215,6 +236,12 @@ const currentSkillLabel = computed(() => {
 })
 
 const skillSuggestions = computed(() => {
+  if (props.forceSkill === 'strategy') return [
+    { text: '帮我完善我的投资策略' },
+    { text: '帮我制定一个定投计划' },
+    { text: '我的策略有什么漏洞？' },
+    { text: '根据我的策略筛选合适的基金' },
+  ]
   const skill = chatStore.currentSkill
   if (skill === 'market_overview') return [
     { text: '今天大盘怎么样？' },
@@ -285,7 +312,10 @@ function onClickOutside(e: MouseEvent) {
 }
 
 onMounted(() => {
-  chatStore.init()
+  chatStore.init(props.channel)
+  if (props.forceSkill) {
+    chatStore.selectSkill(props.forceSkill)
+  }
   inputRef.value?.focus()
   document.addEventListener('click', onClickOutside)
 })
@@ -293,6 +323,13 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', onClickOutside)
 })
+
+watch(
+  () => props.channel,
+  (channel) => {
+    chatStore.setChannel(channel || 'chat')
+  }
+)
 
 watch(
   () => chatStore.displayMessages.length,
@@ -375,6 +412,18 @@ function formatTokens(n: number): string {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
   if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
   return String(n)
+}
+
+function saveDraft(content: string) {
+  const firstLine = content
+    .split('\n')
+    .find(l => l.trim().length > 0)
+    ?.trim() || ''
+  const cleaned = firstLine.replace(/^#+\s*/, '').replace(/^[*-]\s*/, '')
+  emit('save-draft', {
+    title: cleaned.slice(0, 30) || '我的策略',
+    content,
+  })
 }
 
 function renderMarkdown(text: string): string {

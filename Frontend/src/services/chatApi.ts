@@ -40,8 +40,8 @@ export interface ChatCallbacks {
 }
 
 export const chatAPI = {
-  async sendMessage(messages: { role: string; content: string }[], callbacks: ChatCallbacks, skill?: string, llmConfig?: LLMConfig) {
-    const body = JSON.stringify({ messages, skill, llmConfig })
+  async sendMessage(messages: { role: string; content: string }[], callbacks: ChatCallbacks, skill?: string, llmConfig?: LLMConfig, strategyContext?: string) {
+    const body = JSON.stringify({ messages, skill, llmConfig, strategyContext })
 
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -146,24 +146,27 @@ export const chatAPI = {
     }
   },
 
-  async getSessions() {
+  async getSessions(channel = 'chat') {
     const sessions = await db.chatSessions
       .orderBy('updatedAt')
       .reverse()
       .toArray()
     return {
-      data: sessions.map(s => ({
-        id: s.id!,
-        title: s.title,
-        updated_at: s.updatedAt,
-      })),
+      data: sessions
+        .filter(s => channel === 'chat' ? (!s.channel || s.channel === 'chat') : s.channel === channel)
+        .map(s => ({
+          id: s.id!,
+          title: s.title,
+          updated_at: s.updatedAt,
+        })),
     }
   },
 
-  async createSession() {
+  async createSession(channel = 'chat') {
     const id = await db.chatSessions.add({
       title: '新对话',
       updatedAt: Date.now(),
+      channel,
     })
     return {
       data: { id, title: '新对话', updated_at: Date.now() },

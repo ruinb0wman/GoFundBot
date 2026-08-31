@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import type { FundAnalysisResult, AnalystReport } from '../types'
+import { buildActiveStrategyContext } from '../db/strategyMemory'
 
 export function usePortfolioAIAnalysis() {
   const data = ref<FundAnalysisResult | null>(null)
@@ -107,7 +108,7 @@ export function usePortfolioAIAnalysis() {
 
     // Calculate weight_pct for each fund
     const totalValue = funds.reduce((sum, f) => sum + (f.share * f.cost || 0), 0)
-    const body = {
+    const body: Record<string, unknown> = {
       funds: funds.map(f => ({
         code: f.code,
         share: f.share,
@@ -116,8 +117,13 @@ export function usePortfolioAIAnalysis() {
       })),
     }
 
+    const strategyContext = await buildActiveStrategyContext()
+    if (strategyContext) {
+      body.strategyContext = strategyContext
+    }
+
     try {
-      const response = await fetch('/api/portfolio/analyze', {
+      const response = await fetch('/api/user/portfolio/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -130,7 +136,7 @@ export function usePortfolioAIAnalysis() {
       if (json.error) {
         error.value = json.error
       } else {
-        data.value = json as FundAnalysisResult
+        data.value = (json.data || json) as FundAnalysisResult
       }
     } catch (e: any) {
       error.value = e.message || '组合诊断失败'

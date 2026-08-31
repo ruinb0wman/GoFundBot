@@ -3,6 +3,7 @@ import { ref, watch, computed } from 'vue'
 import { fundAPI } from '../services/api'
 import type { AnalystReport, FundAnalysisResult } from '../types'
 import { storeAnalysis, resolvePending, getPastContext } from '../db/analysisMemory'
+import { buildActiveStrategyContext } from '../db/strategyMemory'
 
 export function useFundAIAnalysis<T extends (...args: any[]) => any>(
   props: { fundCode: string },
@@ -171,11 +172,13 @@ export function useFundAIAnalysis<T extends (...args: any[]) => any>(
         pastContext = await getPastContext(props.fundCode)
       } catch { /* non-critical, continue without memory */ }
 
+      const strategyContext = await buildActiveStrategyContext()
+
       const baseUrl = '/api'
       const response = await fetch(`${baseUrl}/fund/${props.fundCode}/analyze/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
-        body: JSON.stringify({ pastContext: pastContext || undefined }),
+        body: JSON.stringify({ pastContext: pastContext || undefined, strategyContext: strategyContext || undefined }),
       })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const body = response.body

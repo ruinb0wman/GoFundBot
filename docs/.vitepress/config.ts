@@ -9,6 +9,7 @@ export default defineConfig({
       { text: '首页', link: '/index' },
       { text: '技术架构总览', link: '/architecture/' },
       { text: '基金筛选', link: '/fund-screening/index' },
+      { text: '策略板块', link: '/strategy/index' },
     ],
     sidebar: [
       {
@@ -32,6 +33,13 @@ export default defineConfig({
           { text: '筛选面板', link: '/fund-screening/filter-system' },
           { text: '指标丰富化', link: '/fund-screening/enrichment' },
           { text: '4433法则', link: '/fund-screening/4433-rule' },
+        ],
+      },
+      {
+        text: '策略板块',
+        items: [
+          { text: '概览', link: '/strategy/index' },
+          { text: '策略记忆与 AI 注入', link: '/strategy/memory-injection' },
         ],
       },
       {

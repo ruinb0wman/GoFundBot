@@ -6,6 +6,7 @@ import ScreeningView from '../views/ScreeningView.vue'
 import BacktestView from '../views/BacktestView.vue'
 import PortfolioView from '../views/PortfolioView.vue'
 import ResearchView from '../views/ResearchView.vue'
+import StrategyView from '../views/StrategyView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import SettingsGeneral from '../views/SettingsGeneral.vue'
 import SettingsLLM from '../views/SettingsLLM.vue'
@@ -61,6 +62,12 @@ const routes: RouteRecordRaw[] = [
     path: '/research',
     name: 'research',
     component: ResearchView,
+    meta: { rightbar: false },
+  },
+  {
+    path: '/strategy',
+    name: 'strategy',
+    component: StrategyView,
     meta: { rightbar: false },
   },
   {

@@ -103,3 +103,5 @@ export async function* analyzeFundStream(input: AnalystInput, llmConfig?: LLMCon
 ```
 
 **组合级分析**：通过 portfolio 数据（Dexie 表）+ 多只基金并行拉取详情 → LLM 综合评估组合分散度、相关性、风险暴露。
+
+**策略参考**：基金分析（`/api/fund/:code/analyze/stream`）与持仓诊断（`POST /api/user/portfolio/analyze`）均支持 `strategyContext` 字段——前端将用户在策略板块保存的启用中策略注入提示词，使评价与建议贴合用户策略取向（同时要求不歪曲数据）。详见 [策略记忆与 AI 注入](/strategy/memory-injection)。

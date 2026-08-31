@@ -66,3 +66,14 @@ analyzeFund() → Supervisor 输出
   → 7天后 resolvePending() → LLM 反思 → 更新 resolved=1
   → 下次 analyzeFund() → getPastContext() → 注入分析师 prompt
 ```
+
+## 策略记忆（策略板块）
+
+策略板块（`/strategy`）新增**策略记忆**系统，与历史分析记忆互补：
+
+- 存储：Dexie `strategies` 表（`++id, active, updatedAt`），字段 title / content / tags / active / source
+- 生成：策略板块内与 AI 讨论后「保存为策略」，或编辑表单中「AI 帮我起草」（`POST /api/strategy/draft`）
+- 注入：`buildActiveStrategyContext()` 将启用中的策略格式化为 Markdown，随 `strategyContext` 字段注入基金分析（aiAnalyst 4 分析师 + 总监）、持仓诊断（portfolioAnalyst）、AI 对话（chatService buildSystemPrompt）
+- 隔离：策略讨论会话复用 `chatSessions`，以 `channel: 'strategy'` 与主聊天隔离
+
+详见 [策略板块](/strategy/index) 与 [策略记忆与 AI 注入](/strategy/memory-injection)。

@@ -63,6 +63,7 @@ export interface ChatSession {
   id?: number
   title: string
   updatedAt: number
+  channel?: string
 }
 
 export interface ChatMessage {
@@ -132,6 +133,17 @@ export interface AnalysisMemoryRecord {
   resolvedDate: number | null
 }
 
+export interface StrategyRecord {
+  id?: number
+  title: string
+  content: string
+  tags: string[]
+  active: number
+  source: 'manual' | 'ai-draft'
+  createdAt: number
+  updatedAt: number
+}
+
 export class GoFundDB extends Dexie {
   watchlist!: Table<WatchlistItem>
   watchlistGroups!: Table<WatchlistGroup>
@@ -145,6 +157,7 @@ export class GoFundDB extends Dexie {
   marketCache!: Table<MarketCacheEntry>
   screeningFunds!: Table<ScreeningFund>
   analysisMemory!: Table<AnalysisMemoryRecord>
+  strategies!: Table<StrategyRecord>
 
   constructor() {
     super('GoFundBot')
@@ -168,6 +181,11 @@ export class GoFundDB extends Dexie {
 
     this.version(3).stores({
       analysisMemory: '++id, fundCode, resolved, analysisDate',
+    })
+
+    this.version(4).stores({
+      strategies: '++id, active, updatedAt',
+      chatSessions: '++id, updatedAt, channel',
     })
   }
 }

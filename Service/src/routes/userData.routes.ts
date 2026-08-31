@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { asyncHandler } from '../core/errors.js';
-import { sendSuccess } from '../core/response.js';
+import { sendSuccess, sendFailure } from '../core/response.js';
 import { getMarketIndices } from '../services/marketService.js';
+import { analyzePortfolio, type PortfolioFundInput } from '../services/portfolioAnalyst.js';
 
 export const watchlistRouter = Router();
 export const portfolioRouter = Router();
@@ -130,6 +132,39 @@ portfolioRouter.get(
   '/fund-group-map',
   asyncHandler(async (_req, res) => {
     sendSuccess(res, {});
+  }),
+);
+
+const portfolioAnalyzeSchema = z.object({
+  funds: z
+    .array(z.object({
+      code: z.string().min(1),
+      share: z.number().min(0).optional(),
+      cost: z.number().min(0).optional(),
+      weight_pct: z.number().min(0).optional(),
+    }))
+    .min(1)
+    .max(20),
+  strategyContext: z.string().max(8000).optional(),
+});
+
+portfolioRouter.post(
+  '/analyze',
+  asyncHandler(async (req, res) => {
+    const parsed = portfolioAnalyzeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendFailure(res, 400, {
+        code: 'INVALID_ARGUMENT',
+        message: 'Invalid request body',
+        detail: parsed.error.flatten(),
+      });
+      return;
+    }
+    const result = await analyzePortfolio({
+      funds: parsed.data.funds as PortfolioFundInput[],
+      strategyContext: parsed.data.strategyContext,
+    });
+    sendSuccess(res, result);
   }),
 );
 

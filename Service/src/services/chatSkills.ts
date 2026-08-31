@@ -153,6 +153,27 @@ ${RESPONSE_REQUIREMENTS}
 4. 风险提示：回测历史表现不代表未来收益
 5. 区分问题类型：需要基金代码+具体数据才能回答的，才调用工具；概念性、理论性、方法论问题直接回答，不调任何工具`;
 
+const STRATEGY_CHAT_PROMPT = `你是一位投资策略顾问，专注帮助个人投资者讨论、制定和完善投资策略。
+
+## 你的角色
+你的任务是基于用户的投资偏好与目标，帮助用户讨论、制定、完善、复盘个人投资策略（如定投计划、仓位管理、买卖纪律、风险控制）。
+
+## 职责范围
+- 理解用户已有的投资策略（见下方"用户策略记忆"），在此基础上讨论策略细节
+- 帮助用户制定新策略：投资目标、资金分配、标的范围、买入/卖出规则、风险管理、复盘机制
+- 帮助用户完善策略：指出逻辑漏洞、与用户风险承受能力的冲突、执行层面的模糊处
+- 讨论策略时如需核对具体基金/市场数据，可调用数据工具；纯概念性、理论性讨论直接回答
+- 当用户要求制定/完善策略时，最后给出结构化的"可保存版本"，用分段列出：标题、核心要点（可逐条列出），方便用户直接保存为策略记忆
+
+${DATA_RULES}
+
+${RESPONSE_REQUIREMENTS}
+
+## 回答策略
+1. 先确认理解用户的策略取向，再给出讨论或草案
+2. 涉及风险时给出提示，说清楚哪些是客观数据、哪些是你的判断
+3. 不在用户未要求时替用户扩展他没问到的方向`;
+
 const GENERAL_PROMPT = `你是一位基金研究助手，你的用户是个人基金投资者。
 
 ## 你的角色
@@ -185,6 +206,16 @@ export interface Skill {
   systemPrompt: string
   toolNames: string[]
 }
+
+const GENERAL_TOOL_NAMES = [
+  'search_funds', 'get_fund_detail', 'get_fund_estimate', 'get_fund_nav_history',
+  'get_market_indices', 'get_market_news', 'get_hot_sectors', 'get_concept_sectors',
+  'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_flash_news',
+  'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
+  'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
+  'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
+  'search_news', 'get_index_kline',
+]
 
 export const SKILL_DEFINITIONS: Skill[] = [
   {
@@ -230,19 +261,18 @@ export const SKILL_DEFINITIONS: Skill[] = [
     toolNames: ['run_backtest', 'suggest_strategy', 'get_fund_nav_history'],
   },
   {
+    name: 'strategy',
+    description: '讨论、制定、完善个人投资策略（结合用户已保存的策略记忆）',
+    keywords: ['我的策略', '投资风格', '策略板块', '策略讨论', '完善策略', '制定策略'],
+    systemPrompt: STRATEGY_CHAT_PROMPT,
+    toolNames: [...GENERAL_TOOL_NAMES],
+  },
+  {
     name: 'general',
     description: '综合助手，覆盖所有功能',
     keywords: [],
     systemPrompt: GENERAL_PROMPT,
-    toolNames: [
-      'search_funds', 'get_fund_detail', 'get_fund_estimate', 'get_fund_nav_history',
-      'get_market_indices', 'get_market_news', 'get_hot_sectors', 'get_concept_sectors',
-      'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_flash_news',
-      'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
-      'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
-      'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
-      'search_news', 'get_index_kline',
-    ],
+    toolNames: GENERAL_TOOL_NAMES,
   },
 ];
 
@@ -260,6 +290,7 @@ export const ROUTER_SYSTEM_PROMPT = `你是一个意图分类器。根据用户�
 - industry_research: 询问哪些行业值得关注/建仓、行业前景/板块机会分析、结合新闻政策研判行业方向
 - fund_screening: 找基金、筛选排名、查找某个行业或主题的基金
 - investment_strategy: 询问定投方案、回测模拟、投资策略推荐
+- strategy: 讨论、制定、完善个人投资策略，涉及"我的策略""投资风格""策略板块"等
 - general: 不属于以上任何一类，或者问题混合了多个类别
 
 只输出一个词，不要输出任何其他内容。`;
@@ -295,7 +326,7 @@ export class SkillRouter {
   }
 
   keywordRoute(message: string): string | null {
-    const priority = ['industry_research', 'fund_screening', 'news_briefing', 'investment_strategy', 'market_overview', 'fund_analysis'];
+    const priority = ['strategy', 'industry_research', 'fund_screening', 'news_briefing', 'investment_strategy', 'market_overview', 'fund_analysis'];
     for (const name of priority) {
       const skill = SKILL_MAP[name];
       if (skill.keywords.some(kw => message.includes(kw))) {

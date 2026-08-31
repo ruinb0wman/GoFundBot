@@ -115,6 +115,11 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `docs/fund-screening/` | 基金筛选模块细分文档（概览/数据流/筛选面板/指标丰富化/4433法则） |
 | `docs/market-*.md` | 市场数据各功能模块说明文档 |
 | `docs/architecture/` | 技术架构文档（数据源/数据流/回退策略/AI分析等） |
+| `docs/strategy/` | 策略板块文档（概览/策略记忆与AI注入） |
+| `Service/src/services/strategyService.ts` | AI 策略起草（LLM JSON + 模板降级），`POST /api/strategy/draft` |
+| `Service/src/services/portfolioAnalyst.ts` | 组合诊断分析（`POST /api/user/portfolio/analyze`），注入策略上下文 |
+| `Frontend/src/db/strategyMemory.ts` | 策略记忆 CRUD + `buildStrategyContext()` 上下文格式化 |
+| `Frontend/src/views/StrategyView.vue` + `Frontend/src/components/ChatPanel.vue` | 策略板块 UI（记忆列表/编辑表单 + 复用主聊天窗口，channel='strategy'） |
 
 ## Testing
 

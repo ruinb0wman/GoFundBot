@@ -28,6 +28,7 @@ const items = computed(() => [
   { route: 'backtest', icon: 'Coins', label: '回测' },
   { route: 'portfolio', icon: 'BarChart3', label: '持仓' },
   { route: 'research', icon: 'TrendingUp', label: '投研' },
+  { route: 'strategy', icon: 'NotebookPen', label: '策略' },
 ])
 
 function isActive(name: string): boolean {

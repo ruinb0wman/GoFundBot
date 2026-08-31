@@ -95,6 +95,13 @@ function buildToolsParam(skillName: string) {
   }));
 }
 
+/** Build the effective system prompt, appending the user's strategy memory when present. */
+export function buildSystemPrompt(basePrompt: string, strategyContext?: string): string {
+  const ctx = strategyContext?.trim();
+  if (!ctx) return basePrompt;
+  return `${basePrompt}\n\n## 用户策略记忆\n以下为用户当前启用的投资策略，你的分析与建议需贴合用户的策略取向，但不得为迎合策略而歪曲数据。\n${ctx}`;
+}
+
 function chunkBySentence(text: string, maxChunk = 50): string[] {
   const re = /[。！？\n！\n？\n。]+|.*?[，；、：\s]+|.+/g;
   const result: string[] = [];
@@ -115,6 +122,7 @@ export async function* chat(
   messages: Array<{ role: string; content: string }>,
   skillName?: string,
   llmConfig?: { apiKey?: string; apiBase?: string; model?: string },
+  strategyContext?: string,
 ): AsyncGenerator<ChatStreamEvent> {
   const apiKey = llmConfig?.apiKey || '';
   const apiBase = llmConfig?.apiBase || 'https://api.siliconflow.cn/v1';
@@ -139,7 +147,7 @@ export async function* chat(
   };
 
   const openaiMessages: ChatCompletionMessageParam[] = [
-    { role: 'system', content: resolvedSkill.systemPrompt },
+    { role: 'system', content: buildSystemPrompt(resolvedSkill.systemPrompt, strategyContext) },
     ...messages.map(m => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
