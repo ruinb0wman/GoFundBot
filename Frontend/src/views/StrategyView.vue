@@ -22,56 +22,7 @@
           </BButton>
         </div>
 
-        <div v-if="formOpen" class="editor-card">
-          <div class="editor-field">
-            <label>{{ '标题' }}</label>
-            <input v-model="form.title" class="text-input" placeholder="例如：稳健定投计划" maxlength="40" />
-          </div>
-          <div class="editor-field">
-            <label>{{ '标签（逗号分隔）' }}</label>
-            <input v-model="form.tagsText" class="text-input" placeholder="定投, 长期持有" />
-          </div>
-          <div class="editor-field">
-            <label>{{ '策略内容' }}</label>
-            <textarea
-              v-model="form.content"
-              class="text-area" rows="6"
-              placeholder="描述你的投资目标、资金分配、买卖纪律、风险管理等…"
-            />
-          </div>
-          <div class="editor-row">
-            <label class="toggle-label">
-              <input type="checkbox" v-model="form.active" /> {{ '启用（AI 分析时参考）' }}
-            </label>
-            <div class="editor-btns">
-              <BButton v-if="!drafting" text size="small" @click="openDraftTopic">
-                <LucideIcon name="Wand2" :size="14" /> {{ 'AI 帮我起草' }}
-              </BButton>
-              <BButton v-else text size="small" disabled>
-                <LucideIcon name="Loader" :size="14" class="spinning" /> {{ '起草中…' }}
-              </BButton>
-              <BButton size="small" @click="closeForm">{{ '取消' }}</BButton>
-              <BButton size="small" type="primary" :disabled="!form.title.trim() || !form.content.trim()" @click="handleSave">
-                {{ '保存' }}
-              </BButton>
-            </div>
-          </div>
-          <div v-if="draftTopicPrompt" class="draft-topic-row">
-            <input
-              v-model="draftTopic"
-              class="text-input"
-              placeholder="输入策略主题，例如：每月3000元的稳健定投"
-              @keydown.enter.exact.prevent="confirmDraft"
-            />
-            <BButton size="small" type="primary" :disabled="!draftTopic.trim() || drafting" @click="confirmDraft">
-              {{ '生成' }}
-            </BButton>
-            <BButton size="small" text @click="cancelDraft">X</BButton>
-          </div>
-          <div v-if="draftError" class="draft-error">{{ draftError }}</div>
-        </div>
-
-        <div v-else class="memory-list">
+        <div class="memory-list">
           <div v-if="strategies.length === 0" class="memory-empty">
             <LucideIcon name="BookOpen" :size="28" />
             <p>{{ '还没有策略记忆' }}</p>
@@ -87,6 +38,9 @@
                   :model-value="s.active === 1"
                   @update:model-value="toggleActive(s, $event)"
                 />
+                <BButton circle size="small" :title="'预览'" @click="previewItem = s">
+                  <LucideIcon name="Eye" :size="13" />
+                </BButton>
                 <BButton circle size="small" :title="'编辑'" @click="startEdit(s)">
                   <LucideIcon name="Pencil" :size="13" />
                 </BButton>
@@ -119,13 +73,89 @@
           @save-draft="handleSaveDraft"
         />
       </section>
+
+      <BaseModal
+        :visible="formOpen"
+        :title="editingId != null ? '编辑策略记忆' : '新建策略记忆'"
+        :width="680"
+        :close-on-overlay="false"
+        @close="closeForm"
+      >
+        <div class="editor-body">
+          <div class="editor-field">
+            <label>{{ '标题' }}</label>
+            <input v-model="form.title" class="text-input" placeholder="例如：稳健定投计划" maxlength="40" />
+          </div>
+          <div class="editor-field">
+            <label>{{ '标签（逗号分隔）' }}</label>
+            <input v-model="form.tagsText" class="text-input" placeholder="定投, 长期持有" />
+          </div>
+          <div class="editor-field">
+            <label>{{ '策略内容' }}</label>
+            <textarea
+              v-model="form.content"
+              class="text-area" rows="10"
+              placeholder="描述你的投资目标、资金分配、买卖纪律、风险管理等…"
+            />
+          </div>
+          <div class="editor-row">
+            <label class="toggle-label">
+              <input type="checkbox" v-model="form.active" /> {{ '启用（AI 分析时参考）' }}
+            </label>
+            <BButton v-if="!drafting" text size="small" @click="openDraftTopic">
+              <LucideIcon name="Wand2" :size="14" /> {{ 'AI 帮我起草' }}
+            </BButton>
+            <BButton v-else text size="small" disabled>
+              <LucideIcon name="Loader" :size="14" class="spinning" /> {{ '起草中…' }}
+            </BButton>
+          </div>
+          <div v-if="draftTopicPrompt" class="draft-topic-row">
+            <input
+              v-model="draftTopic"
+              class="text-input"
+              placeholder="输入策略主题，例如：每月3000元的稳健定投"
+              @keydown.enter.exact.prevent="confirmDraft"
+            />
+            <BButton size="small" type="primary" :disabled="!draftTopic.trim() || drafting" @click="confirmDraft">
+              {{ '生成' }}
+            </BButton>
+            <BButton size="small" text @click="cancelDraft">X</BButton>
+          </div>
+          <div v-if="draftError" class="draft-error">{{ draftError }}</div>
+        </div>
+        <template #footer>
+          <BButton size="small" @click="closeForm">{{ '取消' }}</BButton>
+          <BButton size="small" type="primary" :disabled="!form.title.trim() || !form.content.trim()" @click="handleSave">
+            {{ '保存' }}
+          </BButton>
+        </template>
+      </BaseModal>
+
+      <BaseModal
+        :visible="previewItem !== null"
+        :title="previewItem?.title ?? '策略预览'"
+        :width="620"
+        @close="previewItem = null"
+      >
+        <div v-if="previewItem" class="preview-body">
+          <div v-if="previewItem.tags && previewItem.tags.length" class="mem-tags">
+            <span v-for="(t, i) in previewItem.tags" :key="i" class="tag-chip">{{ t }}</span>
+          </div>
+          <div class="preview-content" v-html="renderMarkdown(previewItem.content)" />
+          <div class="mem-foot">
+            <span class="mem-source">{{ previewItem.source === 'ai-draft' ? 'AI起草' : '手动' }}</span>
+            <span class="mem-time">{{ formatDate(previewItem.updatedAt) }}</span>
+          </div>
+        </div>
+      </BaseModal>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { BButton, BSwitch, LucideIcon } from '@gofund/ui'
+import { BButton, BSwitch, BaseModal, LucideIcon } from '@gofund/ui'
 import { ref, computed, onMounted } from 'vue'
+import { marked } from 'marked'
 import ChatPanel from '../components/ChatPanel.vue'
 import { strategyAPI } from '../services/api'
 import {
@@ -150,6 +180,7 @@ const draftTopic = ref('')
 const drafting = ref(false)
 const draftError = ref('')
 const confirmDeleteId = ref<number | null>(null)
+const previewItem = ref<StrategyRecord | null>(null)
 
 const activeCount = computed(() => strategies.value.filter(s => s.active === 1).length)
 
@@ -258,7 +289,11 @@ function handleSaveDraft(draft: { title: string; content: string }) {
   form.value.title = draft.title
   form.value.content = draft.content
   form.value.active = true
-  document.querySelector('.strategy-page')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function renderMarkdown(text: string): string {
+  if (!text) return ''
+  return marked.parse(text, { breaks: true }) as string
 }
 
 function formatDate(ts: number): string {
