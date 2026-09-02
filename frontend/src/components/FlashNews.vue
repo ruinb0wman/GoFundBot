@@ -8,7 +8,7 @@
         <span v-if="!loading && newsList.length" class="count-badge">{{ newsList.length }} {{ '条' }}</span>
       </div>
       <div class="header-right">
-        <a class="doc-link" href="/docs/market-news" target="_blank" title="查看文档">
+        <a class="doc-link" href="/docs/market-news" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-news')">
           <LucideIcon name="HelpCircle" :size="16" />
         </a>
         <span v-if="sourcesText" class="sources-tag" :title="sourcesText">{{ sourcesText }}</span>
@@ -124,6 +124,7 @@
 <script setup lang="ts">
 
 import { BButton } from '@gofund/ui'
+import { openDocLink } from '../services/docLink'
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { marketAPI } from '../services/api'
 import { useDataPoller } from '../composables/useDataPoller'
@@ -479,6 +480,9 @@ onMounted(() => {
 .chip-ratio { font-weight: 600; color: var(--text-tertiary); }
 .chip-up { background: var(--color-danger-bg); } .chip-up .chip-ratio { color: var(--color-danger); }
 .chip-down { background: var(--color-success-bg); } .chip-down .chip-ratio { color: var(--color-success); }
+
+.doc-link { display: inline-flex; align-items: center; color: var(--text-tertiary); transition: color 0.2s; }
+.doc-link:hover { color: var(--color-primary); }
 
 @media (max-width: 768px) {
   .news-item { padding: 8px 12px; }

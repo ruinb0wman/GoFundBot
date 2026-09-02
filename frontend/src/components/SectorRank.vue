@@ -3,7 +3,7 @@
     <div class="section-header">
       <div class="section-header-row section-header-actions">
         <h3><LucideIcon name="Factory" :size="20" /> {{ '行业板块排行' }}</h3>
-        <a class="doc-link" href="/docs/market-sector-rank" target="_blank" title="查看文档">
+        <a class="doc-link" href="/docs/market-sector-rank" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-sector-rank')">
           <LucideIcon name="HelpCircle" :size="16" />
         </a>
         <div class="section-header-buttons">
@@ -191,6 +191,7 @@
 
 <script setup lang="ts">
 import { BButton } from '@gofund/ui'
+import { openDocLink } from '../services/docLink'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 import { marketAPI } from '../services/api'

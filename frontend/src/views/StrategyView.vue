@@ -2,7 +2,7 @@
   <div class="strategy-page">
     <div class="page-header">
       <div class="page-title">
-        <h1><LucideIcon name="NotebookPen" :size="22" /> {{ '策略' }}</h1>
+        <h1><LucideIcon name="NotebookPen" :size="22" /> {{ '策略研究' }}</h1>
         <p>{{ '与 AI 讨论投资策略并保存为策略记忆；AI 会在基金分析、持仓诊断和对话中自动考虑你的策略。' }}</p>
       </div>
       <div class="page-stats">
@@ -10,6 +10,9 @@
           <LucideIcon name="Activity" :size="14" />
           {{ `${activeCount} 个启用 · ${strategies.length} 个总计` }}
         </span>
+        <a class="doc-link" href="/docs/strategy" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/strategy/')">
+          <LucideIcon name="HelpCircle" :size="16" />
+        </a>
       </div>
     </div>
 
@@ -158,6 +161,7 @@ import { ref, computed, onMounted } from 'vue'
 import { marked } from 'marked'
 import ChatPanel from '../components/ChatPanel.vue'
 import { draftStrategy } from '../services/strategyDraft'
+import { openDocLink } from '../services/docLink'
 import { useLLMConfig } from '../composables/useLLMConfig'
 import {
   listStrategies,

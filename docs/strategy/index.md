@@ -1,10 +1,10 @@
-# 策略板块 (Strategy Board)
+# 策略研究 (Strategy Research)
 
 ## 一、概述
 
-策略板块让用户与 AI 讨论、制定、完善个人投资策略，并通过「AI 辅助 + 手动确认」的方式沉淀为**策略记忆**。策略记忆启用后，AI 会在**基金分析、持仓诊断、AI 对话**三个场景中自动参考，使分析与建议贴合用户的策略取向。
+策略研究板块让用户与 AI 讨论、制定、完善个人投资策略，并通过「AI 辅助 + 手动确认」的方式沉淀为**策略记忆**。策略记忆启用后，AI 会在**基金分析、持仓诊断、AI 对话**三个场景中自动参考，使分析与建议贴合用户的策略取向。
 
-页面路径：`/strategy`，与投研看板同级，桌面端左右分栏（左：策略记忆列表 + 编辑表单；右：策略讨论聊天区），移动端上下堆叠。
+页面路径：`/strategy`（顶部导航 / 移动端抽屉 / 底部导航均显示为「策略研究」），与投研看板同级，桌面端左右分栏（左：策略记忆列表 + 编辑表单；右：策略讨论聊天区），移动端（≤900px）上下堆叠。
 
 ## 二、功能清单
 
@@ -20,12 +20,28 @@
 
 策略讨论复用主 AI 聊天的同一组件（`ChatPanel.vue`）与同一 store（`chatStore`）：
 
-- `channel` prop 隔离会话：主聊天 `channel='chat'`（默认），策略板块 `channel='strategy'`，会话按 channel 各自存储（Dexie `chatSessions.channel`）与列表展示
+- `channel` prop 隔离会话：主聊天 `channel='chat'`（默认），策略研究板块 `channel='strategy'`，会话按 channel 各自存储（Dexie `chatSessions.channel`）与列表展示
 - `force-skill='strategy'` 锁定策略技能（隐藏技能下拉，显示固定"策略"标签）；主聊天技能列表也新增「策略」选项，可在任意页面选择讨论策略
 - `embedded` prop 让浮层样式平铺到页面列内；策略路由下隐藏悬浮气泡（`ChatBubble`），避免双实例争用同一 store
 - 策略频道内每条 AI 回复提供「保存为策略」按钮，经 `emit('save-draft')` 预填策略记忆编辑表单
 
+### 保存为策略（端到端流程）
+
+```
+策略频道 AI 回复
+  → 点击「保存为策略」（emit('save-draft', { title, content }) 上抛到 StrategyView）
+  → 预填策略记忆编辑表单（startCreate + 填充 title/content）
+  → 用户确认（可改标题/标签/内容/启用开关）
+  → addStrategy() 写入 Dexie strategies 表（source='manual'，已建记录手动改）
+  → 列表刷新，策略记忆即刻生效（active=1 时进入 AI 注入链路）
+```
+
 ## 三、数据流概览
+
+### 页面布局
+
+- 桌面端：`grid-template-columns: 380px 1fr` —— 左栏 380px 策略记忆列表 + 编辑表单，右栏策略讨论聊天区
+- 移动端：`max-width: 900px` 断点降为单列，上下堆叠（先记忆列表，后聊天区）
 
 ```
 策略讨论

@@ -8,7 +8,7 @@
     "dev:service": "cd service && npm run dev",
     "dev:frontend": "cd frontend && npm run dev --host",
     "desktop:dev": "cd tauri && npm run dev",
-    "dev:desktop": "concurrently -n svc,fe,tauri -c blue,green,magenta \"npm run dev:service\" \"npm run dev:frontend\" \"npm run desktop:dev\""
+    "dev:desktop": "concurrently -n svc,fe,doc,tauri -c blue,green,yellow,magenta \"npm run dev:service\" \"npm run dev:frontend\" \"npm run docs:dev\" \"npm run desktop:dev\""
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

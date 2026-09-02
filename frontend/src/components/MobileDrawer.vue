@@ -48,7 +48,7 @@ const items = computed(() => [
   { route: 'backtest', icon: 'Coins', label: '定投回测' },
   { route: 'portfolio', icon: 'BarChart3', label: '估值与持仓' },
   { route: 'research', icon: 'TrendingUp', label: '投研看板' },
-  { route: 'strategy', icon: 'NotebookPen', label: '策略' },
+  { route: 'strategy', icon: 'NotebookPen', label: '策略研究' },
 ])
 
 function navigate(route: string) {

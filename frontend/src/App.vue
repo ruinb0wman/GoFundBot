@@ -18,7 +18,7 @@
             <button class="mode-btn" :class="{ active: route.name === 'backtest' || route.name === 'backtest-fund' }" @click="router.push({ name: 'backtest' })"><LucideIcon name="Coins" :size="16" /> {{ '定投回测' }}</button>
             <button class="mode-btn" :class="{ active: route.name === 'portfolio' }" @click="router.push({ name: 'portfolio' })"><LucideIcon name="BarChart3" :size="16" /> {{ '估值与持仓' }}</button>
             <button class="mode-btn" :class="{ active: route.name === 'research' }" @click="router.push({ name: 'research' })"><LucideIcon name="TrendingUp" :size="16" /> {{ '投研看板' }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'strategy' }" @click="router.push({ name: 'strategy' })"><LucideIcon name="NotebookPen" :size="16" /> {{ '策略' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'strategy' }" @click="router.push({ name: 'strategy' })"><LucideIcon name="NotebookPen" :size="16" /> {{ '策略研究' }}</button>
           </div>
           <AlertBadge />
           <button class="header-icon-btn" @click="router.push('/settings')" :title="'设置'">
@@ -73,6 +73,7 @@
 
     <MobileDrawer :isOpen="drawerOpen" :activeRoute="String(route.name || '')" @close="drawerOpen = false" />
     <BottomNav />
+    <DocsViewer />
     <ChatBubble v-if="route.name !== 'strategy'" />
   </div>
 </template>
@@ -91,6 +92,7 @@ import FlashNews from './components/FlashNews.vue'
 import SectorRank from './components/SectorRank.vue'
 import AlertBadge from './components/AlertBadge.vue'
 import ChatBubble from './components/ChatBubble.vue'
+import DocsViewer from './components/DocsViewer.vue'
 import { onMounted } from 'vue'
 import { useApp } from './composables/useApp'
 import { useAppSettings } from './composables/useAppSettings'

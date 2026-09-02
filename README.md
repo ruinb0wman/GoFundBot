@@ -103,16 +103,19 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 #### （7）桌面端使用（Tauri 2 壳）
 
-桌面壳仅解禁 CORS、不打包前端资源，**Node 与前端服务必须独立启动**，桌面 WebView 加载运行中的前端服务 origin。
+桌面壳仅解禁 CORS、不打包前端资源，**Node 与前端服务必须独立启动**（另需文档站，桌面「?」文档入口经前端 `/docs` 代理加载文档），桌面 WebView 加载运行中的前端服务 origin。
 
 ```bash
-# 1. 启动后端 + 前端（生产静态托管）
+# 1. 启动后端 + 前端（生产静态托管）+ 文档站
 cd service && npm install && npm run build && npm start   # service :8310
-cd frontend && npm run build && npm run preview            # 静态托管 :8417
+cd frontend && npm run build && npm run preview            # 静态托管 :8417（/docs 代理 → 8574）
+cd docs && npm install && npx vitepress dev --port 8574   # 文档站 :8574
 
 # 2. 启动桌面壳（另开终端）
 cd tauri && npm install && npm run dev                     # = tauri dev
 ```
+
+> 开发模式可用根目录 `npm run dev:desktop` 一键并行启动 **service + frontend + docs + tauri** 四进程。
 
 > Linux 需系统库 `webkit2gtk-4.1` / `gtk3` / `atk`；`npm run dev`（根目录）默认加载 devUrl `http://localhost:8517`，`npm run build && npm run preview` 后加载 prod `http://localhost:8417`。详见文档站 [桌面壳](docs/architecture/desktop-shell.md)。
 
@@ -225,7 +228,7 @@ npm run dev
 ### 5. 桌面启动
 
 ```bash
-# 根目录一键：Node + vite + tauri 并行（concurrently）
+# 根目录一键：Node + vite + docs + tauri 并行（concurrently，含文档站）
 npm run dev:desktop
 ```
 

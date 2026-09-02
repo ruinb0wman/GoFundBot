@@ -15,7 +15,7 @@
           </span>
         </div>
         <div class="header-right">
-          <a class="doc-link" href="/docs/fund-screening" target="_blank" title="查看文档">
+          <a class="doc-link" href="/docs/fund-screening" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/fund-screening/')">
             <LucideIcon name="HelpCircle" :size="16" />
           </a>
           <BButton type="primary" :disabled="updateStatus.running || syncing" @click="openUpdateDialog" :title="'选择要执行的更新任务'">
@@ -370,6 +370,7 @@
 <script setup lang="ts">
 // @ts-nocheck
 import { BButton, BInputNumber, BCheckbox, BDialog } from '@gofund/ui'
+import { openDocLink } from '../services/docLink'
 import { useFundScreening } from '../composables/useFundScreening'
 
 defineOptions({ name: 'FundScreening' })

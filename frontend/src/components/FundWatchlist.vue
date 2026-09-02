@@ -20,7 +20,7 @@
       <div v-if="compareMode && compareFunds.length === 1" class="compare-hint">
         {{ `还需选择至少 ${1} 只基金才能对比` }}
       </div>
-      <a class="doc-link" href="/docs/market-watchlist" target="_blank" title="查看文档">
+      <a class="doc-link" href="/docs/market-watchlist" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-watchlist')">
         <LucideIcon name="HelpCircle" :size="16" />
       </a>
     </div>
@@ -176,6 +176,7 @@
 
 <script setup>
 import { BButton, BInput, SkeletonCard } from '@gofund/ui'
+import { openDocLink } from '../services/docLink'
 import { useFundWatchlist } from '../composables/useFundWatchlist'
 
 import FundListItems from './FundListItems.vue'

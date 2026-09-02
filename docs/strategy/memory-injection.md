@@ -65,8 +65,8 @@ chatSessions: '++id, updatedAt, channel'
 
 ### 3. AI 对话（前端 `chatEngine`，原 `POST /api/chat` 已撤销）
 
-- 前端 `chatStore.sendMessage` 在每次发送前调用 `buildActiveStrategyContext()` 获取最新上下文（主聊天与策略板块同一 store / 同一实现）
-- 策略板块将同一 `ChatPanel` 以 `channel='strategy'` 嵌入页面，技能锁定为 `strategy`；会话按 channel 分离
+- 前端 `chatStore.sendMessage` 在每次发送前调用 `buildActiveStrategyContext()` 获取最新上下文（主聊天与策略研究板块同一 store / 同一实现）
+- 策略研究板块将同一 `ChatPanel` 以 `channel='strategy'` 嵌入页面，技能锁定为 `strategy`；会话按 channel 分离
 - 前端 `chatEngine.buildSystemPrompt()` 将其附加到当前技能 systemPrompt 之后：
 
 ```
@@ -80,8 +80,8 @@ chatSessions: '++id, updatedAt, channel'
 ## 四、strategy 技能路由
 
 - `chatEngine/skills.ts` 新增 `strategy` 技能，系统提示词扮演「投资策略顾问」，可调用 general 数据工具集核对基金 / 行情
-- 关键词：`我的策略`、`投资风格`、`策略板块`、`策略讨论` 等，路由优先级置于首位
-- 泛化「策略」词仍走 `investment_strategy`（定投回测），避免抢路由；策略板块内聊天强制 `skill='strategy'`，不依赖路由
+- 关键词：`我的策略`、`投资风格`、`策略板块`（注：此为代码层关键词原文，与 `skills.ts` 一致，非板块名）、`策略讨论` 等，路由优先级置于首位
+- 泛化「策略」词仍走 `investment_strategy`（定投回测），避免抢路由；策略研究板块内聊天强制 `skill='strategy'`，不依赖路由
 
 ## 五、AI 起草（前端 `strategyDraft.ts`，原 `POST /api/strategy/draft` 已撤销）
 

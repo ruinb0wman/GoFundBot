@@ -4,7 +4,7 @@
       <div class="section-header">
         <h3><LucideIcon name="TrendingDown" :size="20" /> {{ '市场指数近一月走势' }}</h3>
         <div class="header-actions">
-          <a class="doc-link" href="/docs/market-index-trend" target="_blank" title="查看文档">
+          <a class="doc-link" href="/docs/market-index-trend" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-index-trend')">
             <LucideIcon name="HelpCircle" :size="16" />
           </a>
         </div>
@@ -26,7 +26,7 @@
       <div class="section-header">
         <h3><LucideIcon name="Globe" :size="20" /> {{ '全球行情' }}</h3>
         <div class="header-actions">
-          <a class="doc-link" href="/docs/market-global" target="_blank" title="查看文档">
+          <a class="doc-link" href="/docs/market-global" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-global')">
             <LucideIcon name="HelpCircle" :size="16" />
           </a>
           <span class="update-tag" :class="{ failed: indicesStatus === 'failed' }" v-if="indicesUpdateTime">
@@ -63,7 +63,7 @@
       <div class="section-header">
         <h3><LucideIcon name="BarChart3" :size="20" /> {{ '近7日A股成交量' }}</h3>
         <div class="header-actions">
-          <a class="doc-link" href="/docs/market-volume" target="_blank" title="查看文档">
+          <a class="doc-link" href="/docs/market-volume" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-volume')">
             <LucideIcon name="HelpCircle" :size="16" />
           </a>
           <span class="update-tag" :class="{ failed: volumeStatus === 'failed' }" v-if="volumeUpdateTime">
@@ -82,7 +82,7 @@
       <div class="section-header">
         <h3><LucideIcon name="TrendingUp" :size="20" /> {{ '今日资金流向' }}</h3>
         <div class="header-actions">
-          <a class="doc-link" href="/docs/market-money-flow" target="_blank" title="查看文档">
+          <a class="doc-link" href="/docs/market-money-flow" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-money-flow')">
             <LucideIcon name="HelpCircle" :size="16" />
           </a>
           <span class="update-tag" :class="{ failed: moneyFlowStatus === 'failed' }" v-if="moneyFlowUpdateTime">
@@ -101,7 +101,7 @@
       <div class="section-header">
         <h3><LucideIcon name="Award" :size="20" /> {{ '实时贵金属' }}</h3>
         <div class="header-actions">
-          <a class="doc-link" href="/docs/market-gold" target="_blank" title="查看文档">
+          <a class="doc-link" href="/docs/market-gold" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-gold')">
             <LucideIcon name="HelpCircle" :size="16" />
           </a>
           <span class="update-tag" :class="{ failed: goldStatus === 'failed' }" v-if="goldUpdateTime">
@@ -185,6 +185,7 @@
 
 <script setup lang="ts">
 import { BButton, LucideIcon } from '@gofund/ui'
+import { openDocLink } from '../services/docLink'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
