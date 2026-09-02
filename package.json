@@ -1,25 +1,14 @@
 {
   "name": "gofundbot",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
     "setup:venv": "test -d python/.venv || python3 -m venv python/.venv && python/.venv/bin/pip install -r python/requirements.txt -r python/requirements-dev.txt || python/.venv/bin/pip install -r python/requirements.txt -r python/requirements-dev.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn",
-    "setup:precommit": "python/.venv/bin/pre-commit install --install-hooks",
     "dev": "npm run setup:venv && concurrently -n svc,fe,doc -c blue,green,yellow \"npm run dev:service\" \"npm run dev:frontend\" \"npm run docs:dev\"",
     "docs:dev": "cd docs && npx vitepress dev --port 8574",
-    "docs:build": "cd docs && npx vitepress build",
     "dev:service": "cd service && npm run dev",
     "dev:frontend": "cd frontend && npm run dev --host",
     "desktop:dev": "cd tauri && npm run dev",
-    "desktop:build": "cd tauri && npm run build",
-    "dev:desktop": "concurrently -n svc,fe,tauri -c blue,green,magenta \"npm run dev:service\" \"npm run dev:frontend\" \"npm run desktop:dev\"",
-    "build": "cd frontend && npm run build",
-    "install:all": "cd service && npm install && cd ../frontend && npm install && cd ../tauri && npm install && cd .. && npm run setup:venv && npm run setup:precommit",
-    "test": "cd service && npm test && cd ../frontend && npx vue-tsc --noEmit && npm test",
-    "test:service": "cd service && npm test",
-    "test:frontend": "cd frontend && npx vue-tsc --noEmit && npm test"
+    "dev:desktop": "concurrently -n svc,fe,tauri -c blue,green,magenta \"npm run dev:service\" \"npm run dev:frontend\" \"npm run desktop:dev\""
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

@@ -186,6 +186,9 @@ cd frontend && npm install && cd ..
 npm run setup:venv
 # 备选：pip install -r python/requirements.txt
 
+# 安装 git 钩子（pre-commit 二进制随 setup:venv 装入 python/.venv）
+python/.venv/bin/pre-commit install --install-hooks
+
 # tauri（桌面端，可选）
 cd tauri && npm install && cd ..
 
@@ -222,8 +225,8 @@ npm run dev
 ### 5. 桌面启动
 
 ```bash
-# 先启动后端 + 前端（见上文「桌面端使用」），再启动桌面壳
-npm run desktop:dev        # 等价：service + frontend + tauri dev 并行
+# 根目录一键：Node + vite + tauri 并行（concurrently）
+npm run dev:desktop
 ```
 
 ### 6. 生产部署
