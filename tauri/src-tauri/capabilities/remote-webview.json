@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/remote-schema.json",
+  "identifier": "gofund-remote-webview",
+  "description": "Grant the running frontend service origins (dev + prod) access to the http plugin (tauri-plugin-http) and core APIs, so the WebView can bypass browser CORS for Node API + external LLM/search requests.",
+  "windows": ["main"],
+  "remote": {
+    "urls": [
+      "http://localhost:5173",
+      "http://localhost:4173"
+    ]
+  },
+  "permissions": [
+    "http:default",
+    "core:default"
+  ]
+}

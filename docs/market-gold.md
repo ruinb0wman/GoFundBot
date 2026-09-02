@@ -27,17 +27,17 @@ GET /api/market/gold/realtime
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| Route | `Service/src/routes/market.routes.ts:148` | `GET /api/market/gold/history` |
-| Route | `Service/src/routes/market.routes.ts:156` | `GET /api/market/silver/history` |
-| Route | `Service/src/routes/market.routes.ts:171` | `GET /api/market/gold/realtime` |
-| Service | `Service/src/services/marketService.ts:633` | `fetchGoldRealtime()` 实时行情 |
-| Service | `Service/src/services/marketService.ts:694` | `getGoldHistory()` 金价历史 |
-| Service | `Service/src/services/marketService.ts:756` | `getSilverHistory()` 银价历史 |
-| 缓存 | `Service/src/core/cache.ts:178` | `goldRealtime` TTL 60s, `goldHistory` TTL 1h |
-| Frontend API | `Frontend/src/services/api.ts:87-89` | `getGoldRealtime()`, `getGoldHistory()`, `getSilverHistory()` |
-| 前端渲染 | `Frontend/src/components/MarketOverview.vue:84-98` | gold 卡片模板 |
-| 前端 Composable | `Frontend/src/composables/useMarketOverview.ts:23-102` | goldPoller、模态框、ECharts option |
-| 前端样式 | `Frontend/src/components/MarketOverview.css:30-49` | gold 卡片/弹窗样式 |
+| Route | `service/src/routes/market.routes.ts:148` | `GET /api/market/gold/history` |
+| Route | `service/src/routes/market.routes.ts:156` | `GET /api/market/silver/history` |
+| Route | `service/src/routes/market.routes.ts:171` | `GET /api/market/gold/realtime` |
+| service | `service/src/services/marketService.ts:633` | `fetchGoldRealtime()` 实时行情 |
+| service | `service/src/services/marketService.ts:694` | `getGoldHistory()` 金价历史 |
+| service | `service/src/services/marketService.ts:756` | `getSilverHistory()` 银价历史 |
+| 缓存 | `service/src/core/cache.ts:178` | `goldRealtime` TTL 60s, `goldHistory` TTL 1h |
+| frontend API | `frontend/src/services/api.ts:87-89` | `getGoldRealtime()`, `getGoldHistory()`, `getSilverHistory()` |
+| 前端渲染 | `frontend/src/components/MarketOverview.vue:84-98` | gold 卡片模板 |
+| 前端 Composable | `frontend/src/composables/useMarketOverview.ts:23-102` | goldPoller、模态框、ECharts option |
+| 前端样式 | `frontend/src/components/MarketOverview.css:30-49` | gold 卡片/弹窗样式 |
 
 ## 四、API 数据源 — jijinhao
 
@@ -99,8 +99,8 @@ GET https://api.jijinhao.com/quoteCenter/history.htm
 
 | 项 | 说明 |
 |----|------|
-| 组件 | `Frontend/src/components/MarketOverview.vue` — `第 84-98 行` "实时贵金属" section |
-| Composable | `Frontend/src/composables/useMarketOverview.ts:158` — `goldPoller` 轮询 |
+| 组件 | `frontend/src/components/MarketOverview.vue` — `第 84-98 行` "实时贵金属" section |
+| Composable | `frontend/src/composables/useMarketOverview.ts:158` — `goldPoller` 轮询 |
 | 卡片 | flex 卡片布局，显示名称、价格(单位)、涨跌额 + 涨跌幅 |
 | 颜色规则 | 涨跌额 ≥ 0 红色（up），< 0 绿色（down） |
 | 弹窗图表 | ECharts 折线图（银：单线 + 面积；金：中国黄金 + 周大福双线） |
@@ -123,5 +123,5 @@ GET https://api.jijinhao.com/quoteCenter/history.htm
 3. **`change_pct` 格式 Bug（已修复 — 2026-07-28）**：
    - 修复前：server 端 `${to2(d.q80)}%` 预拼接 `%`，client 端 `fmtPercent("0.55%")` 因 `isFiniteNumber` 校验失败返回 `--`
    - 修复后：server 端返回原始数值 `to2(d.q80)`，由 `fmtPercent` 统一格式化
-   - 涉及文件：`Service/src/services/marketService.ts:667`
+   - 涉及文件：`service/src/services/marketService.ts:667`
 4. **历史数据非交易日缺失**：周末和节假日无数据，图表可能出现断点。

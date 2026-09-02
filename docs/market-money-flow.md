@@ -20,13 +20,13 @@ GET /api/market/money-flow
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| Route | `Service/src/routes/market.routes.ts:127` | `GET /api/market/money-flow` |
-| Service | `Service/src/services/marketService.ts:522` | `getMarketMoneyFlow()` 编排 |
-| Provider | `Service/src/providers/eastmoney/eastmoneyMarketProvider.ts:350` | `marketMoneyFlow()` 东方财富实现 |
-| Python 回退 | `Scripts/cli/data_complete.py:315` | `complete_market_money_flow()` akshare 实现 |
-| Frontend API | `Frontend/src/services/api.ts:99` | `getMarketMoneyFlow()` |
-| Frontend 渲染 | `Frontend/src/composables/useMarketOverview.ts:302` | `moneyFlowOption` ECharts option |
-| 缓存 | `Service/src/core/cache.ts:172` | TTL 30s |
+| Route | `service/src/routes/market.routes.ts:127` | `GET /api/market/money-flow` |
+| service | `service/src/services/marketService.ts:522` | `getMarketMoneyFlow()` 编排 |
+| Provider | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts:350` | `marketMoneyFlow()` 东方财富实现 |
+| Python 回退 | `python/cli/data_complete.py:315` | `complete_market_money_flow()` akshare 实现 |
+| frontend API | `frontend/src/services/api.ts:99` | `getMarketMoneyFlow()` |
+| frontend 渲染 | `frontend/src/composables/useMarketOverview.ts:302` | `moneyFlowOption` ECharts option |
+| 缓存 | `service/src/core/cache.ts:172` | TTL 30s |
 
 ## 三、东方财富 API 数据源
 
@@ -99,8 +99,8 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type mon
 
 | 项 | 说明 |
 |----|------|
-| 组件 | `Frontend/src/components/MarketOverview.vue` — "市场资金流向" section |
-| Composable | `Frontend/src/composables/useMarketOverview.ts:302` — `moneyFlowOption` |
+| 组件 | `frontend/src/components/MarketOverview.vue` — "市场资金流向" section |
+| Composable | `frontend/src/composables/useMarketOverview.ts:302` — `moneyFlowOption` |
 | 图表类型 | ECharts 横向柱状图（`type: 'bar'`），4 条互斥柱 |
 | 数值单位 | 元 → 亿（代码中 `/ 1e8` 转换） |
 | 颜色规则 | 正值（净流入）红色（`--color-danger`），负值（净流出）绿色（`--color-success`） |

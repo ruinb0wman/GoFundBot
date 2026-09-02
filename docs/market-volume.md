@@ -21,13 +21,13 @@ GET /api/market/volume/7days
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| Route | `Service/src/routes/market.routes.ts:178` | `GET /api/market/volume/7days` |
-| Service | `Service/src/services/marketService.ts:957` | `getAVolume7Days()` 聚合逻辑 |
+| Route | `service/src/routes/market.routes.ts:178` | `GET /api/market/volume/7days` |
+| service | `service/src/services/marketService.ts:957` | `getAVolume7Days()` 聚合逻辑 |
 | Provider | 复用 `getMarketKline()` → ProviderChain | 获取上证/深证日线 |
-| Python 回退 | `Scripts/cli/data_complete.py` | `--source baostock/akshare --type kline` |
-| Frontend API | `Frontend/src/services/api.ts:91` | `getVolume7Days()` |
-| Frontend 渲染 | `Frontend/src/composables/useMarketOverview.ts:242` | `volumeOption` ECharts option |
-| 缓存 | `Service/src/core/cache.ts:170` | `marketKline` TTL 1h |
+| Python 回退 | `python/cli/data_complete.py` | `--source baostock/akshare --type kline` |
+| frontend API | `frontend/src/services/api.ts:91` | `getVolume7Days()` |
+| frontend 渲染 | `frontend/src/composables/useMarketOverview.ts:242` | `volumeOption` ECharts option |
+| 缓存 | `service/src/core/cache.ts:170` | `marketKline` TTL 1h |
 
 ## 三、API 数据源 — EastMoney Kline
 
@@ -58,8 +58,8 @@ GET https://push2his.eastmoney.com/api/qt/stock/kline/get
 
 | 项 | 说明 |
 |----|------|
-| 组件 | `Frontend/src/components/MarketOverview.vue` — "近7日A股成交量" section |
-| Composable | `Frontend/src/composables/useMarketOverview.ts:168` — `volumePoller` 轮询 |
+| 组件 | `frontend/src/components/MarketOverview.vue` — "近7日A股成交量" section |
+| Composable | `frontend/src/composables/useMarketOverview.ts:168` — `volumePoller` 轮询 |
 | 图表类型 | ECharts 柱状图（`type: 'bar'`），蓝色渐变 |
 | Tooltip | 显示总成交、沪、深、北四行明细 |
 | Label | 柱顶显示 `{c}亿` |

@@ -65,4 +65,6 @@ interface LLMSettings {
 | `apiBase` | `https://api.siliconflow.cn/v1` | OpenAI 兼容 API 端点 |
 | `model` | `deepseek-ai/DeepSeek-R1-Distill-Qwen-32B` | 模型名称 |
 
-配置通过前端 Settings 页面 → `PUT /api/settings` → Express 内存缓存 + localStorage 同步。
+配置通过前端 Settings 页面 → 前端 `useLLMConfig` → localStorage（`gofund-llm-config`）。
+LLM 调用走前端 `llm.ts`（OpenAI 兼容 `chat/completions`，浏览器 fetch / tauri plugin-http）。
+Node 侧不再存储 LLM/Search 配置，`/api/settings` 仅保留 proxy 子域。

@@ -8,7 +8,7 @@
     → axios (GET/POST /api/xxx)
       → Vite Proxy (开发) / Express static (生产)
         → Route Handler (asyncHandler)
-          → Service Function
+          → service Function
             → cacheThrough(cacheKey, TTL, loader)
               ├── 缓存命中 → 直接返回 CacheLookup { cached: true }
               └── 缓存未命中 → ProviderChain.run(operation, invoke)
@@ -53,7 +53,7 @@ setImmediate(() => enrichFund(fundCode));
 ## Python 脚本调用流
 
 ```
-Service (Node.js)
+service (Node.js)
   → pythonRunner.runPython(scriptName, input)
     → child_process.spawn(pythonBin, [scriptPath])
       → stdin.write(JSON.stringify(input))

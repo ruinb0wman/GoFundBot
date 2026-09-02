@@ -1,0 +1,45 @@
+{
+  "name": "fund-analysis-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@gofund/ui": "file:../packages/ui",
+    "@lucide/vue": "^1.21.0",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-http": "^2.6.0",
+    "decimal.js": "^10.6.0",
+    "dexie": "^4.4.4",
+    "echarts": "^5.4.3",
+    "marked": "^18.0.5",
+    "pinia": "^3.0.4",
+    "vue": "^3.3.4",
+    "vue-echarts": "^6.6.1",
+    "vue-router": "^4.6.4",
+    "vxe-table": "^4.19.17",
+    "xe-utils": "^3.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@typescript-eslint/parser": "^8.22.0",
+    "@vitejs/plugin-vue": "^4.3.4",
+    "@vue/test-utils": "^2.4.11",
+    "eslint": "^9.18.0",
+    "globals": "^15.14.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^4.4.5",
+    "vite-plugin-compression": "^0.5.1",
+    "vitest": "^4.1.9",
+    "vue-eslint-parser": "^9.4.3",
+    "vue-tsc": "^3.3.5"
+  }
+}

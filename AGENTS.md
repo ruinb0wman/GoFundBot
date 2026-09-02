@@ -2,14 +2,20 @@
 
 ## Architecture
 
-**Two services**, start in order:
+**Two services + optional Tauri shell**, start in order:
 
-1. **Service** (port 3100) — Node.js/Express/TypeScript unified backend
-   - All API routes (`/api/fund/*`, `/api/market/*`, `/api/screening/*`, `/api/backtest/*`, etc.)
+1. **service** (port 3100) — Node.js/Express/TypeScript **薄后端**（数据获取层）
+   - All API routes (`/api/fund/*`, `/api/market/*`, `/api/screening/*`, `/api/backtest/*`, etc.) — 业务计算已迁移前端，后端只返回原始数据
    - ProviderChain (stock-sdk → eastmoney → baidu/cls) for real-time financial data
    - PythonRunner: spawns Python scripts for computation (backtest)
-   - AI analysis (via `openai` npm package)
-2. **Frontend** (port 5173) — Vue 3 + Vite, proxies `/api` → Service
+   - 反爬(Referer)、Yahoo 走代理、速率/校验/日志；最小代理配置接口（仅 Proxy URL）
+2. **frontend** (port 5173) — Vue 3 + Vite，proxies `/api` → service。**全部业务逻辑在前端**：
+   - 筛选丰富化（`industryClassifier.ts` 行业分类 + `computeRiskMetricsLocal` 风险指标 + 4433 排名，`useScreeningDb`）
+   - 投研看板计算（`researchComputation.ts`，从 Dexie screeningFunds + `/api/market/sectors` 聚合）
+   - AI：`llm.ts`（OpenAI 兼容客户端直调）+ `fundAnalyst` / `portfolioAnalyst` / `strategyDraft` / `reflection` / `chatEngine`（对话+工具调用）
+   - 联网搜索：`searchService.ts`（Exa→Bocha→Tavily→DuckDuckGo，key 存前端 localStorage）
+   - 设置：LLM/Search key 存前端；仅 Proxy URL 下发 Node
+3. **桌面目标**（可选）— **Tauri 2 壳**（`tauri/src-tauri/`），仅解禁 CORS，不打包前端资源：WebView 加载**运行中的前端服务** origin（dev `http://localhost:5173`，prod `http://localhost:4173` 静态托管）；出站 HTTP 走 `tauri-plugin-http`（绕 CORS）。远程 origin 的 IPC 放行在 `tauri/src-tauri/capabilities/remote-webview.json` 的 `remote.urls`。前端 `httpClient.ts` 检测 `window.__TAURI_INTERNALS__` 自动路由（桌面 → Node `localhost:3100` 绝对地址；Web → `/api` Vite 代理）。
 
 **Python** is tool-only (no HTTP server). Called via `child_process.spawn()` from Express:
 ```
@@ -17,49 +23,55 @@ stdin: JSON → Python compute → stdout: JSON
 ```
 
 **All persistent data lives in IndexedDB** (Dexie.js) on the frontend:
-- User data: watchlist, portfolio, trades, positions, alerts, chat history
-- Cache: fund details, NAV history, market data
+- User data: watchlist, portfolio, trades, positions, alerts, chat history, strategy memory
+- Cache: fund details, NAV history, market data, screening funds
 
 ## Data flow
 
 ```
-Real-time data:   ProviderChain → Express → Frontend → IndexedDB (Dexie)
-User data CRUD:   Frontend → IndexedDB (Dexie) — no server round-trip
-Backtest:         Express → PythonRunner.spawn('backtest.py') → stdout JSON → Frontend → Dexie
+Real-time data:   ProviderChain → Express → frontend → IndexedDB (Dexie)
+User data CRUD:   frontend → IndexedDB (Dexie) — no server round-trip
+Backtest:         Express → PythonRunner.spawn('backtest.py') → stdout JSON → frontend → Dexie
 Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → stdout JSON → Express
-Screening enrichment: Express → fetch NAV + fund list → TypeScript risk/industry → merge into sync
-Web search:       Express chatTools → searchService → Exa/Bocha/Tavily/DDG → ServiceResult
-Settings:         Frontend (localStorage) → PUT /api/settings → Express settingsService (memory cache)
+Screening enrichment: frontend sync raw /api/screening → 本地 computeRiskMetrics + classifyFundIndustry → Dexie
+Web search:       frontend chatEngine/searchService → Exa/Bocha/Tavily/DDG（key 前端本地）
+Settings:         LLM/Search key 前端 localStorage；Proxy URL → PUT /api/settings（仅 proxy 子域）
+Desktop HTTP:     httpClient.ts → tauri-plugin-http 直连（绕 CORS），Node 用 localhost:3100 绝对地址
 ```
 
 ## Commands
 
 ```bash
-# Service (Node >= 18) — THE main backend
-cd Service && npm install
+# service (Node >= 18) — THE main backend
+cd service && npm install
 npm run dev              # tsx watch src/index.ts (port 3100)
 npm run typecheck        # tsc --noEmit
 npm run lint             # ESLint (max-lines 500)
 npm test                 # vitest run (67+ tests)
 npm run build && npm start
 
-# Frontend
-cd Frontend && npm install
+# frontend
+cd frontend && npm install
 npm run dev              # port 5173, proxy /api → localhost:3100
 npm run lint             # ESLint (max-lines 500, Vue/TS)
 npx vue-tsc --noEmit     # TypeScript typecheck
 npm test                 # vitest run
-npm run build            # output in Frontend/dist/
+npm run build            # output in frontend/dist/
+
+# Desktop (Tauri 2 shell — CORS-free). 需先启动 Node + 前端服务：
+cd frontend && npm run build && npm run preview   # prod 静态托管 localhost:4173
+cd tauri && npm run dev                           # = tauri dev（WebView 加载 devUrl）
+# cargo check 需要系统库：webkit2gtk-4.1 / gtk3 / atk（Linux）
 
 # Python scripts (standalone, no HTTP server)
-cd Scripts
-echo '{"navHistory":[...]}' | Scripts/.venv/bin/python cli/backtest.py
-Scripts/.venv/bin/python cli/fetch_fund.py --code 019667
-Scripts/.venv/bin/python cli/data_complete.py --source akshare --type stocks
+cd python
+echo '{"navHistory":[...]}' | python/.venv/bin/python cli/backtest.py
+python/.venv/bin/python cli/fetch_fund.py --code 019667
+python/.venv/bin/python cli/data_complete.py --source akshare --type stocks
 
 # Docs (VitePress)
 cd docs && npm install
-npm run dev              # port 5174, proxied via Frontend /docs/*
+npm run dev              # port 5174, proxied via frontend /docs/*
 npm run build            # output in docs/.vitepress/dist/
 ```
 
@@ -76,18 +88,18 @@ Both services enforce single-file max 500 lines. Violations block CI.
 
 - **Rate limiting**: `express-rate-limit` (300/15min).
 - **Input validation**: Zod schemas on key POST routes.
-- **Security headers**: Service uses `helmet` (CSP/COEP disabled).
-- **Structured logging**: JSON via `core/logger.ts` (Service) with `requestId` per request. Daily files `dataservice-YYYY-MM-DD.jsonl` under `Scripts/Data/logs`.
+- **Security headers**: service uses `helmet` (CSP/COEP disabled).
+- **Structured logging**: JSON via `core/logger.ts` (service) with `requestId` per request. Daily files `dataservice-YYYY-MM-DD.jsonl` under `python/Data/logs`.
 - **Health check**: `GET /api/health` — includes cache stats.
 - **Cache TTLs**: fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
-- **Graceful shutdown**: Service handles `SIGTERM`/`SIGINT` — 10s wait, then force exit.
-- **Vite proxy**: `Frontend/vite.config.ts` proxies `/api` → `localhost:3100`, `/docs` → `localhost:5174`.
-- **Dexie.js**: All persistent data in IndexedDB, 10 tables in `Frontend/src/db/index.ts`.
-- **Settings endpoint**: `GET/PUT /api/settings` — 统一 LLM/Proxy/Search 配置内存缓存，前端 localStorage 同步。
-- **Search chain**: Exa（MCP/JSON-RPC，免费无 Key）→ Bocha → Tavily → DuckDuckGo（自动降级）。
+- **Graceful shutdown**: service handles `SIGTERM`/`SIGINT` — 10s wait, then force exit.
+- **Vite proxy**: `frontend/vite.config.ts` proxies `/api` → `localhost:3100`, `/docs` → `localhost:5174`.
+- **Dexie.js**: All persistent data in IndexedDB, 11 tables in `frontend/src/db/index.ts` (含 strategies / analysisMemory).
+- **Settings endpoint**: `GET/PUT /api/settings` — **仅 proxy 子域**（LLM/Search key 已迁移前端 localStorage：`useLLMConfig` / `useAppSettings`）。
+- **Search chain（前端）**: Exa（MCP/JSON-RPC，免费无 Key）→ Bocha → Tavily → DuckDuckGo（自动降级）；`frontend/src/services/searchService.ts`。
 - **Screening data refresh**: 筛选页 onMounted + localStorage 持久化 `lastSyncTime` → 检测过期（今日 9AM）→ 强制 `force=true` 全量刷新。AI chat `get_industry_performance` 共享同一缓存（cacheThrough TTL=次日 9AM）。
 - **Proxy**: 国内 API（东方财富）用 `proxy: 'never'` 直连；Yahoo Finance（被封）走 `proxy: 'auto'` 随代理配置。`eastmoneyRequest.ts` 统一添加 `Referer` 头防止反爬。
-- **Docs**: VitePress 构建的文档站，配置在 `docs/.vitepress/config.ts`（nav + sidebar）。模块级详细文档按功能目录组织（如 `docs/fund-screening/`），在侧边栏对应分组。文档通过 Frontend `/docs/*` 代理访问。
+- **Docs**: VitePress 构建的文档站，配置在 `docs/.vitepress/config.ts`（nav + sidebar）。模块级详细文档按功能目录组织（如 `docs/fund-screening/`），在侧边栏对应分组。文档通过 frontend `/docs/*` 代理访问。
 
 > 模块级详细文档见 `docs/` 目录（VitePress 构建），每个功能模块对应独立的 `.md` 文件或目录，侧边栏分组见 `docs/.vitepress/config.ts`。
 
@@ -95,40 +107,47 @@ Both services enforce single-file max 500 lines. Violations block CI.
 
 | Directory | What |
 |-----------|------|
-| `Service/src/` | Express app with ProviderChain, all routes |
-| `Service/src/app.ts` | App bootstrap — route registration, middleware |
-| `Service/src/routes/` | All Express route handlers (fund, market, screening, backtest, settings, etc.) |
-| `Service/src/services/` | Business logic (fundService, riskMetrics, industry, screeningEnrichment, pythonRunner, cache, settingsService, chatTools/chatSkills) |
-| `Service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo) |
-| `Service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
-| `Service/src/types/` | DTO interfaces (fund.ts, common.ts) |
-| `Scripts/cli/` | Python CLI scripts (backtest, fetch_fund, data_complete) |
-| `Scripts/cli/shared/` | Shared Python utilities (http_client) |
-| `Scripts/services/*.py` | Python computation modules (backtest.py, helpers.py) |
-| `Service/src/services/searchService.ts` | Search engine chain (Exa → Bocha → Tavily → DuckDuckGo) |
-| `Frontend/src/db/` | Dexie schema (index.ts) — all IndexedDB table definitions |
-| `Frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
-| `Frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
-| `Frontend/src/services/` | API client (api.ts, portfolioApi.ts, chatApi.ts) |
+| `service/src/` | Express app with ProviderChain, all routes |
+| `service/src/app.ts` | App bootstrap — route registration, middleware |
+| `service/src/routes/` | All Express route handlers (fund, market, screening, backtest, settings, etc.) |
+| `service/src/services/` | 数据层服务（fundService, marketService, pythonRunner, settingsService(proxy)）；业务计算已迁移前端 |
+| `service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo) |
+| `service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
+| `service/src/types/` | DTO interfaces (fund.ts, common.ts) |
+| `python/cli/` | Python CLI scripts (backtest, fetch_fund, data_complete) |
+| `python/cli/shared/` | Shared Python utilities (http_client) |
+| `python/services/*.py` | Python computation modules (backtest.py, helpers.py) |
+| `frontend/src/services/llm.ts` | OpenAI 兼容 LLM 客户端（浏览器 fetch / tauri plugin-http，JSON+流式） |
+| `frontend/src/services/fundAnalyst.ts` | AI 基金分析（4 分析师+总监），前端直调 |
+| `frontend/src/services/portfolioAnalyst.ts` | 组合诊断分析（前端直调），注入策略上下文 |
+| `frontend/src/services/chatEngine/` | AI 对话引擎（skills.ts 技能 / tools.ts 定义 / toolHandlers.ts 实现 / index.ts 编排） |
+| `frontend/src/services/searchService.ts` | 前端搜索链（Exa → Bocha → Tavily → DuckDuckGo） |
+| `frontend/src/services/industryClassifier.ts` | 行业/基金类型分类（筛选丰富化 + 聊天工具共用） |
+| `frontend/src/services/researchComputation.ts` | 投研看板聚合计算（市场统计/基金看板/ETF/板块/行业表现） |
+| `frontend/src/services/httpClient.ts` | 环境感知 HTTP 适配器（Web fetch ↔ Tauri plugin-http，绕 CORS） |
+| `tauri/src-tauri/` | Tauri 2 桌面壳（`tauri.conf.json` + `capabilities/remote-webview.json` 远程 origin IPC 放行 + Rust 入口）；不打包前端资源 |
+| `frontend/src/db/` | Dexie schema (index.ts) — all IndexedDB table definitions |
+| `frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
+| `frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
+| `frontend/src/services/` | API client（api.ts 基于 httpClient 环境路由、portfolioApi.ts、chatApi.ts + chatEngine） |
 | `docs/` | VitePress 文档站（`docs/.vitepress/config.ts` 导航/侧边栏配置） |
-| `packages/ui/` | **UI 组件库 `@gofund/ui`** — B* 系列表单控件与浮层/反馈组件、设计 token（明暗双主题）、composables；Vite lib mode 构建（组件级 chunk + dts）；Frontend 经 vite/tsconfig 别名直连 `packages/ui/src/index.ts`（`@gofund/ui`），开发 HMR 与构建均从源；`file:../packages/ui` 仅为发布用依赖声明 |
+| `packages/ui/` | **UI 组件库 `@gofund/ui`** — B* 系列表单控件与浮层/反馈组件、设计 token（明暗双主题）、composables；Vite lib mode 构建（组件级 chunk + dts）；frontend 经 vite/tsconfig 别名直连 `packages/ui/src/index.ts`（`@gofund/ui`），开发 HMR 与构建均从源；`file:../packages/ui` 仅为发布用依赖声明 |
 | `docs/fund-screening/` | 基金筛选模块细分文档（概览/数据流/筛选面板/指标丰富化/4433法则） |
 | `docs/market-*.md` | 市场数据各功能模块说明文档 |
-| `docs/architecture/` | 技术架构文档（数据源/数据流/回退策略/AI分析等） |
+| `docs/architecture/` | 技术架构文档（数据源/数据流/回退策略/AI分析/桌面壳等） |
 | `docs/strategy/` | 策略板块文档（概览/策略记忆与AI注入） |
-| `Service/src/services/strategyService.ts` | AI 策略起草（LLM JSON + 模板降级），`POST /api/strategy/draft` |
-| `Service/src/services/portfolioAnalyst.ts` | 组合诊断分析（`POST /api/user/portfolio/analyze`），注入策略上下文 |
-| `Frontend/src/db/strategyMemory.ts` | 策略记忆 CRUD + `buildStrategyContext()` 上下文格式化 |
-| `Frontend/src/views/StrategyView.vue` + `Frontend/src/components/ChatPanel.vue` | 策略板块 UI（记忆列表/编辑表单 + 复用主聊天窗口，channel='strategy'） |
+| `frontend/src/services/strategyDraft.ts` | AI 策略起草（LLM JSON + 模板降级，前端直调） |
+| `frontend/src/db/strategyMemory.ts` | 策略记忆 CRUD + `buildStrategyContext()` 上下文格式化 |
+| `frontend/src/views/StrategyView.vue` + `frontend/src/components/ChatPanel.vue` | 策略板块 UI（记忆列表/编辑表单 + 复用主聊天窗口，channel='strategy'） |
 
 ## Testing
 
 ```bash
-# Service (Vitest)
-cd Service && npm test
+# service (Vitest)
+cd service && npm test
 
-# Frontend (Vitest + @vue/test-utils)
-cd Frontend && npx vue-tsc --noEmit && npm test
+# frontend (Vitest + @vue/test-utils)
+cd frontend && npx vue-tsc --noEmit && npm test
 ```
 
 ## Known issues

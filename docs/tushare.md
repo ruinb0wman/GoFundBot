@@ -54,7 +54,7 @@
 
 | 项目 | 状态 |
 |------|------|
-| pip 安装 | ✅ `Scripts/.venv` 中已安装 |
+| pip 安装 | ✅ `python/.venv` 中已安装 |
 | Token | ✅ 已注册获取 |
 | `daily` API | ✅ 有权限 |
 | `moneyflow` API | ❌ 需 2,000 积分（当前仅 100 分） |
@@ -90,6 +90,6 @@ df = pro.moneyflow(trade_date='20260722')
 
 ## 相关文件
 
-- `Scripts/cli/data_complete.py` — `complete_market_money_flow()` 是接入点
-- `Service/src/services/marketService.ts` — `getMarketMoneyFlowFromAkshare()` 是后台回退函数
-- `Service/src/services/settingsService.ts` — Settings 模型，需加 `tushareToken` 字段
+- `python/cli/data_complete.py` — `complete_market_money_flow()` 是接入点
+- `service/src/services/marketService.ts` — `getMarketMoneyFlowFromAkshare()` 是后台回退函数
+- `service/src/services/settingsService.ts` — Settings 模型，需加 `tushareToken` 字段

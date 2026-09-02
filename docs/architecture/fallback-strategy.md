@@ -89,7 +89,7 @@ async function getWithLocalFallback<T>(path: string) {
 | `consecutivePenalty` | -5/次 | 连续失败额外惩罚 |
 | `decayPerHour` | ±2/小时 | 时间衰减，回归初始分 50 |
 
-分值持久化：前端 localStorage → `PUT /api/datasource-scores` → Express 内存。
+分值持久化：**前端 localStorage**（`useDataSourceScores`，原 `PUT /api/datasource-scores` 已撤销，不再同步 Express）。
 
 ## 缓存回退 (TTL 体系)
 

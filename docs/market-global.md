@@ -26,17 +26,17 @@ GET /api/market/indices/combined
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| Route | `Service/src/routes/market.routes.ts:185` | `GET /api/market/indices/combined` |
-| Service | `Service/src/services/marketService.ts:1029` | `getCombinedIndices()` 合并 |
-| Service | `Service/src/services/marketService.ts:619` | `getGlobalIndices()` 全球指数 |
-| Provider | `Service/src/providers/eastmoney/eastmoneyMarketProvider.ts:236` | A股 `indices()` |
-| Provider | `Service/src/providers/eastmoney/eastmoneyMarketProvider.ts:479` | 全球 `globalIndices()` |
-| Provider | `Service/src/providers/stock-sdk/stockSdkMarketProvider.ts:28` | A股 `indices()` |
-| Provider | `Service/src/providers/yahoo/yahooMarketProvider.ts:40` | 全球 `globalIndices()` |
-| Frontend API | `Frontend/src/services/api.ts:92` | `getCombinedIndices()` |
-| Frontend 渲染 | `Frontend/src/components/MarketOverview.vue:30-50` | 指数卡片渲染 |
-| 缓存 | `Service/src/core/cache.ts:169` | `marketQuotes` TTL 15s |
-| 缓存 | `Service/src/core/cache.ts:176` | `marketGlobalIndices` TTL 15s |
+| Route | `service/src/routes/market.routes.ts:185` | `GET /api/market/indices/combined` |
+| service | `service/src/services/marketService.ts:1029` | `getCombinedIndices()` 合并 |
+| service | `service/src/services/marketService.ts:619` | `getGlobalIndices()` 全球指数 |
+| Provider | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts:236` | A股 `indices()` |
+| Provider | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts:479` | 全球 `globalIndices()` |
+| Provider | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts:28` | A股 `indices()` |
+| Provider | `service/src/providers/yahoo/yahooMarketProvider.ts:40` | 全球 `globalIndices()` |
+| frontend API | `frontend/src/services/api.ts:92` | `getCombinedIndices()` |
+| frontend 渲染 | `frontend/src/components/MarketOverview.vue:30-50` | 指数卡片渲染 |
+| 缓存 | `service/src/core/cache.ts:169` | `marketQuotes` TTL 15s |
+| 缓存 | `service/src/core/cache.ts:176` | `marketGlobalIndices` TTL 15s |
 
 ## 三、东方财富 API 数据源
 
@@ -92,8 +92,8 @@ Yahoo 通过 `fetchYahooGlobalIndices()` 从 `yahooClient.ts` 获取实时行情
 
 | 项 | 说明 |
 |----|------|
-| 组件 | `Frontend/src/components/MarketOverview.vue` — "全球行情" section |
-| Composable | `Frontend/src/composables/useMarketOverview.ts:120` — `indicesPoller` 轮询 |
+| 组件 | `frontend/src/components/MarketOverview.vue` — "全球行情" section |
+| Composable | `frontend/src/composables/useMarketOverview.ts:120` — `indicesPoller` 轮询 |
 | 卡片布局 | flex grid，每项显示名称、价格、涨跌幅 |
 | 颜色规则 | 涨跌幅 ≥ 0 红色（up），< 0 绿色（down） |
 | 点击行为 | 点击卡片跳转到指数详情页（`index-detail` 路由） |

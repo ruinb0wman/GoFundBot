@@ -55,6 +55,7 @@ export default defineConfig({
           { text: 'AI 对话系统', link: '/architecture/ai-chat' },
           { text: 'AI 基金分析与持仓分析', link: '/architecture/ai-fund-analysis' },
           { text: '记忆与反思系统', link: '/architecture/ai-memory' },
+          { text: 'Tauri 2 桌面壳', link: '/architecture/desktop-shell' },
         ],
       },
       {

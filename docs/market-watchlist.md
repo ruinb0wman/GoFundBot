@@ -25,13 +25,13 @@
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| Database | `Frontend/src/db/index.ts:3-16` | `WatchlistItem` / `WatchlistGroup` 接口 |
-| Database | `Frontend/src/db/index.ts:153` | `watchlist` 表定义 |
-| Store | `Frontend/src/stores/watchlistStore.ts` | Pinia store — CRUD 操作 |
-| Composable | `Frontend/src/composables/useFundWatchlist.ts` | 组件逻辑封装 |
-| Component | `Frontend/src/components/FundWatchlist.vue` | 自选列表渲染 |
-| API | `Frontend/src/services/api.ts:55` | `watchlistAPI.refreshEstimates()` |
-| Backend Route | `Service/src/routes/watchlist.routes.ts` | `POST /api/watchlist/refresh-estimates` |
+| Database | `frontend/src/db/index.ts:3-16` | `WatchlistItem` / `WatchlistGroup` 接口 |
+| Database | `frontend/src/db/index.ts:153` | `watchlist` 表定义 |
+| Store | `frontend/src/stores/watchlistStore.ts` | Pinia store — CRUD 操作 |
+| Composable | `frontend/src/composables/useFundWatchlist.ts` | 组件逻辑封装 |
+| Component | `frontend/src/components/FundWatchlist.vue` | 自选列表渲染 |
+| API | `frontend/src/services/api.ts:55` | `watchlistAPI.refreshEstimates()` |
+| Backend Route | `service/src/routes/watchlist.routes.ts` | `POST /api/watchlist/refresh-estimates` |
 
 ## 三、数据模型
 

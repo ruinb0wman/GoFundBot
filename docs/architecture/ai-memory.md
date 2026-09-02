@@ -27,11 +27,9 @@ export async function resolvePending(fundCode, currentReturn) {
   const toResolve = pending.filter(r => r.analysisDate < cutoff);
 
   for (const record of toResolve) {
-    // 调用 LLM 生成反思
-    const resp = await fetch('/api/analysis-memory/reflect', {
-      body: JSON.stringify({ fundCode, rating, thesis, sentimentScore, actualReturn }),
-    });
-    reflection = resp.data?.reflection;
+    // 前端本地调用 LLM 生成反思（reflection.ts，key 取前端 useLLMConfig）
+    const data = await generateReflection({ fundCode, rating, thesis, sentimentScore, actualReturn });
+    reflection = data.reflection;
 
     // LLM 失败时 fallback 模板
     reflection = currentReturn >= 0
@@ -72,8 +70,8 @@ analyzeFund() → Supervisor 输出
 策略板块（`/strategy`）新增**策略记忆**系统，与历史分析记忆互补：
 
 - 存储：Dexie `strategies` 表（`++id, active, updatedAt`），字段 title / content / tags / active / source
-- 生成：策略板块内与 AI 讨论后「保存为策略」，或编辑表单中「AI 帮我起草」（`POST /api/strategy/draft`）
-- 注入：`buildActiveStrategyContext()` 将启用中的策略格式化为 Markdown，随 `strategyContext` 字段注入基金分析（aiAnalyst 4 分析师 + 总监）、持仓诊断（portfolioAnalyst）、AI 对话（chatService buildSystemPrompt）
+- 生成：策略板块内与 AI 讨论后「保存为策略」，或编辑表单中「AI 帮我起草」（`strategyDraft.ts`，前端直调 LLM）
+- 注入：`buildActiveStrategyContext()` 将启用中的策略格式化为 Markdown，随 `strategyContext` 字段注入基金分析（fundAnalyst 4 分析师 + 总监）、持仓诊断（portfolioAnalyst）、AI 对话（chatEngine buildSystemPrompt）
 - 隔离：策略讨论会话复用 `chatSessions`，以 `channel: 'strategy'` 与主聊天隔离
 
 详见 [策略板块](/strategy/index) 与 [策略记忆与 AI 注入](/strategy/memory-injection)。

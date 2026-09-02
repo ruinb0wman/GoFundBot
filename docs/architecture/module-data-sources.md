@@ -46,22 +46,28 @@
 | `POST /api/screening/query` | (screening router) | 前端 Dexie + 富化数据（**deprecated**） | — |
 | `GET /api/screening/fund/:code` | (screening router) | enrichFund(Nav + type + risk + industry) | 24h |
 
-## 研究模块
+## 研究模块（已前端化）
 
-| 路由 | 服务函数 | ProviderChain | Cache TTL |
-|------|---------|--------------|-----------|
-| `GET /api/research/dashboard` | `getDashboard` | 混合 | 1h |
-| `GET /api/research/industry-performance` | `getIndustryPerformance` | 筛选缓存聚合 | 次日 9AM |
-| `GET /api/research/etf-tracking` | `getEtfTracking` | eastmoney only | 24h |
-| `GET /api/research/sector-summary` | `getSectorSummary` | 混合 | 1h |
+> `/api/research/*` 已撤销。看板聚合在前端 `researchComputation.ts` 完成：
+> 数据 = Dexie `screeningFunds`（`/api/screening/sync` 同步）+ `/api/market/sectors`。
 
-## AI 模块
+| 目录 | 数据源 | 备注 |
+|------|--------|------|
+| 市场统计 / 基金看板 / ETF / 行业表现 | Dexie screeningFunds 聚合 | 前端计算 |
+| 板块汇总 | `/api/market/sectors` | 前端 `buildResearchSectorSummary` |
 
-| 路由 | 服务函数 | 数据源 |
+## AI 模块（已前端化）
+
+> `/api/chat`、`/api/fund/:code/analyze`、`/api/user/portfolio/analyze`、`/api/analysis-memory`、
+> `/api/strategy/draft` 均已撤销，改为前端直调 LLM（`llm.ts`）+ 前端对话引擎（`chatEngine/`）。
+
+| 能力 | 前端实现 | 数据源 |
 |------|---------|--------|
-| `POST /api/chat` | `chatService.processChat` | OpenAI SDK + chatTools(基金/行情/搜索) |
-| `GET /api/funds/:code/analyze` | (fund router) → `aiAnalyst.analyzeFund` | OpenAI SDK + fundService |
-| `POST /api/analysis-memory/reflect` | (analysisMemory router) | OpenAI SDK + Dexie history |
+| AI 对话 + 工具调用 | `chatEngine/`（skills/tools/toolHandlers） | Node API（基金/行情/回测）+ 本地计算 + 前端搜索 |
+| 基金分析（4+1） | `fundAnalyst.ts` | Node `/api/fund*` + 前端 LLM |
+| 持仓诊断 | `portfolioAnalyst.ts` | Node `/api/fund*` + 前端 LLM |
+| 分析反思 | `reflection.ts` | 前端 LLM |
+| 策略起草 | `strategyDraft.ts` | 前端 LLM |
 
 ## 其他模块
 
@@ -70,5 +76,4 @@
 | `GET /api/news/flash` | `getFlashNews` | [eastmoney → baidu → cls] | 30s |
 | `GET /api/stocks/:code/reference` | `getStockReference` | [eastmoney → tencent] | 7d |
 | `POST /api/backtest/fixed-investment` | `runBacktest` | Python backtest.py | — |
-| `GET /api/settings` | (settings router) | 内存缓存 | — |
-| `GET /api/datasource-scores` | (datasource-scores router) | DataSourceScorer 内存 | — |
+| `GET /api/settings` | (settings router) | 仅 proxy 子域 | — |

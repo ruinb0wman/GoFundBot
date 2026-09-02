@@ -13,7 +13,7 @@
 | 策略记忆 CRUD | 新增 / 编辑 / 删除 / 启用·停用，支持标题、内容、标签（逗号分隔）、来源标记（手动 / AI起草） |
 | AI 策略讨论 | 右侧聊天区复用主聊天窗口 `ChatPanel`（`channel='strategy'` + 强制 `strategy` 技能），可调用数据工具核对基金/行情 |
 | 保存为策略 | 策略频道中任意 AI 回复可一键「保存为策略」，预填编辑表单，确认后入库 |
-| AI 帮我起草 | 编辑表单中输入主题，调用 `POST /api/strategy/draft` 生成结构化草案（标题 / 内容 / 标签）后预填 |
+| AI 帮我起草 | 编辑表单中输入主题，调用前端 `strategyDraft.draftStrategy()` 生成结构化草案（标题 / 内容 / 标签）后预填 |
 | 全局生效 | 所有启用中的策略自动注入基金分析、持仓诊断、AI 对话的提示词 |
 
 ## 统一聊天窗口
@@ -30,14 +30,12 @@
 ```
 策略讨论
   用户在 /strategy 页面右侧（嵌入的 ChatPanel，channel='strategy'，skill 固定为 strategy）
-    → chatAPI.sendMessage(skill='strategy', strategyContext=启用策略)
-    → POST /api/chat SSE 流式返回
+    → chatEngine.chat(skill='strategy', strategyContext=启用策略)（本地事件流）
     → 消息持久化到 Dexie chatSessions(chatMessages) channel='strategy'
 
 AI 帮我起草
   表单输入主题
-    → strategyAPI.draft({topic, strategyContext})
-    → POST /api/strategy/draft → strategyService.draftStrategy()
+    → strategyDraft.draftStrategy({topic, strategyContext}, llmConfig)（前端直调 LLM）
     → LLM 输出 JSON {title, content, tags}（无 Key 时返回模板降级）
 
 保存为策略
@@ -49,15 +47,14 @@ AI 帮我起草
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| 前端页面 | `Frontend/src/views/StrategyView.vue` + `StrategyView.css` | 页面布局、策略记忆列表、编辑表单、AI 起草接入 |
-| 前端聊天 | `Frontend/src/components/ChatPanel.vue` + `ChatPanel.css` | 复用主聊天窗口：`channel` / `force-skill` / `embedded` props + 保存为策略 |
-| 前端数据 | `Frontend/src/db/strategyMemory.ts` | 策略记忆 CRUD + `buildStrategyContext()` 上下文格式化 |
-| 前端存储 | `Frontend/src/db/index.ts` | Dexie v4：`strategies` 表、`chatSessions` 增加 `channel` 索引 |
-| 前端服务 | `Frontend/src/services/chatApi.ts` | `sendMessage` 支持 `strategyContext`、按 channel 查询会话 |
-| 前端状态 | `Frontend/src/stores/chatStore.ts` | 频道化状态：`channel`、按频道加载会话/发送、技能锁定 |
-| 后端路由 | `Service/src/routes/strategy.routes.ts` | `POST /api/strategy/draft` |
-| 后端服务 | `Service/src/services/strategyService.ts` | 策略起草 LLM 调用 + 模板降级 |
-| 后端技能 | `Service/src/services/chatSkills.ts` | `strategy` 技能（系统提示词 + 工具集） |
+| 前端页面 | `frontend/src/views/StrategyView.vue` + `StrategyView.css` | 页面布局、策略记忆列表、编辑表单、AI 起草接入 |
+| 前端聊天 | `frontend/src/components/ChatPanel.vue` + `ChatPanel.css` | 复用主聊天窗口：`channel` / `force-skill` / `embedded` props + 保存为策略 |
+| 前端数据 | `frontend/src/db/strategyMemory.ts` | 策略记忆 CRUD + `buildStrategyContext()` 上下文格式化 |
+| 前端存储 | `frontend/src/db/index.ts` | Dexie v4：`strategies` 表、`chatSessions` 增加 `channel` 索引 |
+| 前端服务 | `frontend/src/services/chatApi.ts` | `sendMessage` 支持 `strategyContext`、按 channel 查询会话；引擎在前端 `chatEngine/` |
+| 前端状态 | `frontend/src/stores/chatStore.ts` | 频道化状态：`channel`、按频道加载会话/发送、技能锁定 |
+| 前端起草 | `frontend/src/services/strategyDraft.ts` | 策略起草 LLM 调用（前端直调）+ 模板降级 |
+| 前端引擎 | `frontend/src/services/chatEngine/skills.ts` | `strategy` 技能（系统提示词 + 工具集） |
 
 ## 五、配置要求
 

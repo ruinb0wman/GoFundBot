@@ -4,7 +4,7 @@
 
 风险指标计算现在有**双路径**：
 
-- **新路径（默认）**：前端通过 `POST /api/funds/nav-batch` 批量获取 NAV 历史，本地 `computeRiskMetricsLocal()` 计算风险指标（`Frontend/src/utils/number.ts:188`）。结果持久化在 IndexedDB，每日首次加载时自动计算一次，全天使用缓存。
+- **新路径（默认）**：前端通过 `POST /api/funds/nav-batch` 批量获取 NAV 历史，本地 `computeRiskMetricsLocal()` 计算风险指标（`frontend/src/utils/number.ts:188`）。结果持久化在 IndexedDB，每日首次加载时自动计算一次，全天使用缓存。
 - **旧路径（遗留）**：服务端 `enrichFund()` → `enrichmentMap`，保留向后兼容。服务重启不丢失风险指标（旧路径丢失时新路径自动补齐）。
 
 以下文档主要描述旧路径实现，新路径的本地计算逻辑与服务端 `computeRiskMetrics()` 等价。
@@ -24,22 +24,17 @@ enrichFund(code)
 └─ classifyFundIndustry(name) → 行业标签
 ```
 
-### 关键代码
+### 关键代码（已前端化）
 
-`screeningEnrichment.ts`:
+> 该模块整体迁移至前端：Node `/api/screening/sync` 返回**原始**清单，丰富化由前端完成。
 
 ```typescript
-export async function enrichFund(code: string): Promise<void> {
-  const [navResult, typeList] = await Promise.all([
-    getFundNavHistory(code, {}),
-    fetchFundCodeSearchList(),
-  ]);
-  const navPoints = navResult.data?.items ?? [];
-  const fundListItem = typeList.find(f => f.code === code);
-  enrichmentMap.set(code, {
-    fund_type: fundListItem?.type ?? null,
-    industry_tag: classifyFundIndustry(fundListItem?.name ?? code),
-    ...computeRiskMetrics(navPoints.map(p => ({ date: p.date, nav: p.nav }))),
+// frontend/src/composables/useScreeningDb.ts (syncFromServer)
+// 1. GET /api/screening/sync → 原始 funds（fund_code / returns / nav ...）
+// 2. 保留旧风险指标（若 sync 未返回）
+// 3. 本地 computeRiskMetricsLocal(navs) + classifyFundIndustry(name)
+// 4. compute4433() 排名 → bulkPut 写入 Dexie screeningFunds
+```
     updated_at: new Date().toISOString(),
   });
 }
@@ -127,17 +122,18 @@ interface RiskMetricsResult {
 
 规则优先级按数组顺序，首个匹配即返回。
 
-## 五、enrichmentMap 内存管理
+## 五、丰富化数据落地（Dexie，替代 enrichmentMap）
 
 ```typescript
-export const enrichmentMap = new Map<string, FundEnrichment>();
+// 前端 Dexie screeningFunds 表保存丰富化结果（fund_code 主键）
+// 风险指标：max_drawdown_1y / sharpe_ratio_1y / sharpe_ratio_3y / volatility_1y / calmar_ratio_1y
+// 行业标签：industry_tag_name（classifyFundIndustry 正则 + 前端兜底）
 ```
 
-- 存储位置：`Service/src/services/screeningEnrichment.ts`
-- 生命周期：进程存活期间有效，服务重启后需重新丰富
-- 同步策略：前端通过 `GET /api/screening/sync` 获取快照，数据量决定同步是否从头走 enrichment 还是直接返回已有数据
-- 更新方式：`POST /api/screening/update` 触发后台批量更新（并发 10 条）
-- 单条更新：`POST /api/screening/update-single/:code`
+- 存储位置：`frontend/src/db/index.ts` → `screeningFunds`
+- 生命周期：IndexedDB 持久化，浏览器刷新不丢；`lastSyncTime`（localStorage）控制刷新节奏
+- 同步策略：前端通过 `GET /api/screening/sync` 获取原始快照，本地计算丰富化后入库
+- 更新方式：`POST /api/screening/update` 刷新 Node 快照缓存；GUI 更新后前端 `syncFromServer(force)` 重算
 
 ## 六、同类排名百分位
 

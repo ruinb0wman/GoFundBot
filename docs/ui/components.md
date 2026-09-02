@@ -1,13 +1,13 @@
 # @gofund/ui 组件库
 
-独立 UI 组件库，从基金前端 `Frontend/src/components/` 抽离而来（monorepo workspace `packages/ui`）。
+独立 UI 组件库，从基金前端 `frontend/src/components/` 抽离而来（monorepo workspace `packages/ui`）。
 
 ## 接入方式
 
-**Frontend 消费**（当前项目）：
+**frontend 消费**（当前项目）：
 
-- `Frontend/package.json` 声明 `"@gofund/ui": "file:../packages/ui"`
-- `Frontend/vite.config.ts` / `vitest.config.js` / `tsconfig.json` 配置别名直连包源码：
+- `frontend/package.json` 声明 `"@gofund/ui": "file:../packages/ui"`
+- `frontend/vite.config.ts` / `vitest.config.js` / `tsconfig.json` 配置别名直连包源码：
   - `@gofund/ui` → `packages/ui/src/index.ts`
   - `@gofund/ui/style.css` → `packages/ui/src/index.css`
 

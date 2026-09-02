@@ -22,13 +22,13 @@ GET /api/news/flash?count=50&page=1
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| Route | `Service/src/routes/news.routes.ts:8` | `GET /api/news/flash` |
-| Service | `Service/src/services/newsService.ts:12` | `getFlashNews()` 编排 |
-| Provider | `Service/src/providers/eastmoney/eastmoneyNewsProvider.ts:7` | 东方财富快讯 |
-| Provider | `Service/src/providers/eastmoney/eastmoneyNewsProvider.ts:33` | 百度股市通快讯 |
-| Provider | `Service/src/providers/eastmoney/eastmoneyNewsProvider.ts:78` | 财联社快讯 |
-| Frontend API | `Frontend/src/services/api.ts:84` | `getFlashNews()` |
-| Frontend 渲染 | `Frontend/src/components/FlashNews.vue` | 快讯列表+弹窗 |
+| Route | `service/src/routes/news.routes.ts:8` | `GET /api/news/flash` |
+| service | `service/src/services/newsService.ts:12` | `getFlashNews()` 编排 |
+| Provider | `service/src/providers/eastmoney/eastmoneyNewsProvider.ts:7` | 东方财富快讯 |
+| Provider | `service/src/providers/eastmoney/eastmoneyNewsProvider.ts:33` | 百度股市通快讯 |
+| Provider | `service/src/providers/eastmoney/eastmoneyNewsProvider.ts:78` | 财联社快讯 |
+| frontend API | `frontend/src/services/api.ts:84` | `getFlashNews()` |
+| frontend 渲染 | `frontend/src/components/FlashNews.vue` | 快讯列表+弹窗 |
 
 ## 三、数据源详情
 
@@ -73,7 +73,7 @@ GET /api/news/flash?count=50&page=1
 
 | 项 | 说明 |
 |----|------|
-| 组件 | `Frontend/src/components/FlashNews.vue` |
+| 组件 | `frontend/src/components/FlashNews.vue` |
 | Composable | `FlashNews.vue` 自有逻辑 + `useDataPoller` |
 | 列表 | TransitionGroup 动画，新条目闪烁 "is-new" 高亮 |
 | 无限滚动 | `@scroll` 事件，距底部 80px 自动加载更多 |

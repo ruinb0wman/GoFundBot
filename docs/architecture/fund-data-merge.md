@@ -43,16 +43,16 @@ return {
 
 ## 筛选数据富化 (Screening Enrichment)
 
-```typescript
-// screeningEnrichment.ts
-export async function enrichFund(code: string): Promise<void> {
-  const [navResult, typeList] = await Promise.all([
-    getFundNavHistory(code, {}),       // 1. 获取 NAV 历史
-    fetchFundCodeSearchList(),          // 2. 获取基金名称/类型
-  ]);
+> 风险指标 / 行业分类已迁移至**前端**（`frontend/src/services/industryClassifier.ts` +
+> `computeRiskMetricsLocal`，写入 Dexie `screeningFunds`）。Node 端不再后台 enrich。
 
-  const navPoints = navResult.data?.items ?? [];
-  const fundListItem = typeList.find(f => f.code === code);
+```typescript
+// frontend: useScreeningDb.syncFromServer → 本地丰富化
+// 1. /api/screening/sync 返回原始清单（fund_code / returns / nav ...）
+// 2. computeRiskMetricsLocal(navs) → 风险指标（夏普/回撤/波动/Calmar）
+// 3. classifyFundIndustry(fund_name) → 行业标签 + 4433 排名
+// 4. 写入 Dexie screeningFunds，做本地查询/看板聚合
+```
 
   enrichmentMap.set(code, {
     fund_type: fundListItem?.type ?? null,              // 基金类型

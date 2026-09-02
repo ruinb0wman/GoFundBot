@@ -77,7 +77,7 @@ GET https://fund.eastmoney.com/data/rankhandler.aspx
 ?op=ph&dt=kf&ft={typeCode}&sc={sortField}&st=desc&pi={page}&pn={pageSize}
 ```
 
-开放基金排行 `dt=kf` 字段映射见 `Service/src/providers/eastmoney/eastmoneyFundProvider.ts` `mapRankingRow()`。
+开放基金排行 `dt=kf` 字段映射见 `service/src/providers/eastmoney/eastmoneyFundProvider.ts` `mapRankingRow()`。
 货币基金排行 `dt=hb` 行格式不同，见 `mapMoneyFundRow()`（货币基金单位净值恒为 1）。
 
 ### 2.2 基金类型映射
@@ -115,7 +115,7 @@ GET https://fund.eastmoney.com/data/rankhandler.aspx
 
 ### 4.1 ProviderChain 多提供商降级
 
-`ProviderChain`（`Service/src/core/providerChain.ts:9`）对所有 provider 调用提供统一的降级机制：
+`ProviderChain`（`service/src/core/providerChain.ts:9`）对所有 provider 调用提供统一的降级机制：
 
 ```
 try provider[0] → 失败 → try provider[1] → 失败 → ... → 全部失败抛异常
@@ -146,7 +146,8 @@ for (const type of types) {
 
 ### 4.2 前端行业标签双保险
 
-第一层：后端 `classifyFundIndustry(fundName)` 基于正则匹配实现（`industryService.ts:1`）：
+第一层：前端 `classifyFundIndustry(fundName)`（`frontend/src/services/industryClassifier.ts`）基于正则匹配实现，
+in `useScreeningDb.syncFromServer` 时（`industry_tag_name` 兜底）计算：
 
 ```
 /创新药|医疗|医药|生物|医美|健康/ → '医药医疗'

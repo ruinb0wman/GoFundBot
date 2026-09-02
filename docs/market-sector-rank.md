@@ -23,14 +23,14 @@ GET /api/market/sectors?limit=90
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| Route | `Service/src/routes/market.routes.ts:84` | `GET /api/market/sectors` |
-| Service | `Service/src/services/marketService.ts:820` | `getMarketSectorsFromAkshare()` 编排 |
-| Service | `Service/src/services/marketService.ts:463` | `getMarketSectors()` EastMoney 主路 |
-| Provider | `Service/src/providers/eastmoney/eastmoneyMarketProvider.ts:140` | `sectors()` 东方财富实现 |
-| Python 回退 | `Scripts/cli/data_complete.py` | `--source akshare --type sector_spot` |
-| Frontend API | `Frontend/src/services/api.ts:85` | `getSectorRank()` |
-| Frontend 渲染 | `Frontend/src/components/SectorRank.vue` | 排行列表 + 模态框 |
-| 缓存 | `Service/src/core/cache.ts:180` | `marketAkshare` TTL 30s |
+| Route | `service/src/routes/market.routes.ts:84` | `GET /api/market/sectors` |
+| service | `service/src/services/marketService.ts:820` | `getMarketSectorsFromAkshare()` 编排 |
+| service | `service/src/services/marketService.ts:463` | `getMarketSectors()` EastMoney 主路 |
+| Provider | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts:140` | `sectors()` 东方财富实现 |
+| Python 回退 | `python/cli/data_complete.py` | `--source akshare --type sector_spot` |
+| frontend API | `frontend/src/services/api.ts:85` | `getSectorRank()` |
+| frontend 渲染 | `frontend/src/components/SectorRank.vue` | 排行列表 + 模态框 |
+| 缓存 | `service/src/core/cache.ts:180` | `marketAkshare` TTL 30s |
 
 ## 三、东方财富 API 数据源
 
@@ -84,7 +84,7 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type sec
 
 | 项 | 说明 |
 |----|------|
-| 组件 | `Frontend/src/components/SectorRank.vue` |
+| 组件 | `frontend/src/components/SectorRank.vue` |
 | 数据刷新 | `useAdaptiveRefresh` + Dexie `marketCache` 持久化 |
 | 涨跌分布 | 顶部概览条（上涨/平盘/下跌计数 + 比例条） |
 | 排序 | 默认按涨跌幅降序，前 90 个板块 |

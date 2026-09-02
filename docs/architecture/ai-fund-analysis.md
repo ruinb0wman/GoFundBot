@@ -5,7 +5,7 @@
 ### 四位并行分析师
 
 ```typescript
-// aiAnalyst.ts — 四个分析师并行调用
+// fundAnalyst.ts（前端）— 四个分析师并行调用
 const [perfReport, holdingReport, managerReport, marketReport] = await Promise.all([
   callAnalyst('performance', PERFORMANCE_PROMPT, fundInfo, perfExtra, config),
   callAnalyst('holding', HOLDING_PROMPT, fundInfo, holdingExtra, config),
@@ -77,7 +77,7 @@ interface SupervisorOutput {
 ### 流式版本
 
 ```typescript
-// aiAnalyst.ts — 流式版本用于需要逐步展示的场景
+// fundAnalyst.ts（前端）— 流式版本用于需要逐步展示的场景
 export async function* analyzeFundStream(input: AnalystInput, llmConfig?: LLMConfig):
   AsyncGenerator<{ type: string; data: unknown }> {
   // 逐步 yield 每位分析师报告
@@ -104,4 +104,4 @@ export async function* analyzeFundStream(input: AnalystInput, llmConfig?: LLMCon
 
 **组合级分析**：通过 portfolio 数据（Dexie 表）+ 多只基金并行拉取详情 → LLM 综合评估组合分散度、相关性、风险暴露。
 
-**策略参考**：基金分析（`/api/fund/:code/analyze/stream`）与持仓诊断（`POST /api/user/portfolio/analyze`）均支持 `strategyContext` 字段——前端将用户在策略板块保存的启用中策略注入提示词，使评价与建议贴合用户策略取向（同时要求不歪曲数据）。详见 [策略记忆与 AI 注入](/strategy/memory-injection)。
+**策略参考**：基金分析（前端 `fundAnalyst.ts`）与持仓诊断（前端 `portfolioAnalyst.ts`）均支持 `strategyContext` 字段——前端将用户在策略板块保存的启用中策略注入提示词，使评价与建议贴合用户策略取向（同时要求不歪曲数据）。详见 [策略记忆与 AI 注入](/strategy/memory-injection)。
