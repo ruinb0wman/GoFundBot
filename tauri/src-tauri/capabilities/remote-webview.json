@@ -5,8 +5,8 @@
   "windows": ["main"],
   "remote": {
     "urls": [
-      "http://localhost:5173",
-      "http://localhost:4173"
+      "http://localhost:8517",
+      "http://localhost:8417"
     ]
   },
   "permissions": [

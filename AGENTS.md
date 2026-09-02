@@ -4,18 +4,18 @@
 
 **Two services + optional Tauri shell**, start in order:
 
-1. **service** (port 3100) — Node.js/Express/TypeScript **薄后端**（数据获取层）
+1. **service** (port 8310) — Node.js/Express/TypeScript **薄后端**（数据获取层）
    - All API routes (`/api/fund/*`, `/api/market/*`, `/api/screening/*`, `/api/backtest/*`, etc.) — 业务计算已迁移前端，后端只返回原始数据
    - ProviderChain (stock-sdk → eastmoney → baidu/cls) for real-time financial data
    - PythonRunner: spawns Python scripts for computation (backtest)
    - 反爬(Referer)、Yahoo 走代理、速率/校验/日志；最小代理配置接口（仅 Proxy URL）
-2. **frontend** (port 5173) — Vue 3 + Vite，proxies `/api` → service。**全部业务逻辑在前端**：
+2. **frontend** (port 8517) — Vue 3 + Vite，proxies `/api` → service。**全部业务逻辑在前端**：
    - 筛选丰富化（`industryClassifier.ts` 行业分类 + `computeRiskMetricsLocal` 风险指标 + 4433 排名，`useScreeningDb`）
    - 投研看板计算（`researchComputation.ts`，从 Dexie screeningFunds + `/api/market/sectors` 聚合）
    - AI：`llm.ts`（OpenAI 兼容客户端直调）+ `fundAnalyst` / `portfolioAnalyst` / `strategyDraft` / `reflection` / `chatEngine`（对话+工具调用）
    - 联网搜索：`searchService.ts`（Exa→Bocha→Tavily→DuckDuckGo，key 存前端 localStorage）
    - 设置：LLM/Search key 存前端；仅 Proxy URL 下发 Node
-3. **桌面目标**（可选）— **Tauri 2 壳**（`tauri/src-tauri/`），仅解禁 CORS，不打包前端资源：WebView 加载**运行中的前端服务** origin（dev `http://localhost:5173`，prod `http://localhost:4173` 静态托管）；出站 HTTP 走 `tauri-plugin-http`（绕 CORS）。远程 origin 的 IPC 放行在 `tauri/src-tauri/capabilities/remote-webview.json` 的 `remote.urls`。前端 `httpClient.ts` 检测 `window.__TAURI_INTERNALS__` 自动路由（桌面 → Node `localhost:3100` 绝对地址；Web → `/api` Vite 代理）。
+3. **桌面目标**（可选）— **Tauri 2 壳**（`tauri/src-tauri/`），仅解禁 CORS，不打包前端资源：WebView 加载**运行中的前端服务** origin（dev `http://localhost:8517`，prod `http://localhost:8417` 静态托管）；出站 HTTP 走 `tauri-plugin-http`（绕 CORS）。远程 origin 的 IPC 放行在 `tauri/src-tauri/capabilities/remote-webview.json` 的 `remote.urls`。前端 `httpClient.ts` 检测 `window.__TAURI_INTERNALS__` 自动路由（桌面 → Node `localhost:8310` 绝对地址；Web → `/api` Vite 代理）。
 
 **Python** is tool-only (no HTTP server). Called via `child_process.spawn()` from Express:
 ```
@@ -36,7 +36,7 @@ Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → st
 Screening enrichment: frontend sync raw /api/screening → 本地 computeRiskMetrics + classifyFundIndustry → Dexie
 Web search:       frontend chatEngine/searchService → Exa/Bocha/Tavily/DDG（key 前端本地）
 Settings:         LLM/Search key 前端 localStorage；Proxy URL → PUT /api/settings（仅 proxy 子域）
-Desktop HTTP:     httpClient.ts → tauri-plugin-http 直连（绕 CORS），Node 用 localhost:3100 绝对地址
+Desktop HTTP:     httpClient.ts → tauri-plugin-http 直连（绕 CORS），Node 用 localhost:8310 绝对地址
 ```
 
 ## Commands
@@ -44,7 +44,7 @@ Desktop HTTP:     httpClient.ts → tauri-plugin-http 直连（绕 CORS），Nod
 ```bash
 # service (Node >= 18) — THE main backend
 cd service && npm install
-npm run dev              # tsx watch src/index.ts (port 3100)
+npm run dev              # tsx watch src/index.ts (port 8310)
 npm run typecheck        # tsc --noEmit
 npm run lint             # ESLint (max-lines 500)
 npm test                 # vitest run (67+ tests)
@@ -52,14 +52,14 @@ npm run build && npm start
 
 # frontend
 cd frontend && npm install
-npm run dev              # port 5173, proxy /api → localhost:3100
+npm run dev              # port 8517, proxy /api → localhost:8310
 npm run lint             # ESLint (max-lines 500, Vue/TS)
 npx vue-tsc --noEmit     # TypeScript typecheck
 npm test                 # vitest run
 npm run build            # output in frontend/dist/
 
 # Desktop (Tauri 2 shell — CORS-free). 需先启动 Node + 前端服务：
-cd frontend && npm run build && npm run preview   # prod 静态托管 localhost:4173
+cd frontend && npm run build && npm run preview   # prod 静态托管 localhost:8417
 cd tauri && npm run dev                           # = tauri dev（WebView 加载 devUrl）
 # cargo check 需要系统库：webkit2gtk-4.1 / gtk3 / atk（Linux）
 
@@ -71,7 +71,7 @@ python/.venv/bin/python cli/data_complete.py --source akshare --type stocks
 
 # Docs (VitePress)
 cd docs && npm install
-npm run dev              # port 5174, proxied via frontend /docs/*
+npm run dev              # port 8574, proxied via frontend /docs/*
 npm run build            # output in docs/.vitepress/dist/
 ```
 
@@ -93,7 +93,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 - **Health check**: `GET /api/health` — includes cache stats.
 - **Cache TTLs**: fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
 - **Graceful shutdown**: service handles `SIGTERM`/`SIGINT` — 10s wait, then force exit.
-- **Vite proxy**: `frontend/vite.config.ts` proxies `/api` → `localhost:3100`, `/docs` → `localhost:5174`.
+- **Vite proxy**: `frontend/vite.config.ts` proxies `/api` → `localhost:8310`, `/docs` → `localhost:8574`.
 - **Dexie.js**: All persistent data in IndexedDB, 11 tables in `frontend/src/db/index.ts` (含 strategies / analysisMemory).
 - **Settings endpoint**: `GET/PUT /api/settings` — **仅 proxy 子域**（LLM/Search key 已迁移前端 localStorage：`useLLMConfig` / `useAppSettings`）。
 - **Search chain（前端）**: Exa（MCP/JSON-RPC，免费无 Key）→ Bocha → Tavily → DuckDuckGo（自动降级）；`frontend/src/services/searchService.ts`。

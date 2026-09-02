@@ -107,14 +107,14 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 ```bash
 # 1. 启动后端 + 前端（生产静态托管）
-cd service && npm install && npm run build && npm start   # service :3100
-cd frontend && npm run build && npm run preview            # 静态托管 :4173
+cd service && npm install && npm run build && npm start   # service :8310
+cd frontend && npm run build && npm run preview            # 静态托管 :8417
 
 # 2. 启动桌面壳（另开终端）
 cd tauri && npm install && npm run dev                     # = tauri dev
 ```
 
-> Linux 需系统库 `webkit2gtk-4.1` / `gtk3` / `atk`；`npm run dev`（根目录）默认加载 devUrl `http://localhost:5173`，`npm run build && npm run preview` 后加载 prod `http://localhost:4173`。详见文档站 [桌面壳](docs/architecture/desktop-shell.md)。
+> Linux 需系统库 `webkit2gtk-4.1` / `gtk3` / `atk`；`npm run dev`（根目录）默认加载 devUrl `http://localhost:8517`，`npm run build && npm run preview` 后加载 prod `http://localhost:8417`。详见文档站 [桌面壳](docs/architecture/desktop-shell.md)。
 
 ## 🛠 技术栈
 
@@ -153,7 +153,7 @@ cd tauri && npm install && npm run dev                     # = tauri dev
 
 ### 桌面壳 (tauri)
 *   **框架**: Tauri 2 + Rust（独立 npm 包 `gofund-tauri`，自带 `@tauri-apps/cli`）
-*   **网络**: `tauri-plugin-http`（出站 HTTP 绕 CORS，直连 Node `localhost:3100`）
+*   **网络**: `tauri-plugin-http`（出站 HTTP 绕 CORS，直连 Node `localhost:8310`）
 *   **IPC 放行**: `capabilities/remote-webview.json` 配置远程 origin
 *   **前端资源**: 不打包——WebView 加载运行中的前端服务 origin
 
@@ -213,11 +213,11 @@ npm run dev
 ```
 
 同时启动：
-- **service** (端口 3100) — Express 后端
-- **frontend** (端口 5173) — Vue 开发服务器（代理 `/api` → 3100，`/docs` → 5174）
-- **Docs** (端口 5174) — VitePress 文档站
+- **service** (端口 8310) — Express 后端
+- **frontend** (端口 8517) — Vue 开发服务器（代理 `/api` → 8310，`/docs` → 8574）
+- **Docs** (端口 8574) — VitePress 文档站
 
-启动成功后访问 `http://localhost:5173`，文档站通过前端 `/docs/*` 路径代理访问。
+启动成功后访问 `http://localhost:8517`，文档站通过前端 `/docs/*` 路径代理访问。
 
 ### 5. 桌面启动
 
@@ -240,7 +240,7 @@ cd frontend && npm run build
 cd service && npm run build && npm start
 ```
 
-前端构建产物在 `frontend/dist/`，可直接用 Nginx 托管，API 代理到 `http://localhost:3100`。
+前端构建产物在 `frontend/dist/`，可直接用 Nginx 托管，API 代理到 `http://localhost:8310`。
 
 ### 调用 Python 脚本
 
@@ -304,7 +304,6 @@ GoFundBot/
 │   ├── Data/                     # 日志、缓存文件
 │   ├── requirements.txt / requirements-dev.txt
 │   ├── pyproject.toml
-│   └── Dockerfile
 ├── docs/                        # VitePress 文档站 + 截图
 ├── package.json                 # 根目录 — 一键启动脚本
 └── AGENTS.md                    # AI Agent 开发指南

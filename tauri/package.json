@@ -2,7 +2,7 @@
   "name": "gofund-tauri",
   "private": true,
   "version": "0.1.0",
-  "description": "GoFundBot Tauri 2 desktop shell (CORS-free WebView loading a running frontend service). Frontend service must be started separately (dev: http://localhost:5173, prod: http://localhost:4173).",
+  "description": "GoFundBot Tauri 2 desktop shell (CORS-free WebView loading a running frontend service). Frontend service must be started separately (dev: http://localhost:8517, prod: http://localhost:8417).",
   "type": "module",
   "scripts": {
     "dev": "tauri dev",

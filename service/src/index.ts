@@ -22,7 +22,7 @@ function validateEnv(): void {
 
 validateEnv();
 
-const port = Number(process.env.PORT ?? 3100);
+const port = Number(process.env.PORT ?? 8310);
 
 const app = createApp();
 const server: Server = createServer(app);

@@ -67,10 +67,10 @@ GlobalIndexKline:
 // api.ts:23
 async function getWithLocalFallback<T>(path: string) {
   try {
-    return await api.get(path);          // 通过 Vite proxy → localhost:3100
+    return await api.get(path);          // 通过 Vite proxy → localhost:8310
   } catch (error) {
     if (error?.message === 'Network Error') {
-      return localBackendApi.get(path);  // 直连 localhost:3100（绕过 proxy）
+      return localBackendApi.get(path);  // 直连 localhost:8310（绕过 proxy）
     }
     throw error;
   }

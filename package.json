@@ -8,7 +8,7 @@
     "setup:venv": "test -d python/.venv || python3 -m venv python/.venv && python/.venv/bin/pip install -r python/requirements.txt -r python/requirements-dev.txt || python/.venv/bin/pip install -r python/requirements.txt -r python/requirements-dev.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn",
     "setup:precommit": "python/.venv/bin/pre-commit install --install-hooks",
     "dev": "npm run setup:venv && concurrently -n svc,fe,doc -c blue,green,yellow \"npm run dev:service\" \"npm run dev:frontend\" \"npm run docs:dev\"",
-    "docs:dev": "cd docs && npx vitepress dev --port 5174",
+    "docs:dev": "cd docs && npx vitepress dev --port 8574",
     "docs:build": "cd docs && npx vitepress build",
     "dev:service": "cd service && npm run dev",
     "dev:frontend": "cd frontend && npm run dev --host",

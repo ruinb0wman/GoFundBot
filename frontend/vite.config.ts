@@ -22,13 +22,15 @@ export default defineConfig(({ mode }) => {
       ],
     },
     server: {
+      port: 8517,
+      strictPort: true,
       proxy: {
         '/api': {
-          target: env.VITE_FALLBACK_API_BASE || 'http://localhost:3100',
+          target: env.VITE_FALLBACK_API_BASE || 'http://localhost:8310',
           changeOrigin: true,
         },
         '/docs': {
-          target: 'http://localhost:5174',
+          target: 'http://localhost:8574',
           changeOrigin: true,
         },
       },

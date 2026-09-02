@@ -30,7 +30,7 @@
 └────────────────────────────────┼───────────────────────────────────┘
                                  │
 ┌────────────────────────────────┼───────────────────────────────────┐
-│                   Node 薄后端 (localhost:3100)                       │
+│                   Node 薄后端 (localhost:8310)                       │
 │  Middleware: helmet │ cors │ rate-limit (300/15min) │ logger         │
 │  Routes: /api/fund │ /api/funds │ /api/market │ /api/stocks          │
 │          /api/news │ /api/backtest │ /api/screening（原始数据）      │
@@ -55,8 +55,8 @@
 
 | 运行时 | 位置 | 角色 |
 |--------|------|------|
-| **Node.js (TypeScript)** | `service/src/` | Express 薄后端 (port 3100)——数据获取、驱动 Python、本地数据代理（反爬/代理/限流/日志） |
-| **Node.js (TypeScript)** | `frontend/src/` | Vue 3 前端 (port 5173)——全部业务计算、AI 分析、联网搜索、用户数据 (IndexedDB) |
+| **Node.js (TypeScript)** | `service/src/` | Express 薄后端 (port 8310)——数据获取、驱动 Python、本地数据代理（反爬/代理/限流/日志） |
+| **Node.js (TypeScript)** | `frontend/src/` | Vue 3 前端 (port 8517)——全部业务计算、AI 分析、联网搜索、用户数据 (IndexedDB) |
 | **Python 3** | `python/` | 工具脚本，由 `pythonRunner.ts` 通过 `child_process.spawn()` 调用 |
 
 ## 职责边界（业务逻辑前端化）

@@ -6,8 +6,8 @@
 
 | 运行时 | 位置 | 角色 |
 |--------|------|------|
-| **Node.js (TS)** | `service/src/` | Express 后端 (port 3100)，ProviderChain 编排、缓存、业务逻辑、AI 对话 |
-| **Node.js (TS)** | `frontend/src/` | Vue 3 前端 (port 5173)，IndexedDB (Dexie.js) 本地持久化 |
+| **Node.js (TS)** | `service/src/` | Express 后端 (port 8310)，ProviderChain 编排、缓存、业务逻辑、AI 对话 |
+| **Node.js (TS)** | `frontend/src/` | Vue 3 前端 (port 8517)，IndexedDB (Dexie.js) 本地持久化 |
 | **Python 3** | `python/cli/` | 工具脚本，由 `pythonRunner.ts` 通过 `child_process.spawn()` 调用 |
 
 ---

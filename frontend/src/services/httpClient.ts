@@ -2,10 +2,10 @@
  * Environment-aware HTTP client adapter.
  *
  * Two deployment targets share the same frontend/src:
- * - Web build (Vite): browser fetch + `/api` Vite proxy (fallback to localhost:3100).
+ * - Web build (Vite): browser fetch + `/api` Vite proxy (fallback to localhost:8310).
  * - Tauri desktop shell: WebView loads a running frontend service origin; all
  *   outbound HTTP goes through `@tauri-apps/plugin-http` (native) which bypasses
- *   browser CORS. Node API calls use the absolute `http://localhost:3100/api`
+ *   browser CORS. Node API calls use the absolute `http://localhost:8310/api`
  *   address; external LLM / search APIs are also called directly via the plugin.
  *
  * Consumers keep the `{ data, status, ok }` response shape (axios-like) so the
@@ -32,7 +32,7 @@ export interface HttpRequestOptions {
 
 const API_BASE = '/api'
 const FALLBACK_API_BASE: string =
-  import.meta.env.VITE_FALLBACK_API_BASE || 'http://localhost:3100/api'
+  import.meta.env.VITE_FALLBACK_API_BASE || 'http://localhost:8310/api'
 
 export function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
@@ -62,7 +62,7 @@ function buildQueryString(baseUrl: string, params?: Record<string, unknown>): st
 /**
  * Resolve a request URL:
  * - external URLs are used as-is (desktop calls them via plugin-http directly);
- * - API paths (`/fund/...`, `api/...`, `http://localhost:3100/...`) are mapped
+ * - API paths (`/fund/...`, `api/...`, `http://localhost:8310/...`) are mapped
  *   to the Node base in Tauri and kept relative (Vite proxy) in Web.
  */
 export function resolveUrl(url: string, params?: Record<string, unknown>): string {

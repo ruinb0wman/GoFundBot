@@ -99,7 +99,7 @@ npm run build
 npm start
 ```
 
-默认端口：`3100`。
+默认端口：`8310`。
 
 ## 已支持 API 列表
 
@@ -149,28 +149,28 @@ npm start
 ## curl 测试样例
 
 ```bash
-curl "http://localhost:3100/api/health"
-curl "http://localhost:3100/api/funds/search?q=招商"
-curl "http://localhost:3100/api/funds/161725/basic"
-curl "http://localhost:3100/api/funds/161725/detail"
-curl "http://localhost:3100/api/funds/161725/estimate"
-curl "http://localhost:3100/api/funds/estimates?codes=161725,110022"
-curl "http://localhost:3100/api/funds/161725/holdings"
-curl "http://localhost:3100/api/funds/161725/managers"
-curl "http://localhost:3100/api/stocks/600519/reference"
-curl "http://localhost:3100/api/stocks/references?codes=600519,000001"
-curl "http://localhost:3100/api/market/indices"
-curl "http://localhost:3100/api/market/sectors"
-curl "http://localhost:3100/api/news/flash"
+curl "http://localhost:8310/api/health"
+curl "http://localhost:8310/api/funds/search?q=招商"
+curl "http://localhost:8310/api/funds/161725/basic"
+curl "http://localhost:8310/api/funds/161725/detail"
+curl "http://localhost:8310/api/funds/161725/estimate"
+curl "http://localhost:8310/api/funds/estimates?codes=161725,110022"
+curl "http://localhost:8310/api/funds/161725/holdings"
+curl "http://localhost:8310/api/funds/161725/managers"
+curl "http://localhost:8310/api/stocks/600519/reference"
+curl "http://localhost:8310/api/stocks/references?codes=600519,000001"
+curl "http://localhost:8310/api/market/indices"
+curl "http://localhost:8310/api/market/sectors"
+curl "http://localhost:8310/api/news/flash"
 ```
 
 ## 环境变量
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `PORT` | `3100` | 服务端口 |
+| `PORT` | `8310` | 服务端口 |
 | `NODE_ENV` | `development` | 环境 |
-| `CORS_ORIGIN` | `http://localhost:5173,http://localhost:8080` | CORS 域名 |
+| `CORS_ORIGIN` | `http://localhost:8517` | CORS 域名 |
 | `STOCK_SDK_TIMEOUT_MS` | `10000` | stock-sdk 超时 |
 | `DATA_SERVICE_FORCE_STOCK_SDK_FAILURE` | （未设置） | 设为 `1` 模拟 stock-sdk 失败（验证 eastmoney fallback） |
 

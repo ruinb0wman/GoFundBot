@@ -9,17 +9,17 @@
 ```
 ┌─ 桌面目标：Tauri 2 壳（仅解禁 CORS + 原生 fetch）────────────────────────┐
 │  WebView 加载源 = 运行中的前端服务 origin                                  │
-│  dev : http://localhost:5173（vite）                                      │
-│  prod: http://localhost:4173（vite preview / serve 静态托管 dist）         │
+│  dev : http://localhost:8517（vite）                                      │
+│  prod: http://localhost:8417（vite preview / serve 静态托管 dist）         │
 └───────────────┬──────────────────────────────────────────────────────────┘
 ┌───────────────▼────────────────── 同一份 frontend/src ─────────────────────┐
 │  全部业务逻辑（筛选丰富化/行业风险/排名/4433）＋ AI（前端直调 LLM）＋        │
 │  联网搜索（Bocha/Tavily/Exa/DDG 直调）＋ 设置（key 存前端）＋ 用户数据        │
 ├───────────────「出站 HTTP」───────────────────────────────────────────────┤
-│  桌面：tauri-plugin-http（原生，绕 CORS）→ Node(localhost:3100) / 外部 API  │
+│  桌面：tauri-plugin-http（原生，绕 CORS）→ Node(localhost:8310) / 外部 API  │
 │  Web ：浏览器 fetch → /api Vite 代理 → Node                                 │
 └───────────────┬──────────────────────────────────────────────────────────┘
-┌───────────────▼────────── Node 薄后端（独立本地服务 localhost:3100）────────┐
+┌───────────────▼────────── Node 薄后端（独立本地服务 localhost:8310）────────┐
 │  ProviderChain 实时数据 │ 驱动 Python（data_complete/backtest）│ 反爬/代理 │
 │  /api/screening 返回原始数据 │ /api/settings 仅 proxy 子域 │ 最小配置接口  │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -38,7 +38,7 @@
 
 ## 远程 origin 的 IPC 放行（关键前提）
 
-WebView 加载的是**远程 origin**（`http://localhost:5173` 等）而非 `tauri://`。
+WebView 加载的是**远程 origin**（`http://localhost:8517` 等）而非 `tauri://`。
 默认情况下远程页面无权调用 Tauri 插件/核心 API，`tauri-plugin-http` 会被拦截。
 Tauri v2 的放行机制是 **capability 的 `remote` 字段**（替代 v1 的
 `dangerousRemoteDomainIpcAccess`）：
@@ -49,7 +49,7 @@ Tauri v2 的放行机制是 **capability 的 `remote` 字段**（替代 v1 的
   "identifier": "gofund-remote-webview",
   "windows": ["main"],
   "remote": {
-    "urls": ["http://localhost:5173", "http://localhost:4173"]
+    "urls": ["http://localhost:8517", "http://localhost:8417"]
   },
   "permissions": ["http:default", "core:default"]
 }
@@ -63,11 +63,11 @@ Tauri v2 的放行机制是 **capability 的 `remote` 字段**（替代 v1 的
 
 ```bash
 # 1) Node 薄后端（独立）
-cd service && npm run dev                 # localhost:3100
+cd service && npm run dev                 # localhost:8310
 
 # 2) 前端服务（独立）——dev 或 prod 静态托管
-cd frontend && npm run dev --host         # localhost:5173   (dev)
-cd frontend && npm run build && npm run preview   # localhost:4173 (prod 静态托管)
+cd frontend && npm run dev --host         # localhost:8517   (dev)
+cd frontend && npm run build && npm run preview   # localhost:8417 (prod 静态托管)
 
 # 3) Tauri 壳（另开终端）
 cd tauri && npm run dev                  # = tauri dev
@@ -81,8 +81,8 @@ cd tauri && npm run dev                  # = tauri dev
 
 | 运行时 | 检测 | Node API | 外部 API（LLM/搜索） |
 |--------|------|----------|----------------------|
-| Web | — | `/api` Vite 代理（网络错误回落 `localhost:3100`） | 浏览器 fetch（受 CORS 限制） |
-| 桌面 | `window.__TAURI_INTERNALS__` | `http://localhost:3100/api`（plugin-http 直连，绕 CORS） | plugin-http 直连（绕 CORS） |
+| Web | — | `/api` Vite 代理（网络错误回落 `localhost:8310`） | 浏览器 fetch（受 CORS 限制） |
+| 桌面 | `window.__TAURI_INTERNALS__` | `http://localhost:8310/api`（plugin-http 直连，绕 CORS） | plugin-http 直连（绕 CORS） |
 
 `api.ts` 的业务调用签名不变（`res.data`），底层按环境路由。`/api/chat` 等
 SSE 端点已撤销——对话由前端 `chatEngine` 直接驱动 LLM 流式接口。
@@ -90,8 +90,8 @@ SSE 端点已撤销——对话由前端 `chatEngine` 直接驱动 LLM 流式接
 ## 自检清单（桌面端）
 
 1. `tauri.conf.json` 的 `devUrl` / `frontendDist` 与 capability `remote.urls` 一致。
-2. 前端服务已启动（`curl http://localhost:5173` 可达）。
-3. Node 已启动（`curl http://localhost:3100/api/health` 可达）。
+2. 前端服务已启动（`curl http://localhost:8517` 可达）。
+3. Node 已启动（`curl http://localhost:8310/api/health` 可达）。
 4. 首次 `cargo check` 需要系统库：Linux 需 `webkit2gtk-4.1 / gtk3 / atk` 等
    （`sudo apt install libwebkit2gtk-4.1-dev build-essential ...`）；
    `tauri/src-tauri` 构建 CI 步可选（需 Rust 环境）。

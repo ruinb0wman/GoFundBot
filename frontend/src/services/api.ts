@@ -1,7 +1,7 @@
 import { httpRequest, isTauriRuntime, type HttpResponse } from './httpClient'
 
 const FALLBACK_API_BASE: string =
-  import.meta.env.VITE_FALLBACK_API_BASE || 'http://localhost:3100/api'
+  import.meta.env.VITE_FALLBACK_API_BASE || 'http://localhost:8310/api'
 
 interface QueryArgs {
   params?: Record<string, unknown>
@@ -10,8 +10,8 @@ interface QueryArgs {
 
 /**
  * Axios-like request helper. Resolves path via httpClient (Tauri → absolute
- * localhost:3100, Web → `/api` Vite proxy), and retries once against
- * `localhost:3100/api` on Web network errors (backend/dev-server fallback).
+ * localhost:8310, Web → `/api` Vite proxy), and retries once against
+ * `localhost:8310/api` on Web network errors (backend/dev-server fallback).
  */
 async function request<T = any>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',

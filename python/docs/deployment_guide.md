@@ -7,7 +7,7 @@ cd Service
 npm install
 cp .env.example .env        # 首次部署
 npm run build               # 生产构建
-npm start                   # 生产启动（端口 3100）
+npm start                   # 生产启动（端口 8310）
 
 # 或开发模式
 npm run dev                 # tsx watch，自动重载
@@ -15,7 +15,7 @@ npm run dev                 # tsx watch，自动重载
 
 验证：
 ```bash
-curl http://localhost:3100/api/health
+curl http://localhost:8310/api/health
 # → {"success":true,"data":{"status":"ok","service":"gofund-data-service"},...}
 ```
 
@@ -25,12 +25,12 @@ curl http://localhost:3100/api/health
 cp Scripts/.env.example Scripts/.env   # 首次部署，按需修改 API Key
 
 # Windows PowerShell
-$env:DATA_SERVICE_BASE_URL="http://localhost:3100/api"
+$env:DATA_SERVICE_BASE_URL="http://localhost:8310/api"
 $env:FUND_DEFAULT_SOURCE="legacy"
 python Scripts/app.py
 
 # Linux / macOS
-export DATA_SERVICE_BASE_URL=http://localhost:3100/api
+export DATA_SERVICE_BASE_URL=http://localhost:8310/api
 export FUND_DEFAULT_SOURCE=legacy
 python Scripts/app.py
 ```
@@ -45,7 +45,7 @@ curl http://localhost:5000/api/data-service/health
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `DATA_SERVICE_BASE_URL` | `http://localhost:3100/api` | Service 地址 |
+| `DATA_SERVICE_BASE_URL` | `http://localhost:8310/api` | Service 地址 |
 | `DATA_SERVICE_TIMEOUT` | `5` | 请求超时（秒） |
 | `FUND_DEFAULT_SOURCE` | `legacy` | 基金详情默认数据源 |
 
