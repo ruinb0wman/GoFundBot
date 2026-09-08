@@ -62,7 +62,13 @@ SkillRouter.route(message, preferred?):
 |------|------|
 | `toolContract.ts` | 25 个工具的**单一数据源**（对齐 pi `defineTool`）：`ToolSpec { name, label, description, parameters: Type.Object(…), promptSnippet }`（TypeBox @sinclair/typebox）。派生三样东西：OpenAI `tools` 参数（`toolSpecToOpenAI`）、系统提示 `<available_tools>` XML 清单（`toolSpecsToXml`）、运行时参数校验（`validateToolCall`：必需/类型/枚举） |
 | `toolCallParser.ts` | 传输层向导：`extractToolCalls(content)` 解析 `<ai_tool_calls>` 块（参数值智能识别 JSON 数组/对象/数字/布尔 vs 纯文本，处理引号、实体、多行、畸形/截断块）；`sanitizeAssistantContent(content)` 剥离一切工具标记 |
+| `toolLoop.ts` | **共享工具循环**（从 index.ts 抽出，chat 与分析场景复用）：`normalizeToolCalls`（原生+XML 归一化）、`executeToolCall`（校验+`{ok,data}|{ok,error}` 信封）、`truncateJson`（回传裁剪）、`withRetry`/`trimMessages`/`sleep` |
 | `chatEngine/index.ts` | 每轮响应先归一化 → 校验 → 信封执行 → 回传；流式输出净化；无有效内容时的优雅收尾（status 事件，不再静默空答） |
+
+> **跨场景复用**：`toolLoop.ts` + `buildSystemPrompt` + `TOOL_CALL_RULES` +
+> `<available_tools>` 同时被 `services/analysis/analysisEngine.ts`（基金 4+1 / 组合诊断 /
+> 日志分析三类场景）复用，保证所有 AI 场景执行同一套权限边界与净化契约。详见
+> [AI 分析框架总览](./ai-overview)。
 
 **系统提示契约**：`buildSystemPrompt(basePrompt, toolNames, strategyContext)` 在每个技能提示后
 追加 `TOOL_CALL_RULES`（只允许已注册工具、调用必须写在 `<ai_tool_calls>` 块内、块不得出现在正文、

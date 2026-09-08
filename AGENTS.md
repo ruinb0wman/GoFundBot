@@ -12,7 +12,7 @@
 2. **frontend** (port 8517) — Vue 3 + Vite，proxies `/api` → service。**全部业务逻辑在前端**：
    - 筛选丰富化（`industryClassifier.ts` 行业分类 + `computeRiskMetricsLocal` 风险指标 + 4433 排名，`useScreeningDb`）
    - 投研看板计算（`researchComputation.ts`，从 Dexie screeningFunds + `/api/market/sectors` 聚合）
-   - AI：`llm.ts`（OpenAI 兼容客户端直调）+ `fundAnalyst` / `portfolioAnalyst` / `strategyDraft` / `reflection` / `chatEngine`（对话+工具调用）
+   - AI：`llm.ts`（OpenAI 兼容客户端直调）+ `fundAnalyst` / `portfolioAnalyst` / `strategyDraft` / `reflection` / `chatEngine`（对话+工具调用）；分析场景统一走 `analysis/`（场景 Skill 注册表 + 共享引擎，复用 chat 工具契约）
    - 联网搜索：`searchService.ts`（Exa→Bocha→Tavily→DuckDuckGo，key 存前端 localStorage）
    - 设置：LLM/Search key 存前端；仅 Proxy URL 下发 Node
 3. **桌面目标**（可选）— **Tauri 2 壳**（`tauri/src-tauri/`），仅解禁 CORS，不打包前端资源：WebView 加载**运行中的前端服务** origin（dev `http://localhost:8517`，prod `http://localhost:8417` 静态托管）；出站 HTTP 走 `tauri-plugin-http`（绕 CORS）。远程 origin 的 IPC 放行在 `tauri/src-tauri/capabilities/remote-webview.json` 的 `remote.urls`。前端 `httpClient.ts` 检测 `window.__TAURI_INTERNALS__` 自动路由（桌面 → Node `localhost:8310` 绝对地址；Web → `/api` Vite 代理）。
@@ -118,9 +118,10 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `python/cli/shared/` | Shared Python utilities (http_client) |
 | `python/services/*.py` | Python computation modules (backtest.py, helpers.py) |
 | `frontend/src/services/llm.ts` | OpenAI 兼容 LLM 客户端（浏览器 fetch / tauri plugin-http，JSON+流式） |
-| `frontend/src/services/fundAnalyst.ts` | AI 基金分析（4 分析师+总监），前端直调 |
-| `frontend/src/services/portfolioAnalyst.ts` | 组合诊断分析（前端直调），注入策略上下文 |
-| `frontend/src/services/chatEngine/` | AI 对话引擎（skills.ts 技能 / toolContract.ts 工具契约* / toolCallParser.ts 调用解析与净化 / toolHandlers.ts 实现 / index.ts 编排）<br>*ToolSpec（TypeBox Schema）单一数据源：派生 OpenAI tools 参数、`<available_tools>` XML 清单与运行时校验；原生 tool_calls 与 `<ai_tool_calls>` XML 归一化为统一契约，未知工具名纠错回喂，正文永不出现工具标记 |
+| `frontend/src/services/fundAnalyst.ts` | AI 基金分析（4 分析师+总监）——内部经 `analysis/analysisEngine` runTask：每分析师/总监都是可工具子调用（子集工具/全集），输出经 Schema 校验；公开签名（analyzeFund/analyzeFundStream）与阶段语义不变 |
+| `frontend/src/services/portfolioAnalyst.ts` | 组合诊断分析（前端直调）——经 `analysis/` 引擎 + `portfolio_diagnosis` 场景（市场面工具子集），Schema 校验，注入策略上下文 |
+| `frontend/src/services/analysis/` | **分析场景框架**：`analysisScenarios.ts`（3 场景 Skill 注册表：fund_analysis/portfolio_diagnosis/log_analysis）、`scenarioTypes.ts`（TypeBox 输出 Schema，字段与 DTO 一致）、`analysisEngine.ts`（runTask/runScenario 共享引擎：工具循环+结构化收尾+INVALID_OUTPUT 纠错重试≤2+fallback 降级）、`logAnalysis.ts`（AI 日志分析适配器，规则引擎 `/api/logs/analyze` 为降级源，service 零改动） |
+| `frontend/src/services/chatEngine/` | AI 对话引擎（skills.ts 技能 / toolContract.ts 工具契约* / toolCallParser.ts 调用解析与净化 / toolHandlers.ts 实现 / **toolLoop.ts 共享工具循环**（归一化+信封+重试/裁剪，chat 与分析场景复用）/ index.ts 编排）<br>*ToolSpec（TypeBox Schema）单一数据源：派生 OpenAI tools 参数、`<available_tools>` XML 清单与运行时校验；原生 tool_calls 与 `<ai_tool_calls>` XML 归一化为统一契约，未知工具名纠错回喂，正文永不出现工具标记 |
 | `frontend/src/services/searchService.ts` | 前端搜索链（Exa → Bocha → Tavily → DuckDuckGo） |
 | `frontend/src/services/industryClassifier.ts` | 行业/基金类型分类（筛选丰富化 + 聊天工具共用） |
 | `frontend/src/services/researchComputation.ts` | 投研看板聚合计算（市场统计/基金看板/ETF/板块/行业表现） |

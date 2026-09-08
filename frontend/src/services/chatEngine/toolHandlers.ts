@@ -6,7 +6,7 @@
 
 import api from '../api'
 import { db } from '../../db'
-import { sleep } from './index'
+import { sleep } from './toolLoop'
 import { searchWeb } from '../searchService'
 import {
   buildIndustryPerformanceFromScreening,

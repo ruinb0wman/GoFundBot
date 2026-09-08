@@ -101,6 +101,10 @@
           <p>{{ '错误' }}: <strong class="text-error">{{ analysisResult.error_count }}</strong></p>
           <p>{{ '警告' }}: <strong class="text-warn">{{ analysisResult.warn_count }}</strong></p>
         </div>
+        <div v-if="analysisResult.llm_summary" class="report-section section-llm">
+          <h4>{{ 'AI 摘要' }}</h4>
+          <p>{{ analysisResult.llm_summary }}</p>
+        </div>
         <div v-if="analysisResult.patterns" class="report-section">
           <h4>{{ '错误模式' }}</h4>
           <ul>
@@ -140,6 +144,8 @@
 import { BButton, BInput, BDatePicker } from '@gofund/ui'
 import { ref, onMounted, computed } from 'vue'
 import { VxeTable, VxeColumn } from 'vxe-table'
+import { analyzeLogsWithAI } from '../services/analysis/logAnalysis'
+import { useLLMConfig } from '../composables/useLLMConfig'
 
 const source = ref('dataservice')
 const dateStr = ref(new Date().toISOString().slice(0, 10))
@@ -223,19 +229,11 @@ async function runAnalysis() {
   analysisError.value = ''
   analysisResult.value = null
   try {
-    const res = await fetch('/api/logs/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source: source.value, date: dateStr.value }),
-    })
-    const json = await res.json()
-    if (json.success) {
-      analysisResult.value = json.data
-    } else {
-      analysisError.value = json.error || '分析失败'
-    }
+    const llmConfig = useLLMConfig().config.value
+    const result = await analyzeLogsWithAI(source.value, dateStr.value, llmConfig)
+    analysisResult.value = result
   } catch (e: any) {
-    analysisError.value = String(e)
+    analysisError.value = String(e?.message ?? e)
   } finally {
     analyzing.value = false
   }
@@ -432,6 +430,19 @@ onMounted(loadLogs)
   border: 1px solid var(--color-danger, #ef4444);
   border-radius: 6px;
   background: rgba(239, 68, 68, 0.05);
+}
+
+.section-llm {
+  padding: 12px;
+  border: 1px solid var(--color-primary, #1677ff);
+  border-radius: 6px;
+  background: rgba(22, 119, 255, 0.05);
+}
+
+.section-llm p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .section-error {
