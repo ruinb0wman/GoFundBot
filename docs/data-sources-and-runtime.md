@@ -118,7 +118,7 @@
 | 函数/类 | 文件 | 职责 |
 |---------|------|------|
 | `SkillRouter` / `SKILL_DEFINITIONS` | `frontend/src/services/chatEngine/skills.ts` | 意图路由（关键词匹配 + LLM 路由），支持 8 种技能 |
-| `TOOL_DEFINITIONS` / `toolHandlers` | `frontend/src/services/chatEngine/tools.ts` + `toolHandlers.ts` | Function Calling 工具集（查基金、行情、筛选等） |
+| `ToolSpec` 注册表 / `toolHandlers` | `frontend/src/services/chatEngine/toolContract.ts` + `toolCallParser.ts` + `toolHandlers.ts` | 工具契约（TypeBox Schema 驱动 + XML/原生归一化 + 校验信封执行） |
 | `searchWeb` | `frontend/src/services/searchService.ts` | 搜索引擎链（Exa→Bocha→Tavily→DDG 自动降级） |
 | `analyzeFund` / `analyzeFundStream` | `frontend/src/services/fundAnalyst.ts` | AI 基金分析（前端直调 LLM） |
 

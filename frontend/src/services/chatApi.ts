@@ -1,6 +1,7 @@
 import { db } from '../db'
 import type { LLMConfig } from '../composables/useLLMConfig'
 import { chat, type ChatStreamEvent } from './chatEngine'
+import { sanitizeAssistantContent } from './chatEngine/toolCallParser'
 import { useAppSettings } from '../composables/useAppSettings'
 
 export interface ToolCallInfo {
@@ -22,6 +23,7 @@ export interface ChatMessageDto {
   content: string
   tool_name: string | null
   tool_params_json: string | null
+  tool_calls_json: string | null
   created_time: string | null
 }
 
@@ -158,9 +160,11 @@ export const chatAPI = {
         id: m.id!,
         session_id: m.sessionId,
         role: m.role,
-        content: m.content,
+        // legacy cleanup: old messages may contain <ai_tool_calls> markup
+        content: sanitizeAssistantContent(m.content),
         tool_name: m.toolName,
         tool_params_json: m.toolParamsJson,
+        tool_calls_json: m.toolCallsJson ?? null,
         created_time: null,
       })),
     }

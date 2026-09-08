@@ -120,7 +120,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `frontend/src/services/llm.ts` | OpenAI 兼容 LLM 客户端（浏览器 fetch / tauri plugin-http，JSON+流式） |
 | `frontend/src/services/fundAnalyst.ts` | AI 基金分析（4 分析师+总监），前端直调 |
 | `frontend/src/services/portfolioAnalyst.ts` | 组合诊断分析（前端直调），注入策略上下文 |
-| `frontend/src/services/chatEngine/` | AI 对话引擎（skills.ts 技能 / tools.ts 定义 / toolHandlers.ts 实现 / index.ts 编排） |
+| `frontend/src/services/chatEngine/` | AI 对话引擎（skills.ts 技能 / toolContract.ts 工具契约* / toolCallParser.ts 调用解析与净化 / toolHandlers.ts 实现 / index.ts 编排）<br>*ToolSpec（TypeBox Schema）单一数据源：派生 OpenAI tools 参数、`<available_tools>` XML 清单与运行时校验；原生 tool_calls 与 `<ai_tool_calls>` XML 归一化为统一契约，未知工具名纠错回喂，正文永不出现工具标记 |
 | `frontend/src/services/searchService.ts` | 前端搜索链（Exa → Bocha → Tavily → DuckDuckGo） |
 | `frontend/src/services/industryClassifier.ts` | 行业/基金类型分类（筛选丰富化 + 聊天工具共用） |
 | `frontend/src/services/researchComputation.ts` | 投研看板聚合计算（市场统计/基金看板/ETF/板块/行业表现） |

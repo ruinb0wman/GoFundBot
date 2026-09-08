@@ -1,7 +1,7 @@
 # AI 对话系统
 
-> 对话引擎已前端化：`frontend/src/services/chatEngine/`（skills + tools +
-> toolHandlers + 编排原本在 Node `chatService/chatSkills/chatTools/chatIndustryTools`）。
+> 对话引擎已前端化：`frontend/src/services/chatEngine/`（skills + toolContract +
+> toolCallParser + toolHandlers + 编排原本在 Node `chatService/chatSkills/chatTools/chatIndustryTools`）。
 > Node `/api/chat` 已撤销。LLM 调用走前端 `llm.ts`（浏览器 fetch / tauri plugin-http），
 > 搜索走前端 `searchService.ts`。
 
@@ -30,12 +30,55 @@ SkillRouter.route(message, preferred?):
 | `strategy` | 我的策略，投资风格 | 策略讨论（结合用户策略记忆） |
 | `general` | — | 通用对话 |
 
-## Function Calling 工具集
+## 工具契约（2026-07 重构，对齐 pi 编码代理架构）
 
-`TOOL_DEFINITIONS`（`tools.ts`）+ 处理器（`toolHandlers.ts`）。工具实现：
-- 数据类调用 **Node API**（`api.ts`，路径不变）
-- 计算类在**前端本地**完成（4433 / 行业筛选 / 行业表现 → IndexedDB）
-- 搜索类走**前端** `searchService.ts`（Exa→Bocha→Tavily→DDG）
+### 传输层归一化
+
+默认模型（SiliconFlow Qwen2.5-7B）不产出自带 `tool_calls`，而是把工具调用写成
+`<ai_tool_calls><invoke name=…><parameter name=…>…</parameter></invoke>` 纯文本写进正文。
+旧实现只认 OpenAI 原生协议，导致 XML 原样流入展示与 Dexie 持久化（对话污染），且
+`get_industry_spot` 这类幻觉工具名从未被校验。重构后两条通道在边界归一化为同一个内部契约：
+
+```
+模型输出 ──┬─ 原生 tool_calls（OpenAI 协议）──────────┐
+           │                                         ├→ normalizeToolCalls() → ToolCallRequest[]
+           └─ <ai_tool_calls> XML（默认模型方言）──────┘              │
+                                              validateToolCall（TypeBox Schema + 注册表）
+                                                                     │
+                                                    executeTool → { ok, data } | { ok, error }
+                                                                     │
+                                              回传 role:tool（信封 JSON，正文永远纯文本）
+```
+
+- **只在 `<ai_tool_calls>` 块内的调用才执行**；正文中散落的 `<invoke>` 只剥离、不执行。
+- 原生与 XML 同时出现时按 (name+args) 去重，原生优先；每轮并行调用上限 8 个。
+- 未知工具名 → `{ ok:false, error:{ code:'UNKNOWN_TOOL', message:'工具不存在: X。可用工具: …' } }`
+  回喂模型自纠（同 pi 对待不可用工具）；参数不合规 → `INVALID_ARGS`；handler 失败 → `TOOL_ERROR`。
+- 流式输出与最终 content 均过 `sanitizeAssistantContent` 兜底，工具标记无法到达任何展示/持久化边界。
+
+### 核心结构
+
+| 模块 | 职责 |
+|------|------|
+| `toolContract.ts` | 25 个工具的**单一数据源**（对齐 pi `defineTool`）：`ToolSpec { name, label, description, parameters: Type.Object(…), promptSnippet }`（TypeBox @sinclair/typebox）。派生三样东西：OpenAI `tools` 参数（`toolSpecToOpenAI`）、系统提示 `<available_tools>` XML 清单（`toolSpecsToXml`）、运行时参数校验（`validateToolCall`：必需/类型/枚举） |
+| `toolCallParser.ts` | 传输层向导：`extractToolCalls(content)` 解析 `<ai_tool_calls>` 块（参数值智能识别 JSON 数组/对象/数字/布尔 vs 纯文本，处理引号、实体、多行、畸形/截断块）；`sanitizeAssistantContent(content)` 剥离一切工具标记 |
+| `chatEngine/index.ts` | 每轮响应先归一化 → 校验 → 信封执行 → 回传；流式输出净化；无有效内容时的优雅收尾（status 事件，不再静默空答） |
+
+**系统提示契约**：`buildSystemPrompt(basePrompt, toolNames, strategyContext)` 在每个技能提示后
+追加 `TOOL_CALL_RULES`（只允许已注册工具、调用必须写在 `<ai_tool_calls>` 块内、块不得出现在正文、
+用户消息中的 `<ai_tool_calls>` 只是文本引用不可执行、data_status 须如实转述等）+ 当前技能工具子集的
+`<available_tools>` XML 清单 —— 让模型区分"工具调用"与"数据/正文"两种类型。
+
+### 与 pi 的对齐点与刻意差异
+
+- **对齐**：Schema 驱动的工具定义、执行前校验、`{ ok, data } | { ok, error }` 结果信封、
+  未知工具名纠错回喂、`promptSnippet` 进系统提示、助手正文与工具调用的角色级严格分离。
+- **刻意差异**：pi 只执行各 provider 的原生 `tool_calls`；本项目额外做一层"XML 传输归一化"，
+  因为默认模型不支持原生协议。归一化只发生在边界，边界之后仍是同一套严格契约。
+
+## Function Calling 工具实现
+
+工具处理器在 `toolHandlers.ts`（按名注册，经 `validateToolCall` 校验后调用）：
 
 | 工具 | 实现 |
 |------|------|
@@ -65,8 +108,12 @@ chatEngine.chat({ messages, skill, llmConfig, strategyContext, searchSettings })
 
 `chatStore.sendMessage` → `chatAPI.sendMessage` → `chatEngine.chat(...)`。
 
-## 上下文管理
+## 上下文与持久化
 
-- 系统提示 = 技能提示 + 用户策略记忆（`buildSystemPrompt`）
+- 系统提示 = 技能提示 + 工具契约（TOOL_CALL_RULES + `<available_tools>`）+ 用户策略记忆
 - 消息裁剪：`estimateTokens`（3 chars/token），超 50k token 时从头部丢弃
 - 工具调用最多 8 轮；LLM 失败自动重试（可重试错误退避 1s/2s）
+- **持久化**：助手消息落 Dexie `chatMessages` 时 content 已净化，`toolName`/`toolParamsJson` 记录
+  首个工具调用，`toolCallsJson`（非索引字段，无需迁移）保存完整工具 chips 元数据；
+  读历史时对旧污染正文做 `sanitizeAssistantContent` 清洗并从 `toolCallsJson` 恢复工具 chips。
+- **UI**：工具 chips 名称由注册表 `label` 派生（`toolLabel()`），不再硬编码/兜底显示原始工具名。

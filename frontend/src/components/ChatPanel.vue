@@ -98,7 +98,7 @@
                 :size="14"
                 :class="{ spinning: tc.status === 'running' }"
               />
-              <span class="tool-call-name">{{ toolLabels[tc.name] || tc.name }}</span>
+              <span class="tool-call-name">{{ toolLabel(tc.name) }}</span>
               <span v-if="tc.status === 'done' && tc.durationMs" class="tool-call-duration">
                 {{ (tc.durationMs / 1000).toFixed(1) }}s
               </span>
@@ -200,6 +200,7 @@ import { BButton, BDialog, LucideIcon } from '@gofund/ui'
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
+import { toolLabel as toolLabelFromRegistry } from '../services/chatEngine/toolContract'
 
 const props = withDefaults(defineProps<{
   channel?: string
@@ -276,31 +277,7 @@ const skillSuggestions = computed(() => {
   ]
 })
 
-const toolLabels = computed((): Record<string, string> => ({
-  search_funds: '搜索基金',
-  get_fund_detail: '获取基金详情',
-  get_fund_estimate: '获取基金估值',
-  get_fund_nav_history: '获取净值历史',
-  get_market_indices: '获取指数行情',
-  get_market_news: '获取市场快讯',
-  get_hot_sectors: '获取热门板块',
-  get_concept_sectors: '获取概念板块',
-  get_north_flow: '获取北向资金',
-  get_market_breadth: '获取涨跌统计',
-  get_main_flow: '获取主力资金',
-  get_flash_news: '获取快讯新闻',
-  get_watchlist: '获取自选列表',
-  screen_funds_by_4433: '4433筛选基金',
-  run_backtest: '运行定投回测',
-  suggest_strategy: '推荐定投策略',
-  get_stock_quote: '获取个股行情',
-  get_market_anomaly: '检查市场异动',
-  get_gold_realtime: '获取黄金价格',
-  get_fund_holdings: '获取基金持仓',
-  get_fund_managers: '获取基金经理',
-  get_funds_by_industry: '查询行业基金',
-  get_industry_performance: '获取行业业绩',
-}))
+const toolLabel = (name: string) => toolLabelFromRegistry(name)
 
 const suggestions = computed(() => skillSuggestions.value)
 

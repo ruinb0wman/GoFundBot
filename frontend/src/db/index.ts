@@ -73,6 +73,8 @@ export interface ChatMessage {
   content: string
   toolName: string | null
   toolParamsJson: string | null
+  /** Structured tool-call chips: [{name, params, status, durationMs}] (non-indexed). */
+  toolCallsJson: string | null
   createdAt: number
 }
 

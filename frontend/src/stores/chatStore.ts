@@ -19,6 +19,23 @@ export interface ToolCallStatus {
   durationMs?: number
 }
 
+/** Restore persisted tool chips from an assistant message's toolCallsJson. */
+function parseStoredToolCalls(json: string | null): ToolCallStatus[] | undefined {
+  if (!json) return undefined
+  try {
+    const parsed = JSON.parse(json)
+    if (!Array.isArray(parsed)) return undefined
+    return parsed.map(t => ({
+      name: String(t.name ?? ''),
+      params: t.params && typeof t.params === 'object' ? t.params : {},
+      status: 'done' as const,
+      durationMs: typeof t.durationMs === 'number' ? t.durationMs : undefined,
+    }))
+  } catch {
+    return undefined
+  }
+}
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
     sessions: [] as ChatSessionDto[],
@@ -146,6 +163,7 @@ export const useChatStore = defineStore('chat', {
               id: String(m.id),
               role: m.role as 'user' | 'assistant',
               content: m.content || '',
+              toolCalls: m.role === 'assistant' ? parseStoredToolCalls(m.tool_calls_json) : undefined,
             })
           }
         }
@@ -180,6 +198,7 @@ export const useChatStore = defineStore('chat', {
           content: message,
           toolName: null,
           toolParamsJson: null,
+          toolCallsJson: null,
           createdAt: Date.now(),
         })
         await db.chatSessions.update(this.currentSessionId, { updatedAt: Date.now() })
@@ -234,13 +253,15 @@ export const useChatStore = defineStore('chat', {
           this.finalizeStream()
           if (this.currentSessionId) {
             const streamingMsg = this.messages.find(m => m.id === '__streaming__' || m.role === 'assistant')
+            const toolCalls = this.activeToolCalls
             if (streamingMsg && streamingMsg.content) {
               await db.chatMessages.add({
                 sessionId: this.currentSessionId,
                 role: 'assistant',
                 content: streamingMsg.content,
-                toolName: null,
-                toolParamsJson: null,
+                toolName: toolCalls[0]?.name ?? null,
+                toolParamsJson: toolCalls[0] ? JSON.stringify(toolCalls[0].params) : null,
+                toolCallsJson: toolCalls.length > 0 ? JSON.stringify(toolCalls) : null,
                 createdAt: Date.now(),
               })
               await db.chatSessions.update(this.currentSessionId, { updatedAt: Date.now() })
@@ -259,6 +280,7 @@ export const useChatStore = defineStore('chat', {
               content: error,
               toolName: null,
               toolParamsJson: null,
+              toolCallsJson: null,
               createdAt: Date.now(),
             })
             await db.chatSessions.update(this.currentSessionId, { updatedAt: Date.now() })

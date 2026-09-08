@@ -1,7 +1,14 @@
 /**
  * Frontend AI chat orchestrator.
  * Ported from Service `chatService.ts`. Drives tool calling + streaming via the
- * frontend LLM client; consumes skills (skills.ts) and tools (tools.ts).
+ * frontend LLM client; consumes skills (skills.ts) and the tool contract
+ * (toolContract.ts + toolCallParser.ts).
+ *
+ * Tool-call normalization: models that do not speak the native OpenAI `tool_calls`
+ * protocol emit `<ai_tool_calls>` XML inside content. Both transports are normalized
+ * at the boundary into one typed contract (validation → execution → `{ok,data}|{ok,error}`
+ * envelope), and tool markup is stripped from every content boundary so it can never
+ * leak into the chat.
  */
 
 import {
@@ -12,8 +19,15 @@ import {
   type LLMTool,
 } from '../llm'
 import { SKILL_MAP, SkillRouter, type Skill } from './skills'
-import { TOOL_DEFINITIONS } from './tools'
 import { executeTool } from './toolHandlers'
+import {
+  TOOL_CALL_RULES,
+  listToolSpecs,
+  toolSpecToOpenAI,
+  toolSpecsToXml,
+  validateToolCall,
+} from './toolContract'
+import { extractToolCalls, sanitizeAssistantContent, type ParsedToolCall } from './toolCallParser'
 import type { AppSettings } from '../../composables/useAppSettings'
 
 export interface ChatStreamEvent {
@@ -30,6 +44,7 @@ export interface ChatArgs {
 }
 
 const MAX_TOOL_ITERATIONS = 8
+const MAX_TOOL_CALLS_PER_TURN = 8
 const MAX_CONTEXT_TOKENS = 50000
 const CHARS_PER_TOKEN = 3
 
@@ -89,24 +104,21 @@ function trimMessages(messages: LLMMessage[], maxTokens: number): void {
 }
 
 function buildToolsParam(skill: Skill | undefined): LLMTool[] {
-  const toolSet = skill ? new Set(skill.toolNames) : null
-  const filtered = toolSet
-    ? TOOL_DEFINITIONS.filter((t) => toolSet.has(t.function.name))
-    : TOOL_DEFINITIONS
-  return filtered.map((t) => ({
-    type: 'function' as const,
-    function: {
-      name: t.function.name,
-      description: t.function.description,
-      parameters: t.function.parameters as Record<string, unknown>,
-    },
-  }))
+  return listToolSpecs(skill?.toolNames).map(toolSpecToOpenAI)
 }
 
-export function buildSystemPrompt(basePrompt: string, strategyContext?: string): string {
+/**
+ * System prompt = skill prompt + tool-call contract (rules + `<available_tools>` XML)
+ * + optional user strategy memory. The explicit tool list is what lets the model
+ * distinguish tool invocations from plain data/prose.
+ */
+export function buildSystemPrompt(basePrompt: string, toolNames: string[], strategyContext?: string): string {
+  const parts = [basePrompt, TOOL_CALL_RULES, toolSpecsToXml(listToolSpecs(toolNames))]
   const ctx = strategyContext?.trim()
-  if (!ctx) return basePrompt
-  return `${basePrompt}\n\n## 用户策略记忆\n以下为用户当前启用的投资策略，你的分析与建议需贴合用户的策略取向，但不得为迎合策略而歪曲数据。\n${ctx}`
+  if (ctx) {
+    parts.push(`## 用户策略记忆\n以下为用户当前启用的投资策略，你的分析与建议需贴合用户的策略取向，但不得为迎合策略而歪曲数据。\n${ctx}`)
+  }
+  return parts.join('\n\n')
 }
 
 function chunkBySentence(text: string, maxChunk = 50): string[] {
@@ -128,6 +140,76 @@ function chunkBySentence(text: string, maxChunk = 50): string[] {
 export interface StreamingResponse {
   content: string | null
   tool_calls?: LLMMessage['tool_calls']
+}
+
+interface NormalizedCall {
+  id: string
+  name: string
+  args: Record<string, unknown>
+}
+
+/** Merge native + XML transports into one typed list (native wins on duplicates). */
+function normalizeToolCalls(
+  native: NonNullable<LLMMessage['tool_calls']>,
+  xml: ParsedToolCall[],
+): NormalizedCall[] {
+  const seen = new Set<string>()
+  const out: NormalizedCall[] = []
+  const push = (id: string, name: string, args: Record<string, unknown>) => {
+    const key = `${name}\u0000${JSON.stringify(args ?? {})}`
+    if (seen.has(key)) return
+    seen.add(key)
+    out.push({ id, name, args })
+  }
+  for (const tc of native) {
+    let args: Record<string, unknown> = {}
+    try {
+      args = JSON.parse(tc.function.arguments || '{}')
+    } catch {
+      // keep {}
+    }
+    push(tc.id, tc.function.name, args)
+  }
+  for (const c of xml) push(`xml-${out.length}`, c.name, c.args)
+  return out.slice(0, MAX_TOOL_CALLS_PER_TURN)
+}
+
+type ToolEnvelope =
+  | { ok: true; data: unknown }
+  | { ok: false; error: { code: string; message: string } }
+
+/**
+ * Validate before execution, run the handler, and wrap the outcome in a typed
+ * envelope. Unknown names / bad params produce corrective errors fed back to the
+ * model so it can self-correct (same pattern as pi blocking unavailable tools).
+ */
+async function executeToolCall(
+  call: NormalizedCall,
+  searchSettings?: AppSettings,
+): Promise<ToolEnvelope> {
+  const validated = validateToolCall(call.name, call.args)
+  if (!validated.ok) {
+    return { ok: false, error: { code: validated.code ?? 'INVALID_ARGS', message: validated.error ?? '参数无效' } }
+  }
+  try {
+    const result = await executeTool(call.name, validated.args as Record<string, unknown>, { searchSettings })
+    // Handler failures surface as a bare `{ error: string }` object
+    const keys = result && typeof result === 'object' ? Object.keys(result as Record<string, unknown>) : []
+    if (keys.length === 1 && keys[0] === 'error') {
+      return { ok: false, error: { code: 'TOOL_ERROR', message: String((result as Record<string, unknown>).error) } }
+    }
+    return { ok: true, data: result }
+  } catch (error) {
+    return { ok: false, error: { code: 'TOOL_ERROR', message: String(error) } }
+  }
+}
+
+function truncateJson(value: unknown, maxLen = 4000): string {
+  let str = typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+  if (str.length > maxLen) {
+    str = str.slice(0, maxLen) + '... (truncated)'
+  }
+  return str
 }
 
 export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
@@ -154,7 +236,7 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
   }
 
   const openaiMessages: LLMMessage[] = [
-    { role: 'system', content: buildSystemPrompt(resolvedSkill.systemPrompt, strategyContext) },
+    { role: 'system', content: buildSystemPrompt(resolvedSkill.systemPrompt, resolvedSkill.toolNames, strategyContext) },
     ...messages.map((m) => ({
       role: (m.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
       content: m.content,
@@ -162,6 +244,9 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
   ]
 
   trimMessages(openaiMessages, MAX_CONTEXT_TOKENS)
+
+  let endedWithError = false
+  let streamedAnyContent = false
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     let llmUsage: { input_tokens?: number; output_tokens?: number; total_tokens?: number } = {}
@@ -182,58 +267,47 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
       }
       if (llmResponse.usage) llmUsage = llmResponse.usage
     } catch (error) {
+      endedWithError = true
       yield { event: 'error', data: JSON.stringify({ message: `LLM 调用失败: ${String(error)}` }) }
       break
     }
 
     const message = response
+    const nativeCalls = message?.tool_calls?.filter((tc) => tc.function?.name) ?? []
+    const parsed = extractToolCalls(message?.content || '')
+    const calls = normalizeToolCalls(nativeCalls, parsed.calls)
 
-    if (message?.tool_calls && message.tool_calls.length > 0) {
-      const toolCalls = message.tool_calls
-
+    if (calls.length > 0) {
       openaiMessages.push({
         role: 'assistant',
-        content: message.content || null,
-        tool_calls: toolCalls.map((tc) => ({
-          id: tc.id,
+        content: parsed.cleaned || null,
+        tool_calls: calls.map((c) => ({
+          id: c.id,
           type: 'function' as const,
-          function: { name: tc.function.name, arguments: tc.function.arguments },
+          function: { name: c.name, arguments: JSON.stringify(c.args) },
         })),
       })
 
-      for (const tc of toolCalls) {
-        let callArgs: Record<string, unknown>
-        try {
-          callArgs = JSON.parse(tc.function.arguments)
-        } catch {
-          callArgs = {}
-        }
-
+      for (const call of calls) {
         yield {
           event: 'tool_start',
-          data: JSON.stringify({ name: tc.function.name, params: callArgs, tool_call_id: tc.id }),
+          data: JSON.stringify({ name: call.name, params: call.args, tool_call_id: call.id }),
         }
 
         const startTime = Date.now()
-        const result = await executeTool(tc.function.name, callArgs, { searchSettings })
+        const envelope = await executeToolCall(call, searchSettings)
         const durationMs = Date.now() - startTime
-
-        const hasError = result && typeof result === 'object' && 'error' in (result as Record<string, unknown>)
+        const hasError = envelope.ok === false
 
         yield {
           event: 'tool_end',
-          data: JSON.stringify({ name: tc.function.name, tool_call_id: tc.id, duration_ms: durationMs, error: hasError }),
-        }
-
-        let resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2)
-        if (resultStr.length > 4000) {
-          resultStr = resultStr.slice(0, 4000) + '... (truncated)'
+          data: JSON.stringify({ name: call.name, tool_call_id: call.id, duration_ms: durationMs, error: hasError }),
         }
 
         openaiMessages.push({
           role: 'tool',
-          tool_call_id: tc.id,
-          content: resultStr,
+          tool_call_id: call.id,
+          content: truncateJson(envelope),
         })
       }
 
@@ -261,7 +335,8 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
           if (chunk.usage) streamUsage = chunk.usage
           if (chunk.token) {
             fullContent += chunk.token
-            yield { event: 'token', data: JSON.stringify({ token: chunk.token, full: fullContent }) }
+            streamedAnyContent = true
+            yield { event: 'token', data: JSON.stringify({ token: chunk.token, full: sanitizeAssistantContent(fullContent) }) }
           }
         }
       } catch (error) {
@@ -283,10 +358,12 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
           if (text) {
             for (const chunk of chunkBySentence(text, 50)) {
               fullContent += chunk
-              yield { event: 'token', data: JSON.stringify({ token: chunk, full: fullContent }) }
+              streamedAnyContent = true
+              yield { event: 'token', data: JSON.stringify({ token: chunk, full: sanitizeAssistantContent(fullContent) }) }
             }
           }
         } catch (fallbackError) {
+          endedWithError = true
           yield { event: 'error', data: JSON.stringify({ message: `LLM 调用失败: ${String(fallbackError)}` }) }
           break
         }
@@ -296,6 +373,13 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
         yield { event: 'usage', data: JSON.stringify(streamUsage) }
       }
       break
+    }
+  }
+
+  if (!endedWithError && !streamedAnyContent) {
+    yield {
+      event: 'status',
+      data: JSON.stringify({ message: 'AI 未能完成回答（未获取到有效数据），请重试或更换模型' }),
     }
   }
 

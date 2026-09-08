@@ -66,7 +66,7 @@
 | 筛选丰富化（风险指标/行业分类/排名/4433） | `frontend/src/services/industryClassifier.ts` + `useScreeningDb` | Node `/api/screening` 仅返回原始清单+NAV |
 | 市场统计/基金看板/ETF/板块汇总/行业表现 | `frontend/src/services/researchComputation.ts` | 从 Dexie screeningFunds + `/api/market/sectors` 计算 |
 | AI 基金分析 / 组合诊断 / 策略起草 / 反思 | `frontend/src/services/fundAnalyst.ts` 等 | 前端直调 OpenAI 兼容端点，key 存前端 |
-| AI 对话 + 工具调用（基金/行情/回测/搜索） | `frontend/src/services/chatEngine/` | `skills.ts` + `tools.ts` + `toolHandlers.ts` |
+| AI 对话 + 工具调用（基金/行情/回测/搜索） | `frontend/src/services/chatEngine/` | `skills.ts` + `toolContract.ts` + `toolCallParser.ts` + `toolHandlers.ts` |
 | 联网搜索链 Exa→Bocha→Tavily→DDG | `frontend/src/services/searchService.ts` | key 取前端设置 |
 | 设置 | LLM/Search key 存前端 localStorage；仅 Proxy URL → Node | Node `/api/settings` 只剩 proxy 子域 |
 | 数据获取 / 回测（Python） / 反爬 / 代理 | `service/src/` | 保留不变 |
