@@ -161,6 +161,7 @@ export async function* runTask(opts: RunTaskOptions): AsyncGenerator<AnalysisStr
       messages.push({
         role: 'assistant',
         content: parsed.cleaned || null,
+        reasoning_content: response.reasoning_content ?? '',
         tool_calls: calls.map((c) => ({
           id: c.id,
           type: 'function' as const,
@@ -194,7 +195,7 @@ export async function* runTask(opts: RunTaskOptions): AsyncGenerator<AnalysisStr
     let candidate: unknown = tryParseJson(text)
     let pushedAssistantText = false
     if (candidate === undefined) {
-      messages.push({ role: 'assistant', content: text || '请输出 JSON。' })
+      messages.push({ role: 'assistant', content: text || '请输出 JSON。', reasoning_content: response.reasoning_content ?? '' })
       pushedAssistantText = true
       trimMessages(messages, MAX_CONTEXT_TOKENS)
       try {
@@ -225,7 +226,7 @@ export async function* runTask(opts: RunTaskOptions): AsyncGenerator<AnalysisStr
       invalidOutputRetries++
       // keep the failed attempt in history so the model can see what to fix
       if (!pushedAssistantText) {
-        messages.push({ role: 'assistant', content: sanitizeAssistantContent(text) || null })
+        messages.push({ role: 'assistant', content: sanitizeAssistantContent(text) || null, reasoning_content: response.reasoning_content ?? '' })
       }
       messages.push({
         role: 'user',

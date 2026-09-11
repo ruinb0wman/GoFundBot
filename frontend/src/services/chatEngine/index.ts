@@ -90,6 +90,7 @@ function chunkBySentence(text: string, maxChunk = 50): string[] {
 export interface StreamingResponse {
   content: string | null
   tool_calls?: LLMMessage['tool_calls']
+  reasoning_content?: string
 }
 
 export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
@@ -117,10 +118,17 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
 
   const openaiMessages: LLMMessage[] = [
     { role: 'system', content: buildSystemPrompt(resolvedSkill.systemPrompt, resolvedSkill.toolNames, strategyContext) },
-    ...messages.map((m) => ({
-      role: (m.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
-      content: m.content,
-    })),
+    ...messages.map((m) => {
+      const role = (m.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant'
+      return {
+        role,
+        content: m.content,
+        // Thinking-mode providers (e.g. OpenCode Go's DeepSeek V4 relay) require
+        // `reasoning_content` on every replayed assistant message; echo the
+        // captured value or fall back to an empty string.
+        ...(role === 'assistant' ? { reasoning_content: (m as { reasoning_content?: string }).reasoning_content ?? '' } : {}),
+      }
+    }),
   ]
 
   trimMessages(openaiMessages, MAX_CONTEXT_TOKENS)
@@ -141,7 +149,7 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
           max_tokens: 4096,
         }),
       )
-      response = { content: llmResponse.content, tool_calls: llmResponse.tool_calls }
+      response = { content: llmResponse.content, tool_calls: llmResponse.tool_calls, reasoning_content: llmResponse.reasoning_content }
       if (llmRetries > 0) {
         yield { event: 'status', data: JSON.stringify({ message: `LLM 调用失败，已自动重试 ${llmRetries} 次` }) }
       }
@@ -161,6 +169,7 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
       openaiMessages.push({
         role: 'assistant',
         content: parsed.cleaned || null,
+        reasoning_content: response.reasoning_content ?? '',
         tool_calls: calls.map((c) => ({
           id: c.id,
           type: 'function' as const,

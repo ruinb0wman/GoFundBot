@@ -24,6 +24,32 @@ export interface LLMMessage {
     type: 'function'
     function: { name: string; arguments: string }
   }>
+  /**
+   * DeepSeek-style thinking content. Providers that serve thinking models (e.g.
+   * the OpenCode Go relay) require every assistant message replayed in a
+   * multi-turn / tool-call conversation to carry `reasoning_content` — otherwise
+   * they reject the request with 400 "The reasoning_content in the thinking mode
+   * must be passed back to the API". Capture the real value from responses and
+   * fall back to an empty string when echoing assistant history.
+   */
+  reasoning_content?: string
+}
+
+/**
+ * Fields OpenAI-compatible endpoints may use to stream reasoning text.
+ * Try the DeepSeek/OpenCode `reasoning_content` field first, then the generic
+ * `reasoning`, then llama.cpp's `reasoning_text`.
+ */
+const REASONING_FIELDS = ['reasoning_content', 'reasoning', 'reasoning_text'] as const
+
+/** Pick the first non-empty reasoning value from a message / delta record. */
+export function pickReasoningContent(record: Record<string, unknown> | undefined): string | undefined {
+  if (!record) return undefined
+  for (const field of REASONING_FIELDS) {
+    const value = record[field]
+    if (typeof value === 'string' && value.length > 0) return value
+  }
+  return undefined
 }
 
 export interface LLMUsage {
@@ -45,6 +71,8 @@ export interface LLMResponse {
   content: string
   usage?: LLMUsage
   tool_calls?: LLMMessage['tool_calls']
+  /** Thinking text from the assistant message, when the endpoint provides it. */
+  reasoning_content?: string
 }
 
 const DEFAULT_API_BASE = 'https://api.siliconflow.cn/v1'
@@ -156,6 +184,7 @@ export async function chatCompletion(
         }
       : undefined,
     tool_calls: message?.tool_calls,
+    reasoning_content: pickReasoningContent(message),
   }
 }
 
@@ -187,6 +216,8 @@ export interface StreamChunk {
   token: string
   full: string
   usage?: LLMUsage
+  /** Accumulated reasoning text so far, when the endpoint streams it. */
+  reasoning?: string
 }
 
 /**
@@ -240,6 +271,7 @@ async function* readStream(
   const decoder = new TextDecoder()
   let buffer = ''
   let fullContent = ''
+  let streamReasoning = ''
   let streamUsage: LLMUsage | undefined
   try {
     while (true) {
@@ -264,10 +296,13 @@ async function* readStream(
           }
           const delta = parsed.choices?.[0]?.delta
           const token = delta?.content || ''
+          const reasoningDelta = pickReasoningContent(delta) ?? ''
+          if (reasoningDelta) streamReasoning += reasoningDelta
+          if (!token && !reasoningDelta) continue
           if (token) {
             fullContent += token
-            yield { token, full: fullContent, usage: streamUsage }
           }
+          yield { token, full: fullContent, usage: streamUsage, reasoning: streamReasoning || undefined }
         } catch {
           // partial line, wait for more
         }
