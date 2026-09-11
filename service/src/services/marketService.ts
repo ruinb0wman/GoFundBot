@@ -559,10 +559,35 @@ export async function getMarketIndices(): Promise<ServiceResult<IndexListDto>> {
         throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement indices`, 501);
       }
       return provider.indices();
-    }, { timeoutMs: 5000 })
+    }, {
+      timeoutMs: 5000,
+      // A provider can "succeed" while returning all-null prices (e.g. a symbol
+      // mismatch between the client and the upstream feed). Treat that as a
+      // failure so the chain falls through to the next provider instead of
+      // silently serving nulls to the frontend / AI chat tools.
+      validate: (data) => data.items.some((item) => item.price != null),
+    })
   );
 
-  return toServiceResult(result);
+  return toServiceResult({
+    ...result,
+    value: { ...result.value, data: normalizeIndexCodes(result.value.data) },
+  });
+}
+
+/**
+ * Normalize index codes to the canonical prefixed form ("sh000001"). Providers
+ * sometimes report numeric codes ("000001", e.g. the EastMoney fallback), which
+ * would break consumers that pass the code on to the kline / index-detail
+ * routes. Unknown items pass through unchanged.
+ */
+export function normalizeIndexCodes(data: IndexListDto): IndexListDto {
+  return {
+    items: data.items.map((item) => {
+      const canonical = CN_INDEX_MAP.get(item.code) ?? A_SHARE_INDICES.find((idx) => idx.name === item.name);
+      return canonical ? { ...item, code: canonical.symbol, market: canonical.market } : item;
+    }),
+  };
 }
 
 export async function getStockMoneyFlow(code: string, days?: number): Promise<ServiceResult<StockMoneyFlowDto>> {

@@ -35,16 +35,29 @@ export class StockSdkMarketProvider implements MarketProvider {
     assertStockSdkNotForcedToFail();
     try {
       const symbols = DEFAULT_INDICES.map((idx) => idx.symbol);
-      const quotes = await getStockSdk().quotes.cnSimple(symbols);
 
+      // Full quotes first (they cover indices like sh000001 too), then the
+      // lightweight variant as a fallback — mirroring what quotes() does.
+      let quotes: MarketQuoteDto[];
+      try {
+        quotes = (await getStockSdk().quotes.cn(symbols)).map(mapMarketQuote);
+      } catch {
+        quotes = (await getStockSdk().quotes.cnSimple(symbols)).map(mapMarketQuote);
+      }
+
+      // Tencent marketIds are numeric ("1" = SH, "51" = SZ), so the `symbol`
+      // mapMarketQuote builds ("1000001") can never equal a prefixed code like
+      // "sh000001". Key the map by both the numeric code and the symbol, and
+      // look indices up by their numeric code.
       const quoteMap = new Map<string, MarketQuoteDto>();
       for (const q of quotes) {
-        const mapped = mapMarketQuote(q);
-        quoteMap.set(mapped.symbol, mapped);
+        if (q.code) quoteMap.set(q.code, q);
+        if (q.symbol) quoteMap.set(q.symbol, q);
       }
 
       const items: IndexDto[] = DEFAULT_INDICES.map((idx) => {
-        const quote = quoteMap.get(idx.symbol);
+        const numericCode = idx.symbol.replace(/^(sh|sz|bj)/i, '');
+        const quote = quoteMap.get(numericCode) ?? quoteMap.get(idx.symbol);
         return {
           code: idx.symbol,
           name: idx.name,

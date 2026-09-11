@@ -88,4 +88,35 @@ describe('ProviderChain', () => {
     expect(result.data).toBe('recovered');
     expect(result.providerErrors[0].message).toBe('string error');
   });
+
+  it('treats data that fails validation as a provider failure (no silent nulls)', async () => {
+    const p1 = { name: 'primary' };
+    const p2 = { name: 'fallback' };
+    const chain = new ProviderChain([p1, p2]);
+    const result = await chain.run(
+      'test',
+      async (p) => {
+        if (p.name === 'primary') return { items: [{ price: null }, { price: null }] };
+        return { items: [{ price: 3387.32 }] };
+      },
+      { validate: (data) => data.items.some((item) => item.price != null) }
+    );
+    expect(result.provider).toBe('fallback');
+    expect(result.fallback).toBe(true);
+    expect(result.providerErrors).toHaveLength(1);
+    expect(result.providerErrors[0].provider).toBe('primary');
+  });
+
+  it('rejects when every provider fails validation', async () => {
+    const p1 = { name: 'primary' };
+    const p2 = { name: 'backup' };
+    const chain = new ProviderChain([p1, p2]);
+    await expect(
+      chain.run(
+        'test',
+        async () => ({ items: [{ price: null }] }),
+        { validate: (data) => data.items.some((item) => item.price != null) }
+      )
+    ).rejects.toThrow('All providers failed for test');
+  });
 });
