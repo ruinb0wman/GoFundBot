@@ -6,9 +6,7 @@
     "dev": "npm run setup:venv && concurrently -n svc,fe,doc -c blue,green,yellow \"npm run dev:service\" \"npm run dev:frontend\" \"npm run docs:dev\"",
     "docs:dev": "cd docs && npx vitepress dev --port 8574",
     "dev:service": "cd service && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev --host",
-    "desktop:dev": "cd tauri && npm run dev",
-    "dev:desktop": "concurrently -n svc,fe,doc,tauri -c blue,green,yellow,magenta \"npm run dev:service\" \"npm run dev:frontend\" \"npm run docs:dev\" \"npm run desktop:dev\""
+    "dev:frontend": "cd frontend && npm run dev --host"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

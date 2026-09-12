@@ -6,7 +6,7 @@
 
 GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分析与可视化工具。它不仅提供实时的基金数据查询和可视化图表，还集成了先进的 AI 大模型（LLM），为用户提供深度的基金投资分析、风险评估及市场研判报告。所有持久化数据存储在浏览器端 IndexedDB（Dexie.js）中，服务端无状态。
 
-**架构说明**：业务计算 / AI 分析 / 联网搜索已全部下沉到前端（Web 与桌面共用同一份 `frontend/src`）；Node 为数据获取 + 驱动 Python + 本地数据代理的薄后端。仓库为**按职责平铺的 monorepo**（`service` / `frontend` / `python` / `tauri` / `docs` / `packages`），双部署目标：**Web**（浏览器）与**桌面**（Tauri 2 壳，仅解禁 CORS、不打包前端资源）。桌面壳见 [Tauri 2 桌面壳](docs/architecture/desktop-shell.md)。
+**架构说明**：业务计算 / AI 分析 / 联网搜索已全部下沉到前端（浏览器与桌面 Electron 壳共用同一份 `frontend/src`）；Node 为数据获取 + 驱动 Python + 本地数据代理的薄后端。仓库为**按职责平铺的 monorepo**（`service` / `frontend` / `python` / `docs` / `packages`），面向**浏览器**部署；桌面端由外部 Electron 浏览器壳解禁 CORS，前端同一份代码直出、无任何运行时分支。
 
 ## 🚀 功能特性
 
@@ -33,7 +33,7 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 *   **基金搜索**：支持代码/名称快速搜索（ProviderChain 实时查询）。
 *   **自选管理**：一键添加/移除自选基金，随时跟踪关注标的（数据存储在浏览器 IndexedDB）。
 *   **定投回测**：通过 Python 脚本进行多策略回测（**每月/每周/每日定投、一次性买入 + 止盈止损**）。
-*   **桌面端**：Tauri 2 桌面壳（Web 与桌面共用同一 frontend，桌面直连外部 API 不受 CORS 限制）。
+*   **桌面端**：支持 Electron 浏览器壳（壳侧解禁 CORS，直连 Node / 外部 API 不受浏览器限制）。
 *   **一键启动**：根目录 `npm run dev` 同时启动后端 + 前端。
 
 ### 📊 使用方法
@@ -101,9 +101,9 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 ![实时估值](docs/images/实时估值.png)
 
-#### （7）桌面端使用（Tauri 2 壳）
+#### （7）桌面端使用（Electron 浏览器壳）
 
-桌面壳仅解禁 CORS、不打包前端资源，**Node 与前端服务必须独立启动**（另需文档站，桌面「?」文档入口经前端 `/docs` 代理加载文档），桌面 WebView 加载运行中的前端服务 origin。
+桌面端由外部 Electron 浏览器壳提供（壳侧禁用 Web Security / 解禁 CORS）。前端无需任何适配——按 Web 方式部署即可：Electron 壳加载运行中的前端服务，LLM / 搜索 / Node API 均以普通 `fetch` 直连。
 
 ```bash
 # 1. 启动后端 + 前端（生产静态托管）+ 文档站
@@ -111,13 +111,8 @@ cd service && npm install && npm run build && npm start   # service :8310
 cd frontend && npm run build && npm run preview            # 静态托管 :8417（/docs 代理 → 8574）
 cd docs && npm install && npx vitepress dev --port 8574   # 文档站 :8574
 
-# 2. 启动桌面壳（另开终端）
-cd tauri && npm install && npm run dev                     # = tauri dev
+# 2. 用 Electron 浏览器壳打开 http://localhost:8417
 ```
-
-> 开发模式可用根目录 `npm run dev:desktop` 一键并行启动 **service + frontend + docs + tauri** 四进程。
-
-> Linux 需系统库 `webkit2gtk-4.1` / `gtk3` / `atk`；`npm run dev`（根目录）默认加载 devUrl `http://localhost:8517`，`npm run build && npm run preview` 后加载 prod `http://localhost:8417`。详见文档站 [桌面壳](docs/architecture/desktop-shell.md)。
 
 ## 🛠 技术栈
 
@@ -149,23 +144,17 @@ cd tauri && npm install && npm run dev                     # = tauri dev
 *   **业务计算**: `industryClassifier`（行业/类型分类）、`computeRiskMetricsLocal`（风险指标）、4433 排名、`researchComputation`（投研看板聚合）
 *   **AI 客户端**: `llm.ts`（OpenAI 兼容直调，JSON + 流式）+ `fundAnalyst` / `portfolioAnalyst` / `strategyDraft` / `chatEngine`
 *   **联网搜索**: `searchService.ts`（Exa → Bocha → Tavily → DuckDuckGo 多源降级）
-*   **环境适配**: `httpClient.ts`（Web fetch ↔ Tauri `plugin-http`，绕 CORS）
+*   **环境适配**: `httpClient.ts`（统一浏览器 fetch；Electron 壳侧解禁 CORS）
 *   **UI 组件**: 自定义响应式组件 + `@gofund/ui` 基础组件库
 *   **可视化**: ECharts + vue-echarts
 *   **测试**: Vitest + @vue/test-utils
-
-### 桌面壳 (tauri)
-*   **框架**: Tauri 2 + Rust（独立 npm 包 `gofund-tauri`，自带 `@tauri-apps/cli`）
-*   **网络**: `tauri-plugin-http`（出站 HTTP 绕 CORS，直连 Node `localhost:8310`）
-*   **IPC 放行**: `capabilities/remote-webview.json` 配置远程 origin
-*   **前端资源**: 不打包——WebView 加载运行中的前端服务 origin
 
 ## 📋 环境准备
 
 *   **Node.js 18+** 和 `npm`
 *   **Python 3.11+**（运行回测/数据脚本，推荐使用 `python/.venv`）
 *   **Git**（用于克隆仓库）
-*   **桌面端（可选）**：Rust 1.77+；Linux 另需 `webkit2gtk-4.1` / `gtk3` / `atk`
+*   **桌面端（可选）**：外部 Electron 浏览器壳（无需额外依赖）
 
 ## ⚡ 快速开始
 
@@ -191,9 +180,6 @@ npm run setup:venv
 
 # 安装 git 钩子（pre-commit 二进制随 setup:venv 装入 python/.venv）
 python/.venv/bin/pre-commit install --install-hooks
-
-# tauri（桌面端，可选）
-cd tauri && npm install && cd ..
 
 # 根目录（一键启动脚本）
 npm install
@@ -228,8 +214,8 @@ npm run dev
 ### 5. 桌面启动
 
 ```bash
-# 根目录一键：Node + vite + docs + tauri 并行（concurrently，含文档站）
-npm run dev:desktop
+# 用 Electron 浏览器壳（外部项目）打开已启动的前端服务即可：
+# 开发 http://localhost:8517 ｜ 生产静态托管 http://localhost:8417
 ```
 
 ### 6. 生产部署
@@ -284,13 +270,6 @@ GoFundBot/
 │   │   ├── services/            # API 客户端 + 业务计算（llm, fundAnalyst, chatEngine, industryClassifier, searchService, httpClient...）
 │   │   └── views/               # 页面视图
 │   └── package.json
-├── tauri/                        # Tauri 2 桌面壳（仅解禁 CORS，不打包前端）——独立 npm 包 gofund-tauri
-│   ├── package.json              # 自带 @tauri-apps/cli（dev/build = tauri dev|build）
-│   └── src-tauri/
-│       ├── tauri.conf.json       # devUrl/frontendDist = 前端服务地址
-│       ├── capabilities/         # remote-webview.json：远程 origin IPC 放行
-│       ├── Cargo.toml + build.rs # Rust 项目
-│       └── src/                  # main.rs / lib.rs（tauri + tauri-plugin-http）
 ├── packages/
 │   └── ui/                       # UI 组件库 @gofund/ui（Vite lib mode 构建，组件级 chunk + dts）
 ├── python/                       # Python CLI 脚本（计算/数据补全）

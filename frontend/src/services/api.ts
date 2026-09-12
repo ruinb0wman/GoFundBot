@@ -1,4 +1,4 @@
-import { httpRequest, isTauriRuntime, type HttpResponse } from './httpClient'
+import { httpRequest, type HttpResponse } from './httpClient'
 
 const FALLBACK_API_BASE: string =
   import.meta.env.VITE_FALLBACK_API_BASE || 'http://localhost:8310/api'
@@ -9,9 +9,9 @@ interface QueryArgs {
 }
 
 /**
- * Axios-like request helper. Resolves path via httpClient (Tauri → absolute
- * localhost:8310, Web → `/api` Vite proxy), and retries once against
- * `localhost:8310/api` on Web network errors (backend/dev-server fallback).
+ * Axios-like request helper. Resolves path via httpClient (`/api` Vite proxy),
+ * and retries once against `localhost:8310/api` on network errors
+ * (backend/dev-server fallback).
  */
 async function request<T = any>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -28,8 +28,8 @@ async function request<T = any>(
     })
   } catch (error) {
     const axiosError = error as { response?: unknown; message?: string }
-    // Re-throw HTTP errors; only fall back on genuine network errors (Web only).
-    if (isTauriRuntime() || axiosError?.response) throw error
+    // Re-throw HTTP errors; only fall back on genuine network errors.
+    if (axiosError?.response) throw error
     if (axiosError?.message === 'Request failed' || axiosError instanceof Error) {
       const abs = `${FALLBACK_API_BASE}${path.startsWith('/') ? path : `/${path}`}`
       return httpRequest<T>(abs, {

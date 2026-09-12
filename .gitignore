@@ -16,5 +16,3 @@ python/Data
 .coverage
 docs/.vitepress/dist/
 docs/.vitepress/cache/
-tauri/src-tauri/target/
-tauri/src-tauri/gen/

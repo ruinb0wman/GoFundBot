@@ -2,7 +2,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│  双部署目标：Web (浏览器) / 桌面 (Tauri 2 壳，仅解禁 CORS)           │
+│  部署目标：浏览器（Web / Electron 桌面壳，CORS 由壳侧解禁）            │
 │                                                                    │
 │                    frontend (Vue 3 + Vite) 同一份 src               │
 │  ┌──────────────────────────────────────────────────────────────┐  │
@@ -20,13 +20,13 @@
 │  │  fundAnalyst（4 分析师+总监）│ portfolioAnalyst（组合诊断）    │  │
 │  │  strategyDraft（策略起草）│ reflection（分析反思）             │  │
 │  │  chatEngine（对话 + 工具调用 skills/tools）│ searchService     │  │
-│  │  llm.ts（OpenAI 兼容客户端，浏览器 fetch / tauri plugin-http） │  │
+│  │  llm.ts（OpenAI 兼容客户端，浏览器 fetch）                          │
 │  ├──────────────────────────────────────────────────────────────┤  │
 │  │  设置：LLM/Search key → localStorage；仅 Proxy URL → Node      │  │
 │  └──────────────────────────────────────────────────────────────┘  │
-│    出站 HTTP 由 httpClient.ts 适配器路由：                         │
-│    · Web  → 浏览器 fetch → /api Vite 代理 → Node                    │
-│    · Tauri→ tauri-plugin-http 直连（绕 CORS）→ Node / 外部 API      │
+│    出站 HTTP 由浏览器 fetch 直出：                                  │
+│    · /api Vite 代理 → Node（Electron 桌面壳亦同，CORS 壳侧禁用）     │
+│    · 外部 API（LLM / 搜索）同源直调                                  │
 └────────────────────────────────┼───────────────────────────────────┘
                                  │
 ┌────────────────────────────────┼───────────────────────────────────┐
@@ -47,9 +47,7 @@
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-> 桌面壳详见 [Tauri 2 桌面壳](./desktop-shell)。`tauri/src-tauri/` 目录仅包含壳
-> （`tauri.conf.json` + `capabilities/remote-webview.json` + Rust 入口），
-> 不打包前端资源。
+> 桌面 Electron 壳由外部项目提供（仅解禁 CORS），前端代码与浏览器完全一致。
 
 ## 三运行时分布
 
@@ -79,7 +77,6 @@
 | **Vue 3 + Vite** | 前端框架 |
 | **Dexie.js** | 浏览器 IndexedDB ORM（11 表） |
 | **Pinia** | 前端状态管理 |
-| **@tauri-apps/plugin-http** | 桌面端原生出站 HTTP（绕 CORS） |
 | **helmet / express-rate-limit** | 安全头 / 限流 |
 | **stock-sdk** | npm 包，基金净值/行情主数据源 |
 | **akshare** | Python 库，A 股数据回退来源 |
@@ -88,8 +85,8 @@
 
 | 决策 | 选择 | 原因 |
 |------|------|------|
-| 业务逻辑归属 | 全部前端化 | 双端共用同一套计算/AI/搜索，Node 瘦身为纯数据层 |
-| 桌面部署 | Tauri 2 壳 + 前端服务分开启动 | 不打包资源，WebView 加载运行中的前端服务（绕 CORS） |
+| 业务逻辑归属 | 全部前端化 | 浏览器（含 Electron 壳）共用同一套计算/AI/搜索，Node 瘦身为纯数据层 |
+| 桌面 CORS | Electron 壳侧解禁 | 前端不感知运行时差异，同一份代码浏览器/桌面通用 |
 | 用户数据存储 | 浏览器 IndexedDB (Dexie.js) | 无服务端状态，零运维，隐私友好 |
 | 数据源编排 | ProviderChain 链式调降 | 多数据源自动降级，业务代码无感 |
 | Python 集成 | `child_process.spawn` + JSON 通信 | 无 HTTP 服务开销，类型安全 |
@@ -109,7 +106,6 @@
 | AI 对话系统 | [AI 对话系统](./ai-chat) |
 | AI 基金分析与持仓分析 | [AI 基金分析与持仓分析](./ai-fund-analysis) |
 | 记忆与反思系统 | [记忆与反思系统](./ai-memory) |
-| Tauri 2 桌面壳 | [Tauri 2 桌面壳](./desktop-shell) |
 
 ## 相关文档
 

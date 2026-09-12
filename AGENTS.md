@@ -2,7 +2,7 @@
 
 ## Architecture
 
-**Two services + optional Tauri shell**, start in order:
+**Two services**, start in order:
 
 1. **service** (port 8310) — Node.js/Express/TypeScript **薄后端**（数据获取层）
    - All API routes (`/api/fund/*`, `/api/market/*`, `/api/screening/*`, `/api/backtest/*`, etc.) — 业务计算已迁移前端，后端只返回原始数据
@@ -15,7 +15,7 @@
    - AI：`llm.ts`（OpenAI 兼容客户端直调）+ `fundAnalyst` / `portfolioAnalyst` / `strategyDraft` / `reflection` / `chatEngine`（对话+工具调用）；分析场景统一走 `analysis/`（场景 Skill 注册表 + 共享引擎，复用 chat 工具契约）
    - 联网搜索：`searchService.ts`（Exa→Bocha→Tavily→DuckDuckGo，key 存前端 localStorage）
    - 设置：LLM/Search key 存前端；仅 Proxy URL 下发 Node
-3. **桌面目标**（可选）— **Tauri 2 壳**（`tauri/src-tauri/`），仅解禁 CORS，不打包前端资源：WebView 加载**运行中的前端服务** origin（dev `http://localhost:8517`，prod `http://localhost:8417` 静态托管）；出站 HTTP 走 `tauri-plugin-http`（绕 CORS）。远程 origin 的 IPC 放行在 `tauri/src-tauri/capabilities/remote-webview.json` 的 `remote.urls`。前端 `httpClient.ts` 检测 `window.__TAURI_INTERNALS__` 自动路由（桌面 → Node `localhost:8310` 绝对地址；Web → `/api` Vite 代理）。
+3. **Electron 桌面壳**（外部项目，可选）— 仅解禁 CORS（壳侧禁用 Web Security）：浏览器窗口加载**运行中的前端服务** origin（dev `http://localhost:8517`，prod `http://localhost:8417` 静态托管）。前端代码与 Web 完全一致——无运行时分支，`httpClient.ts` 统一走浏览器 fetch（`/api` Vite 代理 + localhost:8310 回退）。
 
 **Python** is tool-only (no HTTP server). Called via `child_process.spawn()` from Express:
 ```
@@ -36,7 +36,7 @@ Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → st
 Screening enrichment: frontend sync raw /api/screening → 本地 computeRiskMetrics + classifyFundIndustry → Dexie
 Web search:       frontend chatEngine/searchService → Exa/Bocha/Tavily/DDG（key 前端本地）
 Settings:         LLM/Search key 前端 localStorage；Proxy URL → PUT /api/settings（仅 proxy 子域）
-Desktop HTTP:     httpClient.ts → tauri-plugin-http 直连（绕 CORS），Node 用 localhost:8310 绝对地址
+Desktop HTTP:     浏览器 fetch（Electron 壳侧解禁 CORS），与 Web 行为一致（/api 代理 + localhost:8310 回退）
 ```
 
 ## Commands
@@ -58,10 +58,9 @@ npx vue-tsc --noEmit     # TypeScript typecheck
 npm test                 # vitest run
 npm run build            # output in frontend/dist/
 
-# Desktop (Tauri 2 shell — CORS-free). 需先启动 Node + 前端服务：
+# Desktop (Electron shell — external project, CORS-free). 需先启动 Node + 前端服务：
 cd frontend && npm run build && npm run preview   # prod 静态托管 localhost:8417
-cd tauri && npm run dev                           # = tauri dev（WebView 加载 devUrl）
-# cargo check 需要系统库：webkit2gtk-4.1 / gtk3 / atk（Linux）
+# 用 Electron 浏览器壳打开 http://localhost:8417
 
 # Python scripts (standalone, no HTTP server)
 cd python
@@ -117,7 +116,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `python/cli/` | Python CLI scripts (backtest, fetch_fund, data_complete) |
 | `python/cli/shared/` | Shared Python utilities (http_client) |
 | `python/services/*.py` | Python computation modules (backtest.py, helpers.py) |
-| `frontend/src/services/llm.ts` | OpenAI 兼容 LLM 客户端（浏览器 fetch / tauri plugin-http，JSON+流式） |
+| `frontend/src/services/llm.ts` | OpenAI 兼容 LLM 客户端（浏览器 fetch，JSON+流式） |
 | `frontend/src/services/fundAnalyst.ts` | AI 基金分析（4 分析师+总监）——内部经 `analysis/analysisEngine` runTask：每分析师/总监都是可工具子调用（子集工具/全集），输出经 Schema 校验；公开签名（analyzeFund/analyzeFundStream）与阶段语义不变 |
 | `frontend/src/services/portfolioAnalyst.ts` | 组合诊断分析（前端直调）——经 `analysis/` 引擎 + `portfolio_diagnosis` 场景（市场面工具子集），Schema 校验，注入策略上下文 |
 | `frontend/src/services/analysis/` | **分析场景框架**：`analysisScenarios.ts`（3 场景 Skill 注册表：fund_analysis/portfolio_diagnosis/log_analysis）、`scenarioTypes.ts`（TypeBox 输出 Schema，字段与 DTO 一致）、`analysisEngine.ts`（runTask/runScenario 共享引擎：工具循环+结构化收尾+INVALID_OUTPUT 纠错重试≤2+fallback 降级）、`logAnalysis.ts`（AI 日志分析适配器，规则引擎 `/api/logs/analyze` 为降级源，service 零改动） |
@@ -125,8 +124,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `frontend/src/services/searchService.ts` | 前端搜索链（Exa → Bocha → Tavily → DuckDuckGo） |
 | `frontend/src/services/industryClassifier.ts` | 行业/基金类型分类（筛选丰富化 + 聊天工具共用） |
 | `frontend/src/services/researchComputation.ts` | 投研看板聚合计算（市场统计/基金看板/ETF/板块/行业表现） |
-| `frontend/src/services/httpClient.ts` | 环境感知 HTTP 适配器（Web fetch ↔ Tauri plugin-http，绕 CORS） |
-| `tauri/src-tauri/` | Tauri 2 桌面壳（`tauri.conf.json` + `capabilities/remote-webview.json` 远程 origin IPC 放行 + Rust 入口）；不打包前端资源 |
+| `frontend/src/services/httpClient.ts` | HTTP 适配器（统一浏览器 fetch；Electron 壳侧解禁 CORS，无运行时分支） |
 | `frontend/src/db/` | Dexie schema (index.ts) — all IndexedDB table definitions |
 | `frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
 | `frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
@@ -135,7 +133,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `packages/ui/` | **UI 组件库 `@gofund/ui`** — B* 系列表单控件与浮层/反馈组件、设计 token（明暗双主题）、composables；Vite lib mode 构建（组件级 chunk + dts）；frontend 经 vite/tsconfig 别名直连 `packages/ui/src/index.ts`（`@gofund/ui`），开发 HMR 与构建均从源；`file:../packages/ui` 仅为发布用依赖声明 |
 | `docs/fund-screening/` | 基金筛选模块细分文档（概览/数据流/筛选面板/指标丰富化/4433法则） |
 | `docs/market-*.md` | 市场数据各功能模块说明文档 |
-| `docs/architecture/` | 技术架构文档（数据源/数据流/回退策略/AI分析/桌面壳等） |
+| `docs/architecture/` | 技术架构文档（数据源/数据流/回退策略/AI分析等） |
 | `docs/strategy/` | 策略板块文档（概览/策略记忆与AI注入） |
 | `frontend/src/services/strategyDraft.ts` | AI 策略起草（LLM JSON + 模板降级，前端直调） |
 | `frontend/src/db/strategyMemory.ts` | 策略记忆 CRUD + `buildStrategyContext()` 上下文格式化 |

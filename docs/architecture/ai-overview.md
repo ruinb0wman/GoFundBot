@@ -82,5 +82,5 @@ interface LLMConfig {
 | `model` | `Qwen/Qwen2.5-7B-Instruct` | 模型名称 |
 
 配置通过前端 Settings 页面 → 前端 `useLLMConfig` → localStorage（`gofund-llm-config`）。
-LLM 调用走前端 `llm.ts`（OpenAI 兼容 `chat/completions`，浏览器 fetch / tauri plugin-http）。
+LLM 调用走前端 `llm.ts`（OpenAI 兼容 `chat/completions`，浏览器 fetch）。
 Node 侧不再存储 LLM/Search 配置，`/api/settings` 仅保留 proxy 子域。

@@ -2,7 +2,7 @@
 
 > 对话引擎已前端化：`frontend/src/services/chatEngine/`（skills + toolContract +
 > toolCallParser + toolHandlers + 编排原本在 Node `chatService/chatSkills/chatTools/chatIndustryTools`）。
-> Node `/api/chat` 已撤销。LLM 调用走前端 `llm.ts`（浏览器 fetch / tauri plugin-http），
+> Node `/api/chat` 已撤销。LLM 调用走前端 `llm.ts`（浏览器 fetch），
 > 搜索走前端 `searchService.ts`。
 
 ## 技能路由 (SkillRouter)

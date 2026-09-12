@@ -1,8 +1,7 @@
 /**
  * Frontend web-search chain: Exa (free) → Bocha → Tavily → DuckDuckGo.
  * Ported from Service `searchService.ts`. Keys come from frontend settings
- * (useAppSettings); requests go through nativeFetch (browser on Web,
- * tauri-plugin-http on desktop).
+ * (useAppSettings); requests go through plain browser `nativeFetch`.
  */
 
 import { nativeFetch } from './httpClient'

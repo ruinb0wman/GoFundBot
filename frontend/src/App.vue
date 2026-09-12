@@ -73,7 +73,6 @@
 
     <MobileDrawer :isOpen="drawerOpen" :activeRoute="String(route.name || '')" @close="drawerOpen = false" />
     <BottomNav />
-    <DocsViewer />
     <ChatBubble v-if="route.name !== 'strategy'" />
   </div>
 </template>
@@ -92,7 +91,6 @@ import FlashNews from './components/FlashNews.vue'
 import SectorRank from './components/SectorRank.vue'
 import AlertBadge from './components/AlertBadge.vue'
 import ChatBubble from './components/ChatBubble.vue'
-import DocsViewer from './components/DocsViewer.vue'
 import { onMounted } from 'vue'
 import { useApp } from './composables/useApp'
 import { useAppSettings } from './composables/useAppSettings'

@@ -3,8 +3,7 @@
  *
  * Replaces the Node `openai` package. Calls any OpenAI-compatible
  * `/chat/completions` endpoint (SiliconFlow, DeepSeek, OpenAI, ...) directly
- * from the frontend via `nativeFetch` (browser fetch on Web / tauri-plugin-http
- * on desktop, which bypasses CORS).
+ * from the frontend via `nativeFetch` (browser fetch, incl. Electron shells).
  */
 
 import { nativeFetch } from './httpClient'
