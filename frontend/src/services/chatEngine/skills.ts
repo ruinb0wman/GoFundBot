@@ -304,11 +304,13 @@ export class SkillRouter {
   private apiKey: string
   private apiBase: string
   private model: string
+  private conversationId?: string
 
-  constructor(apiKey: string, apiBase: string, model: string) {
+  constructor(apiKey: string, apiBase: string, model: string, conversationId?: string) {
     this.apiKey = apiKey
     this.apiBase = apiBase
     this.model = model
+    this.conversationId = conversationId
   }
 
   keywordRoute(message: string): string | null {
@@ -332,7 +334,12 @@ export class SkillRouter {
 
   async llmRoute(message: string): Promise<string> {
     try {
-      const config: LLMConfig = { apiKey: this.apiKey, apiBase: this.apiBase, model: this.model }
+      const config: LLMConfig = {
+        apiKey: this.apiKey,
+        apiBase: this.apiBase,
+        model: this.model,
+        conversationId: this.conversationId,
+      }
       const response = await chatCompletion(config, {
         messages: [
           { role: 'system', content: ROUTER_SYSTEM_PROMPT },

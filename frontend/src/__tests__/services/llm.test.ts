@@ -6,6 +6,7 @@ vi.mock('../../services/httpClient', () => ({ nativeFetch: mocks.nativeFetch }))
 import {
   chatCompletion,
   chatCompletionStream,
+  openChatStream,
   pickReasoningContent,
   type LLMConfig,
 } from '../../services/llm'
@@ -55,6 +56,42 @@ describe('chatCompletion', () => {
 
     expect(result.content).toBe('你好')
     expect(result.reasoning_content).toBe('深度思考中')
+  })
+})
+
+describe('conversationId threading', () => {
+  it('forwards config.conversationId to nativeFetch (3rd arg) on chatCompletion', async () => {
+    mocks.nativeFetch.mockResolvedValue(
+      new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200 }),
+    )
+
+    await chatCompletion({ ...CONFIG, conversationId: 'chat:5' }, { messages: [{ role: 'user', content: 'hi' }] })
+
+    expect(mocks.nativeFetch.mock.calls[mocks.nativeFetch.mock.calls.length - 1][2]).toBe('chat:5')
+  })
+
+  it('passes undefined when no conversationId is configured', async () => {
+    mocks.nativeFetch.mockResolvedValue(
+      new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200 }),
+    )
+
+    await chatCompletion(CONFIG, { messages: [{ role: 'user', content: 'hi' }] })
+
+    expect(mocks.nativeFetch.mock.calls[mocks.nativeFetch.mock.calls.length - 1][2]).toBeUndefined()
+  })
+
+  it('forwards config.conversationId on openChatStream', async () => {
+    mocks.nativeFetch.mockResolvedValue(sseResponse(['data: [DONE]\n\n']))
+
+    const stream = await openChatStream(
+      { ...CONFIG, conversationId: 'chat:6' },
+      { messages: [{ role: 'user', content: 'hi' }] },
+    )
+    for await (const chunk of stream) {
+      void chunk
+    }
+
+    expect(mocks.nativeFetch.mock.calls[mocks.nativeFetch.mock.calls.length - 1][2]).toBe('chat:6')
   })
 })
 

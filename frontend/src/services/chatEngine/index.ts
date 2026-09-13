@@ -46,7 +46,7 @@ export interface ChatStreamEvent {
 export interface ChatArgs {
   messages: Array<{ role: string; content: string }>
   skill?: string
-  llmConfig?: { apiKey?: string; apiBase?: string; model?: string }
+  llmConfig?: { apiKey?: string; apiBase?: string; model?: string; conversationId?: string }
   strategyContext?: string
   searchSettings?: AppSettings
 }
@@ -105,8 +105,8 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
     return
   }
 
-  const config: LLMConfig = { apiKey, apiBase, model }
-  const router = new SkillRouter(apiKey, apiBase, model)
+  const config: LLMConfig = { apiKey, apiBase, model, conversationId: llmConfig?.conversationId }
+  const router = new SkillRouter(apiKey, apiBase, model, llmConfig?.conversationId)
   const userMessage = messages.length > 0 ? (messages[messages.length - 1]?.content || '') : ''
 
   const resolvedSkill = await router.route(userMessage, skillName)

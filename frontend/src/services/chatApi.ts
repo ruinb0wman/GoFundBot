@@ -1,5 +1,5 @@
 import { db } from '../db'
-import type { LLMConfig } from '../composables/useLLMConfig'
+import type { LLMConfig } from './llm'
 import { chat, type ChatStreamEvent } from './chatEngine'
 import { sanitizeAssistantContent } from './chatEngine/toolCallParser'
 import { useAppSettings } from '../composables/useAppSettings'

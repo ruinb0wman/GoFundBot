@@ -10,6 +10,8 @@
  * existing `res.data` access patterns in api.ts / composables keep working.
  */
 
+import { withOpencodeSession } from './opencodeSession'
+
 export interface HttpResponse<T = any> {
   data: T
   status: number
@@ -28,9 +30,20 @@ export interface HttpRequestOptions {
 
 const API_BASE = '/api'
 
-/** Fetch wrapper — plain browser fetch (Electron desktop shells use the same). */
-export async function nativeFetch(input: string, init?: RequestInit): Promise<Response> {
-  return fetch(input, init)
+/**
+ * Fetch wrapper — plain browser fetch (Electron desktop shells use the same).
+ *
+ * The only place where the OpenCode `x-opencode-session` header is injected:
+ * pass the logical `conversationId` (e.g. `chat:12`) and the header is attached
+ * for opencode.ai hosts only. Omit it for flows without a conversation concept
+ * — they fall back to a stable per-tab id.
+ */
+export async function nativeFetch(
+  input: string,
+  init?: RequestInit,
+  conversationId?: string | null,
+): Promise<Response> {
+  return fetch(input, withOpencodeSession(input, init, conversationId))
 }
 
 function buildQueryString(baseUrl: string, params?: Record<string, unknown>): string {

@@ -214,6 +214,12 @@ export const useChatStore = defineStore('chat', {
         ? 'strategy'
         : (this.selectedSkill && this.selectedSkill !== 'auto' ? this.selectedSkill : undefined)
       const strategyContext = await buildActiveStrategyContext()
+      // OpenCode requires a conversation-stable session id; analysis flows that
+      // have no conversation pass none and fall back to the per-tab id.
+      const llmConfig = {
+        ...useLLMConfig().config.value,
+        conversationId: this.currentSessionId != null ? `chat:${this.currentSessionId}` : undefined,
+      }
 
       await chatAPI.sendMessage(conversationMessages, {
         onToken: (token: string, full: string) => {
@@ -288,7 +294,7 @@ export const useChatStore = defineStore('chat', {
           }
           await this.refreshSessions()
         },
-      }, skillParam, useLLMConfig().config.value, strategyContext)
+      }, skillParam, llmConfig, strategyContext)
     },
 
     finalizeStream() {

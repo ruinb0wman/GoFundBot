@@ -12,6 +12,12 @@ export interface LLMConfig {
   apiKey: string
   apiBase?: string
   model?: string
+  /**
+   * Logical conversation id (e.g. `chat:12`) used to derive the OpenCode
+   * `x-opencode-session` header. Omit it for flows without a conversation
+   * concept — they fall back to a stable per-tab session id.
+   */
+  conversationId?: string
 }
 
 export interface LLMMessage {
@@ -151,7 +157,7 @@ async function requestChat(config: LLMConfig, options: ChatCompletionOptions): P
       Authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify(buildBody(config, options, false)),
-  })
+  }, config.conversationId)
 }
 
 /** Non-streaming chat completion. Returns content + usage + optional tool_calls. */
@@ -242,7 +248,7 @@ export async function openChatStream(
       },
       body: JSON.stringify(buildBody(config, options, true)),
       signal: controller.signal,
-    })
+    }, config.conversationId)
     if (!response.ok) {
       let message = `HTTP ${response.status}`
       try {

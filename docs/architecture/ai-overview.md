@@ -84,3 +84,20 @@ interface LLMConfig {
 配置通过前端 Settings 页面 → 前端 `useLLMConfig` → localStorage（`gofund-llm-config`）。
 LLM 调用走前端 `llm.ts`（OpenAI 兼容 `chat/completions`，浏览器 fetch）。
 Node 侧不再存储 LLM/Search 配置，`/api/settings` 仅保留 proxy 子域。
+
+### OpenCode 会话头（`x-opencode-session`）
+
+OpenCode Go/Zen（`https://opencode.ai/zen|/go`）要求每个请求携带**同一对话内稳定不变**的会话 ID，
+缺失时上游返回 `400 {"type":"MissingSessionID"}`。实现为 `frontend/src/services/opencodeSession.ts`，
+注入点是唯一的 fetch 封装层 `httpClient.nativeFetch`（`llm.ts` 请求随之自动带上）。
+
+| 场景 | 会话 ID 来源 | 存储键 |
+|------|--------------|--------|
+| chat / strategy 对话 | `chat:<Dexie chatSessions.id>` → 持久化 UUID v4 | localStorage `gofund:opencode-session:conv:<id>`（刷新后复用） |
+| 基金分析 / 组合诊断 / 策略起草 / 反思 / 日志分析 | 每标签页稳定 UUID | sessionStorage `gofund:opencode-session:page` |
+
+- 仅对主机 `opencode.ai` 或 `*.opencode.ai`（仅 http/https）注入；其他 LLM / 搜索 / `/api/*` 请求原样发送，不新增预检。
+- 会话上下文由 `chatStore → chatApi → chatEngine(config.conversationId) / SkillRouter → llm.ts` 显式透传。
+- **不设置也不应设置 `User-Agent`**：浏览器禁止 JS 修改该头，运行环境已全局使用自有签名标识。
+- 自定义请求头会触发 CORS 预检（OPTIONS），依赖运行环境的 origin 放行白名单（默认含 `localhost` / `127.0.0.1`；dev `http://localhost:8517`、Electron 静态托管 `http://localhost:8417`）。
+- Web Storage 被禁用或 `crypto.randomUUID` 缺失时降级为内存缓存 / RFC4122 v4 兜底，同页面内 ID 仍稳定。
