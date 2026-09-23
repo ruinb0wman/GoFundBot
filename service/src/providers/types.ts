@@ -141,9 +141,15 @@ export interface MarketBreadthDto {
   upCount: number;
   downCount: number;
   flatCount: number;
-  limitUp: number;
-  limitDown: number;
+  /** 涨停家数；涨跌停池取不到时为 null（不再填假值） */
+  limitUp: number | null;
+  /** 跌停家数；涨跌停池取不到时为 null */
+  limitDown: number | null;
   total: number;
+  /** 统计口径，例如 '沪深两市' */
+  scope: string;
+  /** 数据日期 YYYY-MM-DD（来自指数行情 f124） */
+  date: string;
 }
 
 export interface LimitUpStockDto {
@@ -165,13 +171,16 @@ export interface LimitUpStockListDto {
 
 export interface NorthFlowDto {
   date: string;
+  /** 恒为 null：2024-08-19 起沪深港通不再披露北向资金净流入 */
   shNetInflow: number | null;
   szNetInflow: number | null;
   totalNetInflow: number | null;
-  shUpCount: number | null;
-  shDownCount: number | null;
-  szUpCount: number | null;
-  szDownCount: number | null;
+  /** 当日成交总额，单位百万元（亿元 = 值 / 100），沪股通。注意不是万元 */
+  shDealAmount: number | null;
+  /** 当日成交总额，单位百万元（亿元 = 值 / 100），深股通 */
+  szDealAmount: number | null;
+  /** 当日成交总额，单位百万元（亿元 = 值 / 100），北向合计 */
+  totalDealAmount: number | null;
 }
 
 export interface GlobalIndexDto {

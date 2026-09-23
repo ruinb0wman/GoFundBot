@@ -30,6 +30,11 @@ function toolData(result: any): unknown {
   return result && typeof result === 'object' && 'data' in result ? result.data : result
 }
 
+/** 北向成交总额 → 亿元。注意 DEAL_AMT 单位是百万元，所以除以 100 而不是 10000 */
+function toYi(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? +(value / 100).toFixed(2) : null
+}
+
 function getDateRange(startDate?: string, endDate?: string): Record<string, string> {
   const range: Record<string, string> = {}
   if (startDate) range.startDate = startDate
@@ -96,18 +101,22 @@ const toolHandlers: Record<string, (args: Record<string, unknown>, ctx: ToolCont
     try {
       const res = await api.get('/market/north-flow')
       const d = unpack(res)?.data ?? unpack(res) ?? {}
-      const isAvailable = d.totalNetInflow != null
+      const hasDealAmount = d.totalDealAmount != null
+      // data_status 恒为 unavailable：净流入自 2024-08-19 起停止披露，
+      // 若报 available 会让模型把 null 当成 0。成交总额放在字段与 note 里。
       return {
-        data_status: isAvailable ? 'available' : 'unavailable',
+        data_status: 'unavailable',
         date: d.date ?? '',
-        sh_net_inflow: d.shNetInflow,
-        sz_net_inflow: d.szNetInflow,
-        total_net_inflow: d.totalNetInflow,
-        sh_up_count: d.shUpCount,
-        sh_down_count: d.shDownCount,
-        sz_up_count: d.szUpCount,
-        sz_down_count: d.szDownCount,
-        note: isAvailable ? undefined : '北向资金数据暂不可用，可能是沪深股通休市、非交易时段或数据尚未更新',
+        net_inflow_available: false,
+        sh_net_inflow: null,
+        sz_net_inflow: null,
+        total_net_inflow: null,
+        total_deal_amount_yi: toYi(d.totalDealAmount),
+        sh_deal_amount_yi: toYi(d.shDealAmount),
+        sz_deal_amount_yi: toYi(d.szDealAmount),
+        note: hasDealAmount
+          ? '自 2024-08-19 起沪深港通不再披露北向资金净流入（*_net_inflow 恒为 null，不要解读为 0）；仅公布当日成交总额。以上 *_deal_amount_yi 即最新交易日的北向成交总额（单位：亿元）。'
+          : '北向资金数据暂不可用（净流入自 2024-08-19 起停止披露，成交总额也尚未更新）。',
       }
     } catch (error) {
       return { data_status: 'error', note: String(error) }
@@ -118,13 +127,19 @@ const toolHandlers: Record<string, (args: Record<string, unknown>, ctx: ToolCont
     try {
       const res = await api.get('/market/breadth')
       const d = unpack(res)?.data ?? unpack(res) ?? {}
+      const hasLimitCounts = d.limitUp != null || d.limitDown != null
       return {
         data_status: d.total > 0 ? 'available' : 'unavailable',
+        scope: d.scope ?? '沪深两市',
+        date: d.date ?? '',
         up_count: d.upCount, down_count: d.downCount, flat_count: d.flatCount,
-        limit_up: d.limitUp, limit_down: d.limitDown, total: d.total,
+        limit_up: d.limitUp ?? null, limit_down: d.limitDown ?? null, total: d.total,
+        note: d.total > 0
+          ? (hasLimitCounts ? undefined : '涨停/跌停家数本次未取到，仅涨跌家数有效')
+          : '涨跌家数本次未取到（数据源异常或尚未更新），请勿据此判断市场涨跌结构',
       }
     } catch (error) {
-      return { data_status: 'error', up_count: 0, down_count: 0, flat_count: 0, limit_up: 0, limit_down: 0, total: 0, note: String(error) }
+      return { data_status: 'error', up_count: 0, down_count: 0, flat_count: 0, limit_up: null, limit_down: null, total: 0, note: String(error) }
     }
   },
 

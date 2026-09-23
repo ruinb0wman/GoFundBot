@@ -326,13 +326,18 @@ HTTP_PROXY=http://127.0.0.1:7890
 HTTPS_PROXY=http://127.0.0.1:7890
 ```
 
-### Push2 A 股全市场列表不可用
+### Push2 A 股全市场列表（clist/get 全市场 filter）不可用
 
-东方财富 `push2.eastmoney.com` 的 A 股全市场 filter 在当前服务环境被拒绝访问。受影响的 service 功能：
+东方财富 `push2.eastmoney.com` 的 A 股全市场 `clist/get` filter 在当前服务环境被拒绝访问，
+因此不能靠它逐只遍历统计全市场。**这不影响涨跌统计**：
 
-- **涨跌统计**（`GET /market/breadth`）→ 改用 `api/qt/stock/get?secid=1.000001` 的
-  上证指数级字段作为近似替代，仅覆盖上证市场，不含深证。
-- **涨停股池** → 不可用，Python 侧保留 akshare `stock_zt_pool_em` 作为唯一数据源。
+- **涨跌家数**（`GET /market/breadth`）→ 用 `api/qt/ulist.np/get` 的指数级字段 `f104/f105/f106`
+  （上涨/下跌/平盘）：上证指数 `1.000001` = 沪市全体、深证成指 `0.399001` = 深市全体，两者相加即沪深两市合计。
+  实现见 `service/src/providers/eastmoney/marketBreadth.ts`。
+- **涨跌停家数** → 用 `push2ex.eastmoney.com` 的涨/跌停池（`getTopicZTPool` / `getTopicDTPool`）的 `tc`，
+  必须带 `date=YYYYMMDD`；取不到时返回 `null`（不再填假值）。
+- 注意：`api/qt/stock/get` 的 `f168/f169/f170/f171` 是**换手率/涨跌额/涨跌幅/振幅**（不传 `fltt=2` 时放大 100 倍），
+  `f292/f293` 也与涨跌停无关 —— 早期实现误用过这两组字段。
 
 ### 全球指数历史 K 线
 

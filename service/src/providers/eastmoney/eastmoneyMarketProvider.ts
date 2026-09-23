@@ -19,6 +19,8 @@ import type {
   StockMoneyFlowPointDto,
 } from '../types.js';
 import { fetchJson, fetchText } from './eastmoneyRequest.js';
+import { fetchMarketBreadth } from './marketBreadth.js';
+import { fetchMarketNorthFlow } from './marketNorthFlow.js';
 
 const DEFAULT_REFERER = 'https://quote.eastmoney.com/';
 
@@ -371,85 +373,21 @@ export class EastMoneyMarketProvider implements MarketProvider {
   }
 
   // -----------------------------------------------------------------------
-  // Market breadth – up/down counts
-  // Uses the SH index component count fields (f168=up, f169=down, f170=flat).
-  // NOTE: Only covers Shanghai market. Shenzhen not available via push2.
-  // limitUp/limitDown counts are not reliable from this endpoint.
+  // Market breadth – 沪深两市涨跌家数 + 涨跌停家数
+  // 实现见 marketBreadth.ts（字段口径与踩坑说明都写在那里）
   // -----------------------------------------------------------------------
 
   async breadth(): Promise<MarketBreadthDto> {
-    const url = 'https://push2.eastmoney.com/api/qt/stock/get';
-    const params = new URLSearchParams({
-      secid: '1.000001',
-      fields: 'f58,f168,f169,f170,f292,f293',
-      ut: 'bd1d9ddb04089700cf9c27f6f7426281',
-    });
-
-    try {
-      const respData = await fetchJson(`${url}?${params.toString()}`, 10000);
-      const data = (respData.data ?? respData) as Record<string, unknown>;
-
-      const name = toString(data.f58 ?? '');
-      const upCount = toInt(data.f168);
-      const downCount = Math.abs(toInt(data.f169));
-      const flatCount = Math.abs(toInt(data.f170));
-      const limitUp = Math.abs(toInt(data.f292));
-      const limitDown = Math.abs(toInt(data.f293));
-      const total = upCount + downCount + flatCount;
-
-      // Sanity check: covers SH+SZ combined (~5000 stocks)
-      if (total > 0 && total <= 6000 && (upCount > 0 || downCount > 0)) {
-        return { upCount, downCount, flatCount, limitUp, limitDown, total };
-      }
-    } catch {
-      // fallthrough
-    }
-
-    return { upCount: 0, downCount: 0, flatCount: 0, limitUp: 0, limitDown: 0, total: 0 };
+    return fetchMarketBreadth();
   }
 
   // -----------------------------------------------------------------------
-  // North-bound flow (港股通北向资金)
+  // North-bound flow (北向资金)
+  // 实现见 marketNorthFlow.ts（净流入已停止披露，改报当日成交总额）
   // -----------------------------------------------------------------------
 
   async northFlow(): Promise<NorthFlowDto> {
-    const url = 'https://push2.eastmoney.com/api/qt/kamt.kline/get';
-    const params = new URLSearchParams({
-      fields1: 'f1,f2,f3,f4',
-      fields2: 'f51,f52,f53,f54',
-      klt: '101',
-      lmt: '1',
-      secid: '1.000001',
-    });
-
-    const respData = await fetchJson(`${url}?${params.toString()}`, 15000);
-    const data = (respData.data ?? respData) as Record<string, unknown>;
-
-    const parseKamt = (key: string): { net: number | null; date: string } | null => {
-      const arr = data[key] as string[] | undefined;
-      if (Array.isArray(arr) && arr.length > 0) {
-        const parts = arr[0].split(',');
-        return { net: toMoneyFlowNum(parts[1]), date: String(parts[0] ?? '') };
-      }
-      return null;
-    };
-
-    const hk2sh = parseKamt('hk2sh');
-    const hk2sz = parseKamt('hk2sz');
-    const shNet = hk2sh?.net ?? null;
-    const szNet = hk2sz?.net ?? null;
-    const date = hk2sh?.date || hk2sz?.date || '';
-
-    return {
-      date,
-      shNetInflow: shNet,
-      szNetInflow: szNet,
-      totalNetInflow: shNet != null || szNet != null ? (shNet ?? 0) + (szNet ?? 0) : null,
-      shUpCount: null,
-      shDownCount: null,
-      szUpCount: null,
-      szDownCount: null,
-    };
+    return fetchMarketNorthFlow();
   }
 
   // -----------------------------------------------------------------------
@@ -544,11 +482,6 @@ function toNum(value: unknown): number | null {
   if (value == null || value === '' || value === '-') return null;
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
-}
-
-function toInt(value: unknown): number {
-  const num = toNum(value);
-  return num != null ? Math.floor(num) : 0;
 }
 
 function toMoneyFlowNum(value: unknown): number | null {

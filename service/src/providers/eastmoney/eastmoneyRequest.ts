@@ -1,12 +1,20 @@
 import { AppError } from '../../core/errors.js';
 import { fetchUrl } from '../../core/fetch.js';
 
-export async function fetchText(url: string, timeoutMs = 10000): Promise<string> {
-  return fetchUrl<string>(url, { timeoutMs, proxy: 'auto', headers: { 'Referer': 'https://fund.eastmoney.com/' } });
+export async function fetchText(
+  url: string,
+  timeoutMs = 10000,
+  referer = 'https://fund.eastmoney.com/'
+): Promise<string> {
+  return fetchUrl<string>(url, { timeoutMs, proxy: 'auto', headers: { 'Referer': referer } });
 }
 
-export async function fetchJson(url: string, timeoutMs = 10000): Promise<Record<string, unknown>> {
-  const text = await fetchText(url, timeoutMs);
+export async function fetchJson(
+  url: string,
+  timeoutMs = 10000,
+  referer?: string
+): Promise<Record<string, unknown>> {
+  const text = await fetchText(url, timeoutMs, referer);
   try {
     return JSON.parse(text) as Record<string, unknown>;
   } catch {

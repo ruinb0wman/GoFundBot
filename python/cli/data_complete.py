@@ -286,8 +286,10 @@ def _latest_trade_date():
 def complete_north_flow():
     """
     Fetch northbound capital flow (北向资金) data from eastmoney datacenter API.
-    Uses a different endpoint than the Node.js provider (datacenter-web vs push2),
-    providing genuine fallback diversity.
+    Same datacenter endpoint as the Node provider (marketNorthFlow.ts) but a
+    different client/process, so it still covers Node-side failures.
+    NOTE: 自 2024-08-19 起沪深港通不再披露北向资金净流入，FUND_INFLOW / NET_DEAL_AMT
+    恒为 null；只有 DEAL_AMT（当日成交总额，万元）还有值。
     Returns dict with keys: total, sh, sz, each containing date, fund_inflow, net_deal_amt, deal_amt.
     """
     types = {

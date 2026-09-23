@@ -31,9 +31,8 @@
 | `GET /api/market/sectors` | `getMarketSectors` | eastmoney only | 15s |
 | `GET /api/market/kline/:code` | `getMarketKline` | [stock-sdk → eastmoney] | 1h |
 | `GET /api/market/money-flow` | `getMarketMoneyFlow` | eastmoney → akshare python fallback | 30s |
-| `GET /api/market/breadth` | `getMarketBreadth` | eastmoney only | 15s |
-| `GET /api/market/north-flow` | `getNorthFlow` | eastmoney only | 15s |
-| `GET /api/market/limit-up` | `getLimitUpStocks` | eastmoney only | 30s |
+| `GET /api/market/breadth` | `getMarketBreadth` | eastmoney only（`ulist.np/get` 的 f104/f105/f106 沪深合计 + push2ex 涨跌停池） | 15s |
+| `GET /api/market/north-flow` | `getNorthFlow` | eastmoney datacenter → akshare python fallback | 5min |
 | `GET /api/market/gold/realtime` | `getGoldRealtime` | eastmoney → akshare python | 60s |
 | `GET /api/market/gold/history` | `getGoldHistory` | eastmoney → akshare python | 1h |
 | `GET /api/market/kline/global/:symbol` | `getGlobalIndexKline` | [yahoo] | 1h |

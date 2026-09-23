@@ -110,7 +110,7 @@ Both services enforce single-file max 500 lines. Violations block CI.
 | `service/src/app.ts` | App bootstrap — route registration, middleware |
 | `service/src/routes/` | All Express route handlers (fund, market, screening, backtest, settings, etc.) |
 | `service/src/services/` | 数据层服务（fundService, marketService, pythonRunner, settingsService(proxy)）；业务计算已迁移前端 |
-| `service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo) |
+| `service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo)；eastmoney 的涨跌家数/北向资金实现在 `eastmoney/marketBreadth.ts`、`eastmoney/marketNorthFlow.ts` |
 | `service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
 | `service/src/types/` | DTO interfaces (fund.ts, common.ts) |
 | `python/cli/` | Python CLI scripts (backtest, fetch_fund, data_complete) |
@@ -165,3 +165,21 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 - **2026-07-28** — 前端资金流向图表修复：`categories` 从 `['主力', '机构', '大户', '散户']` 改为 `['机构', '大户', '中户', '散户']`，values 映射从 `[mainNetInflow, superLargeNetInflow, largeNetInflow, smallNetInflow]` 改为 `[superLargeNetInflow, largeNetInflow, mediumNetInflow, smallNetInflow]`
   - 修复前：`mainNetInflow = superLargeNetInflow + largeNetInflow`，买入侧重复计算翻倍，且遗漏 `mediumNetInflow`
   - 修复后：4 栏互斥，标签与订单分类对齐，详见 `docs/market-money-flow.md`
+
+### 北向资金 (market north flow)
+
+2024-08-19 起沪深交易所调整沪深港通交易信息披露机制：**北向资金不再披露实时买入额/卖出额/净买入**，
+只在每交易日收市后公布当日成交总额。因此 `push2 .../kamt.kline/get` 的净额字段恒为 `0.00`
+（注意是 `0` 而不是 `null`，容易被误读成「北向零流入」），`datacenter RPT_MUTUAL_DEAL_HISTORY` 的
+`FUND_INFLOW` / `NET_DEAL_AMT` 也恒为 `null`。南向（港股通沪/深）仍完整披露。
+
+**现状**：
+- 主源改为 datacenter `RPT_MUTUAL_DEAL_HISTORY`（`marketNorthFlow.ts`），只取 `DEAL_AMT`（当日成交总额）
+- **`DEAL_AMT` 的单位是百万元（亿元 = 值 / 100），不是万元**——实测 2026-09-21 北向 `283911.86` / 沪股通 `133832.25` / 深股通 `150079.61`，与新闻口径「沪深股通合计成交 2839.12 亿、沪股通 1338.32 亿」完全吻合。对比：`push2 kamt/get` 的字段才是万元（它的 `dayAmtThreshold=5200000` 即 520 亿额度）。
+- `NorthFlowDto` 的 `shNetInflow/szNetInflow/totalNetInflow` **恒为 null**；新增 `shDealAmount/szDealAmount/totalDealAmount`（百万元）
+- 前端 `get_north_flow` 固定返回 `data_status: 'unavailable'` + note（避免模型把 null 当 0），成交总额以亿元写在字段与 note 里
+- 回退：datacenter 抛错时走 `data_complete.py --source akshare --type north_flow`（同一端点，不同 client）
+- `push2 .../kamt.kline/get` 已彻底不用（对本场景无任何有效字段）
+
+**历史修复**：
+- **2026-09-22** — 涨跌家数口径修复：`breadth()` 原来读 `f168/f169/f170`（实测是上证指数的**换手率/涨跌额/涨跌幅**，未传 `fltt=2` 时放大 100 倍），返回「68/873/22、合计 963」这种半截数据；改为 `ulist.np/get` 的 `f104/f105/f106`（上证指数=沪市全体、深证成指=深市全体），沪深合计约 5286 只，新增 `scope`/`date` 字段。涨跌停家数原来取 `f292/f293`（实测与涨跌停无关，指数与个股都返回 `3`/`-1|0`），改为 push2ex 涨/跌停池的 `tc`。详见 `service/src/providers/eastmoney/marketBreadth.ts`

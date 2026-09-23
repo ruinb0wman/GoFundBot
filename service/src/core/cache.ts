@@ -172,7 +172,7 @@ export const ttl = {
   marketMoneyFlow: 30 * 1000,
   marketBreadth: 15 * 1000,
   marketLimitUp: 30 * 1000,
-  marketNorthFlow: 15 * 1000,
+  marketNorthFlow: 5 * 60 * 1000,
   marketGlobalIndices: 15 * 1000,
   marketGlobalKline: 60 * 60 * 1000,
   goldRealtime: 60 * 1000,

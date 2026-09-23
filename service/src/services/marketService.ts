@@ -174,19 +174,16 @@ async function getNorthFlowFromAkshare(): Promise<NorthFlowDto> {
   const sh = (northFlow.sh ?? {}) as Record<string, unknown>;
   const sz = (northFlow.sz ?? {}) as Record<string, unknown>;
 
-  const shNetDealAmt = toNullableNumber(sh.net_deal_amt);
-  const szNetDealAmt = toNullableNumber(sz.net_deal_amt);
-  const totalNetDealAmt = toNullableNumber(total.net_deal_amt);
-
+  // 北向资金净流入自 2024-08-19 起停止披露（NET_DEAL_AMT 恒为 null），只有成交总额还有值。
+  // 单位：deal_amt 是百万元（亿元 = 值 / 100），不是万元。
   return {
     date: String(total.date ?? ''),
-    shNetInflow: shNetDealAmt,
-    szNetInflow: szNetDealAmt,
-    totalNetInflow: totalNetDealAmt,
-    shUpCount: null,
-    shDownCount: null,
-    szUpCount: null,
-    szDownCount: null,
+    shNetInflow: toNullableNumber(sh.net_deal_amt),
+    szNetInflow: toNullableNumber(sz.net_deal_amt),
+    totalNetInflow: toNullableNumber(total.net_deal_amt),
+    shDealAmount: toNullableNumber(sh.deal_amt),
+    szDealAmount: toNullableNumber(sz.deal_amt),
+    totalDealAmount: toNullableNumber(total.deal_amt),
   };
 }
 
@@ -680,7 +677,7 @@ export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {
     });
     return toServiceResult(cache.set(key, result, ttl.marketNorthFlow));
   } catch (err) {
-    logger.error('NorthFlow providers failed, trying akshare fallback', {
+    logger.error('NorthFlow datacenter source failed, trying akshare fallback', {
       error: err instanceof Error ? err.message : String(err),
     });
   }

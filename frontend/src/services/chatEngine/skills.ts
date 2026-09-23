@@ -51,8 +51,8 @@ const MARKET_OVERVIEW_PROMPT = `你是一位市场行情分析师，专注解读
 - 查询主要指数实时行情（上证、深证、创业板等）
 - 查询热门行业板块涨跌
 - 查询概念板块主力资金流向
-- 查询北向资金流向数据
-- 查询市场涨跌统计（上涨/下跌家数）
+- 查询北向资金成交总额（北向净流入自 2024-08-19 起已停止披露，不要当成 0）
+- 查询市场涨跌统计（沪深两市合计的上涨/下跌/平盘家数）
 - 查询主力资金流向
 
 ${DATA_RULES}
@@ -64,9 +64,10 @@ ${RESPONSE_REQUIREMENTS}
 2. 数据分层：先说总量（指数），再说结构（板块），再说资金（北向/主力）
 3. 重要：必须检查 data_status 字段
    - data_status="available" → 使用返回的真实数值
-   - data_status="unavailable" → 数据不可用（非交易时段/休市/数据未更新），查看 note 字段说明原因，如实告知用户
+   - data_status="unavailable" → 数据不可用（非交易时段/休市/数据未更新/该口径已停止披露），查看 note 字段说明原因，如实告知用户
    - data_status="error" → 获取失败，查看 note 字段说明原因
-4. 不要将 unavailable/error 的数据自行解读为0或任何数值`
+4. 不要将 unavailable/error 的数据自行解读为0或任何数值
+5. 北向资金：净流入字段为 null 是「已停止披露」，不是零流入；只能报 note 里的当日成交总额`
 
 const NEWS_BRIEFING_PROMPT = `你是一位财经快讯编辑，专注提供最新市场消息。
 
@@ -234,7 +235,7 @@ export const SKILL_DEFINITIONS: Skill[] = [
   },
   {
     name: 'market_overview',
-    description: '查询大盘行情、指数、板块资金、北向资金',
+    description: '查询大盘行情、指数、板块资金、北向资金成交额',
     keywords: ['大盘', '市场', '行情', '指数', '板块', '北向', '涨跌', '今天'],
     systemPrompt: MARKET_OVERVIEW_PROMPT,
     toolNames: ['get_market_indices', 'get_hot_sectors', 'get_concept_sectors', 'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_index_kline'],

@@ -15,7 +15,7 @@
 | Provider | 实现文件 | 数据来源 | 提供的能力 |
 |----------|----------|---------|-----------|
 | **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts` | npm `stock-sdk` 包 | `quotes`, `kline`, `indices` |
-| **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `push2.eastmoney.com` `push2his.eastmoney.com` | `quotes`, `kline`, `sectors`, `sectorConstituents`, `indices`, `moneyFlow`, `marketMoneyFlow`, `breadth`, `limitUpStocks`, `northFlow`, `globalIndices` |
+| **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `push2.eastmoney.com` `push2his.eastmoney.com` `push2ex.eastmoney.com` `datacenter-web.eastmoney.com` | `quotes`, `kline`, `sectors`, `sectorConstituents`, `indices`, `moneyFlow`, `marketMoneyFlow`, `breadth`（`marketBreadth.ts`）, `northFlow`（`marketNorthFlow.ts`，走 datacenter）, `globalIndices` |
 | **yahoo** (全球) | `service/src/providers/yahoo/yahooMarketProvider.ts` | Yahoo Finance API | 全球指数 K 线 |
 
 ## 股票数据 (StockProviders)

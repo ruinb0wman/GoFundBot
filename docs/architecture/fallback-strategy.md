@@ -59,6 +59,13 @@ MarketMoneyFlow:
 GlobalIndexKline:
   1. eastmoney push2 API (100.NDX 等 secid)
   2. 失败 → yahoo finance API
+
+NorthFlow（北向资金）:
+  1. eastmoney datacenter RPT_MUTUAL_DEAL_HISTORY (主，取 DEAL_AMT，单位百万元)
+  2. 失败 → data_complete.py --source akshare --type north_flow
+     → 同一 datacenter 端点（不同 client）→ stdout JSON → NorthFlowDto
+  3. 全部失败 → 503，前端 get_north_flow 返回 data_status="error"
+  （净流入自 2024-08-19 起停止披露，三个 *NetInflow 恒为 null）
 ```
 
 ## 前端网络回退
@@ -97,8 +104,8 @@ async function getWithLocalFallback<T>(path: string) {
 |---------|-----|------|
 | 基金估值 | 30s | 盘中频繁更新 |
 | 行情报价 | 15s | 实时性要求高 |
-| 涨停股/涨跌家数 | 30s | 盘中变动 |
-| 北向资金 | 15s | 盘中变动 |
+| 涨停股/涨跌家数 | 15s | 盘中变动 |
+| 北向资金成交总额 | 5min | 盘后更新（净流入自 2024-08-19 起停止披露） |
 | 大盘资金流向 | 30s | 盘中变动 |
 | 黄金行情 | 60s | 贵金属 |
 | A 股 K 线 | 1h | 日线不变 |

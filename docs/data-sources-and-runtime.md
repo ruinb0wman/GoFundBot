@@ -27,7 +27,7 @@
 | Provider | 文件 | 来源 API | 提供的能力 |
 |----------|------|---------|-----------|
 | **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts` | npm `stock-sdk` 包 | `quotes`, `kline`, `indices` (上证/深证/创业板/沪深300/科创50) |
-| **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `push2.eastmoney.com` `push2his.eastmoney.com` | `quotes`, `kline`, `sectors`, `sectorConstituents`, `indices`, `moneyFlow`, `marketMoneyFlow`, `breadth`, `limitUpStocks`, `northFlow`, `globalIndices` |
+| **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `push2.eastmoney.com` `push2his.eastmoney.com` `push2ex.eastmoney.com` `datacenter-web.eastmoney.com` | `quotes`, `kline`, `sectors`, `sectorConstituents`, `indices`, `moneyFlow`, `marketMoneyFlow`, `breadth`（`marketBreadth.ts`）, `northFlow`（`marketNorthFlow.ts`，走 datacenter）, `globalIndices` |
 | **yahoo** (全球) | `service/src/providers/yahoo/yahooMarketProvider.ts` | Yahoo Finance API | 全球指数 K 线 (美股/港股等) |
 
 ### 2.3 股票数据 (StockProviders)
@@ -97,13 +97,13 @@
 | `getMarketIndices` | 主要指数 | stock-sdk → eastmoney |
 | `getMarketSectors` | 板块排行 | eastmoney only |
 | `getSectorConstituents` | 板块成分股 | eastmoney only |
-| `getMarketBreadth` | 涨跌家数 | eastmoney (TTL 15s) |
-| `getNorthFlow` | 北向资金 | eastmoney (TTL 15s) |
+| `getMarketBreadth` | 涨跌家数（沪深两市合计）+ 涨跌停家数 | eastmoney (TTL 15s) |
+| `getNorthFlow` | 北向资金成交总额 | eastmoney datacenter → akshare (TTL 5min) |
 | `getGoldRealtime` | 黄金实时行情 | eastmoney/akshare (TTL 60s) |
 | `getGoldHistory` | 黄金历史走势 | eastmoney/akshare (TTL 1h) |
 | `getMoneyFlow` | 个股资金流向 | eastmoney (TTL 30s) |
 | `getMarketMoneyFlow` | 大盘资金流向 | eastmoney (TTL 30s) |
-| `getLimitUpStocks` | 涨停股列表 | eastmoney (TTL 30s) |
+| `getLimitUpStocks` | 涨停股列表 | （未实现，仅 DTO/接口预留） |
 
 ### 3.4 计算/分析模块（已迁移前端）
 

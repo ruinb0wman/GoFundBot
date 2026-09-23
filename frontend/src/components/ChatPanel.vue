@@ -246,7 +246,7 @@ const skillSuggestions = computed(() => {
   const skill = chatStore.currentSkill
   if (skill === 'market_overview') return [
     { text: '今天大盘怎么样？' },
-    { text: '北向资金今日流向' },
+    { text: '北向资金今日成交额' },
     { text: '哪些板块在领涨' },
   ]
   if (skill === 'fund_analysis') return [
@@ -271,7 +271,7 @@ const skillSuggestions = computed(() => {
   ]
   return [
     { text: '今天大盘怎么样？' },
-    { text: '帮我看看北向资金流向' },
+    { text: '帮我看看北向资金成交额' },
     { text: '筛选通过4433法则的基金' },
     { text: '推荐几只值得关注的基金' },
   ]
