@@ -74,14 +74,22 @@ npm run dev              # port 8574, proxied via frontend /docs/*
 npm run build            # output in docs/.vitepress/dist/
 ```
 
-## CI/CD
+## 本地校验（无 CI）
 
-```yaml
-dataservice: npm run lint → npm run typecheck → npm test
-frontend:  npm run lint → npx vue-tsc --noEmit → npm test → npm run build
+GitHub Actions 已移除（`.github/workflows/ci.yml` 已删），改动后请在本地跑对应检查。
+两者都强制单文件 ≤500 行（超限直接 lint 失败）：
+
+```bash
+# service
+cd service && npm run lint && npm run typecheck && npm test
+
+# frontend
+cd frontend && npm run lint && npx vue-tsc --noEmit && npm test && npm run build
+
+# python（ruff 配置在 python/pyproject.toml）
+python/.venv/bin/ruff check python/ && python/.venv/bin/ruff format python/ --check
+python/.venv/bin/python python/cli/check_file_length.py
 ```
-
-Both services enforce single-file max 500 lines. Violations block CI.
 
 ## Key details
 

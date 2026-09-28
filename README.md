@@ -1,7 +1,5 @@
 # GoFundBot
 
-[![CI](https://github.com/Sebastian6848/GoFundBot/actions/workflows/ci.yml/badge.svg)](https://github.com/Sebastian6848/GoFundBot/actions/workflows/ci.yml)
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)]() [![Vue.js](https://img.shields.io/badge/Vue.js-3-green.svg)]()
 
 GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分析与可视化工具。它不仅提供实时的基金数据查询和可视化图表，还集成了先进的 AI 大模型（LLM），为用户提供深度的基金投资分析、风险评估及市场研判报告。所有持久化数据存储在浏览器端 IndexedDB（Dexie.js）中，服务端无状态。
@@ -286,7 +284,7 @@ GoFundBot/
 │   │   ├── backtest.py           # 定投回测（月/周/日/一次性 + 止盈止损）
 │   │   ├── fetch_fund.py         # 基金数据拉取
 │   │   ├── data_complete.py      # 数据补全（akshare/eastmoney 拉取）
-│   │   ├── check_file_length.py  # 文件行数检查（CI）
+│   │   ├── check_file_length.py  # 文件行数检查（单文件 ≤500 行）
 │   │   └── _template.py          # 新脚本模板
 │   ├── cli/shared/               # 共享 Python 库
 │   │   ├── http_client.py        # HTTP 客户端
