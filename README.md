@@ -167,6 +167,15 @@ cd GoFundBot
 
 ### 2. 安装依赖
 
+**一键安装（推荐）**——根目录脚本会装齐四个 Node 子项目 + Python venv + git 钩子：
+
+```bash
+./setup.sh            # 等价于 npm run setup / bun run setup
+./setup.sh --help     # 选项：--skip-node / --skip-python
+```
+
+Node 侧统一使用 **bun**（与 `bun dev` 一致）；`packages/ui` 会先于 `frontend` 安装（后者依赖 `@gofund/ui: file:../packages/ui`）。没有 bun、或想用 npm 时，按下面手动逐目录装：
+
 ```bash
 # service（Express 后端）
 cd service && npm install && cd ..
@@ -174,7 +183,7 @@ cd service && npm install && cd ..
 # frontend（Vue 前端）
 cd frontend && npm install && cd ..
 
-# Python 环境（推荐：一键建 venv 并安装 requirements + requirements-dev）
+# Python 环境（一键建 venv 并安装 requirements + requirements-dev）
 npm run setup:venv
 # 备选：pip install -r python/requirements.txt
 
