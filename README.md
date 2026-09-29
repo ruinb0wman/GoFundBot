@@ -32,7 +32,7 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 *   **自选管理**：一键添加/移除自选基金，随时跟踪关注标的（数据存储在浏览器 IndexedDB）。
 *   **定投回测**：通过 Python 脚本进行多策略回测（**每月/每周/每日定投、一次性买入 + 止盈止损**）。
 *   **桌面端**：支持 Electron 浏览器壳（壳侧解禁 CORS，直连 Node / 外部 API 不受浏览器限制）。
-*   **一键启动**：根目录 `npm run dev` 同时启动后端 + 前端。
+*   **一键启动**：根目录 `bun dev` 同时启动后端 + 前端 + 文档站。
 
 ### 📊 使用方法
 
@@ -105,9 +105,9 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 ```bash
 # 1. 启动后端 + 前端（生产静态托管）+ 文档站
-cd service && npm install && npm run build && npm start   # service :8310
-cd frontend && npm run build && npm run preview            # 静态托管 :8417（/docs 代理 → 8574）
-cd docs && npm install && npx vitepress dev --port 8574   # 文档站 :8574
+cd service && bun install && bun run build && bun run start   # service :8310
+cd frontend && bun run build && bun run preview                # 静态托管 :8417（/docs 代理 → 8574）
+cd docs && bun install && bunx vitepress dev --port 8574       # 文档站 :8574
 
 # 2. 用 Electron 浏览器壳打开 http://localhost:8417
 ```
@@ -168,7 +168,7 @@ cd GoFundBot
 **一键安装（推荐）**——根目录脚本会装齐四个 Node 子项目 + Python venv + git 钩子：
 
 ```bash
-./setup.sh            # 等价于 npm run setup / bun run setup
+./setup.sh            # 等价于 bun run setup（npm run setup 亦可）
 ./setup.sh --help     # 选项：--skip-node / --skip-python
 ```
 
@@ -208,7 +208,7 @@ cp service/.env.example service/.env
 ### 4. 一键启动
 
 ```bash
-npm run dev
+bun dev        # 等价于 bun run dev
 ```
 
 同时启动：
@@ -230,13 +230,13 @@ npm run dev
 **构建前端**
 
 ```bash
-cd frontend && npm run build
+cd frontend && bun run build
 ```
 
 **启动 service**
 
 ```bash
-cd service && npm run build && npm start
+cd service && bun run build && bun run start
 ```
 
 前端构建产物在 `frontend/dist/`，可直接用 Nginx 托管，API 代理到 `http://localhost:8310`。

@@ -41,25 +41,29 @@ Desktop HTTP:     浏览器 fetch（Electron 壳侧解禁 CORS），与 Web 行�
 
 ## Commands
 
+> 包管理器是 **bun**（`bun.lock` 是唯一锁文件，`package-lock.json` 已删）。脚本文档一律写 `bun run <script>` ——
+> 注意 `bun test` 是 Bun 自带的测试器，要跑本项目的 test 脚本必须写 `bun run test`。
+> 根目录 `bun dev` 一键起全部三件（service + frontend + docs）。
+
 ```bash
 # service (Node >= 22.19) — THE main backend
-cd service && npm install
-npm run dev              # tsx watch src/index.ts (port 8310)
-npm run typecheck        # tsc --noEmit
-npm run lint             # ESLint (max-lines 500)
-npm test                 # vitest run (67+ tests)
-npm run build && npm start
+cd service && bun install
+bun run dev              # tsx watch src/index.ts (port 8310)
+bun run typecheck        # tsc --noEmit
+bun run lint             # ESLint (max-lines 500)
+bun run test             # vitest run (96 tests)
+bun run build && bun run start
 
 # frontend
-cd frontend && npm install
-npm run dev              # port 8517, proxy /api → localhost:8310
-npm run lint             # ESLint (max-lines 500, Vue/TS)
-npx vue-tsc --noEmit     # TypeScript typecheck
-npm test                 # vitest run
-npm run build            # output in frontend/dist/
+cd frontend && bun install
+bun run dev              # port 8517, proxy /api → localhost:8310
+bun run lint             # ESLint (max-lines 500, Vue/TS)
+bunx vue-tsc --noEmit    # TypeScript typecheck
+bun run test             # vitest run
+bun run build            # output in frontend/dist/
 
 # Desktop (Electron shell — external project, CORS-free). 需先启动 Node + 前端服务：
-cd frontend && npm run build && npm run preview   # prod 静态托管 localhost:8417
+cd frontend && bun run build && bun run preview   # prod 静态托管 localhost:8417
 # 用 Electron 浏览器壳打开 http://localhost:8417
 
 # Python scripts (standalone, no HTTP server)
@@ -69,9 +73,9 @@ python/.venv/bin/python cli/fetch_fund.py --code 019667
 python/.venv/bin/python cli/data_complete.py --source akshare --type stocks
 
 # Docs (VitePress)
-cd docs && npm install
-npm run dev              # port 8574, proxied via frontend /docs/*
-npm run build            # output in docs/.vitepress/dist/
+cd docs && bun install
+bun run dev              # port 8574, proxied via frontend /docs/*
+bun run build            # output in docs/.vitepress/dist/
 ```
 
 ## 本地校验（无 CI）
@@ -81,10 +85,10 @@ GitHub Actions 已移除（`.github/workflows/ci.yml` 已删），改动后请�
 
 ```bash
 # service
-cd service && npm run lint && npm run typecheck && npm test
+cd service && bun run lint && bun run typecheck && bun run test
 
 # frontend
-cd frontend && npm run lint && npx vue-tsc --noEmit && npm test && npm run build
+cd frontend && bun run lint && bunx vue-tsc --noEmit && bun run test && bun run build
 
 # python（ruff 配置在 python/pyproject.toml）
 python/.venv/bin/ruff check python/ && python/.venv/bin/ruff format python/ --check
@@ -150,10 +154,10 @@ python/.venv/bin/python python/cli/check_file_length.py
 
 ```bash
 # service (Vitest)
-cd service && npm test
+cd service && bun run test
 
 # frontend (Vitest + @vue/test-utils)
-cd frontend && npx vue-tsc --noEmit && npm test
+cd frontend && bunx vue-tsc --noEmit && bun run test
 ```
 
 ## Known issues

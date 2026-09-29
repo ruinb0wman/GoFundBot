@@ -63,11 +63,11 @@ app.use(GofundUI) // 或按需使用组件
 
 ```bash
 cd packages/ui
-npm run dev        # vite build --watch
-npm run build      # vite build + vue-tsc
-npm run typecheck
-npm run lint       # ESLint（max-lines 500）
-npm test           # Vitest（jsdom）
+bun run dev        # vite build --watch
+bun run build      # vite build + vue-tsc
+bun run typecheck
+bun run lint       # ESLint（max-lines 500）
+bun run test       # Vitest（jsdom）
 ```
 
 > 抽离背景与待处理组件（AlertBadge/MobileDrawer/BottomNav/HamburgerButton）见 [组件抽离计划](./extraction-plan)。

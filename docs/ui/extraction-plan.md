@@ -26,7 +26,7 @@
 - **样式**：`@gofund/ui/style.css` 聚合输出设计 token（明暗双主题）+ 基线样式；组件级 scoped 样式压缩进同文件
 - **入口**：`src/index.ts` 命名导出全部组件 + `GofundUI` 全局注册插件（`app.use(GofundUI)`）；tokens/composables 均导出
 - **frontend 消费**：`file:../packages/ui` 依赖 + Vite/TS 别名直连包源码（`@gofund/ui` → `packages/ui/src/index.ts`），开发 HMR 与构建 tree-shaking 均从源
-- **命令**（`cd packages/ui`）：`npm run dev/build/typecheck/lint/test`
+- **命令**（`cd packages/ui`）：`bun run dev/build/typecheck/lint/test`
 
 ## 三、待后续处理组件 —— 暂缓原因与解耦建议
 
