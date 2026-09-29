@@ -15,15 +15,14 @@ import os
 import re
 import sys
 
+import requests
+
 _BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for _p in (os.path.dirname(os.path.abspath(__file__)), _BACKEND):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from _template import run_script
-
-import requests
-
+from _template import run_script  # noqa: E402  (必须晚于上面的 sys.path 引导)
 
 EASTMONEY_FUND_DETAIL_URL = "https://fund.eastmoney.com/pingzhongdata/{code}.js"
 EASTMONEY_FUND_LIST_URL = "https://fund.eastmoney.com/js/fundcode_search.js"

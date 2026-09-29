@@ -122,7 +122,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
 | `service/src/types/` | DTO interfaces (fund.ts, common.ts) |
 | `python/cli/` | Python CLI scripts (backtest, fetch_fund, data_complete) |
-| `python/cli/shared/` | Shared Python utilities (http_client) |
+| `python/cli/shared/` | Shared Python utilities (file_cache) |
 | `python/services/*.py` | Python computation modules (backtest.py, helpers.py) |
 | `frontend/src/services/llm.ts` | OpenAI 兼容 LLM 客户端（浏览器 fetch，JSON+流式） |
 | `frontend/src/services/fundAnalyst.ts` | AI 基金分析（4 分析师+总监）——内部经 `analysis/analysisEngine` runTask：每分析师/总监都是可工具子调用（子集工具/全集），输出经 Schema 校验；公开签名（analyzeFund/analyzeFundStream）与阶段语义不变 |

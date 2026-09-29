@@ -287,7 +287,6 @@ GoFundBot/
 │   │   ├── check_file_length.py  # 文件行数检查（单文件 ≤500 行）
 │   │   └── _template.py          # 新脚本模板
 │   ├── cli/shared/               # 共享 Python 库
-│   │   ├── http_client.py        # HTTP 客户端
 │   │   └── file_cache.py         # 文件缓存
 │   ├── services/                 # Python 计算模块（backtest.py, helpers.py）
 │   ├── providers/                # Python 数据源

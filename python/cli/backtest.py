@@ -15,9 +15,10 @@ stdin: {
 stdout: {"success": true, "data": {"summary": {...}, "timeline": [...]}}
 """
 
-import json
+import math
 import os
 import sys
+from datetime import datetime
 
 # Ensure python/ and scripts/ are on sys.path for all script imports
 _BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,12 +26,11 @@ for _p in (os.path.dirname(os.path.abspath(__file__)), _BACKEND):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from _template import run_script, read_stdin
+from _template import read_stdin, run_script  # noqa: E402  (必须晚于上面的 sys.path 引导)
 
 
 def main():
     params = read_stdin()
-    fund_code = params.get("fundCode")
     nav_history = params.get("navHistory", [])
     investment_type = params.get("investmentType", "monthly")
     amount = float(params.get("amount", 1000))
@@ -60,10 +60,6 @@ def main():
     )
 
     return result
-
-
-import math
-from datetime import datetime
 
 
 def _run_backtest(
