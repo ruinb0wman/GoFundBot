@@ -288,9 +288,6 @@ GoFundBot/
 │   │   └── _template.py          # 新脚本模板
 │   ├── cli/shared/               # 共享 Python 库
 │   │   └── file_cache.py         # 文件缓存
-│   ├── services/                 # Python 计算模块（backtest.py, helpers.py）
-│   ├── providers/                # Python 数据源
-│   ├── templates/                # 模板
 │   ├── docs/                     # Python 相关文档
 │   ├── Data/                     # 日志、缓存文件
 │   ├── requirements.txt / requirements-dev.txt
