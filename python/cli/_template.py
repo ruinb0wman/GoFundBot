@@ -7,6 +7,7 @@ Script execution contract:
   exit code: 0 = success, non-zero = failure
   timeout: 120s (backtest), 30s (others)
 """
+
 import json
 import os
 import sys

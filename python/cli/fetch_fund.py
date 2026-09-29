@@ -8,6 +8,7 @@ args:
 
 stdout: {"success": true, "data": {"funds": [{"fund_code":"019667","fund_name":"...","net_worth_trend":[...]}]}}
 """
+
 import argparse
 import json
 import os

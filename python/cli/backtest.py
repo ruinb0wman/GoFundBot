@@ -14,6 +14,7 @@ stdin: {
 }
 stdout: {"success": true, "data": {"summary": {...}, "timeline": [...]}}
 """
+
 import json
 import os
 import sys
@@ -55,8 +56,7 @@ def main():
         return {"error": "No valid NAV data points"}
 
     result = _run_backtest(
-        nav_dict, dates, investment_type, amount, initial_amount,
-        fee_rate, take_profit_rate, stop_loss_rate
+        nav_dict, dates, investment_type, amount, initial_amount, fee_rate, take_profit_rate, stop_loss_rate
     )
 
     return result
@@ -67,8 +67,7 @@ from datetime import datetime
 
 
 def _run_backtest(
-    nav_dict, dates, investment_type, amount, initial_amount, fee_rate,
-    take_profit_rate=None, stop_loss_rate=None
+    nav_dict, dates, investment_type, amount, initial_amount, fee_rate, take_profit_rate=None, stop_loss_rate=None
 ):
     timeline = []
     total_invested = 0
@@ -103,13 +102,22 @@ def _run_backtest(
         nav = nav_dict[date]
 
         if sold_out:
-            timeline.append({
-                "date": date, "invested": round(total_invested, 2),
-                "shares": 0, "nav": round(nav, 4), "value": round(cash, 2),
-                "return": round(cash - total_invested, 2),
-                "return_rate": round((cash - total_invested) / total_invested * 100, 2) if total_invested > 0 else 0,
-                "is_investment_day": False, "status": "sold", "exit_reason": exit_reason,
-            })
+            timeline.append(
+                {
+                    "date": date,
+                    "invested": round(total_invested, 2),
+                    "shares": 0,
+                    "nav": round(nav, 4),
+                    "value": round(cash, 2),
+                    "return": round(cash - total_invested, 2),
+                    "return_rate": round((cash - total_invested) / total_invested * 100, 2)
+                    if total_invested > 0
+                    else 0,
+                    "is_investment_day": False,
+                    "status": "sold",
+                    "exit_reason": exit_reason,
+                }
+            )
             continue
 
         if i == 0 and initial_amount > 0:
@@ -119,7 +127,9 @@ def _run_backtest(
             total_invested += initial_amount
 
         is_invest_day = False
-        if (investment_type != "lump_sum" and date in investment_dates) or (investment_type == "lump_sum" and i == 0 and amount > 0):
+        if (investment_type != "lump_sum" and date in investment_dates) or (
+            investment_type == "lump_sum" and i == 0 and amount > 0
+        ):
             actual_amount = amount * (1 - fee_rate)
             shares_bought = actual_amount / nav
             total_shares += shares_bought
@@ -144,22 +154,35 @@ def _run_backtest(
         if triggered:
             exit_date = date
             cash = current_value
-            timeline.append({
-                "date": date, "invested": round(total_invested, 2),
-                "shares": 0, "nav": round(nav, 4), "value": round(cash, 2),
-                "return": round(cash - total_invested, 2),
-                "return_rate": round((cash - total_invested) / total_invested * 100, 2),
-                "is_investment_day": is_invest_day, "status": "sold", "exit_reason": exit_reason,
-            })
+            timeline.append(
+                {
+                    "date": date,
+                    "invested": round(total_invested, 2),
+                    "shares": 0,
+                    "nav": round(nav, 4),
+                    "value": round(cash, 2),
+                    "return": round(cash - total_invested, 2),
+                    "return_rate": round((cash - total_invested) / total_invested * 100, 2),
+                    "is_investment_day": is_invest_day,
+                    "status": "sold",
+                    "exit_reason": exit_reason,
+                }
+            )
             continue
 
-        timeline.append({
-            "date": date, "invested": round(total_invested, 2),
-            "shares": round(total_shares, 4), "nav": round(nav, 4),
-            "value": round(current_value, 2), "return": round(total_return, 2),
-            "return_rate": round(return_rate, 2),
-            "is_investment_day": is_invest_day, "status": "holding",
-        })
+        timeline.append(
+            {
+                "date": date,
+                "invested": round(total_invested, 2),
+                "shares": round(total_shares, 4),
+                "nav": round(nav, 4),
+                "value": round(current_value, 2),
+                "return": round(total_return, 2),
+                "return_rate": round(return_rate, 2),
+                "is_investment_day": is_invest_day,
+                "status": "holding",
+            }
+        )
 
     if not timeline:
         return {"error": "No data to backtest"}
