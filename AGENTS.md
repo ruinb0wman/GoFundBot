@@ -42,7 +42,7 @@ Desktop HTTP:     浏览器 fetch（Electron 壳侧解禁 CORS），与 Web 行�
 ## Commands
 
 ```bash
-# service (Node >= 18) — THE main backend
+# service (Node >= 22.19) — THE main backend
 cd service && npm install
 npm run dev              # tsx watch src/index.ts (port 8310)
 npm run typecheck        # tsc --noEmit

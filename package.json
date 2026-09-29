@@ -1,6 +1,9 @@
 {
   "name": "gofundbot",
   "private": true,
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "scripts": {
     "setup": "bash setup.sh",
     "setup:venv": "test -d python/.venv || python3 -m venv python/.venv && python/.venv/bin/pip install -r python/requirements.txt -r python/requirements-dev.txt || python/.venv/bin/pip install -r python/requirements.txt -r python/requirements-dev.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn",

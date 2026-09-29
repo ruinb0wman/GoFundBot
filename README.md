@@ -1,6 +1,6 @@
 # GoFundBot
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)]() [![Vue.js](https://img.shields.io/badge/Vue.js-3-green.svg)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)]() [![Vue.js](https://img.shields.io/badge/Vue.js-3-green.svg)]()
 
 GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分析与可视化工具。它不仅提供实时的基金数据查询和可视化图表，还集成了先进的 AI 大模型（LLM），为用户提供深度的基金投资分析、风险评估及市场研判报告。所有持久化数据存储在浏览器端 IndexedDB（Dexie.js）中，服务端无状态。
 
@@ -149,7 +149,7 @@ cd docs && npm install && npx vitepress dev --port 8574   # 文档站 :8574
 
 ## 📋 环境准备
 
-*   **Node.js 18+** 和 `npm`
+*   **Node.js 22.19+**（下限由运行时依赖 `undici@8` 决定，见各 `package.json` 的 `engines`）和 `bun`
 *   **Python 3.11+**（运行回测/数据脚本，推荐使用 `python/.venv`）
 *   **Git**（用于克隆仓库）
 *   **桌面端（可选）**：外部 Electron 浏览器壳（无需额外依赖）

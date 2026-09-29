@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "GoFundBot 前端基础组件库 — Vue 3 + TypeScript，CSS 变量双主题设计系统",
   "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
