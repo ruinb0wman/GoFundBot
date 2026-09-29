@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { resolveLogDir } from '../core/logPaths.js';
 
 export interface LogEntry {
   level: string;
@@ -31,8 +32,6 @@ export interface LogAnalysis {
   critical: string[];
 }
 
-const DEFAULT_LOG_DIR = join(process.cwd(), '../python/Data/logs');
-
 const SUGGESTION_RULES: Array<{ pattern: RegExp; suggestion: string }> = [
   { pattern: /timeout|timed out|abort/i, suggestion: '存在超时请求，建议增大超时时间或对慢数据源做降级' },
   { pattern: /fetch failed|econn|network|unavailable|refused/i, suggestion: '存在网络/数据源不可用错误，建议检查网络与代理配置' },
@@ -46,12 +45,8 @@ const CRITICAL_PATTERNS: RegExp[] = [
   /uncaught error|unhandled rejection|fatal|crash|out of memory|oom/i,
 ];
 
-function getLogDir(): string {
-  return process.env.LOG_DIR || DEFAULT_LOG_DIR;
-}
-
 function logFilePath(source: string, date: string): string {
-  return join(getLogDir(), `${source}-${date}.jsonl`);
+  return join(resolveLogDir(), `${source}-${date}.jsonl`);
 }
 
 function ensureLogDir(dir: string): void {
@@ -113,7 +108,7 @@ export function existsLogFile(source: string, date: string): boolean {
 }
 
 export function appendEntry(source: string, entry: Omit<LogEntry, 'source'>): void {
-  const dir = getLogDir();
+  const dir = resolveLogDir();
   ensureLogDir(dir);
   const today = new Date().toISOString().slice(0, 10);
   const line = JSON.stringify({ ...entry, source }) + '\n';

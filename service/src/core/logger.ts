@@ -1,5 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
+import { resolveLogDir } from './logPaths.js';
 
 type LogLevel = 'info' | 'warn' | 'error';
 
@@ -10,16 +11,7 @@ export interface Logger {
   child: (baseContext: Record<string, unknown>) => Logger;
 }
 
-function getDefaultLogDir(): string {
-  const cwd = process.cwd();
-  const shared = join(cwd, '../python/Data/logs');
-  if (existsSync(dirname(shared))) {
-    return shared;
-  }
-  return join(cwd, 'logs');
-}
-
-const LOG_DIR = process.env.LOG_DIR || getDefaultLogDir();
+const LOG_DIR = resolveLogDir();
 let currentLogDate = '';
 
 function getLogFilePath(): string {
