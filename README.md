@@ -172,7 +172,7 @@ cd GoFundBot
 ./setup.sh --help     # 选项：--skip-node / --skip-python
 ```
 
-Node 侧统一使用 **bun**（与 `bun dev` 一致）；`packages/ui` 会先于 `frontend` 安装（后者依赖 `@gofund/ui: file:../packages/ui`）。没有 bun、或想用 npm 时，按下面手动逐目录装：
+Node 侧统一使用 **bun**（与 `bun dev` 一致）；`packages/ui` 会先于 `frontend` 安装（后者依赖 `@gofund/ui: file:../packages/ui`）。仓库只跟踪 `bun.lock`（已删 `package-lock.json`），所以下面的 npm 路径能装上但**不锁定版本**：
 
 ```bash
 # service（Express 后端）

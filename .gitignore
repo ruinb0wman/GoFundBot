@@ -7,6 +7,7 @@ __pycache__/
 .env
 frontend/dist/
 python/static/
+package-lock.json
 *.bak
 *.tmp
 python/Data
