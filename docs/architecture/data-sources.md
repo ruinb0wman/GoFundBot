@@ -14,7 +14,8 @@
 
 | Provider | 实现文件 | 数据来源 | 提供的能力 |
 |----------|----------|---------|-----------|
-| **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts` | npm `stock-sdk` 包 | `quotes`, `kline`, `indices` |
+| **tencent** | `service/src/providers/tencent/tencentMarketProvider.ts` | `qt.gtimg.cn` `proxy.finance.qq.com` | `quotes`, `kline`（腾讯 newfqkline，含成交额） |
+| **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts` | npm `stock-sdk` 包 | `quotes`, `kline`（`push2his`，当前被反爬切断）, `indices` |
 | **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `push2.eastmoney.com` `push2his.eastmoney.com` `push2ex.eastmoney.com` `datacenter-web.eastmoney.com` | `quotes`, `kline`, `sectors`, `sectorConstituents`, `indices`, `moneyFlow`, `marketMoneyFlow`, `breadth`（`marketBreadth.ts`）, `northFlow`（`marketNorthFlow.ts`，走 datacenter）, `globalIndices` |
 | **yahoo** (全球) | `service/src/providers/yahoo/yahooMarketProvider.ts` | Yahoo Finance API | 全球指数 K 线 |
 
@@ -46,5 +47,5 @@
 | 脚本 | 文件 | 来源 | 能力 |
 |------|------|------|------|
 | **fetch_fund** | `python/cli/fetch_fund.py` | `fund.eastmoney.com` (requests) | 单只/批量基金 NAV 历史、基本数据 |
-| **backtest** | `python/cli/backtest.py` | stdin (NAV 数据由 Node.js 传入) | 定投回测（月/周/一次性）、止盈止损、夏普率计算 |
-| **data_complete** | `python/cli/data_complete.py` | `akshare` Python 库 | A 股列表、行业板块映射、大盘资金流向回退 |
+| ~~**backtest**~~ | ~~`python/cli/backtest.py`~~ | — | **已删除（2026-09-29）**：回测改为前端本地计算 `frontend/src/services/backtest/` |
+| **data_complete** | `python/cli/data_complete.py` | `akshare` Python 库 | A 股列表、行业板块映射、行业板块行情回退（`sector_spot`→同花顺）、概念板块行情+驱动事件（`concept_spot`→同花顺）、大盘资金流向回退 |

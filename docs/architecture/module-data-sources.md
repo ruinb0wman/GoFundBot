@@ -28,8 +28,9 @@
 | `GET /api/market/overview` | `getMarketOverview` | 混合 | 15s~1h |
 | `GET /api/market/indices` | `getMarketIndices` | [tencent → stock-sdk → eastmoney] | 15s |
 | `GET /api/market/indices/combined` | `getCombinedIndices` | [tencent → stock-sdk → eastmoney] + [eastmoney → yahoo] | 15s |
-| `GET /api/market/sectors` | `getMarketSectors` | eastmoney only | 15s |
-| `GET /api/market/kline/:code` | `getMarketKline` | [stock-sdk → eastmoney] | 1h |
+| `GET /api/market/sectors` | `getMarketSectorsFromAkshare` | eastmoney（`push2 .../clist/get`，当前被反爬切断）→ akshare python fallback（同花顺行业） | 15s |
+| `GET /api/market/concept-sectors` | `getMarketConceptSectorsFromAkshare` | akshare python only（同花顺概念资金流 + 概念简介） | 行情每次现取（~2s）；驱动事件 24h file_cache |
+| `GET /api/market/kline/:code` | `getMarketKline` | [joinquant → tencent → stock-sdk → eastmoney]（现命中 tencent newfqkline） | 1h |
 | `GET /api/market/money-flow` | `getMarketMoneyFlow` | eastmoney → akshare python fallback | 30s |
 | `GET /api/market/breadth` | `getMarketBreadth` | eastmoney only（`ulist.np/get` 的 f104/f105/f106 沪深合计 + push2ex 涨跌停池） | 15s |
 | `GET /api/market/north-flow` | `getNorthFlow` | eastmoney datacenter → akshare python fallback | 5min |
@@ -74,5 +75,5 @@
 |------|---------|--------------|-----------|
 | `GET /api/news/flash` | `getFlashNews` | [eastmoney → baidu → cls] | 30s |
 | `GET /api/stocks/:code/reference` | `getStockReference` | [eastmoney → tencent] | 7d |
-| `POST /api/backtest/fixed-investment` | `runBacktest` | Python backtest.py | — |
+| `POST /api/backtest/fixed-investment` | ~~已删除（2026-09-29）~~ | 回测改为前端本地计算，见 `docs/architecture/backtest-engine.md` | — |
 | `GET /api/settings` | (settings router) | 仅 proxy 子域 | — |

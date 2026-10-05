@@ -26,7 +26,8 @@
 
 | Provider | 文件 | 来源 API | 提供的能力 |
 |----------|------|---------|-----------|
-| **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts` | npm `stock-sdk` 包 | `quotes`, `kline`, `indices` (上证/深证/创业板/沪深300/科创50) |
+| **tencent** | `service/src/providers/tencent/tencentMarketProvider.ts` | `qt.gtimg.cn` `proxy.finance.qq.com` | `quotes`, `kline`（腾讯 newfqkline，含成交额） |
+| **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts` | npm `stock-sdk` 包 | `quotes`, `kline`（`push2his`，当前被反爬切断）, `indices` (上证/深证/创业板/沪深300/科创50) |
 | **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `push2.eastmoney.com` `push2his.eastmoney.com` `push2ex.eastmoney.com` `datacenter-web.eastmoney.com` | `quotes`, `kline`, `sectors`, `sectorConstituents`, `indices`, `moneyFlow`, `marketMoneyFlow`, `breadth`（`marketBreadth.ts`）, `northFlow`（`marketNorthFlow.ts`，走 datacenter）, `globalIndices` |
 | **yahoo** (全球) | `service/src/providers/yahoo/yahooMarketProvider.ts` | Yahoo Finance API | 全球指数 K 线 (美股/港股等) |
 
@@ -58,7 +59,7 @@
 | 脚本 | 文件 | 来源 | 能力 |
 |------|------|------|------|
 | **fetch_fund** | `python/cli/fetch_fund.py` | `fund.eastmoney.com` (requests) | 单只/批量基金 NAV 历史、基本数据 |
-| **backtest** | `python/cli/backtest.py` | stdin (NAV 数据由 Node.js 传入) | 定投回测（月/周/一次性）、止盈止损、夏普率计算 |
+| **backtest** | `python/cli/backtest.py` | stdin (NAV 数据由 Node.js 传入) | ~~定投回测~~ **已迁前端** `frontend/src/services/backtest/`；脚本保留为黄金/差分基准 |
 | **data_complete** | `python/cli/data_complete.py` | `akshare` Python 库 | A 股列表、行业板块映射 |
 
 ---
@@ -72,7 +73,7 @@
 | `ProviderChain<P>` | `service/src/core/providerChain.ts:8` | 多 Provider 链式调用，自动降级（主→备→...→抛错） |
 | `MemoryCache` / `cacheThrough` | `service/src/core/cache.ts:13` / `:133` | 内存缓存 (TTL)，缓存穿透保护 |
 | `runPython<T>` | `service/src/services/pythonRunner.ts:32` | 通用 Python 脚本调用 (child_process) |
-| `runBacktest<T>` | `service/src/services/pythonRunner.ts:120` | backtest.py 专用封装 |
+| ~~`runBacktest<T>`~~ | ~~`service/src/services/pythonRunner.ts`~~ | **已删除（2026-09-29）**：回测改为前端本地计算 |
 
 ### 3.2 基金核心服务 (`service/src/services/fundService.ts`)
 
@@ -142,16 +143,20 @@
 
 ## 四、核心函数（Python Runtime）
 
-### 4.1 回测 (`python/cli/backtest.py`)
+### 4.1 回测 — 已迁前端（`python/cli/backtest.py` 已删除）
 
-| 函数 | 职责 |
+回测计算现在跑在浏览器里：`frontend/src/services/backtest/`（`backtestEngine.ts` 为核心，
+`pyCompat.ts` 复刻 CPython 的 `round()` 银行家舍入与 ISO 周键）。
+
+原 Python 实现（`python/cli/backtest.py` + `pythonRunner.runBacktest` + `POST /api/backtest/*`）
+于 2026-09-29 删除，删除前已完成逐值校验：
+
+| 校验 | 结果 |
 |------|------|
-| `main` | 从 stdin 读取输入，解析参数 |
-| `_run_backtest` | 核心计算：定投模拟(月/周/一次性)、止盈止损、最大回撤、夏普率、年化收益 |
+| 黄金 fixtures（由 Python 实现导出，12 个用例） | 全部逐值一致，现冻结为 `frontend/src/services/backtest/__fixtures__/{engine,pyround,isoweek}.json` |
+| 随机差分测试（400+ 例，随机净值/乱序/重复日期） | 移植域内 0 mismatch |
 
-输入 (stdin): `{ fundCode, navHistory, investmentType, amount, initialAmount, feeRate, takeProfitRate, stopLossRate }`
-
-输出 (stdout): `{ success, data: { summary, timeline } }`
+详见 `docs/architecture/backtest-engine.md`。
 
 ### 4.2 基金爬取 (`python/cli/fetch_fund.py`)
 
@@ -190,8 +195,8 @@
     → 缓存命中? → 返回缓存数据
     → 缓存未命中? → 执行 loader → 写入缓存
 
-Python 脚本调用（回测/数据补全）:
-  → pythonRunner.runPython('backtest.py', { input: {...} })
+Python 脚本调用（数据补全）:
+  → pythonRunner.runPython('data_complete.py', { input: {...} })
   → child_process.spawn(python_bin, [script_path])
   → stdin ← JSON (input)
   → stdout → JSON ({ success, data })

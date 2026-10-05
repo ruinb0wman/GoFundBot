@@ -60,7 +60,7 @@ SkillRouter.route(message, preferred?):
 
 | 模块 | 职责 |
 |------|------|
-| `toolContract.ts` | 25 个工具的**单一数据源**（对齐 pi `defineTool`）：`ToolSpec { name, label, description, parameters: Type.Object(…), promptSnippet }`（TypeBox @sinclair/typebox）。派生三样东西：OpenAI `tools` 参数（`toolSpecToOpenAI`）、系统提示 `<available_tools>` XML 清单（`toolSpecsToXml`）、运行时参数校验（`validateToolCall`：必需/类型/枚举） |
+| `toolContract.ts` | 27 个工具的**单一数据源**（对齐 pi `defineTool`）：`ToolSpec { name, label, description, parameters: Type.Object(…), promptSnippet }`（TypeBox @sinclair/typebox）。派生三样东西：OpenAI `tools` 参数（`toolSpecToOpenAI`）、系统提示 `<available_tools>` XML 清单（`toolSpecsToXml`）、运行时参数校验（`validateToolCall`：必需/类型/枚举） |
 | `toolCallParser.ts` | 传输层向导：`extractToolCalls(content)` 解析 `<ai_tool_calls>` 块（参数值智能识别 JSON 数组/对象/数字/布尔 vs 纯文本，处理引号、实体、多行、畸形/截断块）；`sanitizeAssistantContent(content)` 剥离一切工具标记 |
 | `toolLoop.ts` | **共享工具循环**（从 index.ts 抽出，chat 与分析场景复用）：`normalizeToolCalls`（原生+XML 归一化）、`executeToolCall`（校验+`{ok,data}|{ok,error}` 信封）、`truncateJson`（回传裁剪）、`withRetry`/`trimMessages`/`sleep` |
 | `chatEngine/index.ts` | 每轮响应先归一化 → 校验 → 信封执行 → 回传；流式输出净化；无有效内容时的优雅收尾（status 事件，不再静默空答） |
@@ -91,7 +91,9 @@ SkillRouter.route(message, preferred?):
 | `search_funds` / `get_fund_detail` / `get_fund_estimate` | Node `/api/fund*` |
 | `get_fund_nav_history` / `get_fund_holdings` / `get_fund_managers` | Node `/api/funds*` |
 | `get_market_indices` / `get_market_news` / `get_hot_sectors` 等 | Node `/api/market*` / `/api/news*` |
-| `run_backtest` / `suggest_strategy` | Node `/api/backtest*`（PythonRunner） |
+| `get_concept_sectors` | Node `/api/market/concept-sectors`（service 侧走 Python akshare 同花顺概念资金流 + 概念简介驱动事件，**不走 EastMoney**；详见 `market-sector-rank.md` §八） |
+| `run_backtest` / `suggest_strategy` / `compare_backtest_strategies` | **前端本地引擎** `frontend/src/services/backtest/`（浏览器内计算，无后端调用） |
+| `run_strategy_code` | **前端 Worker 沙箱** `frontend/src/services/backtest/strategy{Sandbox,Worker}.ts`：LLM 自写 JS 策略，经 `chatEngine/toolApproval.ts` **用户确认**后在可终止 Worker 中执行；无 UI 的 headless 分析场景默认拒执 |
 | `screen_funds_by_4433` / `get_funds_by_industry` / `get_industry_performance` | 前端 IndexedDB + `industryClassifier` |
 | `search_news` | 前端 `searchService` |
 | `get_watchlist` | 前端（IndexedDB 本地提示） |
@@ -104,7 +106,7 @@ chatEngine.chat({ messages, skill, llmConfig, strategyContext, searchSettings })
 事件类型（与旧 /api/chat SSE 一一对应，chatApi._handleEvent 消费）:
   skill_selected → { name, description }
   tool_start     → { name, params, tool_call_id }
-  tool_end       → { name, duration_ms, error? }
+  tool_end       → { name, duration_ms, error?, empty? }
   token          → { token, full }
   status         → { message }
   usage          → { input_tokens, output_tokens, total_tokens }
@@ -120,6 +122,11 @@ chatEngine.chat({ messages, skill, llmConfig, strategyContext, searchSettings })
 - 消息裁剪：`estimateTokens`（3 chars/token），超 50k token 时从头部丢弃
 - 工具调用最多 8 轮；LLM 失败自动重试（可重试错误退避 1s/2s）
 - **持久化**：助手消息落 Dexie `chatMessages` 时 content 已净化，`toolName`/`toolParamsJson` 记录
-  首个工具调用，`toolCallsJson`（非索引字段，无需迁移）保存完整工具 chips 元数据；
+  首个工具调用，`toolCallsJson`（非索引字段，无需迁移）保存完整工具 chips 元数据（含 `status`）；
   读历史时对旧污染正文做 `sanitizeAssistantContent` 清洗并从 `toolCallsJson` 恢复工具 chips。
+  注意 `onDone` **必须**在 `finalizeStream()` 之前捕获 `activeToolCalls`——finalizeStream 会把它清空，
+  早先顺序颠倒导致 chips 从未落库（2026-09-29 修）。
 - **UI**：工具 chips 名称由注册表 `label` 派生（`toolLabel()`），不再硬编码/兜底显示原始工具名。
+  四种状态：`running`（spinner）/ `done`（绿勾）/ `error`（红叉，请求失败）/ **`empty`（黄色 `TriangleAlert` + 「暂无数据」，请求成功但没拿到可用数据）**。
+  `empty` 由 `toolResultStatus.ts::isEmptyToolResult` 在引擎侧判定（UI 专用，不回喂模型），按**数据内容**而非 `data_status`：
+  空数组、全 null/全 0 的 payload 才算空，所以北向资金（恒 `unavailable` 但成交总额有效）保持绿勾。

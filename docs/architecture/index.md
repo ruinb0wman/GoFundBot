@@ -33,7 +33,7 @@
 │                   Node 薄后端 (localhost:8310)                       │
 │  Middleware: helmet │ cors │ rate-limit (300/15min) │ logger         │
 │  Routes: /api/fund │ /api/funds │ /api/market │ /api/stocks          │
-│          /api/news │ /api/backtest │ /api/screening（原始数据）      │
+│          /api/news │ /api/screening（原始数据）                           │
 │          /api/alerts │ /api/user/portfolio │ /api/settings（proxy）  │
 │          /api/system │ /api/logs │ /api/health                       │
 │  Services: fundService │ marketService │ newsService │ stockService  │
@@ -43,9 +43,13 @@
 │                   ┌─────────┴─────────┐                             │
 │                   ▼                   ▼                              │
 │          Python Scripts         External APIs                         │
-│          (backtest/data_complete)   (eastmoney/yahoo/...)            │
+│          (data_complete)          (eastmoney/yahoo/...)            │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+> 回测已迁到前端（`frontend/src/services/backtest/`）；Node 的 `/api/backtest/*` 与
+> `python/cli/backtest.py` 已于 2026-09-29 删除，黄金 fixtures 冻结在
+> `frontend/src/services/backtest/__fixtures__/`。
 
 > 桌面 Electron 壳由外部项目提供（仅解禁 CORS），前端代码与浏览器完全一致。
 
@@ -65,9 +69,10 @@
 | 市场统计/基金看板/ETF/板块汇总/行业表现 | `frontend/src/services/researchComputation.ts` | 从 Dexie screeningFunds + `/api/market/sectors` 计算 |
 | AI 基金分析 / 组合诊断 / 策略起草 / 反思 | `frontend/src/services/fundAnalyst.ts` 等 | 前端直调 OpenAI 兼容端点，key 存前端 |
 | AI 对话 + 工具调用（基金/行情/回测/搜索） | `frontend/src/services/chatEngine/` | `skills.ts` + `toolContract.ts` + `toolCallParser.ts` + `toolHandlers.ts` |
+| 定投回测引擎（月/周/日/一次性 + 止盈止损 + 定投方式） | `frontend/src/services/backtest/` | `backtestEngine.ts` 与 `python/cli/backtest.py` 逐值对齐（黄金 fixtures 由 `python/tests/gen_backtest_fixtures.py` 生成） |
 | 联网搜索链 Exa→Bocha→Tavily→DDG | `frontend/src/services/searchService.ts` | key 取前端设置 |
 | 设置 | LLM/Search key 存前端 localStorage；仅 Proxy URL → Node | Node `/api/settings` 只剩 proxy 子域 |
-| 数据获取 / 回测（Python） / 反爬 / 代理 | `service/src/` | 保留不变 |
+| 数据获取 / 反爬 / 代理（Python 仅剩数据补全） | `service/src/` | 保留不变 |
 
 ## 关键依赖
 
@@ -75,7 +80,7 @@
 |------|------|
 | **Express** | Node 薄后端 HTTP 服务 + 路由 |
 | **Vue 3 + Vite** | 前端框架 |
-| **Dexie.js** | 浏览器 IndexedDB ORM（11 表） |
+| **Dexie.js** | 浏览器 IndexedDB ORM（14 表，含 backtestRuns） |
 | **Pinia** | 前端状态管理 |
 | **helmet / express-rate-limit** | 安全头 / 限流 |
 | **stock-sdk** | npm 包，基金净值/行情主数据源 |
