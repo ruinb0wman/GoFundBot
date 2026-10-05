@@ -1,4 +1,22 @@
 import Dexie, { type Table } from 'dexie'
+import type { BacktestCheckpoint } from '../services/backtest/timelineSample'
+import type { BacktestSpec, BacktestSummary } from '../services/backtest/backtestTypes'
+
+export interface BacktestRunRecord {
+  id?: number
+  fundCode: string
+  createdAt: number
+  /** Stable hash of the spec — lets a run be found/replayed without comparing objects. */
+  specHash: string
+  spec: BacktestSpec
+  /** Compact spec description for UI lists (timelineSample.describeSpec). */
+  specLabel: string
+  summary: BacktestSummary
+  /** Sampled checkpoints only: a full 3-year timeline is ~150 KB per run. */
+  checkpoints: BacktestCheckpoint[]
+  /** Phase 2 hook: AI-authored strategy source that produced this run. */
+  strategyCode?: string
+}
 
 export interface WatchlistItem {
   fundCode: string
@@ -160,6 +178,7 @@ export class GoFundDB extends Dexie {
   screeningFunds!: Table<ScreeningFund>
   analysisMemory!: Table<AnalysisMemoryRecord>
   strategies!: Table<StrategyRecord>
+  backtestRuns!: Table<BacktestRunRecord>
 
   constructor() {
     super('GoFundBot')
@@ -188,6 +207,10 @@ export class GoFundDB extends Dexie {
     this.version(4).stores({
       strategies: '++id, active, updatedAt',
       chatSessions: '++id, updatedAt, channel',
+    })
+
+    this.version(5).stores({
+      backtestRuns: '++id, fundCode, createdAt, specHash',
     })
   }
 }

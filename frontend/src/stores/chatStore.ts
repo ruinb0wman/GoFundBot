@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { chatAPI, type ChatSessionDto, type ChatMessageDto, type ToolCallInfo, type SkillInfo } from '../services/chatApi'
+import { toolApproval } from '../services/chatEngine/toolApproval'
 import { db } from '../db'
 import { useLLMConfig } from '../composables/useLLMConfig'
 import { buildActiveStrategyContext } from '../db/strategyMemory'
@@ -294,7 +295,7 @@ export const useChatStore = defineStore('chat', {
           }
           await this.refreshSessions()
         },
-      }, skillParam, llmConfig, strategyContext)
+      }, skillParam, llmConfig, strategyContext, toolApproval.request)
     },
 
     finalizeStream() {

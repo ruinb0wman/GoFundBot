@@ -2,6 +2,7 @@ import { db } from '../db'
 import type { LLMConfig } from './llm'
 import { chat, type ChatStreamEvent } from './chatEngine'
 import { sanitizeAssistantContent } from './chatEngine/toolCallParser'
+import type { ApprovalRequest } from './chatEngine/toolApproval'
 import { useAppSettings } from '../composables/useAppSettings'
 
 export interface ToolCallInfo {
@@ -35,7 +36,11 @@ export interface SkillInfo {
 export interface ChatCallbacks {
   onToken: (token: string, full: string) => void
   onToolStart: (tool: ToolCallInfo) => void
-  onToolEnd: (tool: { name: string; duration_ms: number; error?: boolean }) => void
+  onToolEnd: (tool: { name: string; duration_ms: number; error?: boolean; empty?: boolean }) => void
+  /** A tool needs user approval (code execution). */
+  onToolConfirm?: (tool: ToolCallInfo) => void
+  /** The user answered (or the engine denied) the approval request. */
+  onToolConfirmed?: (tool: { tool_call_id: string; approved: boolean }) => void
   onSkillSelected: (skill: SkillInfo) => void
   onUsage: (inputTokens: number, outputTokens: number, totalTokens: number) => void
   onStatus: (message: string) => void
@@ -44,7 +49,7 @@ export interface ChatCallbacks {
 }
 
 export const chatAPI = {
-  async sendMessage(messages: { role: string; content: string }[], callbacks: ChatCallbacks, skill?: string, llmConfig?: LLMConfig, strategyContext?: string) {
+  async sendMessage(messages: { role: string; content: string }[], callbacks: ChatCallbacks, skill?: string, llmConfig?: LLMConfig, strategyContext?: string, requestApproval?: (req: ApprovalRequest) => Promise<boolean>) {
     const searchSettings = useAppSettings().settings.value
     try {
       for await (const event of chat({
@@ -53,6 +58,7 @@ export const chatAPI = {
         llmConfig,
         strategyContext,
         searchSettings,
+        requestApproval,
       })) {
         this._handleEvent(event, callbacks)
       }
@@ -85,6 +91,20 @@ export const chatAPI = {
             name: parsed.name,
             duration_ms: parsed.duration_ms || 0,
             error: !!parsed.error,
+            empty: !!parsed.empty,
+          })
+          break
+        case 'tool_confirm':
+          callbacks.onToolConfirm?.({
+            name: parsed.name,
+            params: parsed.params || {},
+            toolCallId: parsed.tool_call_id || '',
+          })
+          break
+        case 'tool_confirmed':
+          callbacks.onToolConfirmed?.({
+            tool_call_id: parsed.tool_call_id || '',
+            approved: !!parsed.approved,
           })
           break
         case 'skill_selected':

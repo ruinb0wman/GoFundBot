@@ -23,6 +23,7 @@ import {
   withRetry,
 } from '../chatEngine/toolLoop'
 import { listToolSpecs, toolSpecToOpenAI } from '../chatEngine/toolContract'
+import { requiresApproval } from '../chatEngine/toolApproval'
 import { extractToolCalls, sanitizeAssistantContent } from '../chatEngine/toolCallParser'
 import { schemaErrors } from './scenarioTypes'
 import type { AnalysisScenario } from './analysisScenarios'
@@ -172,6 +173,23 @@ export async function* runTask(opts: RunTaskOptions): AsyncGenerator<AnalysisStr
         yield {
           event: 'tool_start',
           data: JSON.stringify({ name: call.name, params: call.args, tool_call_id: call.id }),
+        }
+        // Headless scenarios have no UI to approve code execution, so deny instead of
+        // silently running model-authored code.
+        if (requiresApproval(call.name)) {
+          yield {
+            event: 'tool_end',
+            data: JSON.stringify({ name: call.name, tool_call_id: call.id, duration_ms: 0, error: true }),
+          }
+          messages.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              ok: false,
+              error: { code: 'APPROVAL_UNAVAILABLE', message: '当前分析场景无法交互确认，不能执行自定义策略代码；请改用 run_backtest。' },
+            }),
+          })
+          continue
         }
         const startTime = Date.now()
         const envelope = await executeToolCall(call, opts.searchSettings)

@@ -14,7 +14,7 @@ vi.mock('../../services/chatEngine/toolHandlers', () => ({
   executeTool: mocks.executeTool,
 }))
 
-import { chat, SKILL_MAP } from '../../services/chatEngine'
+import { chat, SKILL_MAP, type ChatArgs } from '../../services/chatEngine'
 import { TOOL_REGISTRY } from '../../services/chatEngine/toolContract'
 
 const XML_BLOCK = (inner: string) =>
@@ -25,9 +25,9 @@ const invokeXml = (name: string, params: string[]) =>
 
 const LLM_CONFIG = { apiKey: 'test-key', apiBase: 'https://local.test/v1', model: 'test-model' }
 
-async function collectEvents(input: string) {
+async function collectEvents(input: string, extra: Partial<ChatArgs> = {}) {
   const events: { event: string; data: any }[] = []
-  for await (const e of chat({ messages: [{ role: 'user', content: input }], llmConfig: LLM_CONFIG })) {
+  for await (const e of chat({ messages: [{ role: 'user', content: input }], llmConfig: LLM_CONFIG, ...extra })) {
     events.push({ event: e.event, data: JSON.parse(e.data || '{}') })
   }
   return events
@@ -170,5 +170,46 @@ describe('hallucination loop guard', () => {
     const statusEvents = events.filter((e) => e.event === 'status')
     expect(statusEvents.some((e) => e.data.message.includes('未能完成回答'))).toBe(true)
     expect(events[events.length - 1]?.event).toBe('done')
+  })
+})
+
+describe('code-execution approval gate', () => {
+  const codeCall = {
+    content: '',
+    tool_calls: [{
+      id: 'code-1',
+      type: 'function',
+      function: { name: 'run_strategy_code', arguments: '{"fund_code":"110022","code":"return { buy: 1000 }"}' },
+    }],
+  }
+
+  it('does not execute when the user rejects, and feeds the rejection back', async () => {
+    mocks.chatCompletion.mockResolvedValueOnce(codeCall).mockResolvedValueOnce({ content: '好的，不运行了。', tool_calls: undefined })
+    mocks.openChatStream.mockImplementation(() => streamChunks(['好的，不运行了。']))
+
+    const requestApproval = vi.fn().mockResolvedValue(false)
+    const events = await collectEvents('写个策略回测 110022', { requestApproval })
+
+    expect(requestApproval).toHaveBeenCalledTimes(1)
+    expect(mocks.executeTool).not.toHaveBeenCalled()
+    expect(events.filter((e) => e.event === 'tool_confirm')).toHaveLength(1)
+    expect(events.find((e) => e.event === 'tool_confirmed')?.data.approved).toBe(false)
+
+    const secondMessages = mocks.chatCompletion.mock.calls[1][1].messages
+    const toolMsg = secondMessages.find((m: any) => m.role === 'tool' && m.tool_call_id === 'code-1')
+    expect(JSON.parse(toolMsg.content).error.code).toBe('USER_REJECTED')
+  })
+
+  it('executes after approval', async () => {
+    mocks.executeTool.mockResolvedValue({ summary: { total_invested: 1000 }, checkpoints: [] })
+    mocks.chatCompletion.mockResolvedValueOnce(codeCall).mockResolvedValueOnce({ content: '回测完成。', tool_calls: undefined })
+    mocks.openChatStream.mockImplementation(() => streamChunks(['回测完成。']))
+
+    const requestApproval = vi.fn().mockResolvedValue(true)
+    const events = await collectEvents('写个策略回测 110022', { requestApproval })
+
+    expect(mocks.executeTool).toHaveBeenCalledTimes(1)
+    expect(mocks.executeTool.mock.calls[0][0]).toBe('run_strategy_code')
+    expect(events.some((e) => e.event === 'tool_start')).toBe(true)
   })
 })

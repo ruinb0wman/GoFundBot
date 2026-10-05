@@ -26,7 +26,6 @@ const DEFAULT_SCRIPT_DIR = join(import.meta.dirname, '../../../python/cli');
 const SCRIPT_DIR = process.env.PYTHON_SCRIPTS_DIR ?? DEFAULT_SCRIPT_DIR;
 const DEFAULT_PYTHON_BIN = join(import.meta.dirname, '../../../python/.venv/bin/python');
 const PYTHON_BIN = process.env.PYTHON_BIN ?? (existsSync(DEFAULT_PYTHON_BIN) ? DEFAULT_PYTHON_BIN : 'python3');
-const DEFAULT_TIMEOUT_BACKTEST = 120_000;
 const DEFAULT_TIMEOUT = 30_000;
 
 export async function runPython<T = unknown>(
@@ -115,14 +114,4 @@ export async function runPython<T = unknown>(
   }
 
   throw new Error('unreachable');
-}
-
-export async function runBacktest<T = unknown>(
-  input: Record<string, unknown>,
-  timeoutMs = DEFAULT_TIMEOUT_BACKTEST,
-): Promise<T> {
-  return runPython<T>('backtest.py', {
-    input,
-    timeoutMs,
-  });
 }

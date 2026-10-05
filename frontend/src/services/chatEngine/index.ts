@@ -36,6 +36,8 @@ import {
   truncateJson,
   withRetry,
 } from './toolLoop'
+import { isEmptyToolResult } from './toolResultStatus'
+import { requiresApproval, type ApprovalRequest } from './toolApproval'
 import type { AppSettings } from '../../composables/useAppSettings'
 
 export interface ChatStreamEvent {
@@ -49,6 +51,8 @@ export interface ChatArgs {
   llmConfig?: { apiKey?: string; apiBase?: string; model?: string; conversationId?: string }
   strategyContext?: string
   searchSettings?: AppSettings
+  /** Approval gate for code-executing tools; absent → denied (headless paths). */
+  requestApproval?: (req: ApprovalRequest) => Promise<boolean>
 }
 
 export { sleep } from './toolLoop'
@@ -94,7 +98,7 @@ export interface StreamingResponse {
 }
 
 export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
-  const { messages, skill: skillName, llmConfig, strategyContext, searchSettings } = args
+  const { messages, skill: skillName, llmConfig, strategyContext, searchSettings, requestApproval } = args
   const apiKey = llmConfig?.apiKey || ''
   const apiBase = llmConfig?.apiBase || 'https://api.siliconflow.cn/v1'
   const model = llmConfig?.model || 'Qwen/Qwen2.5-7B-Instruct'
@@ -178,6 +182,29 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
       })
 
       for (const call of calls) {
+        if (requiresApproval(call.name)) {
+          yield {
+            event: 'tool_confirm',
+            data: JSON.stringify({ name: call.name, params: call.args, tool_call_id: call.id }),
+          }
+          const approved = requestApproval
+            ? await requestApproval({ toolCallId: call.id, name: call.name, params: call.args })
+            : false
+          yield { event: 'tool_confirmed', data: JSON.stringify({ tool_call_id: call.id, approved }) }
+          if (!approved) {
+            yield {
+              event: 'tool_end',
+              data: JSON.stringify({ name: call.name, tool_call_id: call.id, duration_ms: 0, error: true }),
+            }
+            openaiMessages.push({
+              role: 'tool',
+              tool_call_id: call.id,
+              content: truncateJson({ ok: false, error: { code: 'USER_REJECTED', message: '用户未批准执行该策略代码' } }),
+            })
+            continue
+          }
+        }
+
         yield {
           event: 'tool_start',
           data: JSON.stringify({ name: call.name, params: call.args, tool_call_id: call.id }),
@@ -187,10 +214,12 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
         const envelope = await executeToolCall(call, searchSettings)
         const durationMs = Date.now() - startTime
         const hasError = envelope.ok === false
+        // UI-only hint: the call succeeded but returned nothing usable.
+        const isEmpty = envelope.ok ? isEmptyToolResult(envelope.data) : false
 
         yield {
           event: 'tool_end',
-          data: JSON.stringify({ name: call.name, tool_call_id: call.id, duration_ms: durationMs, error: hasError }),
+          data: JSON.stringify({ name: call.name, tool_call_id: call.id, duration_ms: durationMs, error: hasError, empty: isEmpty }),
         }
 
         openaiMessages.push({

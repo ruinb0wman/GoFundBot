@@ -2,7 +2,14 @@ import Decimal from 'decimal.js'
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
-import { backtestAPI, fundAPI } from '../services/api'
+import { fundAPI } from '../services/api'
+import { fetchNavHistory, backtestFund, clipNavHistory } from '../services/backtest/runBacktestForFund'
+import { compareStrategies } from '../services/backtest/strategyCompare'
+import { describeSpec, sampleTimeline } from '../services/backtest/timelineSample'
+import { normalizeSpec } from '../services/backtest/strategyRules'
+import { isBacktestResult, type DcaRule, type NavPoint } from '../services/backtest/backtestTypes'
+import { latestBacktestRun, saveBacktestRun } from '../db/backtestRuns'
+import type { BacktestRunRecord } from '../db'
 import { returnClass as getReturnClass } from '../utils/number'
 
 export function useFundBacktest(props: { fundCode: string }) {
@@ -22,15 +29,86 @@ export function useFundBacktest(props: { fundCode: string }) {
   const strategyResult: any = ref(null)
   const strategyLoading = ref(false)
 
+  /** NAV fetched once per fund and reused by both the backtest and the strategy comparison. */
+  const navCache = ref<NavPoint[] | null>(null)
+
+  const loadNav = async (): Promise<NavPoint[]> => {
+    if (!navCache.value) navCache.value = await fetchNavHistory(currentFundCode.value)
+    return navCache.value
+  }
+
+  /** UI units are percent (0.15 = 0.15%); the engine takes fractions (0.0015). */
+  const specFromParams = () => ({
+    amount: params.value.amount,
+    initialAmount: params.value.initialAmount,
+    feeRate: (params.value.feeRate ?? 0) / 100,
+    takeProfitRate: params.value.takeProfitRate ? params.value.takeProfitRate / 100 : null,
+    stopLossRate: params.value.stopLossRate ? params.value.stopLossRate / 100 : null,
+    rule: ruleFromParams(),
+  })
+
+  const ruleFromParams = (): DcaRule => {
+    if (params.value.rule === 'value_averaging') {
+      return { type: 'value_averaging', targetGrowth: (params.value.targetGrowth ?? 0) / 100 }
+    }
+    if (params.value.rule === 'ma_deviation') {
+      return { type: 'ma_deviation', window: params.value.maWindow ?? 250, factor: (params.value.maFactor ?? 50) / 100 }
+    }
+    return { type: 'fixed' }
+  }
+
+  /** Last persisted run for the current fund (Dexie) — shown as a hint with a 载入参数 action. */
+  const lastRun = ref<BacktestRunRecord | undefined>(undefined)
+
+  const lastRunLabel = computed(() => {
+    if (!lastRun.value) return ''
+    return new Date(lastRun.value.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  })
+
+  const loadLastRun = async (code: string) => {
+    try {
+      return await latestBacktestRun(code)
+    } catch {
+      return undefined
+    }
+  }
+
+  /** Restore the UI parameters of the last run (fractions → percent). */
+  const applyLastRun = () => {
+    const spec = lastRun.value?.spec
+    if (!spec) return
+    params.value.investmentType = spec.period ?? 'monthly'
+    params.value.amount = spec.amount ?? 1000
+    params.value.initialAmount = spec.initialAmount ?? 0
+    params.value.feeRate = (spec.feeRate ?? 0.0015) * 100
+    params.value.takeProfitRate = spec.takeProfitRate ? spec.takeProfitRate * 100 : null
+    params.value.stopLossRate = spec.stopLossRate ? spec.stopLossRate * 100 : null
+    params.value.investmentDay = spec.day ?? (spec.period === 'weekly' ? 0 : 1)
+    const rule = spec.rule ?? { type: 'fixed' }
+    params.value.rule = rule.type
+    if (rule.type === 'value_averaging') params.value.targetGrowth = rule.targetGrowth * 100
+    if (rule.type === 'ma_deviation') {
+      params.value.maWindow = rule.window
+      params.value.maFactor = rule.factor * 100
+    }
+  }
+
   const suggestStrategy = async () => {
     if (!currentFundCode.value) return
     strategyLoading.value = true
     strategyResult.value = null
     try {
-      const response = await backtestAPI.strategySuggest({ fundCode: currentFundCode.value })
-      strategyResult.value = response.data?.data
+      const range = { startDate: params.value.startDate, endDate: params.value.endDate }
+      const nav = clipNavHistory(await loadNav(), range)
+      const comparison = compareStrategies(
+        nav,
+        { ...specFromParams(), day: dayParam() },
+        { range: `${range.startDate} ~ ${range.endDate}` },
+      )
+      if ('error' in comparison) error.value = '策略推荐失败: ' + comparison.error
+      else strategyResult.value = comparison
     } catch (err: any) {
-      error.value = '策略推荐失败: ' + (err.response?.data?.error || err.message)
+      error.value = '策略推荐失败: ' + (err?.message || String(err))
     } finally {
       strategyLoading.value = false
     }
@@ -39,9 +117,16 @@ export function useFundBacktest(props: { fundCode: string }) {
   const applyStrategyParams = () => {
     if (!strategyResult.value) return
     const key = strategyResult.value.recommended.key
-    if (key === 'monthly') params.value.investmentType = 'monthly'
-    else if (key === 'weekly') params.value.investmentType = 'weekly'
-    else params.value.investmentType = key
+    if (key === 'monthly' || key === 'weekly' || key === 'lump_sum') {
+      params.value.investmentType = key
+      params.value.rule = 'fixed'
+    } else if (key === 'value_averaging') {
+      params.value.investmentType = 'monthly'
+      params.value.rule = 'value_averaging'
+    } else if (key === 'ma_deviation') {
+      params.value.investmentType = 'monthly'
+      params.value.rule = 'ma_deviation'
+    }
   }
 
   watch(() => props.fundCode, (val) => {
@@ -52,6 +137,8 @@ export function useFundBacktest(props: { fundCode: string }) {
   })
 
   const fetchFundInfo = async (code: string) => {
+    navCache.value = null
+    lastRun.value = await loadLastRun(code)
     try {
       const response = await fundAPI.getFundTrend(code)
       if (response.data && response.data.net_worth_trend && response.data.net_worth_trend.length > 0) {
@@ -94,6 +181,10 @@ export function useFundBacktest(props: { fundCode: string }) {
   const params: any = ref({
     investmentType: 'monthly',
     investmentDay: 1 as number | null,
+    rule: 'fixed',
+    targetGrowth: 0,
+    maWindow: 250,
+    maFactor: 50,
     amount: 1000,
     initialAmount: 0,
     feeRate: 0.15,
@@ -105,11 +196,21 @@ export function useFundBacktest(props: { fundCode: string }) {
     takeProfitAction: 'cash'
   })
 
+  /** Investment day is only meaningful for monthly/weekly. */
+  const dayParam = (): number | null => {
+    const type = params.value.investmentType
+    if (type === 'monthly' || type === 'weekly') return params.value.investmentDay ?? null
+    return null
+  }
+
   watch(() => params.value.investmentType, (newType) => {
+    // Only reset the day when it cannot apply to the new period, so a day restored by
+    // applyLastRun() (or picked by the user) survives switching monthly ⇄ weekly.
+    const day = params.value.investmentDay
     if (newType === 'monthly') {
-      params.value.investmentDay = 1
+      if (day == null || day < 1 || day > 28) params.value.investmentDay = 1
     } else if (newType === 'weekly') {
-      params.value.investmentDay = 0
+      if (day == null || day < 0 || day > 4) params.value.investmentDay = 0
     } else {
       params.value.investmentDay = null
     }
@@ -149,32 +250,43 @@ export function useFundBacktest(props: { fundCode: string }) {
     currentPage.value = 1
 
     try {
-      const response = await backtestAPI.fixedInvestment({
-        fundCode: currentFundCode.value,
+      const spec = { period: params.value.investmentType, day: dayParam(), ...specFromParams() }
+      const outcome = await backtestFund(currentFundCode.value, {
+        ...spec,
         startDate: params.value.startDate,
         endDate: params.value.endDate,
-        investmentType: params.value.investmentType,
-        amount: params.value.amount,
-        initialAmount: params.value.initialAmount,
-        feeRate: params.value.feeRate,
-        takeProfitRate: params.value.takeProfitRate,
-        stopLossRate: params.value.stopLossRate
+        navHistory: await loadNav(),
       })
 
-      if (response.data?.data?.summary) {
-        result.value = response.data.data
+      if (isBacktestResult(outcome)) {
+        result.value = outcome
         await nextTick()
         initChart()
-      } else if (response.data.error) {
-        error.value = response.data.error
+        await persistRun(spec, outcome)
       } else {
-        error.value = '回测失败：返回数据格式异常'
+        error.value = outcome.error
       }
     } catch (err: any) {
       console.error('回测错误:', err)
-      error.value = err.response?.data?.error || err.response?.data?.message || '回测失败，请稍后重试'
+      error.value = err?.message || '回测失败，请稍后重试'
     } finally {
       loading.value = false
+    }
+  }
+
+  /** Persist the run (sampled timeline only) so it can be restored after a reload. */
+  const persistRun = async (spec: any, outcome: any) => {
+    try {
+      await saveBacktestRun({
+        fundCode: currentFundCode.value,
+        spec,
+        specLabel: describeSpec(normalizeSpec(spec)),
+        summary: outcome.summary,
+        checkpoints: sampleTimeline(outcome.timeline),
+      })
+      lastRun.value = await loadLastRun(currentFundCode.value)
+    } catch (err) {
+      console.warn('回测记录保存失败:', err)
     }
   }
 
@@ -182,6 +294,10 @@ export function useFundBacktest(props: { fundCode: string }) {
     params.value = {
       investmentType: 'monthly',
       investmentDay: 1,
+      rule: 'fixed',
+      targetGrowth: 0,
+      maWindow: 250,
+      maFactor: 50,
       amount: 1000,
       initialAmount: 0,
       feeRate: 0.15,
@@ -356,6 +472,17 @@ export function useFundBacktest(props: { fundCode: string }) {
     }
   }
 
+  /** One-line explanation of the selected DCA rule, shown under the rule selector. */
+  const ruleHint = computed(() => {
+    if (params.value.rule === 'value_averaging') {
+      return '按目标市值补足差额：跌得多买得多，涨上去则少买或不买'
+    }
+    if (params.value.rule === 'ma_deviation') {
+      return `净值低于 ${params.value.maWindow} 日均线时最多加码 ${params.value.maFactor}%，高于时最多减码同比例`
+    }
+    return ''
+  })
+
   onMounted(() => {
     window.addEventListener('resize', handleResize)
   })
@@ -391,6 +518,10 @@ export function useFundBacktest(props: { fundCode: string }) {
     resetParams,
     suggestStrategy,
     applyStrategyParams,
+    ruleHint,
+    lastRun,
+    lastRunLabel,
+    applyLastRun,
     formatMoney,
     formatReturn,
     getReturnClass

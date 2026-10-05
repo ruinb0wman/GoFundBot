@@ -152,14 +152,65 @@ const TOOL_DEFS: ToolSpec[] = [
   {
     name: 'run_backtest',
     label: '运行定投回测',
-    description: '对指定基金运行定投回测模拟，对比不同周期和金额的收益表现',
-    promptSnippet: 'run_backtest(fund_code, start_date, end_date, amount?, investment_type?): 定投回测',
+    description: '对指定基金运行定投回测（月/周/日/一次性），支持止盈止损、手续费、初始资金与定投方式（等额/价值平均/均线偏离）',
+    promptSnippet: 'run_backtest(fund_code, start_date?, end_date?, amount?, investment_type?, day?, take_profit_rate?, stop_loss_rate?, dca_rule?): 定投回测',
     parameters: Type.Object({
       fund_code: str('6位基金代码'),
-      start_date: str('开始日期 YYYY-MM-DD'),
-      end_date: str('结束日期 YYYY-MM-DD'),
-      amount: num('每期定投金额，默认1000'),
-      investment_type: Type.Optional(enumOf('monthly', 'weekly')),
+      start_date: optStr('开始日期 YYYY-MM-DD，缺省为三年前'),
+      end_date: optStr('结束日期 YYYY-MM-DD，缺省为今天'),
+      amount: num('每期定投金额（元），默认1000；一次性买入时为本金'),
+      initial_amount: num('初始资金（元），默认0'),
+      fee_rate: num('手续费率（小数，0.0015 表示 0.15%），默认 0.0015'),
+      take_profit_rate: num('止盈率（小数，0.2 表示涨 20% 卖出），可选'),
+      stop_loss_rate: num('止损率（小数，0.1 表示跌 10% 卖出），可选'),
+      investment_type: Type.Optional(enumOf('monthly', 'weekly', 'daily', 'lump_sum')),
+      day: int('定投日：每月几号填 1-31；每周周几填 0-4（0=周一）。缺省为周期首个交易日'),
+      dca_rule: Type.Optional(enumOf('fixed', 'value_averaging', 'ma_deviation')),
+      target_growth: num('价值平均的目标增速（小数，0 表示目标市值按每期等额递增）'),
+      ma_window: int('均线偏离的均线天数，默认250'),
+      ma_factor: num('均线偏离的最大加减码比例（小数，0.5 表示 ±50%），默认0.5'),
+    }),
+  },
+  {
+    name: 'run_strategy_code',
+    label: '运行自定义策略代码',
+    description:
+      '用 JavaScript 自己写一个按交易日决策的策略并回测。只在没有现成方案能表达你的想法时使用：' +
+      '现成的每月/每周/一次性/价值平均/均线偏离方案请用 run_backtest，避免小题大做。' +
+      '代码必须是一个函数：每个交易日调用一次 onDay(s)，返回 { buy?: 金额(元), sellAll?: true }；返回空对象表示当天不操作。' +
+      's 的字段：{ i, date, nav, navs（截至今日含今日的净值数组，看不到未来）, shares, invested, value, ' +
+      'returnRate()（收益率小数）, args:{ initial_amount, fee_rate }, helpers:{ ma(n)（前 n 日均值，不含今日）, pctChange(n) } }。' +
+      '禁止使用 fetch/网络/存储等任何外部能力，只能使用 s 中提供的数据。用户确认后才会执行。',
+    promptSnippet:
+      'run_strategy_code(fund_code, code, start_date?, end_date?, initial_amount?, fee_rate?, take_profit_rate?, stop_loss_rate?): 自写 JS 策略并回测（需用户确认）',
+    parameters: Type.Object({
+      fund_code: str('6位基金代码'),
+      code: Type.String({
+        maxLength: 8000,
+        description:
+          '策略函数体，或完整的 function onDay(s){...}。例：const ma = s.helpers.ma(60); if (s.invested === 0 && s.nav < ma * 0.98) return { buy: 3000 }; if (s.returnRate() > 0.3) return { sellAll: true }; return { buy: s.nav < ma ? 1500 : 500 };',
+      }),
+      start_date: optStr('开始日期 YYYY-MM-DD，缺省为三年前'),
+      end_date: optStr('结束日期 YYYY-MM-DD，缺省为今天'),
+      initial_amount: num('初始资金（元），默认 0'),
+      fee_rate: num('手续费率（小数，0.0015 表示 0.15%），默认 0.0015'),
+      take_profit_rate: num('引擎级止盈率（小数，0.2 表示 20%），可选'),
+      stop_loss_rate: num('引擎级止损率（小数，0.1 表示 10%），可选'),
+    }),
+  },
+  {
+    name: 'compare_backtest_strategies',
+    label: '对比定投策略',
+    description: '对同一只基金并行回测多种定投方案（每月/每周/一次性/价值平均/均线偏离）并给出推荐',
+    promptSnippet: 'compare_backtest_strategies(fund_code, start_date?, end_date?, amount?): 多策略回测对比与推荐',
+    parameters: Type.Object({
+      fund_code: str('6位基金代码'),
+      start_date: optStr('开始日期 YYYY-MM-DD，缺省为三年前'),
+      end_date: optStr('结束日期 YYYY-MM-DD，缺省为今天'),
+      amount: num('每期定投金额（元），默认1000'),
+      fee_rate: num('手续费率（小数），默认 0.0015'),
+      take_profit_rate: num('止盈率（小数），可选'),
+      stop_loss_rate: num('止损率（小数），可选'),
     }),
   },
   {

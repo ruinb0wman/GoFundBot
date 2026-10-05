@@ -8,7 +8,6 @@ import rateLimit from 'express-rate-limit';
 import { errorHandler, notFoundHandler } from './core/errors.js';
 import { logger } from './core/logger.js';
 import { alertRouter, portfolioRouter, watchlistRouter } from './routes/userData.routes.js';
-import { backtestRouter } from './routes/backtest.routes.js';
 import { fundLegacyRouter } from './routes/fundLegacy.routes.js';
 import { fundRouter } from './routes/fund.routes.js';
 import { healthRouter } from './routes/health.routes.js';
@@ -45,7 +44,6 @@ export function createApp() {
   app.use('/api/market', marketRouter);
   app.use('/api/stocks', stockRouter);
   app.use('/api/news', newsRouter);
-  app.use('/api/backtest', backtestRouter);
   app.use('/api/watchlist', watchlistRouter);
   app.use('/api/user/portfolio', portfolioRouter);
   app.use('/api/alerts', alertRouter);

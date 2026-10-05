@@ -11,19 +11,20 @@ import {
   TOOL_CALL_RULES,
 } from '../../services/chatEngine/toolContract'
 
-/** The 25 chat tools known to the system (kept in sync with skills.ts toolNames). */
+/** The 27 chat tools known to the system (kept in sync with skills.ts toolNames). */
 const EXPECTED_TOOLS = [
   'search_funds', 'get_fund_detail', 'get_fund_estimate', 'get_fund_nav_history',
   'get_market_indices', 'get_market_news', 'get_hot_sectors', 'get_concept_sectors',
   'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_flash_news',
   'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
+  'compare_backtest_strategies', 'run_strategy_code',
   'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
   'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
   'search_news', 'get_index_kline',
 ]
 
 describe('tool registry', () => {
-  it('contains exactly the expected 25 tools with full metadata', () => {
+  it('contains exactly the expected 27 tools with full metadata', () => {
     const names = listToolSpecs().map((t) => t.name)
     expect(names.sort()).toEqual([...EXPECTED_TOOLS].sort())
     for (const spec of listToolSpecs()) {
@@ -37,10 +38,28 @@ describe('tool registry', () => {
 
   it('required params are declared in properties', () => {
     const backtest = getToolSpec('run_backtest')!
-    expect(backtest.parameters.required).toEqual(['fund_code', 'start_date', 'end_date'])
+    // Dates became optional: the handler defaults to the last three years (same
+    // window the 定投回测 page opens with), so the model need not invent dates.
+    expect(backtest.parameters.required).toEqual(['fund_code'])
     for (const req of backtest.parameters.required as string[]) {
       expect((backtest.parameters.properties as Record<string, unknown>)[req]).toBeTruthy()
     }
+    for (const spec of [getToolSpec('run_backtest')!, getToolSpec('compare_backtest_strategies')!]) {
+      const props = Object.keys(spec.parameters.properties ?? {})
+      for (const name of ['fee_rate', 'take_profit_rate', 'stop_loss_rate', 'amount']) {
+        expect(props, `${spec.name}.${name}`).toContain(name)
+      }
+    }
+  })
+
+  it('gates run_strategy_code behind a bounded code parameter', () => {
+    const tool = getToolSpec('run_strategy_code')!
+    expect(tool.parameters.required).toEqual(['fund_code', 'code'])
+    const code = (tool.parameters.properties as Record<string, { maxLength?: number; description?: string }>).code
+    expect(code.maxLength).toBe(8000)
+    expect(code.description).toContain('onDay')
+    // maxLength is actually enforced at the validation boundary
+    expect(validateToolCall('run_strategy_code', { fund_code: '110022', code: 'x'.repeat(8001) }).ok).toBe(false)
   })
 
   it('provides labels for UI chips and falls back to the raw name', () => {

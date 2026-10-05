@@ -8,6 +8,12 @@ import api from '../api'
 import { db } from '../../db'
 import { sleep } from './toolLoop'
 import { searchWeb } from '../searchService'
+import { isBacktestResult } from '../backtest/backtestTypes'
+import { backtestFund, clipNavHistory, fetchNavHistory } from '../backtest/runBacktestForFund'
+import { compareStrategies } from '../backtest/strategyCompare'
+import { sampleBacktest } from '../backtest/timelineSample'
+import { runStrategyCode } from '../backtest/runStrategyCode'
+import { resolveDateRange, specFromToolArgs, type ToolArgs } from '../backtest/toolArgs'
 import {
   buildIndustryPerformanceFromScreening,
   compute4433Ranking,
@@ -45,6 +51,44 @@ function getDateRange(startDate?: string, endDate?: string): Record<string, stri
 async function localScreeningItems(): Promise<ScreeningLikeItem[]> {
   const funds = await db.screeningFunds.toArray()
   return funds as unknown as ScreeningLikeItem[]
+}
+
+type ToolArgsRecord = Record<string, unknown>
+
+/** Shared by `suggest_strategy` and `compare_backtest_strategies`. */
+async function compareStrategiesTool(args: ToolArgsRecord) {
+  const toolArgs = args as ToolArgs
+  const { startDate, endDate } = resolveDateRange(toolArgs)
+  try {
+    const nav = clipNavHistory(await fetchNavHistory(String(toolArgs.fund_code ?? ''), startDate, endDate), {
+      startDate,
+      endDate,
+    })
+    const comparison = compareStrategies(
+      nav,
+      {
+        ...specFromToolArgs(toolArgs),
+        takeProfitRate: toolArgs.take_profit_rate ?? null,
+        stopLossRate: toolArgs.stop_loss_rate ?? null,
+      },
+      { range: `${startDate} ~ ${endDate}` },
+    )
+    if ('error' in comparison) return { error: comparison.error }
+    return {
+      data_status: 'available',
+      range: `${startDate} ~ ${endDate}`,
+      recommended: {
+        key: comparison.recommended.key,
+        name: comparison.recommended.name,
+        reason: comparison.recommended.reason,
+        spec: comparison.recommended.spec,
+        summary: comparison.recommended.summary,
+      },
+      strategies: comparison.strategies.map((s) => ({ key: s.key, name: s.name, spec: s.spec, summary: s.summary })),
+    }
+  } catch (error) {
+    return { error: `策略对比失败：${error instanceof Error ? error.message : String(error)}` }
+  }
 }
 
 const toolHandlers: Record<string, (args: Record<string, unknown>, ctx: ToolContext) => Promise<unknown>> = {
@@ -178,20 +222,46 @@ const toolHandlers: Record<string, (args: Record<string, unknown>, ctx: ToolCont
   },
 
   run_backtest: async (args) => {
-    const res = await api.post('/backtest/fixed-investment', {
-      fundCode: args.fund_code,
-      startDate: args.start_date,
-      endDate: args.end_date,
-      amount: (args.amount as number) ?? 1000,
-      investmentType: (args.investment_type as string) ?? 'monthly',
-    })
-    return unpack(res)?.data ?? unpack(res)
+    const request = {
+      ...specFromToolArgs(args as ToolArgs),
+      ...resolveDateRange(args as ToolArgs),
+    };
+    const outcome = await backtestFund(String(args.fund_code ?? ''), request);
+    if (!isBacktestResult(outcome)) return { error: outcome.error };
+    // Sampled on purpose: the raw 3-year timeline is ~150 KB and would be cut off by
+    // truncateJson()'s 4000-char budget before the model could read it.
+    return sampleBacktest(outcome, request);
   },
 
-  suggest_strategy: async (args) => {
-    const res = await api.post('/backtest/strategy-suggest', { fundCode: args.fund_code })
-    return unpack(res)?.data ?? unpack(res)
+  // LLM-authored strategy code. Runs only after the user approves (see
+  // chatEngine/toolApproval.ts + ChatPanel's approval card).
+  run_strategy_code: async (args) => {
+    const { startDate, endDate } = resolveDateRange(args as ToolArgs)
+    try {
+      const nav = clipNavHistory(await fetchNavHistory(String(args.fund_code ?? ''), startDate, endDate), { startDate, endDate })
+      if (nav.length === 0) return { error: `未获取到 ${args.fund_code} 在 ${startDate} ~ ${endDate} 的净值数据` }
+      return await runStrategyCode(
+        {
+          nav,
+          code: String(args.code ?? ''),
+          spec: {
+            period: 'monthly',
+            initialAmount: (args.initial_amount as number) ?? 0,
+            feeRate: (args.fee_rate as number) ?? 0.0015,
+            takeProfitRate: (args.take_profit_rate as number) ?? null,
+            stopLossRate: (args.stop_loss_rate as number) ?? null,
+          },
+        },
+        { specLabel: '自定义策略代码' },
+      )
+    } catch (error) {
+      return { error: `自定义策略回测失败：${error instanceof Error ? error.message : String(error)}` }
+    }
   },
+
+  suggest_strategy: async (args) => compareStrategiesTool(args),
+
+  compare_backtest_strategies: async (args) => compareStrategiesTool(args),
 
   get_stock_quote: async (args) => {
     const res = await api.get(`/stocks/${args.code}/reference`)

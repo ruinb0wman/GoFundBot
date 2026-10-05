@@ -51,6 +51,41 @@
               <option :value="4">{{ '周五' }}</option>
             </select>
           </div>
+
+          <!-- 定投方式：等额 / 价值平均 / 均线偏离 -->
+          <div v-if="params.investmentType !== 'lump_sum'" class="sub-param">
+            <label>{{ '定投方式：' }}</label>
+            <select v-model="params.rule">
+              <option value="fixed">{{ '等额定投' }}</option>
+              <option value="value_averaging">{{ '价值平均' }}</option>
+              <option value="ma_deviation">{{ '均线偏离' }}</option>
+            </select>
+            <template v-if="params.rule === 'value_averaging'">
+              <BInputNumber v-model="params.targetGrowth" :min="0" :max="100" :step="1" :controls="false">
+                <template #prefix>目标增速</template>
+                <template #suffix>%</template>
+              </BInputNumber>
+            </template>
+            <template v-if="params.rule === 'ma_deviation'">
+              <BInputNumber v-model="params.maWindow" :min="5" :max="750" :step="10" :controls="false">
+                <template #prefix>均线</template>
+                <template #suffix>日</template>
+              </BInputNumber>
+              <BInputNumber v-model="params.maFactor" :min="0" :max="100" :step="5" :controls="false">
+                <template #prefix>偏离</template>
+                <template #suffix>%</template>
+              </BInputNumber>
+            </template>
+            <div class="date-hint">{{ ruleHint }}</div>
+          </div>
+
+          <!-- 上次回测（Dexie 持久化）：可一键载入参数 -->
+          <div v-if="lastRun" class="sub-param">
+            <div class="date-hint">
+              上次回测（{{ lastRunLabel }}）：{{ lastRun.specLabel }}
+              <button type="button" class="last-run-btn" @click="applyLastRun">{{ '载入参数' }}</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -177,8 +212,8 @@
         <div class="strategy-reason">{{ strategyResult.recommended.reason }}</div>
         <div class="strategy-metrics">
           <div class="metric"><span class="mlabel">年化收益</span><span class="mvalue positive">{{ strategyResult.recommended.summary.annual_return }}%</span></div>
-          <div class="metric"><span class="mlabel">总收益</span><span class="mvalue positive">{{ strategyResult.recommended.summary.return_rate }}%</span></div>
-          <div class="metric"><span class="mlabel">最大回撤</span><span class="mvalue negative">-{{ strategyResult.recommended.summary.max_drawdown }}%</span></div>
+          <div class="metric"><span class="mlabel">总收益率</span><span class="mvalue positive">{{ strategyResult.recommended.summary.return_rate }}%</span></div>
+          <div class="metric"><span class="mlabel">最大回撤</span><span class="mvalue negative">{{ strategyResult.recommended.summary.max_drawdown }}%</span></div>
           <div class="metric"><span class="mlabel">夏普比率</span><span class="mvalue">{{ strategyResult.recommended.summary.sharpe_ratio }}</span></div>
         </div>
         <BButton size="small" round @click="applyStrategyParams">应用此策略参数</BButton>
@@ -241,8 +276,8 @@
           </div>
           <div class="summary-card" v-if="result.summary.exit_reason">
             <div class="card-label">止盈止损</div>
-            <div class="card-value" :class="result.summary.exit_reason === 'take_profit' ? 'red' : 'green'">
-              {{ result.summary.exit_reason === 'take_profit' ? '止盈卖出' : '止损卖出' }}
+            <div class="card-value" :class="result.summary.exit_reason === 'stop_loss' ? 'green' : 'red'">
+              {{ result.summary.exit_reason === 'take_profit' ? '止盈卖出' : result.summary.exit_reason === 'custom' ? '策略卖出' : '止损卖出' }}
             </div>
           </div>
         </div>
@@ -299,7 +334,7 @@
                   {{ record.date }}
                   <span v-if="record.is_investment_day" class="invest-badge">买入</span>
                   <span v-if="record.status === 'sold' && record.exit_reason" class="sold-badge">
-                    {{ record.exit_reason === 'take_profit' ? '止盈' : '止损' }}
+                    {{ record.exit_reason === 'take_profit' ? '止盈' : record.exit_reason === 'custom' ? '策略' : '止损' }}
                   </span>
                 </td>
                 <td>{{ record.nav }}</td>
@@ -358,6 +393,10 @@ const {
   resetParams,
   suggestStrategy,
   applyStrategyParams,
+  ruleHint,
+  lastRun,
+  lastRunLabel,
+  applyLastRun,
   formatMoney,
   formatReturn,
   getReturnClass

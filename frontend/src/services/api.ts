@@ -100,11 +100,6 @@ export const screeningAPI = {
   recalculateRankings() { return api.post('/screening/recalculate-rankings') },
 }
 
-export const backtestAPI = {
-  fixedInvestment(data: Record<string, unknown>) { return api.post('/backtest/fixed-investment', data) },
-  strategySuggest(data: { fundCode: string }) { return api.post('/backtest/strategy-suggest', data) },
-}
-
 export const marketAPI = {
   getOverview() { return api.get('/market/overview') },
   getFlashNews(count = 30, page = 1) { return api.get(`/news/flash?count=${count}&page=${page}`) },

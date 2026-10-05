@@ -125,6 +125,8 @@
         </div>
       </div>
 
+        <CodeApprovalCard />
+
         <div ref="scrollAnchor" />
       </div>
 
@@ -200,6 +202,7 @@ import { BButton, BDialog, LucideIcon } from '@gofund/ui'
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { marked } from 'marked'
 import { useChatStore } from '../stores/chatStore'
+import CodeApprovalCard from './CodeApprovalCard.vue'
 import { toolLabel as toolLabelFromRegistry } from '../services/chatEngine/toolContract'
 
 const props = withDefaults(defineProps<{

@@ -49,6 +49,7 @@ export default defineConfig({
           { text: '数据源', link: '/architecture/data-sources' },
           { text: '数据流向', link: '/architecture/data-flow' },
           { text: '数据回退策略', link: '/architecture/fallback-strategy' },
+          { text: '定投回测引擎（前端）', link: '/architecture/backtest-engine' },
           { text: '模块数据源映射', link: '/architecture/module-data-sources' },
           { text: '基金数据合并策略', link: '/architecture/fund-data-merge' },
           { text: 'AI 分析框架总览', link: '/architecture/ai-overview' },
