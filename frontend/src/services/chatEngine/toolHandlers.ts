@@ -131,13 +131,26 @@ const toolHandlers: Record<string, (args: Record<string, unknown>, ctx: ToolCont
     return unpack(res)?.data ?? unpack(res)
   },
 
-  get_concept_sectors: async () => {
+  get_concept_sectors: async (args) => {
+    const rawLimit = Number(args.limit)
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.floor(rawLimit), 50) : 10
     try {
-      const res = await api.get('/market/sectors?limit=50')
-      const items = unpack(res)?.data?.items ?? unpack(res)?.items ?? []
-      return { data_status: 'available', items, count: items.length }
+      const res = await api.get(`/market/concept-sectors?limit=${limit}`)
+      // 该路由的 data 是扁平数组（与 /market/sectors 一致），不是 {items: [...]}
+      const body = (unpack(res) ?? {}) as Record<string, any>
+      const items = Array.isArray(body.data) ? body.data : []
+      return {
+        data_status: items.length > 0 ? 'available' : 'unavailable',
+        date: body.data_date ?? '',
+        source: body.source ?? '',
+        count: items.length,
+        items,
+        note: items.length > 0
+          ? 'items 按当日涨跌幅降序；event 为同花顺概念简介的驱动事件，event_date 为数据源标注的事件日期（可能早于当日，不要当作行情日期）。'
+          : (body.error || '概念板块数据本次未取到，请勿据此判断概念板块表现。'),
+      }
     } catch (error) {
-      return { data_status: 'error', items: [], note: String(error) }
+      return { data_status: 'error', items: [], count: 0, note: String(error) }
     }
   },
 

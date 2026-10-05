@@ -94,11 +94,12 @@
               :class="tc.status"
             >
               <LucideIcon
-                :name="tc.status === 'running' ? 'Loader' : tc.status === 'error' ? 'XCircle' : 'CheckCircle'"
+                :name="toolIcon(tc.status)"
                 :size="14"
                 :class="{ spinning: tc.status === 'running' }"
               />
               <span class="tool-call-name">{{ toolLabel(tc.name) }}</span>
+              <span v-if="tc.status === 'empty'" class="tool-call-hint">{{ '暂无数据' }}</span>
               <span v-if="tc.status === 'done' && tc.durationMs" class="tool-call-duration">
                 {{ (tc.durationMs / 1000).toFixed(1) }}s
               </span>
@@ -281,6 +282,14 @@ const skillSuggestions = computed(() => {
 })
 
 const toolLabel = (name: string) => toolLabelFromRegistry(name)
+
+/** Tool chip icon: running spinner, hard failure, "no data" warning, success. */
+function toolIcon(status: 'running' | 'done' | 'error' | 'empty'): string {
+  if (status === 'running') return 'Loader'
+  if (status === 'error') return 'XCircle'
+  if (status === 'empty') return 'TriangleAlert'
+  return 'CheckCircle'
+}
 
 const suggestions = computed(() => skillSuggestions.value)
 

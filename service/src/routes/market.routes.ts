@@ -12,6 +12,7 @@ import {
   getGoldHistory,
   getIndexDetail,
   getMarketBreadth,
+  getMarketConceptSectorsFromAkshare,
   getMarketIndices,
   getMarketKline,
   getMarketMoneyFlow,
@@ -88,6 +89,34 @@ marketRouter.get(
   asyncHandler(async (req, res) => {
     const limit = Math.min(Math.max(parseInt(firstQueryValue(req.query.limit) ?? '90', 10) || 90, 1), 120);
     const result = await getMarketSectorsFromAkshare(limit);
+    if (result.error) {
+      res.json({
+        success: false,
+        data: [],
+        error: result.error,
+        total_count: 0,
+        update_time: new Date().toISOString(),
+        data_date: result.data_date || '',
+        source: result.source,
+      });
+      return;
+    }
+    res.json({
+      success: true,
+      data: result.items,
+      total_count: result.items.length,
+      update_time: new Date().toISOString(),
+      data_date: result.data_date || '',
+      source: result.source,
+    });
+  })
+);
+
+marketRouter.get(
+  '/concept-sectors',
+  asyncHandler(async (req, res) => {
+    const limit = Math.min(Math.max(parseInt(firstQueryValue(req.query.limit) ?? '20', 10) || 20, 1), 60);
+    const result = await getMarketConceptSectorsFromAkshare(limit);
     if (result.error) {
       res.json({
         success: false,

@@ -1045,7 +1045,7 @@ export async function getMarketSectorsFromAkshare(limit = 90): Promise<{
     const spotDate = Array.isArray(rawSpot) ? '' : (rawSpot as { date?: string } | undefined)?.date ?? '';
     if (spotItems.length > 0) {
       return {
-        source: 'akshare_thailand',
+        source: 'akshare_ths',
         data_date: spotDate,
         items: spotItems.slice(0, clampedLimit),
       };
@@ -1061,6 +1061,69 @@ export async function getMarketSectorsFromAkshare(limit = 90): Promise<{
     items: [],
     data_date: '',
     error: '所有板块数据源均不可用',
+  };
+}
+
+export interface ConceptSpotItem {
+  name: string;
+  code: string;
+  change_pct: string;
+  raw_change: number | null;
+  main_inflow: string;
+  raw_main_inflow: number | null;
+  index_value: number | null;
+  company_count: number | null;
+  leader: string;
+  leader_change_pct: number | null;
+  /** 同花顺概念简介里的「驱动事件」，未收录时为空串。 */
+  event: string;
+  /** 数据源标注的事件日期；可能早于当日，不可当作行情日期。 */
+  event_date: string;
+}
+
+/**
+ * 概念板块行情（同花顺资金流 `stock_fund_flow_concept`，经 Python akshare）。
+ *
+ * 为什么不走 ProviderChain / EastMoney：板块接口在 push2 `.../qt/clist/get`，
+ * 该路径在本机与代理下均被反爬切断（SSL EOF），行业板块也已在用 akshare 降级，
+ * 概念板块因此直接以 akshare 为唯一数据源（见 AGENTS.md「已知问题」）。
+ */
+export async function getMarketConceptSectorsFromAkshare(limit = 20): Promise<{
+  items: ConceptSpotItem[];
+  source: string;
+  data_date?: string;
+  error?: string;
+}> {
+  const clampedLimit = Math.min(Math.max(limit, 1), 60);
+
+  try {
+    const spotResult = await runPython<Record<string, unknown>>('data_complete.py', {
+      args: ['--source', 'akshare', '--type', 'concept_spot'],
+      timeoutMs: 60_000,
+    });
+    const rawSpot = spotResult?.concept_spot;
+    const spotItems = Array.isArray(rawSpot)
+      ? rawSpot
+      : ((rawSpot as { items?: ConceptSpotItem[] } | undefined)?.items ?? []);
+    const spotDate = Array.isArray(rawSpot) ? '' : ((rawSpot as { date?: string } | undefined)?.date ?? '');
+    if (spotItems.length > 0) {
+      return {
+        source: 'akshare_ths',
+        data_date: spotDate,
+        items: spotItems.slice(0, clampedLimit),
+      };
+    }
+  } catch (err) {
+    logger.error('Akshare concept sectors failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  return {
+    source: 'failed',
+    items: [],
+    data_date: '',
+    error: '概念板块数据源不可用',
   };
 }
 

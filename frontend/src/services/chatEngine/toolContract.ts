@@ -90,7 +90,7 @@ const TOOL_DEFS: ToolSpec[] = [
   {
     name: 'get_hot_sectors',
     label: '获取热门板块',
-    description: '获取热门行业板块实时行情（申万/同花顺分类），返回板块涨跌幅、领涨股、成交额等。不含概念板块。',
+    description: '获取热门行业板块实时行情（同花顺行业分类）。返回板块涨跌幅、主力净流入；数据源降级时 code 可能为空。不含概念板块（概念板块用 get_concept_sectors）。',
     promptSnippet: 'get_hot_sectors(limit?): 热门行业板块实时行情',
     parameters: Type.Object({
       limit: int('返回板块数量，默认10'),
@@ -99,8 +99,9 @@ const TOOL_DEFS: ToolSpec[] = [
   {
     name: 'get_concept_sectors',
     label: '获取概念板块',
-    description: '获取概念板块行情，返回板块名称、驱动事件、成分股数量等概览数据。注意：不含个股涨跌幅。',
-    promptSnippet: 'get_concept_sectors(limit?): 概念板块行情概览',
+    description:
+      '获取概念板块行情（同花顺资金流，按当日涨跌幅降序）：板块涨跌幅、主力净流入、成分股数量、领涨股，以及同花顺概念简介的驱动事件 event。注意：event_date 是数据源标注的事件日期，可能早于当日，不要当作行情日期；数据源不可用时 data_status 为 unavailable（items 为空），此时不要编造概念板块表现。',
+    promptSnippet: 'get_concept_sectors(limit?): 概念板块行情（涨跌幅/净流入/驱动事件）',
     parameters: Type.Object({
       limit: int('返回板块数量，默认10，最大50'),
     }),

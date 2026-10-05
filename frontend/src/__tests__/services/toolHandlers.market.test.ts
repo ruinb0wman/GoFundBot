@@ -13,8 +13,17 @@ function envelope(data: unknown) {
   return { success: true, data, meta: { provider: 'eastmoney' } }
 }
 
-async function callTool(name: string) {
-  return (await executeTool(name, {}, {})) as Record<string, unknown>
+/**
+ * `api.get()` resolves to `HttpResponse<T>` = `{ data: <服务端 body>, status, ok }`.
+ * `envelope()` above mocks the *body* itself; use this when the handler needs
+ * more than the unwrapped payload (e.g. data_date / source / error).
+ */
+function httpEnvelope(body: unknown) {
+  return { data: body, status: 200, ok: true }
+}
+
+async function callTool(name: string, args: Record<string, unknown> = {}) {
+  return (await executeTool(name, args, {})) as Record<string, unknown>
 }
 
 describe('get_north_flow handler', () => {
@@ -60,6 +69,78 @@ describe('get_north_flow handler', () => {
     expect(result.data_status).toBe('unavailable')
     expect(result.total_deal_amount_yi).toBeNull()
     expect(String(result.note)).toContain('尚未更新')
+  })
+})
+
+describe('get_concept_sectors handler', () => {
+  beforeEach(() => {
+    getMock.mockReset()
+  })
+
+  // 回归：该路由的 data 是扁平数组，旧实现读 `.data.items` 所以恒为空
+  it('parses the flat data array and forwards concept fields', async () => {
+    getMock.mockResolvedValue(
+      httpEnvelope({
+        success: true,
+        data: [
+          {
+            name: '快手概念', code: '', change_pct: '+3.15%', raw_change: 3.15,
+            main_inflow: '+11.41亿', raw_main_inflow: 1141000000,
+            index_value: 1827.55, company_count: 52, leader: '值得买', leader_change_pct: 10.71,
+            event: '快手可灵发布 Kling4.0', event_date: '2026-09-20',
+          },
+        ],
+        total_count: 1,
+        data_date: '2026-09-29',
+        source: 'akshare_ths',
+      }),
+    )
+
+    const result = await callTool('get_concept_sectors')
+
+    expect(getMock).toHaveBeenCalledWith('/market/concept-sectors?limit=10')
+    expect(result.data_status).toBe('available')
+    expect(result.count).toBe(1)
+    expect(result.date).toBe('2026-09-29')
+    const items = result.items as Record<string, unknown>[]
+    expect(items[0].name).toBe('快手概念')
+    expect(items[0].event).toBe('快手可灵发布 Kling4.0')
+  })
+
+  it('honours the limit argument and clamps it to 50', async () => {
+    getMock.mockResolvedValue(
+      httpEnvelope({ success: true, data: [{ name: 'AI' }], source: 'akshare_ths' }),
+    )
+
+    await callTool('get_concept_sectors', { limit: 5 })
+    expect(getMock).toHaveBeenLastCalledWith('/market/concept-sectors?limit=5')
+
+    await callTool('get_concept_sectors', { limit: 500 })
+    expect(getMock).toHaveBeenLastCalledWith('/market/concept-sectors?limit=50')
+  })
+
+  it('reports unavailable (not available) when the source returns no items', async () => {
+    getMock.mockResolvedValue(
+      httpEnvelope({
+        success: false, data: [], error: '概念板块数据源不可用',
+        total_count: 0, data_date: '', source: 'failed',
+      }),
+    )
+
+    const result = await callTool('get_concept_sectors')
+
+    expect(result.data_status).toBe('unavailable')
+    expect(result.count).toBe(0)
+    expect(String(result.note)).toContain('概念板块数据源不可用')
+  })
+
+  it('reports error status when the request throws', async () => {
+    getMock.mockRejectedValue(new Error('boom'))
+
+    const result = await callTool('get_concept_sectors')
+
+    expect(result.data_status).toBe('error')
+    expect(result.items).toEqual([])
   })
 })
 

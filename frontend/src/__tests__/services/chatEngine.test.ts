@@ -88,6 +88,9 @@ describe('XML tool-call normalization', () => {
     const badEnd = toolEnds.find((e) => e.data.name === 'get_industry_spot')
     expect(validEnd?.data.error).toBe(false)
     expect(badEnd?.data.error).toBe(true)
+    // UI hint: a result with data is not flagged empty; errors are never "empty"
+    expect(validEnd?.data.empty).toBe(false)
+    expect(badEnd?.data.empty).toBe(false)
 
     // corrective UNKNOWN_TOOL envelope is fed back to the model on the next iteration
     const secondCompletionMessages = mocks.chatCompletion.mock.calls[1][1].messages
@@ -134,6 +137,11 @@ describe('XML tool-call normalization', () => {
     expect(mocks.executeTool).toHaveBeenCalledTimes(1) // deduped
     expect(mocks.executeTool).toHaveBeenCalledWith('get_hot_sectors', { limit: 5 }, expect.anything())
     expect(events.some((e) => e.event === 'done')).toBe(true)
+
+    // `{items: []}` is a successful call with nothing usable → chip turns yellow
+    const toolEnd = events.find((e) => e.event === 'tool_end')
+    expect(toolEnd?.data.error).toBe(false)
+    expect(toolEnd?.data.empty).toBe(true)
   })
 })
 

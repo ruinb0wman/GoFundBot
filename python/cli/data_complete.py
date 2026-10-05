@@ -4,12 +4,12 @@ Data completion: fetch supplementary data (stock list, industry mappings, sector
 
 args:
   --source [akshare|eastmoney]   Data source
-  --type [stocks|industry|sector_spot|kline]  Data type
+  --type [stocks|industry|sector_spot|concept_spot|kline]  Data type
   --code                         Index code (required for --type kline, e.g. sh000001)
   --start_date                   Start date YYYYMMDD (optional, kline only)
   --end_date                     End date YYYYMMDD (optional, kline only)
 
-stdout: {"success": true, "data": {"stocks": [...], "industries": [...], "sector_spot": {"date": "...", "items": [...]}, "kline": [...]}}
+stdout: {"success": true, "data": {"stocks": [...], "industries": [...], "sector_spot": {"date": "...", "items": [...]}, "concept_spot": {"date": "...", "items": [...]}, "kline": [...]}}
 """
 
 import argparse
@@ -269,6 +269,102 @@ def complete_sector_spot():
     return {"date": "", "items": []}
 
 
+def _match_concept_event(events: dict, name: str) -> dict:
+    """两张表的板块名可能不完全一致（「MLCC概念」vs「MLCC」），先精确后去「概念」后缀。"""
+    if not events:
+        return {}
+    if name in events:
+        return events[name]
+    normalized = name.removesuffix("概念").strip()
+    for key, value in events.items():
+        if key.removesuffix("概念").strip() == normalized:
+            return value
+    return {}
+
+
+@file_cache(key="concept_events", ttl_hours=24)
+def _concept_events():
+    """
+    同花顺概念简介 → {概念名: {date, event}}（对话框里的「驱动事件」来源）。
+    这个接口逐页抓取（约 10s），驱动事件本身变化很慢，所以单独缓存 24h，
+    让概念行情（快、要求盘中新鲜）可以不被它拖慢。失败就返回空表，不影响行情主表。
+    """
+    try:
+        df = ak.stock_board_concept_summary_ths()
+    except Exception as e:
+        print(f"akshare concept summary failed: {e}", file=sys.stderr)
+        return {}
+    if df is None or df.empty:
+        return {}
+
+    events = {}
+    for _, row in df.iterrows():
+        name = str(row.get("概念名称", "") or "").strip()
+        if not name:
+            continue
+        events[name] = {
+            "date": str(row.get("日期", "") or "")[:10],
+            "event": str(row.get("驱动事件", "") or "").strip(),
+        }
+    return events
+
+
+def complete_concept_spot():
+    """
+    Fetch real-time concept board spot data from akshare (THS source),
+    enriched with the driver event from the THS concept summary.
+
+    故意不加 @file_cache：概念行情是盘中数据，每次调用都要新鲜（约 1.5s）；
+    慢的驱动事件已在 _concept_events 里单独缓存 24h。
+
+    Returns dict with keys:
+      - date: 数据对应的最近交易日 (YYYY-MM-DD), 无法获取时为空串
+      - items: 概念板块列表, sorted by change percent descending. Each item:
+          name / code / change_pct / raw_change / main_inflow / raw_main_inflow
+          / index_value / company_count / leader / leader_change_pct
+          / event / event_date (event 缺失时为空串)
+    """
+    if not ak:
+        return {"date": "", "items": []}
+
+    events = _concept_events()
+    try:
+        df = ak.stock_fund_flow_concept(symbol="即时")
+    except Exception as e:
+        print(f"akshare concept spot failed: {e}", file=sys.stderr)
+        return {"date": "", "items": []}
+    if df is None or df.empty:
+        return {"date": "", "items": []}
+
+    rows = []
+    for _, row in df.iterrows():
+        name = str(row.get("行业", "") or "").strip()
+        if not name:
+            continue
+        raw_chg = _safe_float(row.get("行业-涨跌幅")) or 0.0
+        net_yi = _safe_float(row.get("净额")) or 0.0
+        raw_net = net_yi * 1e8  # 亿元 → 元
+        event = _match_concept_event(events, name)
+        rows.append(
+            {
+                "name": name,
+                "code": "",
+                "change_pct": f"{'+' if raw_chg >= 0 else ''}{raw_chg:.2f}%",
+                "raw_change": raw_chg,
+                "main_inflow": f"{'+' if raw_net >= 0 else ''}{raw_net / 1e8:.2f}亿",
+                "raw_main_inflow": raw_net,
+                "index_value": _safe_float(row.get("行业指数")),
+                "company_count": _safe_float(row.get("公司家数")),
+                "leader": str(row.get("领涨股", "") or "").strip(),
+                "leader_change_pct": _safe_float(row.get("领涨股-涨跌幅")),
+                "event": event.get("event", ""),
+                "event_date": event.get("date", ""),
+            }
+        )
+    rows.sort(key=lambda r: r["raw_change"], reverse=True)
+    return {"date": _latest_trade_date(), "items": rows}
+
+
 def _latest_trade_date():
     """最近一个交易日 (YYYY-MM-DD), 基于新浪交易日历。失败时返回空串。"""
     try:
@@ -363,7 +459,7 @@ def main():
     parser.add_argument("--source", choices=["akshare", "eastmoney", "baostock"], default="akshare")
     parser.add_argument(
         "--type",
-        choices=["stocks", "industry", "sector_spot", "kline", "north_flow", "money_flow", "all"],
+        choices=["stocks", "industry", "sector_spot", "concept_spot", "kline", "north_flow", "money_flow", "all"],
         default="all",
     )
     parser.add_argument("--code", type=str, default="")
@@ -381,6 +477,8 @@ def main():
         result["industry"] = complete_industry_mapping()
     if args.type in ("sector_spot", "all"):
         result["sector_spot"] = complete_sector_spot()
+    if args.type == "concept_spot":
+        result["concept_spot"] = complete_concept_spot()
     if args.type == "kline":
         if not args.code:
             return {"error": "--code is required for --type kline"}

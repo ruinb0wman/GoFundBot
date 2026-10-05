@@ -16,7 +16,7 @@ export interface DisplayMessage {
 export interface ToolCallStatus {
   name: string
   params: Record<string, unknown>
-  status: 'running' | 'done' | 'error'
+  status: 'running' | 'done' | 'error' | 'empty'
   durationMs?: number
 }
 
@@ -29,7 +29,7 @@ function parseStoredToolCalls(json: string | null): ToolCallStatus[] | undefined
     return parsed.map(t => ({
       name: String(t.name ?? ''),
       params: t.params && typeof t.params === 'object' ? t.params : {},
-      status: 'done' as const,
+      status: t.status === 'empty' || t.status === 'error' ? t.status : ('done' as const),
       durationMs: typeof t.durationMs === 'number' ? t.durationMs : undefined,
     }))
   } catch {
@@ -233,10 +233,10 @@ export const useChatStore = defineStore('chat', {
             status: 'running',
           })
         },
-        onToolEnd: (tool: { name: string; duration_ms: number; error?: boolean }) => {
+        onToolEnd: (tool: { name: string; duration_ms: number; error?: boolean; empty?: boolean }) => {
           const existing = this.activeToolCalls.find((t) => t.name === tool.name && t.status === 'running')
           if (existing) {
-            existing.status = tool.error ? 'error' : 'done'
+            existing.status = tool.error ? 'error' : tool.empty ? 'empty' : 'done'
             existing.durationMs = tool.duration_ms
           }
         },
@@ -257,10 +257,12 @@ export const useChatStore = defineStore('chat', {
           }, 5000)
         },
         onDone: async () => {
+          // Capture the chips *before* finalizeStream() resets activeToolCalls,
+          // otherwise the persisted history always loses its tool calls.
+          const toolCalls = [...this.activeToolCalls]
           this.finalizeStream()
           if (this.currentSessionId) {
             const streamingMsg = this.messages.find(m => m.id === '__streaming__' || m.role === 'assistant')
-            const toolCalls = this.activeToolCalls
             if (streamingMsg && streamingMsg.content) {
               await db.chatMessages.add({
                 sessionId: this.currentSessionId,

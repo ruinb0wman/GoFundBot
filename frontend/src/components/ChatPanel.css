@@ -324,8 +324,18 @@
   color: var(--color-danger, #ef4444);
 }
 
+/* Succeeded but returned no usable data */
+.tool-call-item.empty {
+  color: var(--color-warning, #faad14);
+}
+
 .tool-call-name {
   flex: 1;
+}
+
+.tool-call-hint {
+  font-size: 11px;
+  opacity: 0.85;
 }
 
 .tool-call-duration {
