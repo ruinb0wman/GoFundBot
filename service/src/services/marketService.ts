@@ -1224,6 +1224,13 @@ export async function getAVolume7Days(): Promise<{
       getMarketKline('sz399001', { period: 'daily', startDate, endDate }),
     ]);
 
+    if (shResult.status === 'rejected') {
+      logger.error('a-volume-7days kline failed', { symbol: 'sh000001', error: describeError(shResult.reason) });
+    }
+    if (szResult.status === 'rejected') {
+      logger.error('a-volume-7days kline failed', { symbol: 'sz399001', error: describeError(szResult.reason) });
+    }
+
     const shData = shResult.status === 'fulfilled' ? (shResult.value.data ?? []) : [];
     const szData = szResult.status === 'fulfilled' ? (szResult.value.data ?? []) : [];
 
@@ -1263,10 +1270,26 @@ export async function getAVolume7Days(): Promise<{
         };
       });
 
+    if (result.length === 0) {
+      // K 线源可能返回了数据但缺 amount（如新浪源），此时聚合结果为空，不能谎报 success。
+      logger.error('a-volume-7days empty result', {
+        shRows: shData.length,
+        szRows: szData.length,
+        shAmounts: shData.filter((x) => x.amount != null).length,
+        szAmounts: szData.filter((x) => x.amount != null).length,
+      });
+      return { success: false, data: [], update_time: updateTime };
+    }
+
     return { success: true, data: result, update_time: updateTime };
-  } catch {
+  } catch (error) {
+    logger.error('a-volume-7days failed', { error: describeError(error) });
     return { success: false, data: [], update_time: updateTime };
   }
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 const A_SHARE_INDICES: Array<{ symbol: string; name: string; market: string }> = [
