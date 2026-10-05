@@ -12,7 +12,7 @@
         </div>
         <div class="header-right">
           <HamburgerButton :isOpen="drawerOpen" @toggle="drawerOpen = !drawerOpen" />
-          <div class="mode-switch" :class="{ 'mobile-hidden': isMobile }">
+          <div class="mode-switch">
             <button class="mode-btn" :class="{ active: route.name === 'dashboard' }" @click="resetToDashboard"><LucideIcon name="Home" :size="16" /> {{ '市场大盘' }}</button>
             <button class="mode-btn" :class="{ active: route.name === 'screening' }" @click="router.push({ name: 'screening' })"><LucideIcon name="Search" :size="16" /> {{ '基金筛选' }}</button>
             <button class="mode-btn" :class="{ active: route.name === 'backtest' || route.name === 'backtest-fund' }" @click="router.push({ name: 'backtest' })"><LucideIcon name="Coins" :size="16" /> {{ '定投回测' }}</button>

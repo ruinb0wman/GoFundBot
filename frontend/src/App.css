@@ -60,14 +60,43 @@
 .content-area { flex: 1; min-width: 0; }
 .content-area.full-width { width: 100%; }
 .compare-panel { margin-bottom: 20px; border-radius: var(--radius-lg); background: var(--bg-card); box-shadow: var(--shadow-md); overflow: hidden; }
+/* 头部导航阈值（唯一一处）：≤1400px 时头部内联导航放不下（6 个按钮 ≈649px + 搜索框），
+ * 此时只保留「浮动导航」——汉堡按钮 → MobileDrawer 抽屉；≤768px 另有底部 BottomNav。
+ * .hamburger-btn 的显示也由这里控制（HamburgerButton.vue 不再自带 media query）。 */
+.hamburger-btn { display: none; }
+@media (max-width: 1400px) {
+  .hamburger-btn { display: flex; }
+  .mode-switch { display: none; }
+}
 @media (max-width: 1024px) { .mobile-hidden { display: none !important; } }
 .app-footer { background: var(--bg-card); text-align: center; padding: 12px; border-top: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-tertiary); }
 @media (max-width: 1600px) { .header-search { max-width: 400px; margin: 0 20px; } }
 @media (max-width: 1400px) { .dashboard-layout { grid-template-columns: 340px 1fr 340px; } .sidebar-left { width: 360px; } .header-search { max-width: 350px; } }
 @media (min-width: 1025px) { .dashboard-layout { overflow: hidden; } .dashboard-main { overflow-y: auto; } }
-@media (max-width: 1200px) { .dashboard-layout { grid-template-columns: 1fr 340px; } .dashboard-sidebar { display: none; } .sidebar-left { width: 320px; } .header-search { max-width: 280px; margin: 0 15px; } }
-@media (max-width: 1024px) { .main-layout { flex-direction: column; } .sidebar-left { width: 100%; } .dashboard-layout { grid-template-columns: 1fr; } .dashboard-right { position: static; max-height: none; } .mode-switch { flex-wrap: wrap; justify-content: center; } .header-search { order: 3; width: 100%; max-width: 100%; margin: 10px 0 0 0; } }
-@media (max-width: 768px) { .app-header { padding: 10px 16px; } .header-content { flex-direction: column; gap: 12px; } .header-left { text-align: center; } .mode-btn { padding: 8px 12px; font-size: 12px; } .app-main { padding: 12px; padding-bottom: 64px; } .header-search .db-status { display: none; } }
+@media (max-width: 1200px) { .dashboard-layout { grid-template-columns: 1fr 340px; } .dashboard-sidebar { display: none; } .sidebar-left { width: 320px; } .header-search { margin: 0 15px; } }
+/* ≤1024px：三栏降为单列堆叠。DOM 顺序是 自选 → 中间内容 → 快讯/板块，用 order 把自选挪到最后，
+ * 于是自上而下是：大盘内容 → 快讯 → 行业板块排行 → 我的自选（页面整体滚动，不设内部滚动区）。 */
+@media (max-width: 1024px) {
+  .main-layout { flex-direction: column; }
+  .sidebar-left { width: 100%; }
+  .dashboard-layout { grid-template-columns: 1fr; }
+  /* .full-content（基金详情 / 对比模式）自带 `380px 1fr`，优先级高于上面的单列规则，
+   * 不重置的话窄屏下详情内容会被挤进 380px 列（右侧留空），叠成单列才正常。 */
+  .dashboard-layout.full-content { grid-template-columns: 1fr; }
+  .dashboard-main { order: 1; }
+  .dashboard-right { order: 2; position: static; max-height: none; overflow: visible; }
+  .dashboard-sidebar { display: block; order: 3; }
+  /* 右侧两个面板在桌面三栏里是「等分栏高 + 内部滚动」（flex: 1 1 0；min-height/max-height: 0/none）；
+   * 单列堆叠时 .dashboard-right 的高度由内容决定，flex-basis: 0 会把面板压成 0 高度，
+   * 列表被自身的 overflow: hidden 裁掉又滚不到 → 这里还原为内容高度，长列表改为限高 + 内部滚动。 */
+  .dashboard-right .flash-news-container,
+  .dashboard-right .sector-rank-container { flex: 0 0 auto; min-height: 0; max-height: none; }
+  .dashboard-right .flash-news-container { min-height: 320px; max-height: 80vh; }
+  .dashboard-right .sector-rank-container { overflow: visible; }
+  .dashboard-right .sector-content { overflow: visible; }
+  .dashboard-right .sector-list { max-height: 60vh; overflow-y: auto; }
+}
+@media (max-width: 768px) { .app-header { padding: 10px 16px; } .header-content { flex-direction: column; gap: 12px; } .header-left { text-align: center; } .header-search { order: 3; width: 100%; max-width: 100%; margin: 10px 0 0 0; } .app-main { padding: 12px; padding-bottom: 64px; } .header-search .db-status { display: none; } }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--text-disabled); border-radius: 3px; }

@@ -12,8 +12,9 @@ defineEmits<{ toggle: [] }>()
 </script>
 
 <style scoped>
+/* 可见性由 App.css 的「头部导航阈值」统一控制（≤1400px 显示），
+ * 与 .mode-switch 隐藏使用同一个断点，勿在此处再加 media query。 */
 .hamburger-btn {
-  display: none;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -51,11 +52,5 @@ defineEmits<{ toggle: [] }>()
 
 .hamburger-btn.active .hamburger-line:nth-child(3) {
   transform: translateY(-6px) rotate(-45deg);
-}
-
-@media (max-width: 1024px) {
-  .hamburger-btn {
-    display: flex;
-  }
 }
 </style>
