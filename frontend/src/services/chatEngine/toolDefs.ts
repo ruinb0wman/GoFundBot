@@ -183,7 +183,7 @@ export const TOOL_DEFS: ToolSpec[] = [
       '模块必须定义两个函数：' +
       '① function prepare(sdk) → { start?, end?, assets: [110022, ...], initialAmount?, feeRate? }；' +
       'assets 是基金代码字符串数组（省略 start/end 默认近三年），可用 sdk.screen({ sharpe_ratio_1y?, type?, ... }) 从本地基金库筛选；' +
-      '最多一个现金腿，写成 CASH 或 CASH:0.02（年化 2%）。' +
+      '最多一个现金腿，写成 CASH 或 CASH:0.02（年化 2%），在 onDay 里用 cash（或 CASH）寻址。' +
       '② function onDay(s) → { buy?: [{code, amount}], sell?: [{code, amount}], rebalance?: {code: 权重}, sellAll?: true }；按**基金代码**寻址（不是下标）。' +
       's = { i, date, codes, nav(code), navs(code)（截至今日，无未来）, ma(code,n), pctChange(code,n), weight(code), ' +
       'shares, values, cash, invested, value, returnRate(), args:{start,end,initialAmount,feeRate} }。' +

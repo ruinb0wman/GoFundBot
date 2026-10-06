@@ -64,6 +64,20 @@ describe('toIndexDecision', () => {
     expect(() => toIndexDecision({ sell: [{ code: 'A', amount: -1 }] }, ['A', 'B'], '2020-01-01')).toThrow(/正数/)
     expect(() => toIndexDecision({ rebalance: [1, 0] }, ['A', 'B'], '2020-01-01')).toThrow(/对象/)
   })
+
+  it('accepts CASH aliases for the synthetic cash leg', () => {
+    expect(toIndexDecision({ rebalance: { CASH: 1 } }, ['A', 'cash'], '2020-01-01')).toEqual({ rebalance: [0, 1] })
+    expect(toIndexDecision({ rebalance: { 'CASH:0.02': 0.5 } }, ['A', 'cash'], '2020-01-01')).toEqual({
+      rebalance: [0, 0.5],
+    })
+    expect(toIndexDecision({ buy: [{ code: 'cash', amount: 100 }] }, ['A', 'cash'], '2020-01-01')).toEqual({
+      buy: [{ asset: 1, amount: 100 }],
+    })
+  })
+
+  it('throws on an undeclared rebalance key instead of silently zeroing it', () => {
+    expect(() => toIndexDecision({ rebalance: { A: 0.5, Z: 0.5 } }, ['A', 'cash'], '2020-01-01')).toThrow(/Z/)
+  })
 })
 
 describe('makePortfolioDecision', () => {
@@ -130,6 +144,30 @@ describe('handleRunPortfolioStrategyRequest', () => {
     if (response.ok) {
       expect(response.result.summary.exit_reason).toBe('custom')
       expect(response.result.timeline[response.result.timeline.length - 1]?.status).toBe('sold')
+    }
+  })
+
+  it('rebalances into a CASH leg declared as CASH:0.02 (addressed as CASH)', () => {
+    const response = handleRunPortfolioStrategyRequest({
+      spec: {
+        assets: [
+          { fundCode: 'A', weight: 1 },
+          { kind: 'cash', annualRate: 0.02, weight: 1 },
+        ],
+        initialAmount: 1000,
+        feeRate: 0,
+      },
+      navByCode: SERIES,
+      code: 'function onDay(s) { return { rebalance: { A: 0.5, CASH: 0.5 } } }',
+    })
+    expect(response.ok).toBe(true)
+    if (response.ok) {
+      const cash = response.result.assets.find((a) => a.kind === 'cash')!
+      expect(cash.finalWeight).toBeGreaterThan(45)
+      expect(cash.finalWeight).toBeLessThan(55)
+      expect(cash.return_rate).toBeGreaterThan(0)
+      // The fund leg must not absorb everything (the bug zeroed the cash leg).
+      expect(response.result.assets.find((a) => a.code === 'A')!.finalWeight).toBeLessThan(55)
     }
   })
 })

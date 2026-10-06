@@ -223,7 +223,24 @@ export interface CodeDecision {
   sellAll?: boolean;
 }
 
-export const DEFAULT_ARGS: DaySdk['args'] = { start: '', end: '', initialAmount: 0, feeRate: 0.0015 };
+export const DEFAULT_ARGS: DaySdk['args'] = { start: '', end: '', initialAmount: 0, feeRate: 0.0015 }
+
+/**
+ * The engine names a synthetic cash leg `'cash'` (`portfolioBacktest.ts`), while
+ * `prepare().assets` declares it as `'CASH'` / `'CASH:0.02'`. Accept both spellings so
+ * a strategy never silently targets the wrong leg.
+ */
+const CASH_ALIAS_RE = /^cash(:.*)?$/i
+
+function resolveCodeIndex(codes: string[], code: string): number {
+  const direct = codes.indexOf(code)
+  if (direct >= 0) return direct
+  if (CASH_ALIAS_RE.test(code)) {
+    const cashAt = codes.indexOf('cash')
+    if (cashAt >= 0) return cashAt
+  }
+  return -1
+};
 
 function ma(series: number[], n: number): number {
   const window = Math.max(1, Math.floor(n));
@@ -249,23 +266,29 @@ export function toIndexDecision(raw: unknown, codes: string[], date: string): Po
   if (input.sellAll) out.sellAll = true;
 
   const indexOf = (code: string): number => {
-    const at = codes.indexOf(code);
+    const at = resolveCodeIndex(codes, code)
     if (at < 0) {
-      throw new StrategyCodeError(`${date}：标的 ${code} 未在 prepare().assets 中声明（可用：${codes.join(', ')}）`);
+      throw new StrategyCodeError(`${date}：标的 ${code} 未在 prepare().assets 中声明（可用：${codes.join(', ')}）`)
     }
-    return at;
-  };
+    return at
+  }
 
   if (input.rebalance !== undefined) {
-    const weights = input.rebalance as Record<string, number>;
+    const weights = input.rebalance as Record<string, number>
     if (weights == null || typeof weights !== 'object' || Array.isArray(weights)) {
-      throw new StrategyCodeError(`${date}：rebalance 必须是 { 代码: 权重 } 对象`);
+      throw new StrategyCodeError(`${date}：rebalance 必须是 { 代码: 权重 } 对象`)
     }
-    const list = codes.map((code) => Number(weights[code] ?? 0));
-    if (list.some((weight) => !Number.isFinite(weight) || weight < 0)) {
-      throw new StrategyCodeError(`${date}：rebalance 的权重必须是不小于 0 的数字`);
+    const list = codes.map(() => 0)
+    for (const [code, value] of Object.entries(weights)) {
+      // Unknown keys throw (a typo must not silently zero a leg out).
+      const at = indexOf(code)
+      const weight = Number(value)
+      if (!Number.isFinite(weight) || weight < 0) {
+        throw new StrategyCodeError(`${date}：rebalance 的权重必须是不小于 0 的数字`)
+      }
+      list[at] = weight
     }
-    out.rebalance = list;
+    out.rebalance = list
   }
 
   for (const key of ['buy', 'sell'] as const) {
@@ -291,29 +314,29 @@ export function makePortfolioDecision(
 ): NonNullable<PortfolioHooks['decide']> {
   const mod = compileStrategyModule(code);
   return (state: PortfolioDecisionState): PortfolioDecision => {
-    const index = new Map(state.codes.map((fundCode, at) => [fundCode, at]));
-    const seriesOf = (fundCode: string): number[] => {
-      const at = index.get(fundCode);
-      if (at == null) {
+    const resolve = (fundCode: string): number => {
+      const at = resolveCodeIndex(state.codes, fundCode)
+      if (at < 0) {
         throw new StrategyCodeError(
           `${state.date}：标的 ${fundCode} 未在 prepare().assets 中声明（可用：${state.codes.join(', ')}）`,
-        );
+        )
       }
-      return state.history[at];
-    };
-    const total = state.values.reduce((sum, value) => sum + value, 0) + state.cash;
+      return at
+    }
+    const seriesOf = (fundCode: string): number[] => state.history[resolve(fundCode)]
+    const total = state.values.reduce((sum, value) => sum + value, 0) + state.cash
     const s: DaySdk = {
       i: state.i,
       date: state.date,
       codes: [...state.codes],
-      nav: (fundCode) => state.navs[index.get(fundCode) ?? -1],
+      nav: (fundCode) => state.navs[resolve(fundCode)],
       navs: (fundCode) => seriesOf(fundCode),
       history: (fundCode) => seriesOf(fundCode),
       ma: (fundCode, n) => ma(seriesOf(fundCode), n),
       pctChange: (fundCode, n) => pctChange(seriesOf(fundCode), n),
       weight: (fundCode) => {
-        const at = index.get(fundCode);
-        return at == null || total <= 0 ? 0 : (state.values[at] ?? 0) / total;
+        const at = resolve(fundCode)
+        return total <= 0 ? 0 : (state.values[at] ?? 0) / total
       },
       shares: Object.fromEntries(state.codes.map((fundCode, at) => [fundCode, state.shares[at] ?? 0])),
       values: Object.fromEntries(state.codes.map((fundCode, at) => [fundCode, state.values[at] ?? 0])),

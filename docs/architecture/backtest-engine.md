@@ -155,7 +155,8 @@ function onDay(s) {       // 逐日；按**基金代码**寻址（不是下标�
 `s = { i, date, codes, nav(code), navs(code)（截至今日，无未来）, ma(code,n), pctChange(code,n),
 weight(code), shares, values, cash, invested, value, returnRate(), args:{ start, end, initialAmount, feeRate } }`。
 每日应用顺序 `rebalance → buy → sell`，`sellAll` 覆盖其余。未在 `assets` 声明的代码会**明确报错**。
-`CASH[:年化]` 是现金腿，在代码里以 `'cash'` 寻址。省略 `start`/`end` 默认近三年。
+`CASH[:年化]` 是现金腿，在代码里以 `'cash'` 寻址（`'CASH'`/`'CASH:0.02'` 也接受，大小写不敏感）。
+省略 `start`/`end` 默认近三年。`rebalance` 里出现未声明的键会**报错**（不会静默归零）。
 
 **适配**：引擎仍用下标寻址（`PortfolioDecision` 未变），`strategySandbox.toIndexDecision` 在边界做
 code→index 转换；引擎只把资产数下限放宽为 1（`portfolioBacktest.ts`），会计与黄金 fixtures 不动。
