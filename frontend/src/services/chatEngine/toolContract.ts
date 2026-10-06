@@ -144,6 +144,15 @@ const TOOL_DEFS: ToolSpec[] = [
     parameters: Type.Object({}),
   },
   {
+    name: 'get_portfolio_holdings',
+    label: '获取我的持仓',
+    description:
+      '读取用户保存在本地的基金持仓（代码/份额/成本/最新估值/当前权重）。' +
+      '注意：这是**当前持仓**，不是回测需要的目标权重；回测组合请用 run_portfolio_backtest 并显式给出目标权重。',
+    promptSnippet: 'get_portfolio_holdings(): 我的持仓（本地 IndexedDB）',
+    parameters: Type.Object({}),
+  },
+  {
     name: 'screen_funds_by_4433',
     label: '4433筛选基金',
     description: '按4433法则筛选符合条件的基金',
@@ -177,26 +186,42 @@ const TOOL_DEFS: ToolSpec[] = [
     label: '运行自定义策略代码',
     description:
       '用 JavaScript 自己写一个按交易日决策的策略并回测。只在没有现成方案能表达你的想法时使用：' +
-      '现成的每月/每周/一次性/价值平均/均线偏离方案请用 run_backtest，避免小题大做。' +
-      '代码必须是一个函数：每个交易日调用一次 onDay(s)，返回 { buy?: 金额(元), sellAll?: true }；返回空对象表示当天不操作。' +
-      's 的字段：{ i, date, nav, navs（截至今日含今日的净值数组，看不到未来）, shares, invested, value, ' +
-      'returnRate()（收益率小数）, args:{ initial_amount, fee_rate }, helpers:{ ma(n)（前 n 日均值，不含今日）, pctChange(n) } }。' +
-      '禁止使用 fetch/网络/存储等任何外部能力，只能使用 s 中提供的数据。用户确认后才会执行。',
+      '现成的每月/每周/一次性/价值平均/均线偏离方案请用 run_backtest，组合再平衡/注水用 run_portfolio_backtest，避免小题大做。' +
+      '【单基金】传 fund_code：onDay(s) 每交易日调用一次，返回 { buy?: 金额(元), sellAll?: true }；' +
+      's = { i, date, nav, navs（截至今日含今日，看不到未来）, shares, invested, value, returnRate(), ' +
+      'args:{ initial_amount, fee_rate }, helpers:{ ma(n)（前 n 日均值，不含今日）, pctChange(n) } }。' +
+      '【组合】传 assets（≥2 个）：返回 { buy?:[{asset,amount}], sell?:[{asset,amount}], rebalance?:[权重...], sellAll?:true }；' +
+      's = { i, date, navs[], history[][]（含今日，无未来）, codes[], shares[], values[], cash, invested, value, returnRate(), args, ' +
+      'helpers:{ ma(asset,n), pctChange(asset,n), weight(asset) } }，asset 是 assets 的下标。' +
+      'buy 是追加外部资金（计入累计投入）；sell 卖出换现金（留在组合里）；rebalance 用持仓+现金内部调仓（权重按总和归一化）；' +
+      'sellAll 清仓并停止交易。禁止使用 fetch/网络/存储等任何外部能力，只能使用 s 中提供的数据。用户确认后才会执行。',
     promptSnippet:
-      'run_strategy_code(fund_code, code, start_date?, end_date?, initial_amount?, fee_rate?, take_profit_rate?, stop_loss_rate?): 自写 JS 策略并回测（需用户确认）',
+      'run_strategy_code(fund_code 或 assets, code, start_date?, end_date?, initial_amount?, fee_rate?, take_profit_rate?, stop_loss_rate?): 自写 JS 策略并回测（单基金或组合，需用户确认）',
     parameters: Type.Object({
-      fund_code: str('6位基金代码'),
+      fund_code: optStr('单基金模式：6 位基金代码（与 assets 二选一）'),
+      assets: Type.Optional(
+        Type.Array(
+          Type.Object({
+            fund_code: optStr('6位基金代码；现金腿留空'),
+            weight: Type.Number({ description: '目标权重，如 25（百分数）或 0.25' }),
+            annual_rate: num('仅现金腿：年化收益率小数，如 0.02'),
+            name: optStr('资产名称，可选'),
+          }),
+          { description: '组合模式：至少 2 个资产（与 fund_code 二选一）' },
+        ),
+      ),
       code: Type.String({
         maxLength: 8000,
         description:
-          '策略函数体，或完整的 function onDay(s){...}。例：const ma = s.helpers.ma(60); if (s.invested === 0 && s.nav < ma * 0.98) return { buy: 3000 }; if (s.returnRate() > 0.3) return { sellAll: true }; return { buy: s.nav < ma ? 1500 : 500 };',
+          '策略函数体，或完整的 function onDay(s){...}。单基金例：const ma = s.helpers.ma(60); if (s.nav < ma * 0.98) return { buy: 3000 }; return { buy: 500 }; ' +
+          '组合例：if (s.helpers.pctChange(2, 1) < -0.1) return { buy: [{ asset: 2, amount: 5000 }] }; if (Math.max(...s.values) / s.value > 0.35) return { rebalance: [0.25,0.25,0.25,0.25] }; return {};',
       }),
       start_date: optStr('开始日期 YYYY-MM-DD，缺省为三年前'),
       end_date: optStr('结束日期 YYYY-MM-DD，缺省为今天'),
       initial_amount: num('初始资金（元），默认 0'),
       fee_rate: num('手续费率（小数，0.0015 表示 0.15%），默认 0.0015'),
-      take_profit_rate: num('引擎级止盈率（小数，0.2 表示 20%），可选'),
-      stop_loss_rate: num('引擎级止损率（小数，0.1 表示 10%），可选'),
+      take_profit_rate: num('引擎级止盈率（小数，0.2 表示 20%），可选（仅单基金模式）'),
+      stop_loss_rate: num('引擎级止损率（小数，0.1 表示 10%），可选（仅单基金模式）'),
     }),
   },
   {
@@ -212,6 +237,35 @@ const TOOL_DEFS: ToolSpec[] = [
       fee_rate: num('手续费率（小数），默认 0.0015'),
       take_profit_rate: num('止盈率（小数），可选'),
       stop_loss_rate: num('止损率（小数），可选'),
+    }),
+  },
+  {
+    name: 'run_portfolio_backtest',
+    label: '组合回测',
+    description:
+      '对多资产组合（多只基金按目标权重）做历史回测，支持定期/阈值再平衡与定期注水，返回组合年化/回撤/夏普与各资产表现。' +
+      '单只基金请用 run_backtest；这里是组合层面，至少需要 2 个资产。' +
+      '现金腿不填 fund_code、改填 annual_rate（货币基金没有单位净值序列）。权重按总和归一化，传百分数(25)或小数(0.25)均可。',
+    promptSnippet:
+      'run_portfolio_backtest(assets, start_date?, end_date?, initial_amount?, contribution_amount?, contribution_period?, rebalance_frequency?, rebalance_threshold?, fee_rate?): 多资产组合再平衡回测',
+    parameters: Type.Object({
+      assets: Type.Array(
+        Type.Object({
+          fund_code: optStr('6位基金代码；现金腿留空'),
+          weight: Type.Number({ description: '目标权重，如 25（百分数）或 0.25；按所有资产总和归一化' }),
+          annual_rate: num('仅现金腿：年化收益率小数，如 0.02 表示 2%'),
+          name: optStr('资产名称，可选'),
+        }),
+        { description: '资产列表，至少 2 项' },
+      ),
+      start_date: optStr('开始日期 YYYY-MM-DD，缺省为三年前'),
+      end_date: optStr('结束日期 YYYY-MM-DD，缺省为今天'),
+      initial_amount: num('期初一次性投入（元），默认 0'),
+      contribution_amount: num('每期注水金额（元），可选'),
+      contribution_period: Type.Optional(enumOf('monthly', 'quarterly', 'yearly')),
+      rebalance_frequency: Type.Optional(enumOf('none', 'monthly', 'quarterly', 'yearly')),
+      rebalance_threshold: num('权重偏离阈值（小数，0.05 表示偏离 5 个百分点即触发），可选'),
+      fee_rate: num('手续费率（小数，0.0015=0.15%），买卖双向，默认 0.0015'),
     }),
   },
   {
@@ -365,11 +419,22 @@ export function toolSpecsToXml(specs: ToolSpec[]): string {
   const lines: string[] = ['<available_tools>']
   for (const spec of specs) {
     lines.push(`<tool name="${escapeXml(spec.name)}" description="${escapeXml(spec.description)}">`)
-    const props = (spec.parameters.properties ?? {}) as Record<string, { type?: string; enum?: unknown[]; anyOf?: Array<{ const?: unknown }>; description?: string }>
+    const props = (spec.parameters.properties ?? {}) as Record<string, {
+      type?: string
+      enum?: unknown[]
+      anyOf?: Array<{ const?: unknown }>
+      description?: string
+      items?: { properties?: Record<string, { type?: string }> }
+    }>
     const required = new Set((spec.parameters.required ?? []) as string[])
     for (const [key, prop] of Object.entries(props)) {
       const enumVals = prop.enum ?? prop.anyOf?.map((a) => a.const).filter((v) => v !== undefined) ?? []
-      const typeStr = enumVals.length > 0 ? enumVals.map((v) => String(v)).join('|') : (prop.type ?? 'any')
+      const itemProps = prop.items?.properties
+      const typeStr = itemProps
+        ? `array<{${Object.entries(itemProps).map(([k, v]) => `${k}:${v.type ?? 'any'}`).join(', ')}}>`
+        : enumVals.length > 0
+          ? enumVals.map((v) => String(v)).join('|')
+          : (prop.type ?? 'any')
       const req = required.has(key) ? ' required="true"' : ''
       lines.push(`<parameter name="${escapeXml(key)}" type="${escapeXml(typeStr)}"${req}>${escapeXml(prop.description ?? '')}</parameter>`)
     }

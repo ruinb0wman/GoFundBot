@@ -107,3 +107,156 @@ export interface Decision {
 export interface BacktestHooks {
   decide?: (state: DecisionState) => Decision | void;
 }
+
+// ───────────────────────────── Portfolio (multi-asset) ─────────────────────────────
+
+/**
+ * Portfolio backtest DTOs. Separate from `BacktestSpec` on purpose: the single-fund
+ * engine only ever sees one NAV series (see backtestEngine.ts), while a portfolio
+ * holds N assets with target weights and rebalances between them.
+ *
+ * Weights are normalized by their sum, so passing percent (25) or fraction (0.25)
+ * for the same portfolio yields identical results.
+ */
+export type RebalanceFrequency = 'none' | 'monthly' | 'quarterly' | 'yearly';
+
+export interface FundAsset {
+  kind?: 'fund';
+  fundCode: string;
+  name?: string;
+  /** Target weight; normalized across all assets. */
+  weight: number;
+}
+
+/**
+ * Synthetic cash leg. Money-market funds have no unit-NAV series (see
+ * eastmoneyFundProvider.ts), so the portfolio's cash allocation is modeled as a
+ * fixed annual yield compounded daily rather than fetched from `/nav-history`.
+ */
+export interface CashAsset {
+  kind: 'cash';
+  name?: string;
+  /** Annual yield as a fraction (0.02 = 2%). */
+  annualRate: number;
+  weight: number;
+}
+
+export type PortfolioAsset = FundAsset | CashAsset;
+
+export interface PortfolioContribution {
+  amount: number;
+  period: RebalanceFrequency;
+  /** monthly: day of month 1–31 (default: first trading day of the period). */
+  day?: number | null;
+}
+
+export interface PortfolioRebalance {
+  frequency: RebalanceFrequency;
+  /** Absolute weight deviation in fraction of total (0.05 = 5 percentage points). */
+  threshold?: number | null;
+}
+
+export interface PortfolioSpec {
+  assets: PortfolioAsset[];
+  initialAmount?: number;
+  contribution?: PortfolioContribution | null;
+  rebalance?: PortfolioRebalance | null;
+  /** Applied to both buys and sells; default 0.0015. */
+  feeRate?: number;
+  /** Contribution allocation: top up the most underweight legs (default) or buy pro-rata to target. */
+  contributionAllocation?: 'underweight' | 'target';
+}
+
+export interface PortfolioAssetResult {
+  code: string;
+  name: string;
+  kind: 'fund' | 'cash';
+  targetWeight: number;
+  finalWeight: number;
+  contributed: number;
+  finalValue: number;
+  return_rate: number;
+}
+
+/**
+ * `annual_return` (inherited) is the invested-capital figure and is distorted for
+ * contribution-heavy portfolios; `annual_return_twr` is the time-weighted
+ * equivalent (money-flow adjusted), which is the correct number to compare against
+ * published portfolio returns.
+ */
+export interface PortfolioSummary extends BacktestSummary {
+  buy_count: number;
+  annual_return_twr: number;
+  rebalance_count: number;
+  contribution_count: number;
+}
+
+export interface PortfolioBacktestResult {
+  /** Portfolio-level timeline in the single-fund record shape, so UI/sampling reuse it. */
+  timeline: BacktestTimelineRecord[];
+  summary: PortfolioSummary;
+  assets: PortfolioAssetResult[];
+  /** Real window after aligning all assets (max of first dates → min of last dates). */
+  effective_start: string;
+  effective_end: string;
+  excluded: { code: string; reason: string }[];
+  note: string;
+}
+
+export interface PortfolioBacktestFailure {
+  error: string;
+}
+
+export function isPortfolioResult(value: PortfolioBacktestResult | PortfolioBacktestFailure): value is PortfolioBacktestResult {
+  return 'summary' in value;
+}
+
+/**
+ * Per-day state handed to a custom multi-asset strategy (see strategySandbox.ts).
+ * `history` is truncated to **today and earlier** per asset — no look-ahead.
+ * `cash` is the uninvested balance produced by `sell` / rebalance fees.
+ */
+export interface PortfolioDecisionState {
+  i: number;
+  date: string;
+  /** Today's NAV per asset, indexed like `codes` / `shares`. */
+  navs: number[];
+  /** Per-asset NAV series up to and including today. */
+  history: number[][];
+  codes: string[];
+  shares: number[];
+  values: number[];
+  cash: number;
+  invested: number;
+  /** Positions + cash. */
+  value: number;
+}
+
+/** Buy `amount` yuan of `asset` with **new external money** (counts as invested). */
+export interface PortfolioBuy {
+  asset: number;
+  amount: number;
+}
+
+/** Sell `amount` yuan of `asset`; proceeds stay in the portfolio as cash. */
+export interface PortfolioSell {
+  asset: number;
+  amount: number;
+}
+
+/**
+ * What a custom portfolio strategy decides for one trading day.
+ * Application order: `rebalance` (internal) → `buy` (external) → `sell` (to cash);
+ * `sellAll` liquidates everything and wins over the rest.
+ */
+export interface PortfolioDecision {
+  buy?: PortfolioBuy[];
+  sell?: PortfolioSell[];
+  /** Rebalance positions + cash to these target weights (normalized). */
+  rebalance?: number[];
+  sellAll?: boolean;
+}
+
+export interface PortfolioHooks {
+  decide?: (state: PortfolioDecisionState) => PortfolioDecision | void;
+}

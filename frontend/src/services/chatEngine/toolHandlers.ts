@@ -6,14 +6,17 @@
 
 import api from '../api'
 import { db } from '../../db'
+import { listPositions } from '../../db/positions'
 import { sleep } from './toolLoop'
 import { searchWeb } from '../searchService'
-import { isBacktestResult } from '../backtest/backtestTypes'
+import { isBacktestResult, isPortfolioResult, type NavPoint } from '../backtest/backtestTypes'
 import { backtestFund, clipNavHistory, fetchNavHistory } from '../backtest/runBacktestForFund'
+import { backtestPortfolio } from '../backtest/runPortfolioBacktest'
+import { samplePortfolioBacktest } from '../backtest/portfolioSample'
 import { compareStrategies } from '../backtest/strategyCompare'
 import { sampleBacktest } from '../backtest/timelineSample'
-import { runStrategyCode } from '../backtest/runStrategyCode'
-import { resolveDateRange, specFromToolArgs, type ToolArgs } from '../backtest/toolArgs'
+import { runPortfolioStrategyCode, runStrategyCode } from '../backtest/runStrategyCode'
+import { resolveDateRange, portfolioSpecFromToolArgs, specFromToolArgs, type PortfolioToolArgs, type ToolArgs } from '../backtest/toolArgs'
 import {
   buildIndustryPerformanceFromScreening,
   compute4433Ranking,
@@ -54,6 +57,36 @@ async function localScreeningItems(): Promise<ScreeningLikeItem[]> {
 }
 
 type ToolArgsRecord = Record<string, unknown>
+
+/** Portfolio mode of `run_strategy_code`: fetch each leg, then run the sandbox in the worker. */
+async function runPortfolioStrategyTool(args: ToolArgsRecord, startDate: string, endDate: string) {
+  const spec = portfolioSpecFromToolArgs(args as PortfolioToolArgs)
+  if (spec.assets.length < 2) {
+    return { error: '组合模式至少需要 2 个资产；单只基金请改用 fund_code' }
+  }
+  const codes = [
+    ...new Set(
+      spec.assets
+        .filter((asset) => asset.kind !== 'cash')
+        .map((asset) => String((asset as { fundCode?: string }).fundCode ?? '').trim())
+        .filter(Boolean),
+    ),
+  ]
+  const navByCode: Record<string, NavPoint[]> = {}
+  await Promise.all(
+    codes.map(async (code) => {
+      try {
+        navByCode[code] = await fetchNavHistory(code, startDate, endDate)
+      } catch {
+        navByCode[code] = []
+      }
+    }),
+  )
+  return runPortfolioStrategyCode(
+    { spec, navByCode, code: String(args.code ?? '') },
+    { specLabel: '自定义组合策略代码' },
+  )
+}
 
 /** Shared by `suggest_strategy` and `compare_backtest_strategies`. */
 async function compareStrategiesTool(args: ToolArgsRecord) {
@@ -228,6 +261,50 @@ const toolHandlers: Record<string, (args: Record<string, unknown>, ctx: ToolCont
     return { message: '自选列表信息存储在前端本地（IndexedDB），请在页面上查看和管理自选基金' }
   },
 
+  get_portfolio_holdings: async () => {
+    const rows = await listPositions()
+    if (rows.length === 0) {
+      return { holdings: [], total_cost: 0, message: '本地（IndexedDB）暂无持仓记录，请先在「估值与持仓 → 持仓管理」页添加持仓' }
+    }
+    const holdings = await Promise.all(
+      rows.map(async (row) => {
+        let nav: number | null = null
+        try {
+          const res = await api.get(`/funds/${row.fundCode}/estimate`)
+          const d = unpack(res)?.data ?? unpack(res) ?? {}
+          const value = Number(d.estimatedNav ?? d.nav)
+          nav = Number.isFinite(value) && value > 0 ? value : null
+        } catch {
+          // fall back to the cost basis below
+        }
+        const marketValue = nav != null ? row.shares * nav : null
+        return {
+          fund_code: row.fundCode,
+          fund_name: row.fundName ?? '',
+          purchase_date: row.purchaseDate ?? '',
+          shares: row.shares,
+          cost: row.cost,
+          nav,
+          market_value: marketValue,
+          cost_value: row.shares * row.cost,
+        }
+      }),
+    )
+    const totalCost = holdings.reduce((sum, h) => sum + h.cost_value, 0)
+    const totalMarket = holdings.reduce((sum, h) => sum + (h.market_value ?? h.cost_value), 0)
+    return {
+      holdings: holdings.map((h) => ({
+        ...h,
+        market_value: h.market_value != null ? +h.market_value.toFixed(2) : null,
+        weight_pct: totalMarket > 0 ? +((((h.market_value ?? h.cost_value) / totalMarket) * 100).toFixed(2)) : 0,
+      })),
+      total_cost: +totalCost.toFixed(2),
+      total_market_value: +totalMarket.toFixed(2),
+      count: holdings.length,
+      note: '来自本地 IndexedDB 的**当前持仓**（权重按最新估值，估值失败时用成本价）。回测组合需另给目标权重。',
+    }
+  },
+
   screen_funds_by_4433: async () => {
     const items = await localScreeningItems()
     if (items.length === 0) return { funds: [], message: '暂未获取到基金数据，请稍后重试', method: '4433' }
@@ -246,10 +323,26 @@ const toolHandlers: Record<string, (args: Record<string, unknown>, ctx: ToolCont
     return sampleBacktest(outcome, request);
   },
 
+  run_portfolio_backtest: async (args) => {
+    const { startDate, endDate } = resolveDateRange(args as ToolArgs)
+    const spec = portfolioSpecFromToolArgs(args as PortfolioToolArgs)
+    if (spec.assets.length < 2) {
+      return { error: '至少需要 2 个资产（基金或现金）才能回测组合；单只基金请改用 run_backtest' }
+    }
+    const result = await backtestPortfolio({ ...spec, startDate, endDate })
+    if (!isPortfolioResult(result)) return { error: result.error }
+    return samplePortfolioBacktest(result, spec)
+  },
+
   // LLM-authored strategy code. Runs only after the user approves (see
   // chatEngine/toolApproval.ts + ChatPanel's approval card).
   run_strategy_code: async (args) => {
     const { startDate, endDate } = resolveDateRange(args as ToolArgs)
+    // `assets` (≥2) selects the multi-asset contract; `fund_code` the single-fund one.
+    if (Array.isArray(args.assets) && args.assets.length > 0) {
+      return runPortfolioStrategyTool(args, startDate, endDate)
+    }
+    if (!args.fund_code) return { error: '请提供 fund_code（单基金）或 assets（组合）' }
     try {
       const nav = clipNavHistory(await fetchNavHistory(String(args.fund_code ?? ''), startDate, endDate), { startDate, endDate })
       if (nav.length === 0) return { error: `未获取到 ${args.fund_code} 在 ${startDate} ~ ${endDate} 的净值数据` }

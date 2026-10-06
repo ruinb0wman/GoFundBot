@@ -60,7 +60,7 @@ SkillRouter.route(message, preferred?):
 
 | 模块 | 职责 |
 |------|------|
-| `toolContract.ts` | 27 个工具的**单一数据源**（对齐 pi `defineTool`）：`ToolSpec { name, label, description, parameters: Type.Object(…), promptSnippet }`（TypeBox @sinclair/typebox）。派生三样东西：OpenAI `tools` 参数（`toolSpecToOpenAI`）、系统提示 `<available_tools>` XML 清单（`toolSpecsToXml`）、运行时参数校验（`validateToolCall`：必需/类型/枚举） |
+| `toolContract.ts` | 29 个工具的**单一数据源**（对齐 pi `defineTool`）：`ToolSpec { name, label, description, parameters: Type.Object(…), promptSnippet }`（TypeBox @sinclair/typebox）。派生三样东西：OpenAI `tools` 参数（`toolSpecToOpenAI`）、系统提示 `<available_tools>` XML 清单（`toolSpecsToXml`）、运行时参数校验（`validateToolCall`：必需/类型/枚举） |
 | `toolCallParser.ts` | 传输层向导：`extractToolCalls(content)` 解析 `<ai_tool_calls>` 块（参数值智能识别 JSON 数组/对象/数字/布尔 vs 纯文本，处理引号、实体、多行、畸形/截断块）；`sanitizeAssistantContent(content)` 剥离一切工具标记 |
 | `toolLoop.ts` | **共享工具循环**（从 index.ts 抽出，chat 与分析场景复用）：`normalizeToolCalls`（原生+XML 归一化）、`executeToolCall`（校验+`{ok,data}|{ok,error}` 信封）、`truncateJson`（回传裁剪）、`withRetry`/`trimMessages`/`sleep` |
 | `chatEngine/index.ts` | 每轮响应先归一化 → 校验 → 信封执行 → 回传；流式输出净化；无有效内容时的优雅收尾（status 事件，不再静默空答） |
@@ -93,10 +93,12 @@ SkillRouter.route(message, preferred?):
 | `get_market_indices` / `get_market_news` / `get_hot_sectors` 等 | Node `/api/market*` / `/api/news*` |
 | `get_concept_sectors` | Node `/api/market/concept-sectors`（service 侧走 Python akshare 同花顺概念资金流 + 概念简介驱动事件，**不走 EastMoney**；详见 `market-sector-rank.md` §八） |
 | `run_backtest` / `suggest_strategy` / `compare_backtest_strategies` | **前端本地引擎** `frontend/src/services/backtest/`（浏览器内计算，无后端调用） |
-| `run_strategy_code` | **前端 Worker 沙箱** `frontend/src/services/backtest/strategy{Sandbox,Worker}.ts`：LLM 自写 JS 策略，经 `chatEngine/toolApproval.ts` **用户确认**后在可终止 Worker 中执行；无 UI 的 headless 分析场景默认拒执 |
+| `run_portfolio_backtest` | **前端组合引擎** `frontend/src/services/backtest/portfolioBacktest.ts` + `runPortfolioBacktest.ts`：多资产按目标权重，定期/阈值再平衡 + 定期注水；权重按总和归一化，现金腿用 `annual_rate`（详见 `backtest-engine.md` 组合回测节） |
+| `run_strategy_code` | **前端 Worker 沙箱** `frontend/src/services/backtest/strategy{Sandbox,Worker}.ts`：LLM 自写 JS 策略（`fund_code` 单基金 `s.nav`，或 `assets` 组合 `s.navs/history` + `buy/sell/rebalance`），经 `chatEngine/toolApproval.ts` **用户确认**后在可终止 Worker 中执行；无 UI 的 headless 分析场景默认拒执 |
 | `screen_funds_by_4433` / `get_funds_by_industry` / `get_industry_performance` | 前端 IndexedDB + `industryClassifier` |
 | `search_news` | 前端 `searchService` |
 | `get_watchlist` | 前端（IndexedDB 本地提示） |
+| `get_portfolio_holdings` | 前端 IndexedDB `positions` 表（`db/positions.ts`）；估值走 Node `/api/funds/:code/estimate`，失败时退回成本价 |
 
 ## 事件流（前端内部事件，不再走 SSE 端点）
 

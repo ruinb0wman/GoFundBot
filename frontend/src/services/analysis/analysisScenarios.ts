@@ -221,7 +221,7 @@ const FULL_TOOL_NAMES = [
   'get_market_indices', 'get_market_news', 'get_hot_sectors', 'get_concept_sectors',
   'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_flash_news',
   'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
-  'compare_backtest_strategies', 'run_strategy_code',
+  'compare_backtest_strategies', 'run_strategy_code', 'run_portfolio_backtest', 'get_portfolio_holdings',
   'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
   'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
   'search_news', 'get_index_kline',

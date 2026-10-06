@@ -11,20 +11,20 @@ import {
   TOOL_CALL_RULES,
 } from '../../services/chatEngine/toolContract'
 
-/** The 27 chat tools known to the system (kept in sync with skills.ts toolNames). */
+/** The 29 chat tools known to the system (kept in sync with skills.ts toolNames). */
 const EXPECTED_TOOLS = [
   'search_funds', 'get_fund_detail', 'get_fund_estimate', 'get_fund_nav_history',
   'get_market_indices', 'get_market_news', 'get_hot_sectors', 'get_concept_sectors',
   'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_flash_news',
   'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
-  'compare_backtest_strategies', 'run_strategy_code',
+  'compare_backtest_strategies', 'run_strategy_code', 'run_portfolio_backtest', 'get_portfolio_holdings',
   'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
   'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
   'search_news', 'get_index_kline',
 ]
 
 describe('tool registry', () => {
-  it('contains exactly the expected 27 tools with full metadata', () => {
+  it('contains exactly the expected 29 tools with full metadata', () => {
     const names = listToolSpecs().map((t) => t.name)
     expect(names.sort()).toEqual([...EXPECTED_TOOLS].sort())
     for (const spec of listToolSpecs()) {
@@ -52,14 +52,34 @@ describe('tool registry', () => {
     }
   })
 
+  it('declares the portfolio assets array and validates its items', () => {
+    const tool = getToolSpec('run_portfolio_backtest')!
+    expect(tool.parameters.required).toEqual(['assets'])
+    expect(
+      validateToolCall('run_portfolio_backtest', {
+        assets: [{ fund_code: '110022', weight: 25 }, { fund_code: '000217', weight: 75 }],
+      }).ok,
+    ).toBe(true)
+    expect(validateToolCall('run_portfolio_backtest', { assets: [{ fund_code: '110022' }] }).ok).toBe(false)
+  })
+
   it('gates run_strategy_code behind a bounded code parameter', () => {
     const tool = getToolSpec('run_strategy_code')!
-    expect(tool.parameters.required).toEqual(['fund_code', 'code'])
+    expect(tool.parameters.required).toEqual(['code'])
     const code = (tool.parameters.properties as Record<string, { maxLength?: number; description?: string }>).code
     expect(code.maxLength).toBe(8000)
     expect(code.description).toContain('onDay')
     // maxLength is actually enforced at the validation boundary
     expect(validateToolCall('run_strategy_code', { fund_code: '110022', code: 'x'.repeat(8001) }).ok).toBe(false)
+    // fund_code and assets are alternative modes; the handler requires one of them
+    expect(validateToolCall('run_strategy_code', { code: 'return {}' }).ok).toBe(true)
+    expect(validateToolCall('run_strategy_code', { fund_code: '110022', code: 'return {}' }).ok).toBe(true)
+    expect(
+      validateToolCall('run_strategy_code', {
+        assets: [{ fund_code: '110022', weight: 50 }, { annual_rate: 0.02, weight: 50 }],
+        code: 'return {}',
+      }).ok,
+    ).toBe(true)
   })
 
   it('provides labels for UI chips and falls back to the raw name', () => {
@@ -134,6 +154,11 @@ describe('toolSpecsToXml', () => {
   it('lists enums in the parameter type column', () => {
     const xml = toolSpecsToXml([getToolSpec('get_index_kline')!])
     expect(xml).toContain('type="daily|weekly|monthly"')
+  })
+
+  it('describes array item fields so XML-only models can see them', () => {
+    const xml = toolSpecsToXml([getToolSpec('run_portfolio_backtest')!])
+    expect(xml).toContain('type="array&lt;{fund_code:string, weight:number, annual_rate:number, name:string}&gt;"')
   })
 })
 

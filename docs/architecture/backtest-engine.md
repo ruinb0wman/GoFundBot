@@ -155,9 +155,75 @@ fixtures **逐值一致**（回归测试保证）。自定义运行因为无计�
 `fetch`/`indexedDB` 等全局 + **不注入任何密钥**；**用户点击运行是唯一信任边界**，所以 UI 必须
 完整展示代码原文。无 UI 的 headless 分析场景（`analysis/`）会**默认拒执**并让模型改用 `run_backtest`。
 
+**组合模式（多资产）**：`run_strategy_code` 也接 `assets`（≥2，与 `fund_code` 二选一），走同一个
+Worker，只是 `kind: 'portfolio'` 分派到 `handleRunPortfolioStrategyRequest`。契约：
+
+```js
+onDay(s) -> {
+  buy?:  [{ asset, amount }],   // 追加外部资金（计入累计投入）
+  sell?: [{ asset, amount }],   // 卖出换现金（留在组合里，计入组合市值）
+  rebalance?: [权重...],        // 用持仓+现金内部调仓（按总和归一化）
+  sellAll?: true                // 清仓并停止
+}
+```
+
+`s = { i, date, navs[], history[][]（按日切片，无未来）, codes[], shares[], values[], cash, invested,
+value, returnRate(), args, helpers:{ ma(asset,n), pctChange(asset,n), weight(asset) } }`；
+`asset` 是 `assets` 下标。每日应用顺序：`rebalance` → `buy` → `sell`，`sellAll` 覆盖其余。
+引擎侧就是 `runPortfolioBacktest(spec, { navByCode, hooks })` —— 有 `hooks.decide` 时绕过
+`contribution`/`rebalance` 计划，由代码全权决策；`contribution_count` 报 0，`investment_count`
+按**实际买入日数**计。结果仍走 `samplePortfolioBacktest`（pretty-print ≤3800 字符）。
+
+**口径陷阱**：组合自定义模式有 `cash` 余额，且再平衡会在腿间转移市值——所以 `assets[].return_rate`
+取**该腿自身净值区间涨幅**，不是 `期末市值/累计投入`（后者会让一条持平甚至被卖空的腿看起来像巨亏）。
+
 ## 持久化
 
 `db/backtestRuns.ts`（Dexie `version(5)`，表 `backtestRuns`，每只基金保留最近 10 次）：
 只存 `spec` + `summary` + **抽样**检查点（全量 timeline 约 150 KB/次，可由 spec 重算）。
 回测页据此显示「上次回测」并支持一键**载入参数**；`specHash()`（FNV-1a on key-sorted JSON）
-用于按 spec 定位历史运行。
+用于按 spec 定位历史运行。组合回测页**暂不持久化**。
+
+## 组合回测（多资产 + 再平衡）
+
+单基金引擎只吃一条净值曲线（`runBacktest(navHistory, spec)`），多资产的核心仓（如
+永久投资组合 25/25/25/25 + 年度再平衡）表达不了，所以组合走独立的一层：
+
+```
+用户 / AI 工具 run_portfolio_backtest
+      │
+      ▼
+services/backtest/runPortfolioBacktest.ts   ← 每个资产各取一次 /funds/:code/nav-history
+      ▼
+services/backtest/portfolioBacktest.ts       ← 纯函数：对齐 → 建仓/注水/再平衡 → 组合 timeline
+      ├─ summarize()（复用单基金引擎）       年化/回撤/夏普口径一致
+      ├─ sampleTimeline()（复用）            工具输出 <4KB
+      └─ TWR 年化（annual_return_twr）       剔除注水影响的真实收益
+      │
+      ├─→ components/PortfolioBacktest.vue   （/backtest-portfolio 页）
+      └─→ chatEngine/toolHandlers.ts         run_portfolio_backtest
+```
+
+**数据契约**：`PortfolioSpec { assets[{kind:'fund'|'cash', fundCode|annualRate, weight}],
+initialAmount, contribution{amount,period,day}, rebalance{frequency,threshold}, feeRate }`。
+权重按**总和归一化**，所以传百分数(25)或小数(0.25)等价。
+
+**对齐**：每个基金的净值按日期取**并集**、前向填充（停牌不丢曲线），但模拟只从
+`effective_start = max(各资产首个可用日期)` 开始，保证开局每条腿都在；`effective_end =
+min(各资产最后日期)`。区间内没数据的资产进 `excluded`（工具/页面都会提示），剩余资产 <2 则报错。
+
+**现金腿**：货币基金**没有单位净值序列**（`eastmoneyFundProvider.ts` 里 `hb` 走货币基金排行），
+所以现金用 synthetic `cash`（`annualRate` 按日复利），不要塞 6 位货基代码。
+
+**注水**：`contribution.period`（monthly/quarterly/yearly）按周期首个交易日；默认按
+「补最缺的腿」分配（`contributionAllocation: 'underweight'`），可切 `'target'` 按目标权重分摊。
+
+**再平衡**：`rebalance.frequency` 日历触发（周期首个交易日）或 `threshold` 偏离触发
+（`0.05` = 偏离 5 个百分点）；同日先注水后再平衡；买入与卖出都扣 `feeRate`（未区分申赎费/印花税，偏乐观）。
+
+**指标**：`annual_return` 是投入本金口径，注水型组合会失真；**用 `annual_return_twr`（时间加权年化）**
+与公开组合收益对比。
+
+**工具输出预算**：`samplePortfolioBacktest()` 把 `assets` 压成 `{code,kind,target_pct,final_pct,return_pct}`，
+并从 12 个检查点起**逐次减 2** 直到 `truncateJson`（pretty-print、4000 字符硬截断）不会截断（上限 3800）。
+单基金那份预算有 `backtestPayload.test.ts`，组合这份有 `portfolioBacktestPayload.test.ts` 守着。

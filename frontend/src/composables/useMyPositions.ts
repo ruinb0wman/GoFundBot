@@ -6,7 +6,7 @@ import * as echarts from 'echarts'
 import { useEChartsTheme } from './useEChartsTheme'
 import { useDebouncedWatch } from './useDebouncedWatch'
 import { fundAPI } from '../services/api'
-import { portfolioAPI } from '../services/portfolioApi'
+import { addPosition as addPositionDb, listPositions, removePosition as removePositionDb, replaceAllPositions } from '../db/positions'
 import { useFundStore } from '../stores/fundStore'
 
 export function useMyPositions() {
@@ -233,7 +233,7 @@ export function useMyPositions() {
         operationText.value = `转换完成：卖出 ${source.code} 金额 ¥${new Decimal(amount).toFixed(2)}，买入 ${targetCode}。`
       }
       await Promise.all([refreshRealtimeQuotes(), loadHistoryForPositions()])
-      syncToApi()
+      await syncToDb()
       renderCharts()
       if (operationForm.type !== 'convert') {
         operationForm.amount = null
@@ -533,41 +533,71 @@ export function useMyPositions() {
 
   const addPosition = async () => {
     const code = normalizeFundCode(form.code)
-    const newPos = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      code,
-      name: form.name,
-      purchaseDate: form.purchaseDate,
-      purchaseTime: form.purchaseTime,
-      shares: Number(form.shares),
-      cost: Number(form.cost)
+    const shares = Number(form.shares)
+    const cost = Number(form.cost)
+    try {
+      const saved = await addPositionDb({
+        fundCode: code,
+        fundName: form.name,
+        purchaseDate: form.purchaseDate,
+        purchaseTime: form.purchaseTime,
+        shares,
+        cost,
+      })
+      positions.value.unshift({
+        id: saved.id,
+        code: saved.fundCode,
+        name: saved.fundName ?? '',
+        purchaseDate: saved.purchaseDate ?? '',
+        purchaseTime: saved.purchaseTime ?? '',
+        shares: saved.shares,
+        cost: saved.cost,
+      })
+    } catch (error) {
+      console.error('保存持仓失败:', error)
     }
-    positions.value.unshift(newPos)
     resetForm()
-    portfolioAPI.addPosition({
-      fund_code: code, fund_name: form.name || '',
-      purchase_date: form.purchaseDate || '', purchase_time: form.purchaseTime || '',
-      shares: Number(form.shares) || 0, cost: Number(form.cost) || 0,
-    }).catch(() => {})
     await refreshRealtimeQuotes()
     await loadHistoryForPositions()
     renderCharts()
   }
 
-  const syncToApi = async () => {
-    portfolioAPI.clearPositions().catch(() => {})
-    for (const p of positions.value) {
-      await portfolioAPI.addPosition({
-        fund_code: p.code, fund_name: p.name || '',
-        purchase_date: p.purchaseDate || '', purchase_time: p.purchaseTime || '',
-        shares: p.shares || 0, cost: p.cost || 0,
-      })
+  /** Persist the in-memory list (used after an operation mutates rows in place). */
+  const syncToDb = async () => {
+    try {
+      await replaceAllPositions(
+        positions.value.map(p => ({
+          id: typeof p.id === 'number' ? p.id : undefined,
+          fundCode: p.code,
+          fundName: p.name,
+          purchaseDate: p.purchaseDate,
+          purchaseTime: p.purchaseTime,
+          shares: p.shares,
+          cost: p.cost,
+        })),
+      )
+      const rows = await listPositions()
+      positions.value = rows.map(p => ({
+        id: p.id,
+        code: p.fundCode,
+        name: p.fundName ?? '',
+        purchaseDate: p.purchaseDate ?? '',
+        purchaseTime: p.purchaseTime ?? '',
+        shares: p.shares,
+        cost: p.cost,
+      }))
+    } catch (error) {
+      console.error('同步持仓到本地数据库失败:', error)
     }
   }
 
   const removePosition = async id => {
     positions.value = positions.value.filter(item => item.id !== id)
-    portfolioAPI.deletePosition(id).catch(() => {})
+    try {
+      await removePositionDb(Number(id))
+    } catch (error) {
+      console.error('删除持仓失败:', error)
+    }
     await loadHistoryForPositions()
     renderCharts()
   }
@@ -585,15 +615,16 @@ export function useMyPositions() {
 
   onMounted(async () => {
     try {
-      const res = await portfolioAPI.getPositions()
-      const data = res?.data
-      if (Array.isArray(data)) {
-        positions.value = data.map(p => ({
-          id: p.id, code: p.fund_code, name: p.fund_name,
-          purchaseDate: p.purchase_date, purchaseTime: p.purchase_time,
-          shares: p.shares || 0, cost: p.cost || 0,
-        }))
-      }
+      const rows = await listPositions()
+      positions.value = rows.map(p => ({
+        id: p.id,
+        code: p.fundCode,
+        name: p.fundName ?? '',
+        purchaseDate: p.purchaseDate ?? '',
+        purchaseTime: p.purchaseTime ?? '',
+        shares: p.shares || 0,
+        cost: p.cost || 0,
+      }))
     } catch (e) { console.error('加载持仓失败', e) }
     await Promise.all([refreshRealtimeQuotes(), loadHistoryForPositions()])
     renderCharts()

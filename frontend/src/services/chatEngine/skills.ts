@@ -159,7 +159,8 @@ ${RESPONSE_REQUIREMENTS}
 2. 回测结果要展示：总投入、总市值、总收益、收益率、年化收益
 3. 不同策略要对比呈现，推荐最优方案并说明理由
 4. 风险提示：回测历史表现不代表未来收益
-5. 区分问题类型：需要基金代码+具体数据才能回答的，才调用工具；概念性、理论性、方法论问题直接回答，不调任何工具`
+5. 多资产/组合层（多只基金按目标权重、再平衡、定期注水）用 run_portfolio_backtest，不要拆成单基金回测再手工拼；单只基金才用 run_backtest
+6. 区分问题类型：需要基金代码+具体数据才能回答的，才调用工具；概念性、理论性、方法论问题直接回答，不调任何工具`
 
 const STRATEGY_CHAT_PROMPT = `你是一位投资策略顾问，专注帮助个人投资者讨论、制定和完善投资策略。
 
@@ -171,6 +172,7 @@ const STRATEGY_CHAT_PROMPT = `你是一位投资策略顾问，专注帮助个�
 - 帮助用户制定新策略：投资目标、资金分配、标的范围、买入/卖出规则、风险管理、复盘机制
 - 帮助用户完善策略：指出逻辑漏洞、与用户风险承受能力的冲突、执行层面的模糊处
 - 讨论策略时如需核对具体基金/市场数据，可调用数据工具；纯概念性、理论性讨论直接回答
+- 用户要回测自己的组合/再平衡策略（多资产、多只基金按权重）时，用 run_portfolio_backtest 直接跑，不要回复「工具做不了」或手工拼单基金回测；现金腿用 annual_rate 而不是基金代码（货币基金没有净值序列）
 - 当用户要求制定/完善策略时，最后给出结构化的"可保存版本"，用分段列出：标题、核心要点（可逐条列出），方便用户直接保存为策略记忆
 
 ${DATA_RULES}
@@ -220,7 +222,7 @@ const GENERAL_TOOL_NAMES = [
   'get_market_indices', 'get_market_news', 'get_hot_sectors', 'get_concept_sectors',
   'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_flash_news',
   'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
-  'compare_backtest_strategies', 'run_strategy_code',
+  'compare_backtest_strategies', 'run_strategy_code', 'run_portfolio_backtest', 'get_portfolio_holdings',
   'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
   'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
   'search_news', 'get_index_kline',
@@ -267,7 +269,7 @@ export const SKILL_DEFINITIONS: Skill[] = [
     description: '定投回测模拟和策略推荐',
     keywords: ['定投', '回测', '策略', '怎么投', '投资方式', '方案', '定投计划'],
     systemPrompt: INVESTMENT_STRATEGY_PROMPT,
-    toolNames: ['run_backtest', 'suggest_strategy', 'compare_backtest_strategies', 'run_strategy_code', 'get_fund_nav_history'],
+    toolNames: ['run_backtest', 'suggest_strategy', 'compare_backtest_strategies', 'run_strategy_code', 'run_portfolio_backtest', 'get_fund_nav_history'],
   },
   {
     name: 'strategy',

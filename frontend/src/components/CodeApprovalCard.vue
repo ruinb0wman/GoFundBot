@@ -5,7 +5,8 @@
       <span class="code-approval-title">AI 想运行自定义策略代码</span>
     </div>
     <div class="code-approval-meta">
-      <span>{{ request.params.fund_code }}</span>
+      <span v-if="assetLabel">{{ assetLabel }}</span>
+      <span v-else>{{ request.params.fund_code }}</span>
       <span>{{ request.params.start_date || '近三年' }} ~ {{ request.params.end_date || '今天' }}</span>
     </div>
     <pre class="code-approval-code">{{ request.params.code }}</pre>
@@ -14,7 +15,11 @@
       <BButton size="small" type="primary" @click="approve">{{ '运行' }}</BButton>
     </div>
     <p class="code-approval-note">
-      {{ '代码在本机浏览器沙箱中执行，只能读取该基金的历史净值，最长 5 秒后自动终止。' }}
+      {{
+        isPortfolio
+          ? '代码在本机浏览器沙箱中执行，只能读取这些资产的历史净值，最长 5 秒后自动终止。'
+          : '代码在本机浏览器沙箱中执行，只能读取该基金的历史净值，最长 5 秒后自动终止。'
+      }}
     </p>
   </div>
 </template>
@@ -25,6 +30,22 @@ import { BButton, LucideIcon } from '@gofund/ui'
 import { toolApproval } from '../services/chatEngine/toolApproval'
 
 const request = computed(() => toolApproval.pending.value)
+
+interface ApprovalAsset {
+  fund_code?: string
+  weight?: number
+}
+
+const assets = computed<ApprovalAsset[]>(() => {
+  const value = request.value?.params?.assets
+  return Array.isArray(value) ? (value as ApprovalAsset[]) : []
+})
+
+const isPortfolio = computed(() => assets.value.length > 0)
+
+const assetLabel = computed(() =>
+  assets.value.map((asset) => `${asset.fund_code || '现金'} ${asset.weight ?? ''}%`).join(' / '),
+)
 
 function approve() {
   toolApproval.resolve(true)

@@ -10,7 +10,12 @@
  * user confirmation step is the actual trust boundary.
  */
 
-import { handleRunStrategyRequest, type RunStrategyPayload } from './strategySandbox';
+import {
+  handleRunPortfolioStrategyRequest,
+  handleRunStrategyRequest,
+  type RunPortfolioStrategyPayload,
+  type RunStrategyPayload,
+} from './strategySandbox';
 
 const BLOCKED_GLOBALS = [
   'fetch',
@@ -36,12 +41,14 @@ for (const key of BLOCKED_GLOBALS) {
   }
 }
 
-interface WorkerRequest {
-  id: number;
-  payload: RunStrategyPayload;
-}
+type WorkerRequest =
+  | { id: number; kind: 'single'; payload: RunStrategyPayload }
+  | { id: number; kind: 'portfolio'; payload: RunPortfolioStrategyPayload };
 
 self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
-  const { id, payload } = event.data;
-  self.postMessage({ id, ...handleRunStrategyRequest(payload) });
+  const { id, kind, payload } = event.data;
+  const response = kind === 'portfolio'
+    ? handleRunPortfolioStrategyRequest(payload as RunPortfolioStrategyPayload)
+    : handleRunStrategyRequest(payload as RunStrategyPayload);
+  self.postMessage({ id, ...response });
 });

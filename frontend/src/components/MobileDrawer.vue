@@ -46,6 +46,7 @@ const items = computed(() => [
   { route: 'dashboard', icon: 'Home', label: '市场大盘' },
   { route: 'screening', icon: 'Search', label: '基金筛选' },
   { route: 'backtest', icon: 'Coins', label: '定投回测' },
+  { route: 'backtest-portfolio', icon: 'PieChart', label: '组合回测' },
   { route: 'portfolio', icon: 'BarChart3', label: '估值与持仓' },
   { route: 'research', icon: 'TrendingUp', label: '投研看板' },
   { route: 'strategy', icon: 'NotebookPen', label: '策略研究' },

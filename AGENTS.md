@@ -32,6 +32,7 @@ stdin: JSON → Python compute → stdout: JSON
 Real-time data:   ProviderChain → Express → frontend → IndexedDB (Dexie)
 User data CRUD:   frontend → IndexedDB (Dexie) — no server round-trip
 Backtest:         前端 services/backtest/ 本地计算（NAV 取自 /api/funds/:code/nav-history）→ 页面图表 + Dexie(backtestRuns)
+                  组合回测：portfolioBacktest.ts（多资产权重 + 日历/阈值再平衡 + 注水 + cash 腿）→ /backtest-portfolio 页 + run_portfolio_backtest 工具
                   Python backtest.py 与 Node /api/backtest 已于 2026-09-29 删除（黄金 fixtures 冻结在 frontend/src/services/backtest/__fixtures__/）
 Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → stdout JSON → Express
 Screening enrichment: frontend sync raw /api/screening → 本地 computeRiskMetrics + classifyFundIndustry → Dexie
@@ -132,13 +133,14 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `frontend/src/services/fundAnalyst.ts` | AI 基金分析（4 分析师+总监）——内部经 `analysis/analysisEngine` runTask：每分析师/总监都是可工具子调用（子集工具/全集），输出经 Schema 校验；公开签名（analyzeFund/analyzeFundStream）与阶段语义不变 |
 | `frontend/src/services/portfolioAnalyst.ts` | 组合诊断分析（前端直调）——经 `analysis/` 引擎 + `portfolio_diagnosis` 场景（市场面工具子集），Schema 校验，注入策略上下文 |
 | `frontend/src/services/analysis/` | **分析场景框架**：`analysisScenarios.ts`（3 场景 Skill 注册表：fund_analysis/portfolio_diagnosis/log_analysis）、`scenarioTypes.ts`（TypeBox 输出 Schema，字段与 DTO 一致）、`analysisEngine.ts`（runTask/runScenario 共享引擎：工具循环+结构化收尾+INVALID_OUTPUT 纠错重试≤2+fallback 降级）、`logAnalysis.ts`（AI 日志分析适配器，规则引擎 `/api/logs/analyze` 为降级源，service 零改动） |
-| `frontend/src/services/backtest/` | **定投回测引擎（前端）**：`backtestEngine.ts`（与 `python/cli/backtest.py` 逐值对齐，黄金 fixtures 见 `__fixtures__/`；新增可选 `hooks.decide` 支持自定义策略）、`strategyRules.ts`（定投日/价值平均/均线偏离）、`pyCompat.ts`（CPython round/ISO 周）、`strategyCompare.ts`（多策略推荐，回测页「智能推荐策略」）、`timelineSample.ts`（工具输出抽样，避开 4000 字符截断）、`runBacktestForFund.ts`、`toolArgs.ts`；**`strategySandbox.ts` + `strategyWorker.ts` + `runStrategyCode.ts`**（LLM 自写 JS 策略的 Worker 沙箱，`run_strategy_code` 工具，需用户确认，5s 超时）；持久化在 `frontend/src/db/backtestRuns.ts`。详见 `docs/architecture/backtest-engine.md` |
+| `frontend/src/services/backtest/` | **定投回测引擎（前端）**：`backtestEngine.ts`（与 `python/cli/backtest.py` 逐值对齐，黄金 fixtures 见 `__fixtures__/`；新增可选 `hooks.decide` 支持自定义策略）、`strategyRules.ts`（定投日/价值平均/均线偏离）、`pyCompat.ts`（CPython round/ISO 周）、`strategyCompare.ts`（多策略推荐，回测页「智能推荐策略」）、`timelineSample.ts`（工具输出抽样，避开 4000 字符截断）、`runBacktestForFund.ts`、`toolArgs.ts`；**`portfolioBacktest.ts` + `runPortfolioBacktest.ts`**（多资产组合引擎：权重归一化、日期并集+前向填充、日历/阈值再平衡、定期注水补缺腿、synthetic 现金腿、TWR 年化；`run_portfolio_backtest` 工具 + `/backtest-portfolio` 页）；**`portfolioSample.ts`**（组合工具输出抽样，pretty-print ≤3800 字符自适应）；**`strategySandbox.ts` + `strategyWorker.ts` + `runStrategyCode.ts`**（LLM 自写 JS 策略的 Worker 沙箱，`run_strategy_code` 工具，需用户确认，5s 超时；**单基金** `s.nav` **或组合** `assets` → `s.navs/history` + `buy/sell/rebalance` 两种契约同一 Worker 分派）；持久化在 `frontend/src/db/backtestRuns.ts`。详见 `docs/architecture/backtest-engine.md` |
 | `frontend/src/services/chatEngine/` | AI 对话引擎（skills.ts 技能 / toolContract.ts 工具契约* / toolCallParser.ts 调用解析与净化 / toolHandlers.ts 实现 / **toolLoop.ts 共享工具循环**（归一化+信封+重试/裁剪，chat 与分析场景复用）/ toolResultStatus.ts（空结果判定 → 工具条黄色感叹号）/ index.ts 编排）<br>*ToolSpec（TypeBox Schema）单一数据源：派生 OpenAI tools 参数、`<available_tools>` XML 清单与运行时校验；原生 tool_calls 与 `<ai_tool_calls>` XML 归一化为统一契约，未知工具名纠错回喂，正文永不出现工具标记 |
 | `frontend/src/services/searchService.ts` | 前端搜索链（Exa → Bocha → Tavily → DuckDuckGo） |
 | `frontend/src/services/industryClassifier.ts` | 行业/基金类型分类（筛选丰富化 + 聊天工具共用） |
 | `frontend/src/services/researchComputation.ts` | 投研看板聚合计算（市场统计/基金看板/ETF/板块/行业表现） |
 | `frontend/src/services/httpClient.ts` | HTTP 适配器（统一浏览器 fetch；Electron 壳侧解禁 CORS，无运行时分支） |
 | `frontend/src/db/` | Dexie schema (index.ts) — all IndexedDB table definitions |
+| `frontend/src/db/positions.ts` | 持仓 CRUD（IndexedDB `positions` 表）：`useMyPositions` 与 `get_portfolio_holdings` 工具共用。历史上 `/api/user/portfolio/positions` 是返回 `[]` 的桩、持仓只存内存，此文件把持仓真正落库 |
 | `frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
 | `frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
 | `frontend/src/services/` | API client（api.ts 基于 httpClient 环境路由、portfolioApi.ts、chatApi.ts + chatEngine） |

@@ -62,6 +62,8 @@ export interface UserPosition {
   fundCode: string
   fundName: string | null
   purchaseDate: string | null
+  /** Non-indexed extra field — the MyPositions form records a time too. */
+  purchaseTime?: string | null
   shares: number
   cost: number
   createdAt: number

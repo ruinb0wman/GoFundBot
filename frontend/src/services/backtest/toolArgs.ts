@@ -5,7 +5,7 @@
  * `toolContract.ts` stays the single source of truth for what the model may send.
  */
 
-import type { BacktestSpec, DcaRule, InvestmentPeriod } from './backtestTypes';
+import type { BacktestSpec, DcaRule, InvestmentPeriod, PortfolioAsset, PortfolioSpec, RebalanceFrequency } from './backtestTypes';
 
 export const DEFAULT_LOOKBACK_YEARS = 3;
 
@@ -68,5 +68,58 @@ export function specFromToolArgs(args: ToolArgs): BacktestSpec {
     takeProfitRate: args.take_profit_rate ?? null,
     stopLossRate: args.stop_loss_rate ?? null,
     rule: toRule(args),
+  };
+}
+
+/** LLM-facing (snake_case) args for `run_portfolio_backtest`. */
+export interface PortfolioToolArgs {
+  assets?: Array<{ fund_code?: string; weight?: number; annual_rate?: number; name?: string }>;
+  start_date?: string;
+  end_date?: string;
+  initial_amount?: number;
+  contribution_amount?: number;
+  contribution_period?: string;
+  rebalance_frequency?: string;
+  rebalance_threshold?: number;
+  fee_rate?: number;
+}
+
+const REBALANCE_FREQUENCIES: readonly string[] = ['none', 'monthly', 'quarterly', 'yearly'];
+
+function toFrequency(value: string | undefined): RebalanceFrequency {
+  return (REBALANCE_FREQUENCIES.includes(value ?? '') ? value : 'none') as RebalanceFrequency;
+}
+
+/**
+ * Weights are normalized downstream, so percent (25) and fraction (0.25) are both
+ * accepted as long as one call is internally consistent. An asset with no
+ * `fund_code` becomes a synthetic cash leg (money funds have no NAV series).
+ */
+export function portfolioSpecFromToolArgs(args: PortfolioToolArgs): PortfolioSpec {
+  const assets: PortfolioAsset[] = [];
+  for (const asset of args.assets ?? []) {
+    const weight = Number(asset.weight);
+    if (!Number.isFinite(weight) || weight <= 0) continue;
+    const code = String(asset.fund_code ?? '').trim();
+    if (code) assets.push({ kind: 'fund', fundCode: code, name: asset.name, weight });
+    else assets.push({ kind: 'cash', name: asset.name, annualRate: Number(asset.annual_rate) || 0, weight });
+  }
+
+  const contributionAmount = Number(args.contribution_amount);
+  const contributionPeriod = toFrequency(args.contribution_period);
+  const rebalanceFrequency = toFrequency(args.rebalance_frequency);
+
+  return {
+    assets,
+    initialAmount: args.initial_amount ?? 0,
+    contribution:
+      Number.isFinite(contributionAmount) && contributionAmount > 0 && contributionPeriod !== 'none'
+        ? { amount: contributionAmount, period: contributionPeriod }
+        : null,
+    rebalance: {
+      frequency: rebalanceFrequency,
+      threshold: args.rebalance_threshold ?? null,
+    },
+    feeRate: args.fee_rate ?? 0.0015,
   };
 }
