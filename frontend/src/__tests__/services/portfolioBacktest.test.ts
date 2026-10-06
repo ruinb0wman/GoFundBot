@@ -116,14 +116,26 @@ describe('runPortfolioBacktest', () => {
     expect(result.summary.final_value).toBe(990)
   })
 
-  it('fails when fewer than two assets have data', () => {
+  it('runs with a single asset (code strategies are not forced to be a portfolio)', () => {
     const result = runPortfolioBacktest(
       { assets: [{ fundCode: 'A', weight: 1 }, { fundCode: 'MISSING', weight: 1 }], initialAmount: 1000 },
       { navByCode: { A: series(['2020-01-01', '2020-01-02'], [1, 1]) } },
     )
+    expect(isPortfolioResult(result)).toBe(true)
+    if (isPortfolioResult(result)) {
+      expect(result.assets).toHaveLength(1)
+      expect(result.excluded.map((e) => e.code)).toContain('MISSING')
+    }
+  })
+
+  it('fails when no fund has data', () => {
+    const result = runPortfolioBacktest(
+      { assets: [{ fundCode: 'MISSING', weight: 1 }], initialAmount: 1000 },
+      { navByCode: {} },
+    )
     expect(isPortfolioResult(result)).toBe(false)
     if (!isPortfolioResult(result)) {
-      expect(result.error).toContain('有效资产不足')
+      expect(result.error).toContain('至少需要 1 个')
       expect(result.error).toContain('MISSING')
     }
   })

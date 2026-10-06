@@ -1,9 +1,13 @@
 /**
- * Dedicated worker that runs LLM-authored strategy code.
+ * Dedicated worker that runs user-authored strategy code.
  *
  * This file is deliberately tiny: the real logic lives in `strategySandbox.ts` (pure,
  * unit-tested). The worker exists for exactly one reason — it can be **terminated**,
  * so an infinite loop in generated code cannot freeze the page.
+ *
+ * Two kinds share it:
+ *   - `plan`:       compile the module, run `prepare(sdk)` → declared pool + window
+ *   - `portfolio`:  run `onDay(s)` per trading day over the injected NAV (no network)
  *
  * Lockdown (best effort, see plan §2.3): before any user code runs we shadow the
  * globals a strategy has no legitimate use for. This is not a hardened sandbox; the
@@ -11,10 +15,10 @@
  */
 
 import {
+  handlePlanRequest,
   handleRunPortfolioStrategyRequest,
-  handleRunStrategyRequest,
+  type PlanRequestPayload,
   type RunPortfolioStrategyPayload,
-  type RunStrategyPayload,
 } from './strategySandbox';
 
 const BLOCKED_GLOBALS = [
@@ -42,13 +46,13 @@ for (const key of BLOCKED_GLOBALS) {
 }
 
 type WorkerRequest =
-  | { id: number; kind: 'single'; payload: RunStrategyPayload }
+  | { id: number; kind: 'plan'; payload: PlanRequestPayload }
   | { id: number; kind: 'portfolio'; payload: RunPortfolioStrategyPayload };
 
 self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
   const { id, kind, payload } = event.data;
-  const response = kind === 'portfolio'
-    ? handleRunPortfolioStrategyRequest(payload as RunPortfolioStrategyPayload)
-    : handleRunStrategyRequest(payload as RunStrategyPayload);
+  const response = kind === 'plan'
+    ? handlePlanRequest(payload as PlanRequestPayload)
+    : handleRunPortfolioStrategyRequest(payload as RunPortfolioStrategyPayload);
   self.postMessage({ id, ...response });
 });

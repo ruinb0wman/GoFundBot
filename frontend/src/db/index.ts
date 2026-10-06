@@ -1,21 +1,31 @@
 import Dexie, { type Table } from 'dexie'
-import type { BacktestCheckpoint } from '../services/backtest/timelineSample'
-import type { BacktestSpec, BacktestSummary } from '../services/backtest/backtestTypes'
+import type { BacktestSummary, NavPoint, PortfolioSummary } from '../services/backtest/backtestTypes'
 
-export interface BacktestRunRecord {
+/**
+ * A replayable backtest scheme. Everything that defines the run (pool, window,
+ * amounts, fees) lives in the code's `prepare()`, so the record is just the code.
+ */
+export interface StrategyScriptRecord {
   id?: number
-  fundCode: string
+  name: string
+  code: string
+  source: 'manual' | 'ai'
   createdAt: number
-  /** Stable hash of the spec — lets a run be found/replayed without comparing objects. */
-  specHash: string
-  spec: BacktestSpec
-  /** Compact spec description for UI lists (timelineSample.describeSpec). */
-  specLabel: string
-  summary: BacktestSummary
-  /** Sampled checkpoints only: a full 3-year timeline is ~150 KB per run. */
-  checkpoints: BacktestCheckpoint[]
-  /** Phase 2 hook: AI-authored strategy source that produced this run. */
-  strategyCode?: string
+  updatedAt: number
+  lastRunAt?: number
+  lastSummary?: BacktestSummary | PortfolioSummary
+}
+
+/** Cached NAV series per fund code (see `services/backtest/dataBroker.ts`). */
+export interface NavCacheEntry {
+  code: string
+  /** Ascending, de-duplicated by date. */
+  points: NavPoint[]
+  firstDate: string
+  lastDate: string
+  /** The date we last fetched *through* ("we have everything up to here"). */
+  fetchedThrough: string
+  updatedAt: number
 }
 
 export interface WatchlistItem {
@@ -180,7 +190,8 @@ export class GoFundDB extends Dexie {
   screeningFunds!: Table<ScreeningFund>
   analysisMemory!: Table<AnalysisMemoryRecord>
   strategies!: Table<StrategyRecord>
-  backtestRuns!: Table<BacktestRunRecord>
+  strategyScripts!: Table<StrategyScriptRecord>
+  navHistory!: Table<NavCacheEntry>
 
   constructor() {
     super('GoFundBot')
@@ -213,6 +224,19 @@ export class GoFundDB extends Dexie {
 
     this.version(5).stores({
       backtestRuns: '++id, fundCode, createdAt, specHash',
+    })
+
+    // The scheme (code + config) replaces the per-fund run history.
+    this.version(6).stores({
+      strategyScripts: '++id, name, mode, updatedAt',
+      backtestRuns: null,
+    })
+
+    // Code-first strategies: the record is just the code, and NAV gets a real cache.
+    this.version(7).stores({
+      strategyScripts: '++id, name, updatedAt',
+      navHistory: 'code, lastDate, updatedAt',
+      screeningFunds: 'fund_code, fund_type, pass_4433, updated_time, nav_date',
     })
   }
 }

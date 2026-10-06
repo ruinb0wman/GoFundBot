@@ -9,25 +9,14 @@ import { db } from '../../db'
 import { listPositions } from '../../db/positions'
 import { sleep } from './toolLoop'
 import { searchWeb } from '../searchService'
-import { isBacktestResult, isPortfolioResult, type NavPoint } from '../backtest/backtestTypes'
-import { backtestFund, clipNavHistory, fetchNavHistory } from '../backtest/runBacktestForFund'
-import { backtestPortfolio } from '../backtest/runPortfolioBacktest'
-import { samplePortfolioBacktest } from '../backtest/portfolioSample'
-import { compareStrategies } from '../backtest/strategyCompare'
-import { sampleBacktest } from '../backtest/timelineSample'
-import { runPortfolioStrategyCode, runStrategyCode } from '../backtest/runStrategyCode'
-import { resolveDateRange, portfolioSpecFromToolArgs, specFromToolArgs, type PortfolioToolArgs, type ToolArgs } from '../backtest/toolArgs'
+import { backtestToolHandlers } from './toolHandlersBacktest'
+import type { ToolContext } from './toolContext'
 import {
   buildIndustryPerformanceFromScreening,
   compute4433Ranking,
   filterFundsByIndustry,
   type ScreeningLikeItem,
 } from '../industryClassifier'
-import type { AppSettings } from '../../composables/useAppSettings'
-
-export interface ToolContext {
-  searchSettings?: AppSettings
-}
 
 type AnyVal = any
 
@@ -56,75 +45,8 @@ async function localScreeningItems(): Promise<ScreeningLikeItem[]> {
   return funds as unknown as ScreeningLikeItem[]
 }
 
-type ToolArgsRecord = Record<string, unknown>
-
-/** Portfolio mode of `run_strategy_code`: fetch each leg, then run the sandbox in the worker. */
-async function runPortfolioStrategyTool(args: ToolArgsRecord, startDate: string, endDate: string) {
-  const spec = portfolioSpecFromToolArgs(args as PortfolioToolArgs)
-  if (spec.assets.length < 2) {
-    return { error: '组合模式至少需要 2 个资产；单只基金请改用 fund_code' }
-  }
-  const codes = [
-    ...new Set(
-      spec.assets
-        .filter((asset) => asset.kind !== 'cash')
-        .map((asset) => String((asset as { fundCode?: string }).fundCode ?? '').trim())
-        .filter(Boolean),
-    ),
-  ]
-  const navByCode: Record<string, NavPoint[]> = {}
-  await Promise.all(
-    codes.map(async (code) => {
-      try {
-        navByCode[code] = await fetchNavHistory(code, startDate, endDate)
-      } catch {
-        navByCode[code] = []
-      }
-    }),
-  )
-  return runPortfolioStrategyCode(
-    { spec, navByCode, code: String(args.code ?? '') },
-    { specLabel: '自定义组合策略代码' },
-  )
-}
-
-/** Shared by `suggest_strategy` and `compare_backtest_strategies`. */
-async function compareStrategiesTool(args: ToolArgsRecord) {
-  const toolArgs = args as ToolArgs
-  const { startDate, endDate } = resolveDateRange(toolArgs)
-  try {
-    const nav = clipNavHistory(await fetchNavHistory(String(toolArgs.fund_code ?? ''), startDate, endDate), {
-      startDate,
-      endDate,
-    })
-    const comparison = compareStrategies(
-      nav,
-      {
-        ...specFromToolArgs(toolArgs),
-        takeProfitRate: toolArgs.take_profit_rate ?? null,
-        stopLossRate: toolArgs.stop_loss_rate ?? null,
-      },
-      { range: `${startDate} ~ ${endDate}` },
-    )
-    if ('error' in comparison) return { error: comparison.error }
-    return {
-      data_status: 'available',
-      range: `${startDate} ~ ${endDate}`,
-      recommended: {
-        key: comparison.recommended.key,
-        name: comparison.recommended.name,
-        reason: comparison.recommended.reason,
-        spec: comparison.recommended.spec,
-        summary: comparison.recommended.summary,
-      },
-      strategies: comparison.strategies.map((s) => ({ key: s.key, name: s.name, spec: s.spec, summary: s.summary })),
-    }
-  } catch (error) {
-    return { error: `策略对比失败：${error instanceof Error ? error.message : String(error)}` }
-  }
-}
-
 const toolHandlers: Record<string, (args: Record<string, unknown>, ctx: ToolContext) => Promise<unknown>> = {
+  ...backtestToolHandlers,
   search_funds: async (args) => {
     const res = await api.get(`/fund/search?q=${encodeURIComponent(String(args.keyword ?? ''))}`)
     return toolData(unpack(res))
@@ -310,64 +232,6 @@ const toolHandlers: Record<string, (args: Record<string, unknown>, ctx: ToolCont
     if (items.length === 0) return { funds: [], message: '暂未获取到基金数据，请稍后重试', method: '4433' }
     return { funds: compute4433Ranking(items), method: '4433', total_screened: items.length }
   },
-
-  run_backtest: async (args) => {
-    const request = {
-      ...specFromToolArgs(args as ToolArgs),
-      ...resolveDateRange(args as ToolArgs),
-    };
-    const outcome = await backtestFund(String(args.fund_code ?? ''), request);
-    if (!isBacktestResult(outcome)) return { error: outcome.error };
-    // Sampled on purpose: the raw 3-year timeline is ~150 KB and would be cut off by
-    // truncateJson()'s 4000-char budget before the model could read it.
-    return sampleBacktest(outcome, request);
-  },
-
-  run_portfolio_backtest: async (args) => {
-    const { startDate, endDate } = resolveDateRange(args as ToolArgs)
-    const spec = portfolioSpecFromToolArgs(args as PortfolioToolArgs)
-    if (spec.assets.length < 2) {
-      return { error: '至少需要 2 个资产（基金或现金）才能回测组合；单只基金请改用 run_backtest' }
-    }
-    const result = await backtestPortfolio({ ...spec, startDate, endDate })
-    if (!isPortfolioResult(result)) return { error: result.error }
-    return samplePortfolioBacktest(result, spec)
-  },
-
-  // LLM-authored strategy code. Runs only after the user approves (see
-  // chatEngine/toolApproval.ts + ChatPanel's approval card).
-  run_strategy_code: async (args) => {
-    const { startDate, endDate } = resolveDateRange(args as ToolArgs)
-    // `assets` (≥2) selects the multi-asset contract; `fund_code` the single-fund one.
-    if (Array.isArray(args.assets) && args.assets.length > 0) {
-      return runPortfolioStrategyTool(args, startDate, endDate)
-    }
-    if (!args.fund_code) return { error: '请提供 fund_code（单基金）或 assets（组合）' }
-    try {
-      const nav = clipNavHistory(await fetchNavHistory(String(args.fund_code ?? ''), startDate, endDate), { startDate, endDate })
-      if (nav.length === 0) return { error: `未获取到 ${args.fund_code} 在 ${startDate} ~ ${endDate} 的净值数据` }
-      return await runStrategyCode(
-        {
-          nav,
-          code: String(args.code ?? ''),
-          spec: {
-            period: 'monthly',
-            initialAmount: (args.initial_amount as number) ?? 0,
-            feeRate: (args.fee_rate as number) ?? 0.0015,
-            takeProfitRate: (args.take_profit_rate as number) ?? null,
-            stopLossRate: (args.stop_loss_rate as number) ?? null,
-          },
-        },
-        { specLabel: '自定义策略代码' },
-      )
-    } catch (error) {
-      return { error: `自定义策略回测失败：${error instanceof Error ? error.message : String(error)}` }
-    }
-  },
-
-  suggest_strategy: async (args) => compareStrategiesTool(args),
-
-  compare_backtest_strategies: async (args) => compareStrategiesTool(args),
 
   get_stock_quote: async (args) => {
     const res = await api.get(`/stocks/${args.code}/reference`)

@@ -1,7 +1,7 @@
 /**
  * Backtest DTOs. Field names are snake_case on purpose: they are the exact output
- * contract of `python/cli/backtest.py`, consumed by
- * `frontend/src/components/FundBacktest.vue` and by the chat tools. Do not rename.
+ * contract of `python/cli/backtest.py`, consumed by the backtest workspace and by
+ * the chat tools. Do not rename.
  */
 
 export type InvestmentPeriod = 'monthly' | 'weekly' | 'daily' | 'lump_sum';

@@ -56,7 +56,7 @@ function toRule(args: ToolArgs): DcaRule {
 /**
  * Percent-vs-fraction convention: the model talks in **fractions** (`0.2` = 20%,
  * `0.0015` = 0.15%) because that is what `/api/backtest/*` always documented. The
- * UI converts from percent before calling the engine (composables/useFundBacktest.ts).
+ * UI converts from percent before calling the engine (composables/useBacktestWorkspace.ts).
  */
 export function specFromToolArgs(args: ToolArgs): BacktestSpec {
   return {

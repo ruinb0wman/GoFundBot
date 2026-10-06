@@ -20,14 +20,14 @@ features:
     details: ProviderChain 多源自动降级（stock-sdk → EastMoney → Tencent → Yahoo），覆盖基金净值、K 线、指数、板块、贵金属实时行情与资金流向。
   - title: 基金筛选
     details: 4433 法则、夏普比率、低波动率等预置策略 + 自定义条件筛选，结合风险指标（最大回撤、Calmar 比）和行业标签。
-  - title: 定投回测
-    details: 支持月定投、周定投、均线定投、价值平均等策略，Python 引擎并行计算，结果可视化呈现收益与风险表现。
+  - title: 回测工作台
+    details: 单基金 / 多资产组合统一在一个代码优先的工作台：写或让 AI 写策略代码，保存为可重放方案，浏览器内 Worker 沙箱计算并可视化收益与风险。
   - title: LLM 智能对话
     details: ReAct 循环 + 工具调用（基金查询、Web 搜索、板块表现、市场行情），带记忆与反思系统的 AI 投资助手。
   - title: 组合管理
     details: 实时持仓估值与盈亏追踪，交易记录录入与预警规则设置，所有用户数据持久化在浏览器 IndexedDB 中。
   - title: 零服务端状态
-    details: 用户数据全部存储在 IndexedDB（Dexie.js 10 张表），Express 服务端无状态、无用户数据库，部署简单。
+    details: 用户数据全部存储在 IndexedDB（Dexie.js），Express 服务端无状态、无用户数据库，部署简单。
   - title: Python 计算引擎
-    details: 回测、风险指标、数据补全等计算密集型任务通过 child_process 调度 Python 脚本，JSON stdin/stdout 通信。
+    details: 风险指标、数据补全等计算密集型任务通过 child_process 调度 Python 脚本，JSON stdin/stdout 通信。
 ---

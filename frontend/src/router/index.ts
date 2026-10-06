@@ -4,7 +4,6 @@ import FundDetailView from '../views/FundDetailView.vue'
 import IndexDetailView from '../views/IndexDetailView.vue'
 import ScreeningView from '../views/ScreeningView.vue'
 import BacktestView from '../views/BacktestView.vue'
-import PortfolioBacktestView from '../views/PortfolioBacktestView.vue'
 import PortfolioView from '../views/PortfolioView.vue'
 import ResearchView from '../views/ResearchView.vue'
 import StrategyView from '../views/StrategyView.vue'
@@ -51,12 +50,6 @@ const routes: RouteRecordRaw[] = [
     path: '/backtest/:code',
     name: 'backtest-fund',
     component: BacktestView,
-    meta: { rightbar: false },
-  },
-  {
-    path: '/backtest-portfolio',
-    name: 'backtest-portfolio',
-    component: PortfolioBacktestView,
     meta: { rightbar: false },
   },
   {

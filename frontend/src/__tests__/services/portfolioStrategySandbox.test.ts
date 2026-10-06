@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   handleRunPortfolioStrategyRequest,
   makePortfolioDecision,
-  makePortfolioHelpers,
   StrategyCodeError,
+  toIndexDecision,
 } from '../../services/backtest/strategySandbox'
 import type { NavPoint, PortfolioDecisionState, PortfolioSpec } from '../../services/backtest/backtestTypes'
 
@@ -48,47 +48,51 @@ function state(overrides: Partial<PortfolioDecisionState> = {}): PortfolioDecisi
   }
 }
 
-describe('makePortfolioHelpers', () => {
-  it('ma/pctChange look strictly backwards per asset', () => {
-    const helpers = makePortfolioHelpers(
-      [
-        [1, 2, 3],
-        [10, 20, 30],
-      ],
-      [0, 0],
-      0,
-    )
-    expect(helpers.ma(0, 2)).toBe(1.5) // today's 3 excluded
-    expect(helpers.pctChange(0, 2)).toBe(2) // 3 / 1 - 1
-    expect(helpers.ma(1, 2)).toBe(15)
-  })
-
-  it('weight includes cash in the denominator', () => {
-    const helpers = makePortfolioHelpers([[], []], [750, 250], 1000)
-    expect(helpers.weight(0)).toBe(0.375)
-    expect(helpers.weight(1)).toBe(0.125)
-  })
-})
-
-describe('makePortfolioDecision', () => {
-  it('returns an empty decision for a no-op day and accepts a valid one', () => {
-    expect(makePortfolioDecision('return {}')(state())).toEqual({})
-    expect(makePortfolioDecision('return { buy: [{ asset: 1, amount: 500 }] }')(state())).toEqual({
+describe('toIndexDecision', () => {
+  it('maps code-addressed buys/sells to engine indices', () => {
+    expect(toIndexDecision({ buy: [{ code: 'B', amount: 500 }] }, ['A', 'B'], '2020-01-01')).toEqual({
       buy: [{ asset: 1, amount: 500 }],
     })
   })
 
-  it('rejects out-of-range assets, bad amounts and wrong rebalance length', () => {
-    const decide = makePortfolioDecision('return { buy: [{ asset: 5, amount: 100 }] }')
-    expect(() => decide(state())).toThrow(/asset 下标越界/)
-    expect(() => makePortfolioDecision('return { sell: [{ asset: 0, amount: -1 }] }')(state())).toThrow(/正数/)
-    expect(() => makePortfolioDecision('return { rebalance: [1] }')(state())).toThrow(/长度 2/)
+  it('maps a rebalance record to the full weight vector', () => {
+    expect(toIndexDecision({ rebalance: { A: 1 } }, ['A', 'B'], '2020-01-01')).toEqual({ rebalance: [1, 0] })
+  })
+
+  it('rejects undeclared codes, bad amounts and bad rebalance values', () => {
+    expect(() => toIndexDecision({ buy: [{ code: 'Z', amount: 1 }] }, ['A', 'B'], '2020-01-01')).toThrow(/未在 prepare/)
+    expect(() => toIndexDecision({ sell: [{ code: 'A', amount: -1 }] }, ['A', 'B'], '2020-01-01')).toThrow(/正数/)
+    expect(() => toIndexDecision({ rebalance: [1, 0] }, ['A', 'B'], '2020-01-01')).toThrow(/对象/)
+  })
+})
+
+describe('makePortfolioDecision', () => {
+  const noop = 'function onDay(s) { return {} }'
+
+  it('returns an empty decision for a no-op day and accepts a code-addressed buy', () => {
+    expect(makePortfolioDecision(noop)(state())).toEqual({})
+    const decide = makePortfolioDecision("function onDay(s) { return { buy: [{ code: 'B', amount: 500 }] } }")
+    expect(decide(state())).toEqual({ buy: [{ asset: 1, amount: 500 }] })
+  })
+
+  it('exposes code-addressed helpers on s', () => {
+    const decide = makePortfolioDecision(
+      'function onDay(s) { return { buy: [{ code: "A", amount: s.nav("A") + s.ma("A", 1) + s.weight("A") }] } }',
+    )
+    const out = decide(state({ navs: [2, 1], history: [[1, 2], [1, 1]], values: [50, 50] })) as {
+      buy?: Array<{ amount: number }>
+    }
+    expect(out.buy?.[0].amount).toBeCloseTo(2 + 1 + 0.5)
   })
 
   it('tags runtime errors with the offending date', () => {
-    const decide = makePortfolioDecision("if (s.date === '2020-02-01') throw new Error('boom'); return {}")
+    const decide = makePortfolioDecision("function onDay(s) { if (s.date === '2020-02-01') throw new Error('boom'); return {} }")
     expect(decide(state())).toEqual({})
     expect(() => decide(state({ date: '2020-02-01' }))).toThrow(/2020-02-01.*boom/)
+  })
+
+  it('rejects code without onDay', () => {
+    expect(() => makePortfolioDecision('function prepare() { return {} }')).toThrow(StrategyCodeError)
   })
 })
 
@@ -97,7 +101,7 @@ describe('handleRunPortfolioStrategyRequest', () => {
     const response = handleRunPortfolioStrategyRequest({
       spec: SPEC,
       navByCode: SERIES,
-      code: 'return s.i === 1 ? { rebalance: [0.5, 0.5] } : {}',
+      code: "function onDay(s) { return s.i === 1 ? { rebalance: { A: 0.5, B: 0.5 } } : {} }",
     })
     expect(response.ok).toBe(true)
     if (response.ok) {
@@ -110,7 +114,7 @@ describe('handleRunPortfolioStrategyRequest', () => {
     const response = handleRunPortfolioStrategyRequest({
       spec: { ...SPEC, initialAmount: 1000 },
       navByCode: SERIES,
-      code: 'if (s.helpers.pctChange(0, 1) > 0.5) return { rebalance: [0.25, 0.75] }; return {}',
+      code: "function onDay(s) { if (s.pctChange('A', 1) > 0.5) return { rebalance: { A: 0.25, B: 0.75 } }; return {} }",
     })
     expect(response.ok).toBe(true)
     if (response.ok) expect(response.result.summary.rebalance_count).toBeGreaterThanOrEqual(1)
@@ -120,43 +124,12 @@ describe('handleRunPortfolioStrategyRequest', () => {
     const response = handleRunPortfolioStrategyRequest({
       spec: SPEC,
       navByCode: SERIES,
-      code: 'return s.i === 1 ? { sellAll: true } : {}',
+      code: "function onDay(s) { return s.date === '2020-02-01' ? { sellAll: true } : {} }",
     })
     expect(response.ok).toBe(true)
     if (response.ok) {
       expect(response.result.summary.exit_reason).toBe('custom')
-      expect(response.result.summary.exit_date).toBe('2020-02-01')
+      expect(response.result.timeline[response.result.timeline.length - 1]?.status).toBe('sold')
     }
-  })
-
-  it('returns a date-tagged error for invalid code without throwing', () => {
-    const response = handleRunPortfolioStrategyRequest({
-      spec: SPEC,
-      navByCode: SERIES,
-      code: 'return { rebalance: [1] }',
-    })
-    expect(response.ok).toBe(false)
-    if (!response.ok) expect(response.error).toMatch(/长度 2/)
-  })
-
-  it('returns an error for empty code', () => {
-    expect(handleRunPortfolioStrategyRequest({ spec: SPEC, navByCode: SERIES, code: '' })).toEqual({
-      ok: false,
-      error: '策略代码为空',
-    })
-  })
-
-  it('compiles a full function declaration too', () => {
-    const response = handleRunPortfolioStrategyRequest({
-      spec: SPEC,
-      navByCode: SERIES,
-      code: 'function onDay(s) { return { buy: [{ asset: 0, amount: 100 }] }; }',
-    })
-    expect(response.ok).toBe(true)
-    if (response.ok) expect(response.result.summary.total_invested).toBe(1300) // 1000 initial + 3 × 100
-  })
-
-  it('throws StrategyCodeError from the compiler for oversized code', () => {
-    expect(() => makePortfolioDecision('x'.repeat(9000))).toThrow(StrategyCodeError)
   })
 })

@@ -5,47 +5,56 @@
       <span class="code-approval-title">AI 想运行自定义策略代码</span>
     </div>
     <div class="code-approval-meta">
-      <span v-if="assetLabel">{{ assetLabel }}</span>
-      <span v-else>{{ request.params.fund_code }}</span>
-      <span>{{ request.params.start_date || '近三年' }} ~ {{ request.params.end_date || '今天' }}</span>
+      <span v-if="scriptName">已保存方案：{{ scriptName }}</span>
+      <span v-else>自定义策略</span>
+      <span v-if="!scriptName">{{ request.params.start_date || 'prepare() 声明' }} ~ {{ request.params.end_date || '默认' }}</span>
     </div>
-    <pre class="code-approval-code">{{ request.params.code }}</pre>
+    <pre class="code-approval-code">{{ displayCode || '（未找到该方案的代码）' }}</pre>
     <div class="code-approval-actions">
       <BButton size="small" text @click="reject">{{ '取消' }}</BButton>
       <BButton size="small" type="primary" @click="approve">{{ '运行' }}</BButton>
     </div>
     <p class="code-approval-note">
-      {{
-        isPortfolio
-          ? '代码在本机浏览器沙箱中执行，只能读取这些资产的历史净值，最长 5 秒后自动终止。'
-          : '代码在本机浏览器沙箱中执行，只能读取该基金的历史净值，最长 5 秒后自动终止。'
-      }}
+      {{ '代码在本机浏览器沙箱中执行，只能读取 prepare() 声明的标的的本地缓存净值，最长 5 秒后自动终止。' }}
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { BButton, LucideIcon } from '@gofund/ui'
 import { toolApproval } from '../services/chatEngine/toolApproval'
+import { findStrategyScriptsByName } from '../db/strategyScripts'
 
 const request = computed(() => toolApproval.pending.value)
 
-interface ApprovalAsset {
-  fund_code?: string
-  weight?: number
-}
-
-const assets = computed<ApprovalAsset[]>(() => {
-  const value = request.value?.params?.assets
-  return Array.isArray(value) ? (value as ApprovalAsset[]) : []
+const scriptName = computed(() => {
+  const value = request.value?.params?.script_name
+  return typeof value === 'string' && value.trim() ? value : ''
 })
 
-const isPortfolio = computed(() => assets.value.length > 0)
-
-const assetLabel = computed(() =>
-  assets.value.map((asset) => `${asset.fund_code || '现金'} ${asset.weight ?? ''}%`).join(' / '),
+/** `script_name` mode carries no inline code — load it from the saved scheme to show it. */
+const savedCode = ref('')
+watch(
+  request,
+  async (req) => {
+    savedCode.value = ''
+    const name = req?.params?.script_name
+    if (typeof name !== 'string' || !name.trim()) return
+    try {
+      const found = await findStrategyScriptsByName(name)
+      if (found.length === 1) savedCode.value = found[0].code
+    } catch {
+      savedCode.value = ''
+    }
+  },
+  { immediate: true },
 )
+
+const displayCode = computed(() => {
+  const inline = request.value?.params?.code
+  return typeof inline === 'string' && inline.trim() ? inline : savedCode.value
+})
 
 function approve() {
   toolApproval.resolve(true)

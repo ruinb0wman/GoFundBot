@@ -11,20 +11,21 @@ import {
   TOOL_CALL_RULES,
 } from '../../services/chatEngine/toolContract'
 
-/** The 29 chat tools known to the system (kept in sync with skills.ts toolNames). */
+/** The 31 chat tools known to the system (kept in sync with skills.ts toolNames). */
 const EXPECTED_TOOLS = [
   'search_funds', 'get_fund_detail', 'get_fund_estimate', 'get_fund_nav_history',
   'get_market_indices', 'get_market_news', 'get_hot_sectors', 'get_concept_sectors',
   'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_flash_news',
   'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
   'compare_backtest_strategies', 'run_strategy_code', 'run_portfolio_backtest', 'get_portfolio_holdings',
+  'list_strategy_scripts', 'save_strategy_script',
   'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
   'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
   'search_news', 'get_index_kline',
 ]
 
 describe('tool registry', () => {
-  it('contains exactly the expected 29 tools with full metadata', () => {
+  it('contains exactly the expected 31 tools with full metadata', () => {
     const names = listToolSpecs().map((t) => t.name)
     expect(names.sort()).toEqual([...EXPECTED_TOOLS].sort())
     for (const spec of listToolSpecs()) {
@@ -65,21 +66,24 @@ describe('tool registry', () => {
 
   it('gates run_strategy_code behind a bounded code parameter', () => {
     const tool = getToolSpec('run_strategy_code')!
-    expect(tool.parameters.required).toEqual(['code'])
+    // code is optional: `script_name` can name a saved scheme instead.
+    expect(tool.parameters.required ?? []).toEqual([])
     const code = (tool.parameters.properties as Record<string, { maxLength?: number; description?: string }>).code
     expect(code.maxLength).toBe(8000)
     expect(code.description).toContain('onDay')
     // maxLength is actually enforced at the validation boundary
-    expect(validateToolCall('run_strategy_code', { fund_code: '110022', code: 'x'.repeat(8001) }).ok).toBe(false)
-    // fund_code and assets are alternative modes; the handler requires one of them
-    expect(validateToolCall('run_strategy_code', { code: 'return {}' }).ok).toBe(true)
-    expect(validateToolCall('run_strategy_code', { fund_code: '110022', code: 'return {}' }).ok).toBe(true)
-    expect(
-      validateToolCall('run_strategy_code', {
-        assets: [{ fund_code: '110022', weight: 50 }, { annual_rate: 0.02, weight: 50 }],
-        code: 'return {}',
-      }).ok,
-    ).toBe(true)
+    expect(validateToolCall('run_strategy_code', { code: 'x'.repeat(8001) }).ok).toBe(false)
+    // code and script_name are alternative modes; the handler requires one
+    expect(validateToolCall('run_strategy_code', { code: 'function onDay(){ return {} }' }).ok).toBe(true)
+    expect(validateToolCall('run_strategy_code', { script_name: '均线加仓' }).ok).toBe(true)
+  })
+
+  it('exposes saved-scheme list/save tools', () => {
+    expect(getToolSpec('list_strategy_scripts')!.parameters.required ?? []).toEqual([])
+    const save = getToolSpec('save_strategy_script')!
+    expect(save.parameters.required).toEqual(['name', 'code'])
+    expect(validateToolCall('save_strategy_script', { name: 'x', code: 'return {}', fund_code: '110022' }).ok).toBe(true)
+    expect(validateToolCall('save_strategy_script', { code: 'return {}' }).ok).toBe(false)
   })
 
   it('provides labels for UI chips and falls back to the raw name', () => {

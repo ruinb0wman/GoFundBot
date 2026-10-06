@@ -1,4 +1,4 @@
-# 定投回测引擎（前端）
+# 回测引擎（前端）
 
 回测计算在 **浏览器内** 完成：`frontend/src/services/backtest/`。原先的
 `POST /api/backtest/*` → `pythonRunner` → `python/cli/backtest.py` 链路已无前端调用方，
@@ -15,9 +15,9 @@ services/backtest/backtestEngine.ts      ← 纯函数：NAV[] + spec → { summ
       ├─ strategyRules.ts   定投日调度 + 定投方式（等额/价值平均/均线偏离）
       └─ pyCompat.ts        CPython round() 银行家舍入、ISO 周键
       │
-      ├─→ components/FundBacktest.vue      （回测页：图表 + 明细 + 多策略推荐）
+      ├─→ views/BacktestView.vue           （/backtest 工作台：左方案列表 + 右 AI 对话 + 下 编辑器/图表）
       ├─→ chatEngine/toolHandlers.ts       （AI 工具，输出经 timelineSample 抽样）
-      └─→ db/backtestRuns.ts               （Dexie 持久化：spec + summary + 抽样点）
+      └─→ db/strategyScripts.ts            （Dexie 持久化：方案 = 代码；净值缓存 navHistory）
 ```
 
 ## 为什么迁移
@@ -33,7 +33,7 @@ services/backtest/backtestEngine.ts      ← 纯函数：NAV[] + spec → { summ
 ## 数据契约
 
 输出字段名保持 `python/cli/backtest.py` 的 snake_case（`total_invested` / `return_rate` /
-`is_investment_day` / `exit_reason` …），因此 `FundBacktest.vue` 与历史数字口径都不变。
+`is_investment_day` / `exit_reason` …），因此工作台与画图口径与历史数字都不变。
 
 ```ts
 interface BacktestSpec {
@@ -51,7 +51,7 @@ interface BacktestSpec {
 ```
 
 **单位约定**：引擎只认**小数**（0.0015 = 0.15%），UI 输入是**百分数**，转换在
-`composables/useFundBacktest.ts` 完成；聊天工具的参数也按小数描述。
+`composables/useBacktestWorkspace.ts` / `components/backtest/BacktestConfigForm.vue` 完成；聊天工具的参数也按小数描述。
 
 ## 扣款日语义（`day`）
 
@@ -78,7 +78,7 @@ interface BacktestSpec {
 | **手续费 100×** | 页面输入 `0.15`（%）被原样发给 `/api/backtest/fixed-investment`，Zod 以「小数」接收 → Python 按 **15%** 手续费计算 | 引擎统一小数，UI 显式 `/100` |
 | **止盈率 400** | 页面输入 `20`（%）→ 后端 Zod `max(1)` → 请求 400，回测直接失败 | 同上；`0.2` = 20% |
 | **每日定投恒为 0** | 页面提供「每日定投」，但 Python 没有 `daily` 分支 → `investment_count = 0`、收益率恒 0%（静默错误） | 引擎实现 `daily` |
-| **智能推荐策略必崩** | `/api/backtest/strategy-suggest` 只返回 `{summary, timeline}`，`FundBacktest.vue` 却读 `recommended.name` / `strategies[]` | 前端 `strategyCompare.ts` 产出该契约（夏普排序 + 差异说明） |
+| **智能推荐策略必崩** | `/api/backtest/strategy-suggest` 只返回 `{summary, timeline}`，原回测页却读 `recommended.name` / `strategies[]` | 前端 `strategyCompare.ts` 产出该契约（夏普排序 + 差异说明）；现由 `compare_backtest_strategies` 工具暴露 |
 | **跨年周重复扣款** | 周键写成 `(dt.year, isocalendar()[1])`（日历年 + ISO 周号而非 ISO 年周）→ 跨年那周被切成两桶、扣款两次 | 两侧同步改为真正的 ISO 年周（`isocalendar()[:2]` / `isoWeekKey`）；`weekly_cross_year` fixture 已重生成（4 次 → 3 次投入） |
 
 ## 验证
@@ -116,7 +116,7 @@ cd frontend && bunx vitest run src/__tests__/services/backtestPayload.test.ts
 
 ## 多策略推荐（`strategyCompare.ts`）
 
-回测页「智能推荐策略」与聊天工具 `compare_backtest_strategies` 共用同一实现：并行跑
+多策略推荐由聊天工具 `compare_backtest_strategies`（与 `suggest_strategy` 共用）暴露：并行跑
 每月/每周/一次性/价值平均/均线偏离五种方案，按**夏普比率**（并列看年化）排序推荐。
 
 两个必须记住的约束：
@@ -127,62 +127,64 @@ cd frontend && bunx vitest run src/__tests__/services/backtestPayload.test.ts
    `recommended.reason` 里会写明回测区间。
 2. **各方案投入本金不同**，收益率不可直接横比（一次性投入尤其）。`reason` 里会逐个列出本金。
 
-## 自定义策略代码（AI 沙箱，`run_strategy_code`）
+## 自定义策略代码（代码优先，`run_strategy_code`）
 
-除模板化方案外，聊天/策略讨论里的模型还可以**自己写一段 JS 策略**并回测：
+固定池 + 逐日决策，一个契约，没有单基金/组合之分：
 
 ```
-LLM 调 run_strategy_code(fund_code, code, …)
-   → chatEngine 识别为「需确认工具」→ yield tool_confirm → 用户点「运行」
-   → toolHandlers 取净值（/api/funds/:code/nav-history，24h 缓存）
-   → runStrategyCode() 起 Worker（5s 超时后 terminate）
-   → strategySandbox.handleRunStrategyRequest()
-        compileDecision(code) → new Function('s', code)
-        runBacktest(nav, spec, { decide })   ← 复用本文档全部会计与 summarize()
-   → sampleBacktest() 抽样后回喂模型（<4KB）
+LLM/用户 提供 code（模块）
+  → chatEngine 识别为「需确认工具」→ 用户点「运行」
+  → worker#1 kind:'plan'：compileStrategyModule → prepare(sdk) → { start, end, assets, ... }
+  → DataBroker 取 NAV（Dexie 优先，缺失/过期才取）
+  → worker#2 kind:'portfolio'：onDay(s) 逐日 → runPortfolioBacktest(spec, { navByCode, hooks })
+  → 完整结果（页面画图）/ samplePortfolioBacktest（回喂模型，<4KB）
 ```
 
-**代码契约**：`onDay(s) -> { buy?: 元, sellAll?: true }`，每个交易日调用一次。
-`s = { i, date, nav, navs, shares, invested, value, returnRate(), args, helpers }`；
-`navs` 只到当日、`helpers.ma(n)/pctChange(n)` 也只取**今日之前** n 日，所以自定义代码
-无法偷看未来。`sellAll` 走与止盈相同的清仓路径，`exit_reason: 'custom'`。
+**代码契约**：代码是一个模块，必须定义
 
-**引擎接口**：`runBacktest(nav, spec, hooks?)` 新增可选 `hooks.decide`；提供时绕过
-`pickInvestmentDates`/`ruleBuyAmount`，由回调逐日决定买入。不传 `hooks` 时行为与黄金
-fixtures **逐值一致**（回归测试保证）。自定义运行因为无计划表，`investment_count` 报**实际买入次数**。
+```js
+function prepare(sdk) {   // 固定池 + 窗口；只读本地基金库，无网络
+  const pool = sdk.screen().filter((r) => r.sharpe_ratio_1y != null).slice(0, 5).map((r) => r.code);
+  return { start?, end?, assets: ['110022', '510300', 'CASH:0.02'], initialAmount?, feeRate? };
+}
+function onDay(s) {       // 逐日；按**基金代码**寻址（不是下标）
+  return { buy?: [{ code, amount }], sell?: [{ code, amount }], rebalance?: { code: 权重 }, sellAll? };
+}
+```
+
+`s = { i, date, codes, nav(code), navs(code)（截至今日，无未来）, ma(code,n), pctChange(code,n),
+weight(code), shares, values, cash, invested, value, returnRate(), args:{ start, end, initialAmount, feeRate } }`。
+每日应用顺序 `rebalance → buy → sell`，`sellAll` 覆盖其余。未在 `assets` 声明的代码会**明确报错**。
+`CASH[:年化]` 是现金腿，在代码里以 `'cash'` 寻址。省略 `start`/`end` 默认近三年。
+
+**适配**：引擎仍用下标寻址（`PortfolioDecision` 未变），`strategySandbox.toIndexDecision` 在边界做
+code→index 转换；引擎只把资产数下限放宽为 1（`portfolioBacktest.ts`），会计与黄金 fixtures 不动。
+`initialAmount > 0` 时按**等权**在首日预分配。
 
 **安全边界（重要）**：浏览器里没有真正的 JS 沙箱。Worker 只做到「可 terminate」+ 尽力遮蔽
 `fetch`/`indexedDB` 等全局 + **不注入任何密钥**；**用户点击运行是唯一信任边界**，所以 UI 必须
 完整展示代码原文。无 UI 的 headless 分析场景（`analysis/`）会**默认拒执**并让模型改用 `run_backtest`。
 
-**组合模式（多资产）**：`run_strategy_code` 也接 `assets`（≥2，与 `fund_code` 二选一），走同一个
-Worker，只是 `kind: 'portfolio'` 分派到 `handleRunPortfolioStrategyRequest`。契约：
+## 回测工作台（`/backtest`）
 
-```js
-onDay(s) -> {
-  buy?:  [{ asset, amount }],   // 追加外部资金（计入累计投入）
-  sell?: [{ asset, amount }],   // 卖出换现金（留在组合里，计入组合市值）
-  rebalance?: [权重...],        // 用持仓+现金内部调仓（按总和归一化）
-  sellAll?: true                // 清仓并停止
-}
-```
+左 = 已保存方案列表，右 = 复用 `ChatPanel`（`channel="backtest"`，`force-skill="investment_strategy"`），
+下 = CodeMirror 6 **编辑器** / **结果**（汇总卡片 + ECharts + 逐日明细）切换。
+**没有模式切换、没有资产权重表**——池子写在代码的 `prepare()` 里。
 
-`s = { i, date, navs[], history[][]（按日切片，无未来）, codes[], shares[], values[], cash, invested,
-value, returnRate(), args, helpers:{ ma(asset,n), pctChange(asset,n), weight(asset) } }`；
-`asset` 是 `assets` 下标。每日应用顺序：`rebalance` → `buy` → `sell`，`sellAll` 覆盖其余。
-引擎侧就是 `runPortfolioBacktest(spec, { navByCode, hooks })` —— 有 `hooks.decide` 时绕过
-`contribution`/`rebalance` 计划，由代码全权决策；`contribution_count` 报 0，`investment_count`
-按**实际买入日数**计。结果仍走 `samplePortfolioBacktest`（pretty-print ≤3800 字符）。
+## 数据：Dexie 优先（`dataBroker.ts` + `db/navCache.ts`）
 
-**口径陷阱**：组合自定义模式有 `cash` 余额，且再平衡会在腿间转移市值——所以 `assets[].return_rate`
-取**该腿自身净值区间涨幅**，不是 `期末市值/累计投入`（后者会让一条持平甚至被卖空的腿看起来像巨亏）。
+- `navHistory` 表（Dexie `version(7)`）按 code 缓存整段净值，`fetchedThrough` 记录「取到哪一天」。
+- 命中条件：覆盖 `[start, min(end, today)]` 且（窗口完全在过去 或 24h 内取过）。净值是**追加型**，
+  按 date 并集去重合并（旧点不会被改写）。
+- 取数用**稳定区间**（全量、不带 query）——服务端缓存 key 含 range，而 provider 是先全量下载再按
+  range 切片，所以请求「尾巴」只会全量重下。**增量只体现在前端覆盖度**，不省上游带宽。
+- 限并发 6 + 每轮取数上限 60 次，超限返回明确错误（护住服务端 300/15min 限流）。
+- `prepare(sdk).screen()` 读本地 `screeningFunds`（数千行），零网络；可用于选池。
 
 ## 持久化
 
-`db/backtestRuns.ts`（Dexie `version(5)`，表 `backtestRuns`，每只基金保留最近 10 次）：
-只存 `spec` + `summary` + **抽样**检查点（全量 timeline 约 150 KB/次，可由 spec 重算）。
-回测页据此显示「上次回测」并支持一键**载入参数**；`specHash()`（FNV-1a on key-sorted JSON）
-用于按 spec 定位历史运行。组合回测页**暂不持久化**。
+`db/strategyScripts.ts`（Dexie `version(7)`）：每条 = `{ name, code, source, lastRunAt, lastSummary }`——
+**配置全在代码的 `prepare()` 里**，没有单独的 config 字段。旧的 `backtestRuns` 表已在 `version(6)` 删除。
 
 ## 组合回测（多资产 + 再平衡）
 
@@ -200,7 +202,7 @@ services/backtest/portfolioBacktest.ts       ← 纯函数：对齐 → 建仓/�
       ├─ sampleTimeline()（复用）            工具输出 <4KB
       └─ TWR 年化（annual_return_twr）       剔除注水影响的真实收益
       │
-      ├─→ components/PortfolioBacktest.vue   （/backtest-portfolio 页）
+      ├─→ views/BacktestView.vue             （/backtest 工作台的「组合」模式）
       └─→ chatEngine/toolHandlers.ts         run_portfolio_backtest
 ```
 

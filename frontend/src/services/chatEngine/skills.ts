@@ -223,6 +223,7 @@ const GENERAL_TOOL_NAMES = [
   'get_north_flow', 'get_market_breadth', 'get_main_flow', 'get_flash_news',
   'get_watchlist', 'screen_funds_by_4433', 'run_backtest', 'suggest_strategy',
   'compare_backtest_strategies', 'run_strategy_code', 'run_portfolio_backtest', 'get_portfolio_holdings',
+  'list_strategy_scripts', 'save_strategy_script',
   'get_stock_quote', 'get_market_anomaly', 'get_gold_realtime', 'get_fund_holdings',
   'get_fund_managers', 'get_funds_by_industry', 'get_industry_performance',
   'search_news', 'get_index_kline',
@@ -269,7 +270,7 @@ export const SKILL_DEFINITIONS: Skill[] = [
     description: '定投回测模拟和策略推荐',
     keywords: ['定投', '回测', '策略', '怎么投', '投资方式', '方案', '定投计划'],
     systemPrompt: INVESTMENT_STRATEGY_PROMPT,
-    toolNames: ['run_backtest', 'suggest_strategy', 'compare_backtest_strategies', 'run_strategy_code', 'run_portfolio_backtest', 'get_fund_nav_history'],
+    toolNames: ['run_backtest', 'suggest_strategy', 'compare_backtest_strategies', 'run_strategy_code', 'run_portfolio_backtest', 'list_strategy_scripts', 'get_fund_nav_history'],
   },
   {
     name: 'strategy',

@@ -1,8 +1,8 @@
 /**
- * Multi-strategy comparison behind the 「智能推荐策略」 button and the
- * `compare_backtest_strategies` chat tool.
+ * Multi-strategy comparison behind the `compare_backtest_strategies` chat tool
+ * (and `suggest_strategy`).
  *
- * Contract (see components/FundBacktest.vue): `{ recommended: { key, name,
+ * Contract: `{ recommended: { key, name,
  * description, reason, summary }, strategies: [{ key, name, summary }] }`.
  * The old `/api/backtest/strategy-suggest` returned a single `{summary, timeline}`,
  * so the UI card read `undefined.name` — this module is what that endpoint never was.

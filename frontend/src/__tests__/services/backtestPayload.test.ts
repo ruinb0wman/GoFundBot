@@ -88,7 +88,7 @@ describe('resolveDateRange / specFromToolArgs', () => {
   })
 })
 
-describe('compareStrategies — the contract FundBacktest.vue reads', () => {
+describe('compareStrategies — the contract the suggestion card reads', () => {
   const nav: NavPoint[] = Array.from({ length: 780 }, (_, i) => {
     const day = new Date(Date.UTC(2023, 0, 2) + i * 86_400_000)
     if (day.getUTCDay() === 0 || day.getUTCDay() === 6) return null

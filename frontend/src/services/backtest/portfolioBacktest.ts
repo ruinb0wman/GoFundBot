@@ -307,15 +307,16 @@ export function runPortfolioBacktest(
   }
 
   const active = funds.filter((asset) => asset.kind === 'cash' || asset.navs.length > 0);
-  if (active.length < 2) {
+  // At least one fund with NAV is required: the date axis is built from fund dates,
+  // so a cash-only pool has nothing to walk.
+  const fundAssets = active.filter((asset) => asset.kind === 'fund');
+  if (fundAssets.length < 1) {
     const detail = excluded.length > 0 ? `（${excluded.map((e) => `${e.code}: ${e.reason}`).join('；')}）` : '';
-    return { error: `有效资产不足 2 个，无法构成组合${detail}` };
+    return { error: `至少需要 1 个有净值数据的基金标的${detail}` };
   }
 
-  // Effective window: the latest first date → the earliest last date, so every
-  // leg has data throughout. `active` always contains ≥1 fund here (checked above),
-  // because a cash-only portfolio has no dates to walk.
-  const fundAssets = active.filter((asset) => asset.kind === 'fund');
+  // Effective window: the latest first date → the earliest last date, so every leg
+  // has data throughout.
   const effectiveStart = fundAssets.reduce((max, a) => (a.navs[0].date > max ? a.navs[0].date : max), fundAssets[0].navs[0].date);
   const effectiveEnd = fundAssets.reduce((min, a) => {
     const last = a.navs[a.navs.length - 1].date;

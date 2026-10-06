@@ -1,237 +1,271 @@
 /**
- * LLM-authored strategy sandbox — the pure half.
+ * Strategy-code sandbox — the pure half.
  *
- * A model writes a JS body `onDay(s) -> { buy?, sellAll? }`; this module compiles it,
- * validates every day's decision, and runs it through the existing engine via
- * `runBacktest(..., { decide })`. Keeping this side effect-free (no Worker here) means
- * it can be unit-tested directly; `strategyWorker.ts` is only the transport shell and
- * `runStrategyCode.ts` only manages the worker lifecycle + timeout.
+ * One contract, no single/portfolio split: the user code is a **module** that defines
  *
- * Contract shown to the model (must stay in sync with toolContract.ts):
- *   s = { i, date, nav, navs, shares, invested, value, returnRate(), args, helpers }
- *   helpers.ma(n) / helpers.pctChange(n) use **previous** n days only (no look-ahead).
+ *   function prepare(sdk)  -> { start, end, assets: string[], initialAmount?, feeRate? }
+ *   function onDay(s)      -> { buy?/sell?/rebalance?/sellAll? }   (addressed by fund code)
+ *
+ * `prepare` runs once (local data only, no network); the host then fetches NAV for the
+ * declared pool and runs `onDay` per trading day through the existing multi-asset
+ * engine. The engine still indexes legs; this module is the code-addressing adapter.
+ *
+ * Keeping this side effect-free (no Worker here) means it can be unit-tested directly;
+ * `strategyWorker.ts` is only the transport shell and `runStrategyCode.ts` only manages
+ * the worker lifecycle + timeout.
  *
  * Security: this is *not* a security boundary. The Worker shadows globals (best effort)
  * and the user confirms before anything runs — see the plan doc.
  */
 
-import { runBacktest } from './backtestEngine';
 import { runPortfolioBacktest } from './portfolioBacktest';
 import { isPortfolioResult } from './backtestTypes';
 import type {
-  BacktestFailure,
-  BacktestHooks,
-  BacktestResult,
-  BacktestSpec,
-  Decision,
-  DecisionState,
   NavPoint,
   PortfolioBacktestResult,
   PortfolioDecision,
   PortfolioDecisionState,
+  PortfolioHooks,
   PortfolioSpec,
 } from './backtestTypes';
 
 export const MAX_CODE_LENGTH = 8000;
+/** Safety cap on the declared pool (each leg is one NAV series). */
+export const MAX_POOL = 40;
 
 export class StrategyCodeError extends Error {}
 
-/** Pure helpers injected into `s.helpers`; both look **backwards** only. */
-export interface StrategyHelpers {
-  /** Mean of the previous `n` trading days (strictly before today). */
-  ma(n: number): number;
-  /** NAV change vs `n` days before today (strictly before today). */
-  pctChange(n: number): number;
+function errMsg(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-export function makeHelpers(navs: number[]): StrategyHelpers {
-  return {
-    ma(n: number): number {
-      const window = Math.max(1, Math.floor(n));
-      const prior = navs.slice(Math.max(0, navs.length - 1 - window), navs.length - 1);
-      if (prior.length === 0) return navs[navs.length - 1] ?? 0;
-      return prior.reduce((a, b) => a + b, 0) / prior.length;
-    },
-    pctChange(n: number): number {
-      const back = Math.max(1, Math.floor(n));
-      const current = navs[navs.length - 1];
-      const base = navs[navs.length - 1 - back];
-      if (base == null || base <= 0) return 0;
-      return current / base - 1;
-    },
-  };
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
-export type StrategyDecisionState = DecisionState & {
-  helpers: StrategyHelpers;
-  args: StrategyArgs;
-  returnRate(): number;
-};
-export type DecisionFn = (state: StrategyDecisionState) => Decision | void;
-
-/** Constants the model can read instead of hardcoding. */
-export interface StrategyArgs {
-  initial_amount: number;
-  fee_rate: number;
+function defaultStart(): string {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - 3);
+  return date.toISOString().slice(0, 10);
 }
 
-const DEFAULT_ARGS: StrategyArgs = { initial_amount: 0, fee_rate: 0.0015 };
+// ───────────────────────────────── plan (prepare) ─────────────────────────────────
+
+/** One row of the local fund database (`screeningFunds`), the only data `prepare` sees. */
+export interface ScreenRow {
+  code: string;
+  name: string;
+  type: string | null;
+  return_1y: number | null;
+  sharpe_ratio_1y: number | null;
+  max_drawdown_1y: number | null;
+  nav_date: string | null;
+}
+
+export interface PlanSdk {
+  /** Filter the local fund database (already in memory; no network). */
+  screen(filter?: Partial<ScreenRow>): ScreenRow[];
+}
+
+export interface StrategyPlan {
+  start: string;
+  end: string;
+  /** Fund codes plus at most one `CASH[:annualRate]` leg. */
+  assets: string[];
+  initialAmount: number;
+  feeRate: number;
+}
+
+export interface PlanRequestPayload {
+  code: string;
+  screenRows?: ScreenRow[];
+  /** Host defaults for missing fields (usually the last three years). */
+  defaults?: { start: string; end: string };
+}
+
+export type PlanResponse = { ok: true; plan: StrategyPlan } | { ok: false; error: string };
+
+export interface StrategyModule {
+  prepare?: (sdk: PlanSdk) => unknown;
+  onDay: (s: DaySdk) => unknown;
+}
 
 /**
- * Compile the model's code into a plain callable. Accepts either a bare function body
- * (`return { buy: 1000 }`) or a full function expression
- * (`function onDay(s) { ... }` / `(s) => ...`). Shared by the single-fund and the
- * portfolio contracts; each wraps the raw return value with its own validation.
+ * Compile the user's module and pull `prepare` / `onDay` out of it. The body goes
+ * through `new Function` so `function onDay() {}` and `const onDay = () => {}` both work.
  */
-function compileStrategyFunction(code: string): (state: unknown) => unknown {
+export function compileStrategyModule(code: string): StrategyModule {
   const source = String(code ?? '').trim();
   if (!source) throw new StrategyCodeError('策略代码为空');
   if (source.length > MAX_CODE_LENGTH) {
     throw new StrategyCodeError(`策略代码过长（超过 ${MAX_CODE_LENGTH} 字符）`);
   }
-  const looksLikeFunction = /^(function\b|async\b|\(|s\s*=>)/.test(source);
-  const wrapped = looksLikeFunction ? `return (${source});` : `return function (s) {\n${source}\n};`;
-  let compiled: unknown;
-  try {
-    compiled = new Function(wrapped)();
-  } catch (error) {
-    throw new StrategyCodeError(`策略代码编译失败：${error instanceof Error ? error.message : String(error)}`);
+  // Cheap guard so legacy bare-body code (pre-module contract) fails with a clear
+  // message instead of executing top-level statements and throwing "s is not defined".
+  if (!/\bonDay\b/.test(source)) {
+    throw new StrategyCodeError(
+      '代码必须是模块：请定义 function onDay(s) { ... }（可选 prepare(sdk)）；可在「模板」菜单插入示例。',
+    );
   }
-  if (typeof compiled !== 'function') throw new StrategyCodeError('策略代码必须是一个函数');
-  return compiled as (state: unknown) => unknown;
-}
-
-/** Compile the single-fund `onDay(s) -> { buy?, sellAll? }` contract. */
-export function compileDecision(code: string): DecisionFn {
-  return compileStrategyFunction(code) as DecisionFn;
-}
-
-/** Compile + wrap one day's decision with validation and a date-tagged error. */
-export function makeDecision(code: string, args: StrategyArgs = DEFAULT_ARGS): NonNullable<BacktestHooks['decide']> {
-  const fn = compileDecision(code);
-  return (state: DecisionState): Decision => {
-    let raw: Decision | void;
-    try {
-      raw = fn({
-        ...state,
-        helpers: makeHelpers(state.navs),
-        args,
-        returnRate: () => (state.invested > 0 ? (state.value - state.invested) / state.invested : 0),
-      });
-    } catch (error) {
-      throw new StrategyCodeError(
-        `策略代码在 ${state.date} 执行出错：${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-    if (raw == null) return {};
-    if (typeof raw !== 'object') throw new StrategyCodeError(`${state.date}：onDay 必须返回对象`);
-    const buy = Number((raw as Decision).buy ?? 0);
-    if (!Number.isFinite(buy) || buy < 0) {
-      throw new StrategyCodeError(`${state.date}：buy 必须是不小于 0 的数字`);
-    }
-    return { buy, sellAll: Boolean((raw as Decision).sellAll) };
-  };
-}
-
-export interface RunStrategyPayload {
-  nav: NavPoint[];
-  spec: BacktestSpec;
-  code: string;
-}
-
-export type RunStrategyResponse =
-  | { ok: true; result: BacktestResult }
-  | { ok: false; error: string };
-
-/**
- * The whole backtest, executed inside the worker. Returns `{ ok:false, error }` for
- * compile errors, runtime errors (with the offending date) and empty NAV input —
- * never throws, so the worker's message handler stays trivial.
- */
-export function handleRunStrategyRequest(payload: RunStrategyPayload): RunStrategyResponse {
-  const { nav = [], spec = {}, code = '' } = payload ?? {};
-  let decide: NonNullable<BacktestHooks['decide']>;
+  let exported: unknown;
   try {
-    decide = makeDecision(code, {
-      initial_amount: spec.initialAmount ?? 0,
-      fee_rate: spec.feeRate ?? 0.0015,
-    });
+    exported = new Function(
+      `${source}\n;return { prepare: typeof prepare === 'function' ? prepare : undefined, onDay: typeof onDay === 'function' ? onDay : undefined };`,
+    )();
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    throw new StrategyCodeError(`策略代码编译失败：${errMsg(error)}`);
   }
-  try {
-    const outcome = runBacktest(nav, spec, { decide });
-    if (!('summary' in outcome)) return { ok: false, error: (outcome as BacktestFailure).error };
-    return { ok: true, result: outcome };
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) };
-  }
+  const mod = exported as StrategyModule;
+  if (typeof mod?.onDay !== 'function') throw new StrategyCodeError('代码必须定义 function onDay(s) { ... }');
+  return mod;
 }
 
-// ───────────────────────── Multi-asset (portfolio) contract ─────────────────────────
-//
-// `onDay(s) -> { buy?, sell?, rebalance?, sellAll? }` over N assets. Money enters
-// the portfolio through `buy` (external) and `initialAmount`; `sell` parks proceeds
-// as cash; `rebalance` moves positions + cash to target weights without new money.
-
-/** Helpers injected into a portfolio strategy's `s.helpers`; all look backwards only. */
-export interface PortfolioStrategyHelpers {
-  /** Mean of the asset's previous `n` trading days (strictly before today). */
-  ma(asset: number, n: number): number;
-  /** The asset's NAV change vs `n` days before today (strictly before today). */
-  pctChange(asset: number, n: number): number;
-  /** Current market-value weight, cash included in the denominator. */
-  weight(asset: number): number;
+export function filterScreenRows(rows: ScreenRow[], filter?: Partial<ScreenRow>): ScreenRow[] {
+  if (!filter) return rows.slice();
+  const entries = Object.entries(filter).filter(([, value]) => value !== undefined && value !== null);
+  if (entries.length === 0) return rows.slice();
+  return rows.filter((row) =>
+    entries.every(([key, expected]) => {
+      const actual = (row as unknown as Record<string, unknown>)[key];
+      if (typeof expected === 'string' && typeof actual === 'string') return actual.includes(expected) || expected.includes(actual);
+      return actual === expected;
+    }),
+  );
 }
 
-export function makePortfolioHelpers(history: number[][], values: number[], cash: number): PortfolioStrategyHelpers {
-  const navHistory = (asset: number) => (Array.isArray(history[asset]) ? history[asset] : []);
+const CASH_RE = /^CASH(?::([\d.]+))?$/i;
+
+function normalizePlan(raw: unknown, defaults: { start: string; end: string }): StrategyPlan {
+  if (raw == null || typeof raw !== 'object') {
+    throw new StrategyCodeError('prepare() 必须返回对象：{ start, end, assets: [...] }');
+  }
+  const input = raw as Record<string, unknown>;
+  const assets = (Array.isArray(input.assets) ? input.assets : [])
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean);
+  if (assets.length === 0) throw new StrategyCodeError('prepare() 的 assets 不能为空');
+  if (assets.length > MAX_POOL) throw new StrategyCodeError(`标的数量超过上限 ${MAX_POOL}`);
+  if (assets.filter((code) => CASH_RE.test(code)).length > 1) {
+    throw new StrategyCodeError('最多只能有一个现金腿（CASH[:年化]）');
+  }
+  const start = typeof input.start === 'string' && input.start ? input.start.slice(0, 10) : defaults.start;
+  const end = typeof input.end === 'string' && input.end ? input.end.slice(0, 10) : defaults.end;
+  if (start > end) throw new StrategyCodeError(`开始日期 ${start} 晚于结束日期 ${end}`);
   return {
-    ma(asset: number, n: number): number {
-      const navs = navHistory(asset);
-      const window = Math.max(1, Math.floor(n));
-      const prior = navs.slice(Math.max(0, navs.length - 1 - window), navs.length - 1);
-      if (prior.length === 0) return navs[navs.length - 1] ?? 0;
-      return prior.reduce((a, b) => a + b, 0) / prior.length;
-    },
-    pctChange(asset: number, n: number): number {
-      const navs = navHistory(asset);
-      const back = Math.max(1, Math.floor(n));
-      const current = navs[navs.length - 1];
-      const base = navs[navs.length - 1 - back];
-      if (base == null || base <= 0 || current == null) return 0;
-      return current / base - 1;
-    },
-    weight(asset: number): number {
-      const total = values.reduce((a, b) => a + b, 0) + cash;
-      return total > 0 ? (values[asset] ?? 0) / total : 0;
-    },
+    start,
+    end,
+    assets,
+    initialAmount: Math.max(0, Number(input.initialAmount) || 0),
+    feeRate: Number.isFinite(Number(input.feeRate)) ? Math.max(0, Number(input.feeRate)) : 0.0015,
   };
 }
 
-export type PortfolioStrategyDecisionState = PortfolioDecisionState & {
-  helpers: PortfolioStrategyHelpers;
-  args: StrategyArgs;
-  returnRate(): number;
-};
-export type PortfolioDecisionFn = (state: PortfolioStrategyDecisionState) => PortfolioDecision | void;
+/** Runs `prepare(sdk)` inside the worker; the host then fetches NAV for `plan.assets`. */
+export function handlePlanRequest(payload: PlanRequestPayload): PlanResponse {
+  const { code = '', screenRows: rows = [], defaults } = payload ?? {};
+  const baseDefaults = defaults ?? { start: defaultStart(), end: today() };
+  let mod: StrategyModule;
+  try {
+    mod = compileStrategyModule(String(code));
+  } catch (error) {
+    return { ok: false, error: errMsg(error) };
+  }
+  if (typeof mod.prepare !== 'function') {
+    return { ok: false, error: '代码必须定义 function prepare(sdk) { return { start, end, assets } }' };
+  }
+  const sdk: PlanSdk = { screen: (filter) => filterScreenRows(rows, filter) };
+  let raw: unknown;
+  try {
+    raw = mod.prepare(sdk);
+  } catch (error) {
+    return { ok: false, error: `prepare() 执行出错：${errMsg(error)}` };
+  }
+  try {
+    return { ok: true, plan: normalizePlan(raw, baseDefaults) };
+  } catch (error) {
+    return { ok: false, error: errMsg(error) };
+  }
+}
 
-function validatePortfolioDecision(raw: unknown, date: string, assetCount: number): PortfolioDecision {
+// ──────────────────────────────── run (onDay) ────────────────────────────────
+
+/** Per-day state handed to `onDay(s)`; assets are addressed by **fund code**. */
+export interface DaySdk {
+  i: number;
+  date: string;
+  codes: string[];
+  /** Today's NAV. Unknown code → error naming it. */
+  nav(code: string): number;
+  /** NAV series up to and including today (no look-ahead). */
+  navs(code: string): number[];
+  history(code: string): number[];
+  /** Mean of the previous `n` trading days (strictly before today). */
+  ma(code: string, n: number): number;
+  /** NAV change vs `n` days before today (strictly before today). */
+  pctChange(code: string, n: number): number;
+  /** Current market-value weight, cash included in the denominator. */
+  weight(code: string): number;
+  shares: Record<string, number>;
+  values: Record<string, number>;
+  cash: number;
+  invested: number;
+  value: number;
+  returnRate(): number;
+  args: { start: string; end: string; initialAmount: number; feeRate: number };
+}
+
+/** Raw decision the user returns, addressed by fund code. */
+export interface CodeDecision {
+  buy?: Array<{ code: string; amount: number }>;
+  sell?: Array<{ code: string; amount: number }>;
+  /** Target weights by code (normalized by the engine). */
+  rebalance?: Record<string, number>;
+  sellAll?: boolean;
+}
+
+export const DEFAULT_ARGS: DaySdk['args'] = { start: '', end: '', initialAmount: 0, feeRate: 0.0015 };
+
+function ma(series: number[], n: number): number {
+  const window = Math.max(1, Math.floor(n));
+  const prior = series.slice(Math.max(0, series.length - 1 - window), series.length - 1);
+  if (prior.length === 0) return series[series.length - 1] ?? 0;
+  return prior.reduce((a, b) => a + b, 0) / prior.length;
+}
+
+function pctChange(series: number[], n: number): number {
+  const back = Math.max(1, Math.floor(n));
+  const current = series[series.length - 1];
+  const base = series[series.length - 1 - back];
+  if (base == null || base <= 0 || current == null) return 0;
+  return current / base - 1;
+}
+
+/** Convert the code-addressed decision into the engine's index-addressed shape. */
+export function toIndexDecision(raw: unknown, codes: string[], date: string): PortfolioDecision {
   if (raw == null) return {};
   if (typeof raw !== 'object') throw new StrategyCodeError(`${date}：onDay 必须返回对象`);
-  const input = raw as PortfolioDecision;
+  const input = raw as CodeDecision;
   const out: PortfolioDecision = {};
   if (input.sellAll) out.sellAll = true;
 
-  if (input.rebalance !== undefined) {
-    if (!Array.isArray(input.rebalance) || input.rebalance.length !== assetCount) {
-      throw new StrategyCodeError(`${date}：rebalance 必须是长度 ${assetCount} 的数组`);
+  const indexOf = (code: string): number => {
+    const at = codes.indexOf(code);
+    if (at < 0) {
+      throw new StrategyCodeError(`${date}：标的 ${code} 未在 prepare().assets 中声明（可用：${codes.join(', ')}）`);
     }
-    const weights = input.rebalance.map(Number);
-    if (weights.some((w) => !Number.isFinite(w) || w < 0)) {
+    return at;
+  };
+
+  if (input.rebalance !== undefined) {
+    const weights = input.rebalance as Record<string, number>;
+    if (weights == null || typeof weights !== 'object' || Array.isArray(weights)) {
+      throw new StrategyCodeError(`${date}：rebalance 必须是 { 代码: 权重 } 对象`);
+    }
+    const list = codes.map((code) => Number(weights[code] ?? 0));
+    if (list.some((weight) => !Number.isFinite(weight) || weight < 0)) {
       throw new StrategyCodeError(`${date}：rebalance 的权重必须是不小于 0 的数字`);
     }
-    out.rebalance = weights;
+    out.rebalance = list;
   }
 
   for (const key of ['buy', 'sell'] as const) {
@@ -239,11 +273,8 @@ function validatePortfolioDecision(raw: unknown, date: string, assetCount: numbe
     if (list === undefined) continue;
     if (!Array.isArray(list)) throw new StrategyCodeError(`${date}：${key} 必须是数组`);
     out[key] = list.map((item) => {
-      const asset = Number((item as { asset?: unknown })?.asset);
+      const asset = indexOf(String((item as { code?: unknown })?.code ?? ''));
       const amount = Number((item as { amount?: unknown })?.amount);
-      if (!Number.isInteger(asset) || asset < 0 || asset >= assetCount) {
-        throw new StrategyCodeError(`${date}：${key} 的 asset 下标越界（0 ~ ${assetCount - 1}）`);
-      }
       if (!Number.isFinite(amount) || amount <= 0) {
         throw new StrategyCodeError(`${date}：${key} 的 amount 必须是正数`);
       }
@@ -253,27 +284,52 @@ function validatePortfolioDecision(raw: unknown, date: string, assetCount: numbe
   return out;
 }
 
-/** Compile + wrap one day's portfolio decision with validation and a date-tagged error. */
+/** Compile `onDay` and wrap it with the code→index adapter + date-tagged errors. */
 export function makePortfolioDecision(
   code: string,
-  args: StrategyArgs = DEFAULT_ARGS,
-): NonNullable<import('./backtestTypes').PortfolioHooks['decide']> {
-  const fn = compileStrategyFunction(code);
+  args: DaySdk['args'] = DEFAULT_ARGS,
+): NonNullable<PortfolioHooks['decide']> {
+  const mod = compileStrategyModule(code);
   return (state: PortfolioDecisionState): PortfolioDecision => {
+    const index = new Map(state.codes.map((fundCode, at) => [fundCode, at]));
+    const seriesOf = (fundCode: string): number[] => {
+      const at = index.get(fundCode);
+      if (at == null) {
+        throw new StrategyCodeError(
+          `${state.date}：标的 ${fundCode} 未在 prepare().assets 中声明（可用：${state.codes.join(', ')}）`,
+        );
+      }
+      return state.history[at];
+    };
+    const total = state.values.reduce((sum, value) => sum + value, 0) + state.cash;
+    const s: DaySdk = {
+      i: state.i,
+      date: state.date,
+      codes: [...state.codes],
+      nav: (fundCode) => state.navs[index.get(fundCode) ?? -1],
+      navs: (fundCode) => seriesOf(fundCode),
+      history: (fundCode) => seriesOf(fundCode),
+      ma: (fundCode, n) => ma(seriesOf(fundCode), n),
+      pctChange: (fundCode, n) => pctChange(seriesOf(fundCode), n),
+      weight: (fundCode) => {
+        const at = index.get(fundCode);
+        return at == null || total <= 0 ? 0 : (state.values[at] ?? 0) / total;
+      },
+      shares: Object.fromEntries(state.codes.map((fundCode, at) => [fundCode, state.shares[at] ?? 0])),
+      values: Object.fromEntries(state.codes.map((fundCode, at) => [fundCode, state.values[at] ?? 0])),
+      cash: state.cash,
+      invested: state.invested,
+      value: state.value,
+      returnRate: () => (state.invested > 0 ? (state.value - state.invested) / state.invested : 0),
+      args,
+    };
     let raw: unknown;
     try {
-      raw = fn({
-        ...state,
-        helpers: makePortfolioHelpers(state.history, state.values, state.cash),
-        args,
-        returnRate: () => (state.invested > 0 ? (state.value - state.invested) / state.invested : 0),
-      });
+      raw = mod.onDay(s);
     } catch (error) {
-      throw new StrategyCodeError(
-        `策略代码在 ${state.date} 执行出错：${error instanceof Error ? error.message : String(error)}`,
-      );
+      throw new StrategyCodeError(`策略代码在 ${state.date} 执行出错：${errMsg(error)}`);
     }
-    return validatePortfolioDecision(raw, state.date, state.codes.length);
+    return toIndexDecision(raw, state.codes, state.date);
   };
 }
 
@@ -281,6 +337,8 @@ export interface RunPortfolioStrategyPayload {
   spec: PortfolioSpec;
   navByCode: Record<string, NavPoint[]>;
   code: string;
+  /** The plan produced by `prepare()`, surfaced to the code as `s.args`. */
+  args?: DaySdk['args'];
 }
 
 export type RunPortfolioStrategyResponse =
@@ -289,21 +347,18 @@ export type RunPortfolioStrategyResponse =
 
 /** Runs the multi-asset backtest inside the worker; never throws. */
 export function handleRunPortfolioStrategyRequest(payload: RunPortfolioStrategyPayload): RunPortfolioStrategyResponse {
-  const { spec = { assets: [] }, navByCode = {}, code = '' } = payload ?? {};
-  let decide: NonNullable<import('./backtestTypes').PortfolioHooks['decide']>;
+  const { spec = { assets: [] }, navByCode = {}, code = '', args } = payload ?? {};
+  let decide: NonNullable<PortfolioHooks['decide']>;
   try {
-    decide = makePortfolioDecision(code, {
-      initial_amount: spec.initialAmount ?? 0,
-      fee_rate: spec.feeRate ?? 0.0015,
-    });
+    decide = makePortfolioDecision(code, args ?? DEFAULT_ARGS);
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    return { ok: false, error: errMsg(error) };
   }
   try {
     const outcome = runPortfolioBacktest(spec, { navByCode, hooks: { decide } });
     if (!isPortfolioResult(outcome)) return { ok: false, error: outcome.error };
     return { ok: true, result: outcome };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    return { ok: false, error: errMsg(error) };
   }
 }

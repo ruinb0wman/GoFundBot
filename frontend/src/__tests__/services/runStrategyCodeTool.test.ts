@@ -1,75 +1,38 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { getMock, singleMock, portfolioMock } = vi.hoisted(() => ({
-  getMock: vi.fn(),
-  singleMock: vi.fn(),
-  portfolioMock: vi.fn(),
-}))
+const { codeMock, savedMock } = vi.hoisted(() => ({ codeMock: vi.fn(), savedMock: vi.fn() }))
 
-vi.mock('../../services/api', () => ({ default: { get: getMock } }))
-vi.mock('../../services/backtest/runStrategyCode', () => ({
-  runStrategyCode: singleMock,
-  runPortfolioStrategyCode: portfolioMock,
+vi.mock('../../services/backtest/scriptRun', () => ({
+  runCodeSampled: codeMock,
+  runSavedScriptSampled: savedMock,
 }))
 
 import { executeTool } from '../../services/chatEngine/toolHandlers'
 
-const NAV = [
-  { date: '2024-01-02', nav: 1 },
-  { date: '2024-02-01', nav: 1.1 },
-]
-
 beforeEach(() => {
-  getMock.mockReset()
-  getMock.mockResolvedValue({ data: { success: true, data: { items: NAV } }, status: 200, ok: true })
-  singleMock.mockReset().mockResolvedValue({ summary: { total_invested: 1 }, spec: 'single' })
-  portfolioMock.mockReset().mockResolvedValue({ summary: { total_invested: 2 }, spec: 'portfolio' })
+  codeMock.mockReset().mockResolvedValue({ summary: { total_invested: 1 }, spec: 'code' })
+  savedMock.mockReset().mockResolvedValue({ summary: { total_invested: 2 }, spec: 'saved' })
 })
 
-describe('run_strategy_code handler routing', () => {
-  it('routes assets to the portfolio sandbox runner', async () => {
+describe('run_strategy_code handler (inline code)', () => {
+  it('runs inline code and forwards the optional overrides', async () => {
     const result = (await executeTool(
       'run_strategy_code',
-      {
-        assets: [
-          { fund_code: '110022', weight: 50 },
-          { fund_code: '000217', weight: 50 },
-        ],
-        code: 'return {}',
-      },
+      { code: 'function onDay() { return {} }', start_date: '2020-01-01', initial_amount: 5000 },
       {},
     )) as Record<string, unknown>
 
-    expect(portfolioMock).toHaveBeenCalledTimes(1)
-    expect(singleMock).not.toHaveBeenCalled()
-    const request = portfolioMock.mock.calls[0][0] as { navByCode: Record<string, unknown>; code: string }
-    expect(Object.keys(request.navByCode).sort()).toEqual(['000217', '110022'])
-    expect(request.code).toBe('return {}')
-    expect((result.summary as Record<string, unknown>).total_invested).toBe(2)
+    expect(codeMock).toHaveBeenCalledTimes(1)
+    const [code, overrides] = codeMock.mock.calls[0]
+    expect(code).toBe('function onDay() { return {} }')
+    expect(overrides).toMatchObject({ start_date: '2020-01-01', initial_amount: 5000 })
+    expect((result.summary as Record<string, unknown>).total_invested).toBe(1)
   })
 
-  it('routes fund_code to the single-fund sandbox runner', async () => {
-    await executeTool('run_strategy_code', { fund_code: '110022', code: 'return {}' }, {})
-    expect(singleMock).toHaveBeenCalledTimes(1)
-    expect(portfolioMock).not.toHaveBeenCalled()
-    const request = singleMock.mock.calls[0][0] as { nav: unknown[]; code: string }
-    expect(request.nav.length).toBe(2)
-  })
-
-  it('rejects a call with neither fund_code nor assets', async () => {
-    const result = (await executeTool('run_strategy_code', { code: 'return {}' }, {})) as Record<string, unknown>
-    expect(String(result.error)).toContain('fund_code')
-    expect(singleMock).not.toHaveBeenCalled()
-    expect(portfolioMock).not.toHaveBeenCalled()
-  })
-
-  it('rejects a portfolio call with fewer than two assets', async () => {
-    const result = (await executeTool(
-      'run_strategy_code',
-      { assets: [{ fund_code: '110022', weight: 100 }], code: 'return {}' },
-      {},
-    )) as Record<string, unknown>
-    expect(String(result.error)).toMatch(/至少需要 2 个资产/)
-    expect(portfolioMock).not.toHaveBeenCalled()
+  it('rejects a call with neither code nor script_name', async () => {
+    const result = (await executeTool('run_strategy_code', {}, {})) as Record<string, unknown>
+    expect(String(result.error)).toContain('code')
+    expect(codeMock).not.toHaveBeenCalled()
+    expect(savedMock).not.toHaveBeenCalled()
   })
 })
