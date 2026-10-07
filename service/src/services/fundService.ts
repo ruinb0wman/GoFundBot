@@ -1,4 +1,11 @@
 import { cacheThrough, ttl } from '../core/cache.js';
+import {
+  getNavMeta,
+  isCovered,
+  readNavItems,
+  saveNav,
+  type NavWindow,
+} from './navCacheService.js';
 import { AppError, assertCode } from '../core/errors.js';
 import { ProviderChain } from '../core/providerChain.js';
 import { logger } from '../core/logger.js';
@@ -176,6 +183,16 @@ export async function getFundScreeningSnapshot(options: {
   return toServiceResult(result);
 }
 
+/**
+ * 净值历史（P3.4 起由 **SQLite 缓存**兜底，取代原来「按窗口做 key 的内存缓存」）。
+ *
+ * 为什么换：内存缓存把 `[start, end]` 写进 key，换个窗口就要重新向 provider 全量拉一遍
+ * （provider 本来就只能全量返回再切片）；而且 service 一重启就没了。现在按基金缓存整条序列，
+ * 窗口只是读取时的过滤 —— 回测、筛选富化、页面、pi 共用同一份。
+ *
+ * 语义与前端原 `dataBroker.isFresh` 对齐：命中条件 = `fetched_through >= min(end, 今天)`
+ * 且（窗口整体在过去 或 24 小时内取过）。
+ */
 export async function getFundNavHistory(
   code: string,
   range: DateRange
@@ -183,16 +200,49 @@ export async function getFundNavHistory(
   const fundCode = assertFundCode(code);
   assertDateRange(range);
   const options = normalizeDateRange(range);
-  const key = `fund:nav-history:${fundCode}:${options.startDate ?? ''}:${options.endDate ?? ''}`;
+  const window: NavWindow = {
+    startDate: options.startDate ? toDashedDate(options.startDate) : undefined,
+    endDate: options.endDate ? toDashedDate(options.endDate) : undefined,
+  };
+
+  const meta = getNavMeta(fundCode);
+  if (meta && isCovered(meta, window)) {
+    return {
+      data: { code: fundCode, name: meta.name, items: readNavItems(fundCode, window) },
+      provider: 'sqlite-nav-cache',
+      fallback: false,
+      cached: true,
+      stale: false,
+      updatedAt: new Date(meta.updatedAt),
+    };
+  }
+
   const chain = new ProviderChain<FundProvider>([joinQuantFundProvider, tencentFundProvider, stockSdkFundProvider, eastMoneyFundProvider]);
-  const result = await cacheThrough(key, ttl.fundNavHistory, () =>
-    chain.run('fund.navHistory', (provider) => provider.navHistory(fundCode, options), {
-      timeoutMs: 8000,
-      validate: (data) => data.items.length > 0,
-    })
+  const result = await cacheThrough(
+    `fund:nav-history:${fundCode}`,
+    ttl.fundNavHistory,
+    () =>
+      chain.run('fund.navHistory', (provider) => provider.navHistory(fundCode, {}), {
+        timeoutMs: 8000,
+        validate: (data) => data.items.length > 0,
+      })
   );
 
-  return toServiceResult(result);
+  // 落到 SQLite（全量），下次任何窗口都能直接从缓存切片。
+  try {
+    saveNav(fundCode, result.value.data.items, { name: result.value.data.name ?? null });
+  } catch (error) {
+    logger.error('failed to persist nav cache', { code: fundCode, error: String(error) });
+  }
+
+  return {
+    data: { code: fundCode, name: result.value.data.name ?? null, items: readNavItems(fundCode, window) },
+    provider: result.value.provider,
+    fallback: result.value.fallback,
+    cached: false,
+    stale: result.value.stale,
+    updatedAt: result.updatedAt,
+  };
 }
 
 export async function getFundNavBatch(
@@ -316,6 +366,11 @@ function isDateLike(value: string): boolean {
 
 function normalizeDate(value: string): string {
   return value.replaceAll('-', '');
+}
+
+/** `YYYYMMDD` → `YYYY-MM-DD`（SQLite 里存的是带横线的日期）。 */
+function toDashedDate(value: string): string {
+  return value.length === 8 ? `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}` : value;
 }
 
 const DETAIL_SECTION_TIMEOUT_MS = 12000; // 12s per section – enough for slow providers
@@ -607,5 +662,87 @@ function toServiceResult<T>(lookup: {
     cached: lookup.cached,
     stale: lookup.value.stale,
     updatedAt: lookup.updatedAt,
+  };
+}
+
+/**
+ * 「旧版」基金详情聚合（`GET /api/fund/:code` 的形状）。
+ *
+ * 原来是 `fundLegacy.routes.ts` 里的行内拼装，P4 抽到这里：
+ * 路由与 pi 的 `get_fund_detail` 工具共用同一份实现，免得映射抄两遍。
+ *
+ * 注意：`netWorthTrend` 等序列很长（整包 ~1MB），工具侧会再抽样压缩。
+ */
+export async function composeFundDetailLegacy(code: string): Promise<Record<string, unknown>> {
+  const detailResult = await getFundDetail(code);
+  const detail = detailResult.data;
+  if (!detail) {
+    throw new AppError('NOT_FOUND', `Fund ${code} not found`, 404);
+  }
+
+  const navItems = detail.sections.navHistory.data?.items ?? [];
+  const basicData = detail.sections.basic.data;
+  const estimateData = detail.sections.estimate.data;
+  const perfData = detail.sections.performance.data;
+  const holdings = detail.sections.holdings.data?.items ?? [];
+  const rankItems = detail.sections.rankHistory.data?.items ?? [];
+
+  return {
+    fund_code: code,
+    fund_name: basicData?.name ?? '',
+    fund_type: basicData?.type ?? '',
+    net_worth_trend: navItems.map((i) => ({ date: i.date, net_worth: i.nav })),
+    accumulated_net_worth: navItems.map((i) => ({ date: i.date, acc_net_worth: i.accNav })),
+    basic_info: {
+      fund_name: basicData?.name ?? '',
+      fund_type: basicData?.type ?? '',
+      current_rate: basicData?.currentRate ?? null,
+      min_subscription_amount: basicData?.minSubscriptionAmount ?? null,
+    },
+    realtime_estimate: {
+      estimate_value: estimateData?.estimatedNav ?? null,
+      estimate_change: estimateData?.estimatedChangePercent ?? null,
+      estimate_time: estimateData?.estimateTime ?? null,
+      net_worth: estimateData?.nav ?? null,
+      net_worth_date: estimateData?.navDate ?? null,
+      name: estimateData?.name ?? null,
+    },
+    performance: {
+      '1_month_return': perfData?.return1m ?? null,
+      '3_month_return': perfData?.return3m ?? null,
+      '6_month_return': perfData?.return6m ?? null,
+      '1_year_return': perfData?.return1y ?? null,
+    },
+    total_return_trend: detail.sections.totalReturnTrend.data?.series ?? [],
+    rank_history: rankItems,
+    ranking_trend: rankItems.map((item) => ({ date: item.date, rank: item.rank, total_funds: item.total })),
+    ranking_percentage: rankItems.map((item) => ({ date: item.date, position_percentage: item.percentile })),
+    fund_managers: (detail.sections.managers.data?.items ?? []).map((m) => ({
+      id: m.id,
+      name: m.name,
+      photo_url: m.photoUrl,
+      star_rating: m.starRating,
+      work_experience: m.workExperience,
+      managed_fund_size: m.managedFundSize,
+      start_date: m.startDate,
+      end_date: m.endDate,
+      tenure: m.tenure,
+      description: m.description,
+      ability_assessment: m.abilityAssessment,
+      performance: m.performance,
+    })),
+    stock_holdings: holdings,
+    portfolio: {
+      stock_codes_new: holdings.map((item) => ({ code: item.stockCode, name: item.stockName, ratio: item.ratio })),
+    },
+    asset_allocation: detail.sections.assetAllocation.data ?? { categories: [], series: [] },
+    holder_structure: detail.sections.holderStructure.data ?? null,
+    scale_fluctuation: detail.sections.scaleFluctuation.data ?? null,
+    subscription_redemption: detail.sections.subscriptionRedemption.data ?? null,
+    performance_evaluation: detail.sections.performanceEvaluation.data ?? null,
+    same_type_funds: detail.sections.sameTypeFunds.data ?? [],
+    risk_metrics: {},
+    industry_tag: '',
+    industry_ratio: 0,
   };
 }

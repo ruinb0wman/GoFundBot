@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import type { Response } from 'express';
 import { asyncHandler } from '../core/errors.js';
+import { AppError } from '../core/errors.js';
 import { sendSuccess, sendFailure } from '../core/response.js';
-import { getFundDetail, getFundBasic, getFundNavHistory, getFundHoldings, searchFunds } from '../services/fundService.js';
+import { composeFundDetailLegacy, getFundDetail, getFundBasic, getFundNavHistory, getFundHoldings, searchFunds } from '../services/fundService.js';
 import type { FundNavPointDto } from '../types/fund.js';
 import { logger } from '../core/logger.js';
 
@@ -44,98 +45,16 @@ fundLegacyRouter.get(
   '/:code',
   asyncHandler(async (req, res) => {
     const code = String(req.params.code);
-    const detailResult = await getFundDetail(code);
-    const detail = detailResult.data;
-    if (!detail) {
-      sendFailure(res, 404, { code: 'NOT_FOUND', message: `Fund ${code} not found` });
-      return;
-    }
-
     try {
-      const navItems = detail.sections.navHistory.data?.items ?? [];
-      const basicData = detail.sections.basic.data;
-      const estimateData = detail.sections.estimate.data;
-      const perfData = detail.sections.performance.data;
-      const response: Record<string, unknown> = {
-        fund_code: code,
-        fund_name: basicData?.name ?? '',
-        fund_type: basicData?.type ?? '',
-        net_worth_trend: navItems.map((i: FundNavPointDto) => ({
-          date: i.date,
-          net_worth: i.nav,
-        })),
-        accumulated_net_worth: navItems.map((i: FundNavPointDto) => ({
-          date: i.date,
-          acc_net_worth: i.accNav,
-        })),
-        basic_info: {
-          fund_name: basicData?.name ?? '',
-          fund_type: basicData?.type ?? '',
-          current_rate: basicData?.currentRate ?? null,
-          min_subscription_amount: basicData?.minSubscriptionAmount ?? null,
-        },
-        realtime_estimate: {
-          estimate_value: estimateData?.estimatedNav ?? null,
-          estimate_change: estimateData?.estimatedChangePercent ?? null,
-          estimate_time: estimateData?.estimateTime ?? null,
-          net_worth: estimateData?.nav ?? null,
-          net_worth_date: estimateData?.navDate ?? null,
-          name: estimateData?.name ?? null,
-        },
-        performance: {
-          '1_month_return': perfData?.return1m ?? null,
-          '3_month_return': perfData?.return3m ?? null,
-          '6_month_return': perfData?.return6m ?? null,
-          '1_year_return': perfData?.return1y ?? null,
-        },
-        total_return_trend: detail.sections.totalReturnTrend.data?.series ?? [],
-        rank_history: detail.sections.rankHistory.data?.items ?? [],
-        ranking_trend: (detail.sections.rankHistory.data?.items ?? []).map(item => ({
-          date: item.date,
-          rank: item.rank,
-          total_funds: item.total,
-        })),
-        ranking_percentage: (detail.sections.rankHistory.data?.items ?? []).map(item => ({
-          date: item.date,
-          position_percentage: item.percentile,
-        })),
-        fund_managers: (detail.sections.managers.data?.items ?? []).map(m => ({
-          id: m.id,
-          name: m.name,
-          photo_url: m.photoUrl,
-          star_rating: m.starRating,
-          work_experience: m.workExperience,
-          managed_fund_size: m.managedFundSize,
-          start_date: m.startDate,
-          end_date: m.endDate,
-          tenure: m.tenure,
-          description: m.description,
-          ability_assessment: m.abilityAssessment,
-          performance: m.performance,
-        })),
-        stock_holdings: detail.sections.holdings.data?.items ?? [],
-        portfolio: {
-          stock_codes_new: (detail.sections.holdings.data?.items ?? []).map(item => ({
-            code: item.stockCode,
-            name: item.stockName,
-            ratio: item.ratio,
-          })),
-        },
-        asset_allocation: detail.sections.assetAllocation.data ?? { categories: [], series: [] },
-        holder_structure: detail.sections.holderStructure.data ?? null,
-        scale_fluctuation: detail.sections.scaleFluctuation.data ?? null,
-        subscription_redemption: detail.sections.subscriptionRedemption.data ?? null,
-        performance_evaluation: detail.sections.performanceEvaluation.data ?? null,
-        same_type_funds: detail.sections.sameTypeFunds.data ?? [],
-        risk_metrics: {},
-        industry_tag: '',
-        industry_ratio: 0,
-      };
-
-      sendSuccess(res, response);
+      // 拼装在 `fundService.composeFundDetailLegacy`（与 pi 的 get_fund_detail 工具共用）。
+      sendSuccess(res, await composeFundDetailLegacy(code));
     } catch (err) {
+      if (err instanceof AppError && err.code === 'NOT_FOUND') {
+        sendFailure(res, 404, { code: 'NOT_FOUND', message: `Fund ${code} not found` });
+        return;
+      }
       logger.error('Error building fund detail response', { code, error: String(err) });
-      sendSuccess(res, { fund_code: code, fund_name: detail.sections.basic.data?.name ?? '' });
+      sendSuccess(res, { fund_code: code, fund_name: '' });
     }
   }),
 );

@@ -4,6 +4,7 @@ import { logger } from './logger.js';
 
 export type AppErrorCode =
   | 'INVALID_ARGUMENT'
+  | 'NOT_FOUND'
   | 'STOCK_SDK_ERROR'
   | 'PROVIDER_TIMEOUT'
   | 'PROVIDER_UNAVAILABLE'

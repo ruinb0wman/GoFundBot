@@ -6,51 +6,28 @@ import {
   getFundScreeningSnapshot,
   getFundDetail,
 } from '../services/fundService.js';
+import {
+  enrichScreening,
+  getIndustryTagCounts,
+  getScreenRows,
+  getScreeningStatus,
+  queryScreening,
+  recomputeRanks,
+  syncScreening,
+} from '../services/screeningService.js';
 import { fetchFundCodeSearchList } from '../providers/eastmoney/eastmoneyFundProvider.js';
-import type { FundScreeningSnapshotItemDto } from '../types/fund.js';
 
 export const screeningRouter = Router();
 
 // ---------------------------------------------------------------------------
-// 风险指标 / 行业标签丰富化已迁移至前端（frontend services/industryClassifier
-// + riskMetrics），Node 侧的 /screening/* 仅返回原始基金清单与 NAV。
+// 富化（风险指标 / 行业标签 / 4433 排名）自 P3.3 起在 **service** 完成并落 SQLite
+// （`services/screeningService.ts`）；前端只调 /sync /compute /query /status。
 // ---------------------------------------------------------------------------
-
-function toRawFund(
-  code: string,
-  name: string,
-  snapshotItem?: FundScreeningSnapshotItemDto,
-): Record<string, unknown> {
-  return {
-    fund_code: code,
-    fund_name: name,
-    fund_type: snapshotItem?.type ?? null,
-    return_1m: snapshotItem?.return1m ?? null,
-    return_3m: snapshotItem?.return3m ?? null,
-    return_6m: snapshotItem?.return6m ?? null,
-    return_1y: snapshotItem?.return1y ?? null,
-    return_2y: snapshotItem?.return2y ?? null,
-    return_3y: snapshotItem?.return3y ?? null,
-    ytd: snapshotItem?.ytd ?? null,
-    since_inception: snapshotItem?.sinceInception ?? null,
-    fee: snapshotItem?.fee ?? null,
-    nav: snapshotItem?.nav ?? null,
-    nav_date: snapshotItem?.navDate ?? null,
-    source: snapshotItem?.source ?? null,
-    updated_time: snapshotItem?.updatedAt ?? null,
-  };
-}
 
 screeningRouter.get(
   '/status',
   asyncHandler(async (_req, res) => {
-    sendSuccess(res, {
-      status: 'ready',
-      sync_available: true,
-      basic_count: 0,
-      risk_metrics_count: 0,
-      latest_update: null,
-    });
+    sendSuccess(res, { status: 'ready', sync_available: true, ...getScreeningStatus() });
   }),
 );
 
@@ -59,19 +36,80 @@ screeningRouter.get(
   asyncHandler(async (req, res) => {
     const since = typeof req.query.since === 'string' ? req.query.since : undefined;
     const force = req.query.force === 'true' || req.query.force === '1';
+    const enrichLimit = Number(req.query.enrich_limit ?? req.query.enrichLimit ?? NaN);
     if (force) cache.clear();
 
-    const snapshot = await getFundScreeningSnapshot({ limitPerType: 500 });
-    const updatedAt = snapshot.updatedAt?.toISOString?.() || null;
+    sendSuccess(
+      res,
+      await syncScreening({
+        since,
+        force,
+        ...(Number.isFinite(enrichLimit) ? { enrichLimit } : {}),
+      }),
+    );
+  }),
+);
 
-    if (since && updatedAt && since >= updatedAt) {
-      sendSuccess(res, { unchanged: true, sync_time: updatedAt });
-      return;
-    }
+/** 重算 4433 排名（无副作用，不取净值）。 */
+screeningRouter.post(
+  '/ranks',
+  asyncHandler(async (_req, res) => {
+    sendSuccess(res, { ranked: recomputeRanks(), ...getScreeningStatus() });
+  }),
+);
 
-    const allFunds = ((snapshot.data as { items?: FundScreeningSnapshotItemDto[] })?.items ?? []);
-    const funds = allFunds.map(f => toRawFund(f.code, f.name, f));
-    sendSuccess(res, { unchanged: false, funds, total: funds.length, sync_time: new Date().toISOString() });
+/**
+ * 分批富化（风险指标）：一次一批（默认 300），前端循环调到底。
+ * `ranks: true` 时顺带重算 4433。
+ */
+screeningRouter.post(
+  '/compute',
+  asyncHandler(async (req, res) => {
+    const body = (req.body ?? {}) as { limit?: number; retry?: boolean; ranks?: boolean };
+    const ranks = body.ranks === false ? 0 : recomputeRanks();
+    const enriched = await enrichScreening({ limit: body.limit, retry: body.retry === true });
+    sendSuccess(res, { ...enriched, ranked: ranks, ...getScreeningStatus() });
+  }),
+);
+
+/** 筛选 + 排序 + 分页（服务端唯一真源，pi 也走这里）。 */
+screeningRouter.post(
+  '/query',
+  asyncHandler(async (req, res) => {
+    const body = (req.body ?? {}) as {
+      filters?: Record<string, unknown>;
+      sort_by?: string;
+      sort_order?: 'asc' | 'desc';
+      page?: number;
+      page_size?: number;
+    };
+    sendSuccess(
+      res,
+      queryScreening({
+        filters: body.filters,
+        sortByField: body.sort_by,
+        sortOrder: body.sort_order,
+        page: body.page,
+        pageSize: body.page_size,
+      }),
+    );
+  }),
+);
+
+screeningRouter.get(
+  '/industry-tags',
+  asyncHandler(async (_req, res) => {
+    const tags = getIndustryTagCounts();
+    sendSuccess(res, { tags, total: tags.reduce((sum, t) => sum + t.count, 0) });
+  }),
+);
+
+/** 策略沙箱 `screen()` 的全量字段（7 列）。 */
+screeningRouter.get(
+  '/screen-rows',
+  asyncHandler(async (_req, res) => {
+    const items = getScreenRows();
+    sendSuccess(res, { items, total: items.length });
   }),
 );
 
@@ -93,7 +131,7 @@ screeningRouter.get(
 screeningRouter.post(
   '/update',
   asyncHandler(async (_req, res) => {
-    // 前端丰富化已本地化；此处仅刷新基金清单快照缓存。
+    // 刷新基金清单缓存（下次 /sync 会重新拉快照并入选）。
     cache.clear();
     await getFundScreeningSnapshot({ limitPerType: 500 });
     sendSuccess(res, { message: '基金清单缓存已刷新', task_id: null });
@@ -104,36 +142,6 @@ screeningRouter.post(
   '/stop',
   asyncHandler(async (_req, res) => {
     sendSuccess(res, { message: '已发送停止信号' });
-  }),
-);
-
-screeningRouter.get(
-  '/strategies',
-  asyncHandler(async (_req, res) => {
-    sendSuccess(res, { strategies: [] });
-  }),
-);
-
-screeningRouter.post(
-  '/available-types',
-  asyncHandler(async (_req, res) => {
-    const list = await fetchFundCodeSearchList();
-    const types = [...new Set(list.map(f => f.type).filter(Boolean))].sort();
-    sendSuccess(res, { types });
-  }),
-);
-
-screeningRouter.get(
-  '/stock-industry/status',
-  asyncHandler(async (_req, res) => {
-    sendSuccess(res, { status: 'not_built', progress: 0 });
-  }),
-);
-
-screeningRouter.post(
-  '/stock-industry/warmup',
-  asyncHandler(async (_req, res) => {
-    sendSuccess(res, { message: 'Not available in Node.js screening service' });
   }),
 );
 
