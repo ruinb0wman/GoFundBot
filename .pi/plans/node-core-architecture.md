@@ -203,7 +203,7 @@ pi 不启动 bow/浏览器即可查行情、读写策略/持仓/自选/方案、
 
 ---
 
-### P6 —— 文档与仓库收口
+### P6 —— 文档与仓库收口（2026-10-08 ✅）
 
 - `AGENTS.md`：Architecture / Data flow / Commands / hot spots / Known issues 全量改写（Node 核心、无桥）。
 - `docs/architecture/`：改 `index`、`data-flow`、`ai-*`、`backtest-engine`（撤销「为什么迁移」）；
@@ -403,7 +403,7 @@ pi 不启动 bow/浏览器即可查行情、读写策略/持仓/自选/方案、
 
 拆成三步：**3.1 建包并接入** → **3.2 service 计算路由** → **3.3 筛选搬 SQLite + 富化下沉**（均已完结）。
 
-> **进度**：P0–P5 与 3.4 的 ① ② ③ **全部完结**。只剩 **P6 文档与仓库收口**
+> **进度**：P0–P5、3.4 ①②③、**P6** 全部完结（整个迁移完成）
 > （docs 站里的筛选/回测流程、死依赖 `openai`、Dexie 遗留表与 `useDexieCache`/`migrateToServer`）。
 
 #### 3.1 `@gofund/core` 建成，前端与 service 同源（2026-10-07 完成）
@@ -608,3 +608,37 @@ Dexie 已升到 v8、`screeningFunds` 表确认消失（`indexedDB` 实测）。
 - 真浏览器（bow）：`/strategy` 页面照常渲染「2 个启用 · 2 个总计」，`typeof window.__gofund === 'undefined'`。
 - 真实 pi 会话：`pi -p --no-session --no-builtin-tools -t list_strategies` → 正确读出用户 2 条策略
   （纯 HTTP，无浏览器参与）；`.pi/extensions/` 下只剩 `gofund` 一个扩展，加载无报错。
+
+---
+
+### P6 —— 文档与仓库收口（2026-10-08 完成）
+
+**文档**
+- 新增两篇权威文档：
+  - `docs/architecture/node-core.md` —— 分层/存储（SQLite 四张迁移表）/共享内核/数据流/沙箱/关键决策与踩坑/「已被撤销的决策」对照表/迁移记录。
+  - `docs/architecture/pi-tools.md` —— 工具面（27 个、分组）、确认令牌协议、pi 通用桥与三级降级、代码回测契约、给用户看页面改用 bow。
+- **删除** 4 篇整篇作废的 AI 文档（`ai-overview` / `ai-chat` / `ai-fund-analysis` / `ai-memory`）+ 侧边栏条目（先做了只读审计，逐文件列「现在写的 → 应改成」）。
+- **重写**：`architecture/{index,data-flow,backtest-engine}`、`data-sources-and-runtime`（改为「运行时与配置」）、
+  `fund-screening/{index,data-flow,enrichment}`、`strategy/{index,memory-injection}`。
+- **修订**：`fund-screening/{filter-system,4433-rule}`（4433 从此只有一份实现）、
+  `architecture/{module-data-sources,fund-data-merge,data-sources}`、`market-watchlist`、`market-sector-rank`、
+  `ui/extraction-plan`（`packages/@gofund/ui` → `packages/ui`）、`docs/index.md`（首页 feature）。
+- **README** 大修：架构说明/功能特性（AI 段改成「AI 由终端 pi 承担」）/技术栈三节/配置说明/目录树。
+- 决策：**不**把 `.pi/plans/pi-gofund-*.md` 搬进 docs（它们是带进度日志的计划，`node-core.md` §9 指回去即可）；
+  `gofund-strategy` 技能**保留**（策略改走 HTTP 后仍需工作流说明，只是内容改成两个 service 工具 + 确认令牌）。
+
+**仓库收口**
+- 删死代码：`useDexieCache.ts`（零引用）、`strategyMemory` 的注入格式化函数（`getActiveStrategies` / `buildStrategyContext` / `truncate`，
+  前端 AI 删除后无调用方）+ 其测试、`StrategyView.vue` 的无用 import（`buildActiveStrategyContext`）。
+- Dexie `version(10)`：掉 8 张死表（`portfolio` / `tradeRecords` / `alertRules` / `chat*` / `fundCache` / `marketCache` / `analysisMemory`），
+  只留一次性导入需要的 5 张 —— 前端 IndexedDB 至此只剩「搬家」用途。
+- service 依赖删掉无人引用的 `openai`（服务端不用任何 LLM SDK）。
+
+**过程中的两次自我纠错**（值得记）：
+1. 我按「只在 `*.vue` 里 grep」判定 `useFundRealtimeGroups` / `useFundRealtimeTrade` / `portfolioApi` 是死代码并删除 ——
+   实际它们是 `useFundRealtime.ts` / `useFundDetail.ts`（`.ts` 文件）的依赖，属于**活代码**。已回滚，
+   并顺势把「分组/交易记录走桩路由、改动不会保存」写成已知缺口（AGENTS + route 注释）。
+2. 把 `alertRouter` 的桩留下（前端确实在调），只删掉 `portfolioRouter`。
+
+**验证**：service 185 tests / frontend 247 tests（-7：删掉的注入函数测试）+ 两端 lint/tsc/build 绿；
+`docs` 构建绿（VitePress）；真浏览器 `/strategy`（2 条策略）与 `/screening`（3331 只 / 2704 完整）正常。

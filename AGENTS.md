@@ -28,7 +28,7 @@ stdin: JSON → Python compute → stdout: JSON
 ## Data flow
 
 ```
-Real-time data:   ProviderChain → Express → frontend → IndexedDB (Dexie)
+Real-time data:   ProviderChain → Express → frontend（+ service 内存缓存）
 User data CRUD:   frontend → /api/{watchlist,positions,strategies,backtest-scripts} → SQLite（一次性导入见 db/migrateToServer.ts）
 Backtest:         共享内核 packages/core 本地计算（NAV 取自 /api/funds/:code/nav-history）→ /backtest 工作台（代码编辑器 + 图表）
 Backtest(server): POST /api/backtest/{fixed-investment,portfolio,compare-strategies} → backtestService 取净值（同一 provider 链/缓存）+ core 引擎（pi 与脚本用）
@@ -119,7 +119,11 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **Cache TTLs**: fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
 - **Graceful shutdown**: service handles `SIGTERM`/`SIGINT` — 10s wait, then force exit.
 - **Vite proxy**: `frontend/vite.config.ts` proxies `/api` → `localhost:8310`, `/docs` → `localhost:8574`.
-- **用户数据在 service**：`service/src/db/`（SQLite）+ `services/userDataService.ts` + `routes/{watchlist,positions,strategies,userImport}.routes.ts`；前端 `db/*.ts` 只是 HTTP 薄封装（导出签名不变）。首次启动把旧 Dexie 数据导入（`db/migrateToServer.ts`，幂等）。
+- **用户数据/缓存都在 service**：`service/src/db/`（SQLite，迁移 001~004）+ `services/{userDataService,screeningService,navCacheService,researchService,backtestService}.ts` +
+  `routes/{watchlist,positions,strategies,backtest,research}.routes.ts`；前端 `db/*.ts` 只是 HTTP 薄封装（导出签名不变）。
+  Dexie 只剩一次性导入路径（`db/migrateToServer.ts`，幂等），其余表已在 P6 掉掉。
+- **已知缺口**：`/api/alerts` 仍是桩（前端 `AlertSettings/AlertBadge` 在调，但 service 不落库）；
+  `/api/user/portfolio/*` 的桩与前端 `portfolioApi.ts`（被 `useFundRealtime*` 用）也在，改动「分组/交易记录」不会保存。
 - **Settings endpoint**: `GET/PUT /api/settings` — **仅 proxy 子域**（落 SQLite）。应用不持有 LLM/搜索密钥（pi 是唯一 AI）。
 - **搜索网关**: `POST /api/search`（Exa 免费 → DuckDuckGo 降级；`service/src/ai/search.ts`）——无 key，留给需要 HTTP 搜索的服务端调用方。
 - **AI 定位（2026-10-07）**: 前端 AI 层（chatEngine / analysis / 两位分析师 / ChatPanel / 设置里的密钥页）**已全部删除**；AI 由**终端 pi** 承担（`.pi/extensions/` + `.pi/skills/`）。service 不做任何 LLM 调用。
@@ -153,7 +157,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `frontend/src/services/httpClient.ts` | HTTP 适配器（统一浏览器 fetch；Electron 壳侧解禁 CORS，无运行时分支） |
 | `frontend/src/db/` | Dexie schema (index.ts) + **服务端数据客户端的薄封装**：`positions.ts` / `strategyMemory.ts` / `strategyScripts.ts` 内部转发到 `services/userDataApi.ts`（保留原签名）；`migrateToServer.ts` 做一次性导入 |
 | `frontend/src/db/positions.ts` | 持仓 CRUD（**内部走 `/api/positions`**）：`useMyPositions` 使用 |
-| `frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
+| `frontend/src/composables/` | Vue composables (useFundScreening, useResearchDashboard, useFundDetail, useAppSettings, etc.) |
 | `frontend/src/stores/` | Pinia stores (watchlistStore 内部走 `/api/watchlist`) |
 | `frontend/src/services/` | API client（api.ts 基于 httpClient 环境路由、portfolioApi.ts、docLink.ts） |
 | `docs/` | VitePress 文档站（`docs/.vitepress/config.ts` 导航/侧边栏配置） |
