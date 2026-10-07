@@ -4,7 +4,7 @@
 
 为提升前端组件复用性，将 `frontend/src/components/` 中的自定义基础组件抽离为独立 UI 库：
 
-- **形态**：monorepo workspace 子包 `packages/@gofund/ui`
+- **形态**：monorepo workspace 子包 `packages/ui`
 - **构建**：Vite lib mode（组件级 chunk + dts 生成，支持按需导入）
 - **主题**：CSS 变量 token 体系（明暗双主题，源自 `frontend/src/App.css`）
 
@@ -12,10 +12,10 @@
 
 | 状态 | 组件 | 说明 |
 |------|------|------|
-| ✅ 首批已抽离 | B* 系列表单控件 + 浮层/反馈组件 | 已迁移至 `packages/@gofund/ui`：BButton、BInput、BInputNumber、BDatePicker、BTimePicker、BRadio、BRadioGroup、BCheckbox、BSwitch、BFileInput、BaseModal、BDialog、BCard、SkeletonCard、SkeletonChart、ErrorBoundary、OfflineBanner（含 LucideIcon、useOnlineStatus） |
+| ✅ 首批已抽离 | B* 系列表单控件 + 浮层/反馈组件 | 已迁移至 `packages/ui`：BButton、BInput、BInputNumber、BDatePicker、BTimePicker、BRadio、BRadioGroup、BCheckbox、BSwitch、BFileInput、BaseModal、BDialog、BCard、SkeletonCard、SkeletonChart、ErrorBoundary、OfflineBanner（含 LucideIcon、useOnlineStatus） |
 | ⏳ 待后续处理 | AlertBadge、MobileDrawer、BottomNav、HamburgerButton | 与业务/路由耦合，需先解耦（详见下一节） |
 
-### 首批抽离组件分组（已迁移至 `packages/@gofund/ui`）
+### 首批抽离组件分组（已迁移至 `packages/ui`）
 
 - **表单控件（B* 系列）**：`BButton` `BInput` `BInputNumber` `BDatePicker` `BTimePicker` `BRadio` `BRadioGroup` `BCheckbox` `BSwitch` `BFileInput`
 - **浮层与反馈**：`BaseModal` `BDialog` `BCard` `SkeletonCard` `SkeletonChart` `ErrorBoundary` `OfflineBanner`
@@ -53,5 +53,5 @@
 
 ## 五、进展同步
 
-- 首批 17 个组件已于 2026-08-26 完成迁移（`packages/@gofund/ui@1.0.0`），frontend 全量回归通过（typecheck/lint/131 tests/build）。
+- 首批 17 个组件已于 2026-08-26 完成迁移（`packages/ui@1.0.0`），frontend 全量回归通过（typecheck/lint/131 tests/build）。
 - 抽离进展同步更新至根目录 `README.md` 的「🧩 UI 组件库抽离计划」一节，与本文档保持同步。

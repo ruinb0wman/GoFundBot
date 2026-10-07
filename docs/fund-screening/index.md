@@ -1,89 +1,57 @@
-# 基金筛选 (Fund Screening)
+# 基金筛选
 
-## 一、概述
+基金筛选的**数据与计算都在 service**（SQLite 表 `screening_funds`），页面只负责展示与触发刷新。
+迁移前的实现（前端 Dexie + 本地算指标）已删除，见文末。
 
-提供多维度的基金筛选功能，支持按基金类型、行业板块、收益指标、风险指标（夏普比率、最大回撤、卡玛比率等）进行筛选，支持 4433 法则标记和同类排名百分位展示。所有数据通过后端从东方财富接口拉取并丰富后，存储在浏览器 IndexedDB 中。
-
-## 二、数据流概览
+## 数据从哪来
 
 ```
-EastMoney rankhandler API
-  ↓ GET https://fund.eastmoney.com/data/rankhandler.aspx
-Express 后端 -> screening.routes.ts
-  ↓ getFundScreeningSnapshot() 缓存到次日9AM
-  ↓ 合并 enrichmentMap (若有)
-GET /api/screening/sync
-  ↓
-前端 syncFromServer()
-  ├→ bulkPut 写入 IndexedDB (基础数据)
-  ├→ POST /api/funds/nav-batch → 批量 NAV 历史
-  ├→ 前端 computeRiskMetricsLocal(navs) → 风险指标
-  ├→ bulkPut 写回 IndexedDB (含风险指标)
-  └→ compute4433() 同类排名百分位
-  ↓
-useFundScreening 筛选面板 → 本地 queryFunds() 过滤 + 排序 + 分页
+GET /api/screening/sync          拉基金快照（约 3300 只）→ 写 screening_funds
+                                  + 算行业标签（packages/core industryClassifier）
+                                  + 算 4433 排名（packages/core screeningEnrich）
+                                  + 富化首批风险指标（默认 300 只）
+POST /api/screening/compute      再富化一批（前端循环调用直到 remaining = 0）
+POST /api/screening/ranks        只重算 4433 排名（无副作用）
+POST /api/screening/query        筛选 + 排序 + 分页（页面与 pi 的工具都走它）
+GET  /api/screening/status       计数：总数 / 有风险指标数 / 待富化数 / 4433 通过数 / 类型分布
+GET  /api/screening/industry-tags  行业标签计数（筛选面板的标签列表）
+GET  /api/screening/screen-rows  沙箱 `sdk.screen()` 用的 7 列（代码回测的基金池）
 ```
 
-## 三、关键文件
+## 一份数据、三个消费者
 
-| 层 | 文件 | 职责 |
-|----|------|------|
-| Route | `service/src/routes/screening.routes.ts` | 所有 `/api/screening/*` 端点 |
-| Route | `service/src/routes/fund.routes.ts:50` | `POST /api/funds/nav-batch` 批量 NAV 接口 |
-| service | `service/src/services/fundService.ts:136` | `getFundScreeningSnapshot()` |
-| service | `service/src/services/fundService.ts:198` | `getFundNavBatch()` 批量 NAV 获取 |
-| frontend 计算 | `frontend/src/services/industryClassifier.ts` | `classifyFundIndustry()`（行业分类，已前端化） |
-| frontend 计算 | `frontend/src/utils/number.ts:187` | `computeRiskMetricsLocal()`（风险指标，Golden 对齐旧服务端实现） |
-> 风险指标 / 行业分类已迁移前端：原始 `/api/screening/sync` → 前端 `computeRiskMetricsLocal` +
-> `classifyFundIndustry` → 写入 Dexie `screeningFunds`。Node 端 `screeningEnrichment` / `riskMetricsService` /
-> `industryService` / `enrichFund()` 已删除。
-| service | `service/src/core/providerChain.ts:9` | `ProviderChain` 多提供商降级 |
-| Provider | `service/src/providers/eastmoney/eastmoneyFundProvider.ts:230` | `screeningSnapshot()` 排行数据 |
-| frontend API | `frontend/src/services/api.ts:59` | `screeningAPI` |
-| frontend API | `frontend/src/services/api.ts:53` | `fundAPI.getNavBatch()` 批量 NAV 调用 |
-| frontend Composable | `frontend/src/composables/useFundScreening.ts` | 筛选面板状态逻辑 |
-| frontend Composable | `frontend/src/composables/useScreeningDb.ts` | IndexedDB 读写 + 风险指标补齐 + 4433 计算 |
-| frontend Util | `frontend/src/utils/number.ts:188` | `computeRiskMetricsLocal()` 本地风险指标计算 |
-| frontend 渲染 | `frontend/src/components/FundScreening.vue` | 页面模板 |
-| Dexie 表 | `frontend/src/db/index.ts:90` | `ScreeningFund` schema |
+| 消费者 | 用法 |
+|---|---|
+| 筛选面板（`/screening`） | `useScreeningDb`（薄 HTTP 客户端）→ `/sync` → 循环 `/compute` → `/query` |
+| 投研看板（`/research`） | `GET /api/research/dashboard`（core `buildDashboard` 读同一张表） |
+| pi | 工具 `screen_funds` / `get_screening_status` / `get_research_dashboard` |
 
-## 四、API 端点
+## SQLite 表 `screening_funds`
 
-| 方法 | 路径 | 功能 |
-|------|------|------|
-| GET | `/api/screening/status` | enrichmentMap 状态 |
-| GET | `/api/screening/sync` | 同步全量数据（`?force=true` 强制刷新） |
-| GET | `/api/screening/progress` | 后台更新进度 |
-| POST | `/api/screening/update` | 启动后台更新任务 |
-| POST | `/api/screening/stop` | 停止后台更新 |
-| POST | `/api/screening/query` | 条件查询（**deprecated**，前端已改用本地 IndexedDB 查询） |
-| GET | `/api/screening/strategies` | 筛选策略列表 |
-| POST | `/api/screening/available-types` | 可用基金类型列表 |
-| GET | `/api/screening/industry-tags` | 行业标签分组 |
-| POST | `/api/screening/fill-risk` | 补充缺失的风险指标（遗留） |
-| POST | `/api/screening/update-single/:code` | 单只基金更新（遗留） |
-| POST | `/api/screening/recalculate-rankings` | 重算排名（客户端侧实现） |
-| POST | `/api/funds/nav-batch` | 批量 NAV 历史（前端计算风险指标用） |
+| 列组 | 内容 |
+|---|---|
+| 原始 | `fund_code` `fund_name` `fund_type` `return_1m/3m/6m/1y/2y/3y` `ytd` `since_inception` `fee` `nav` `nav_date` `source` `updated_time` |
+| 富化 | `max_drawdown_1y` `sharpe_ratio_1y` `sharpe_ratio_3y` `volatility_1y` `calmar_ratio_1y` `industry_tag_name` |
+| 排名 | `rank_pct_1m/3m/6m/1y/2y/3y` `pass_4433` |
+| 控制 | `risk_attempted`（取过净值但没算出指标 → 1，避免反复重试） |
 
-## 五、IndexedDB Schema
+`screening_meta` 存 `sync_time` 与 `ranks_computed_at`。
 
-`db.screeningFunds` 表（`frontend/src/db/index.ts:90`）：
+## 更新语义（几个刻意的选择）
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `fund_code` | string | 6位基金代码 (主键) |
-| `fund_name` | string | 基金名称 |
-| `fund_type` | string\|null | 基金类型 |
-| `return_1m..3y` | number\|null | 各区间收益率 |
-| `nav` | number\|null | 单位净值 |
-| `nav_date` | string\|null | 净值日期 |
-| `max_drawdown_1y` | number\|null | 近1年最大回撤 |
-| `sharpe_ratio_1y/3y` | number\|null | 夏普比率 |
-| `volatility_1y` | number\|null | 年化波动率 |
-| `calmar_ratio_1y` | number\|null | 卡玛比率 |
-| `industry_tag_name` | string\|null | 行业标签 |
-| `rank_pct_1m..3y` | number\|null | 同类排名百分位 |
-| `pass_4433` | number | 4433法则标记 (0/1) |
-| `updated_time` | string\|null | 更新时间 |
+- **快照为空不覆盖**：数据源故障时保留旧库，前端只看到「未变化」。
+- **保留已有富化列**：重复同步不会把算好的风险指标冲掉；`industry_tag_name` 用 `COALESCE` 保留旧值。
+- **分批富化**：一次 300 只（≈15s）；全量首次约 3 分钟（3331 只 × ~49ms，并发 10）。分批才能报进度、不撞超时。
+- **消失的基金会被删掉**：快照里没有的代码从表里移除（与迁移前「清空重写」语义一致）。
 
-索引：`fund_code, fund_type, pass_4433, updated_time`
+## 页面侧
+
+- 刷新时机：`onMounted` 时看 `localStorage` 里的 `lastSyncTime`，过期（当天 9 点前）就 `force=true` 全量刷新。
+- 筛选面板的过滤条件原样传给 `/query`；**过滤语义见 [筛选面板](/fund-screening/filter-system)**。
+- 4433 怎么算见 [4433 法则](/fund-screening/4433-rule)；富化细节见 [指标丰富化](/fund-screening/enrichment)。
+
+## 迁移前是什么样（历史）
+
+前端 `useScreeningDb.ts` 自己拉快照写 Dexie、逐只算风险指标、按 `fund_type` 算 4433、本地过滤分页
+（约 400 行）；4433 算法与过滤语义因此有「前端一份、可能的 service 一份」两份实现的风险，且刷新要浏览器在线。
+现在算法唯一实现在 `packages/core/src/screeningEnrich.ts`，过滤语义唯一实现在 `screeningService.queryScreening()`。

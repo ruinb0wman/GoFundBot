@@ -2,8 +2,11 @@ import Dexie, { type Table } from 'dexie'
 import type { BacktestSummary, PortfolioSummary } from '@gofund/core/backtest/backtestTypes'
 
 /**
- * A replayable backtest scheme. Everything that defines the run (pool, window,
- * amounts, fees) lives in the code's `prepare()`, so the record is just the code.
+ * 前端 Dexie —— **只剩「一次性导入旧数据」这一条活路径**（`db/migrateToServer.ts`）。
+ *
+ * 用户数据（自选/持仓/策略/回测方案）从 P2 起真源是 service SQLite，缓存（筛选库/净值）
+ * 从 P3.3/P3.4 起也在 service；这里的表只在首次启动时被读一次，导入成功后清空。
+ * 保留的接口里，`ScreeningFund`/`StrategyRecord` 等仍被别的模块当**类型**用。
  */
 export interface StrategyScriptRecord {
   id?: number
@@ -32,29 +35,7 @@ export interface WatchlistGroup {
   sortOrder: number
 }
 
-export interface PortfolioItem {
-  fundCode: string
-  fundName: string | null
-  fundType: string | null
-  fundDataJson: string | null
-  groupId: number | null
-  sortOrder: number
-  updatedAt: number
-}
 
-export interface TradeRecord {
-  id?: number
-  fundCode: string
-  fundName: string | null
-  type: 'buy' | 'sell' | 'fee' | 'dividend'
-  tradeDate: string | null
-  amount: number
-  share: number
-  nav: number
-  status: string
-  txnId: string | null
-  createdAt: number
-}
 
 export interface UserPosition {
   id?: number
@@ -68,46 +49,10 @@ export interface UserPosition {
   createdAt: number
 }
 
-export interface AlertRule {
-  id?: number
-  fundCode: string
-  alertType: 'price_up' | 'price_down' | 'return_above' | 'return_below'
-  threshold: number
-  enabled: number
-  lastTriggered: string | null
-  createdAt: number
-}
 
-export interface ChatSession {
-  id?: number
-  title: string
-  updatedAt: number
-  channel?: string
-}
 
-export interface ChatMessage {
-  id?: number
-  sessionId: number
-  role: 'user' | 'assistant' | 'tool'
-  content: string
-  toolName: string | null
-  toolParamsJson: string | null
-  /** Structured tool-call chips: [{name, params, status, durationMs}] (non-indexed). */
-  toolCallsJson: string | null
-  createdAt: number
-}
 
-export interface FundCacheEntry {
-  fundCode: string
-  data: unknown
-  updatedAt: number
-}
 
-export interface MarketCacheEntry {
-  key: string
-  data: unknown
-  updatedAt: number
-}
 
 /**
  * 一行筛选结果 —— 现在是 **service `/api/screening/query` 的响应形状**
@@ -145,18 +90,6 @@ export interface ScreeningFund {
   pass_4433: number
 }
 
-export interface AnalysisMemoryRecord {
-  id?: number
-  fundCode: string
-  analysisDate: number
-  rating: string
-  sentimentScore: number
-  thesis: string
-  resolved: number
-  actualReturn: number | null
-  reflection: string | null
-  resolvedDate: number | null
-}
 
 export interface StrategyRecord {
   id?: number
@@ -172,16 +105,7 @@ export interface StrategyRecord {
 export class GoFundDB extends Dexie {
   watchlist!: Table<WatchlistItem>
   watchlistGroups!: Table<WatchlistGroup>
-  portfolio!: Table<PortfolioItem>
-  tradeRecords!: Table<TradeRecord>
   positions!: Table<UserPosition>
-  alertRules!: Table<AlertRule>
-  chatSessions!: Table<ChatSession>
-  chatMessages!: Table<ChatMessage>
-  fundCache!: Table<FundCacheEntry>
-  marketCache!: Table<MarketCacheEntry>
-  /** @deprecated 筛选数据的唯一真源已是 service SQLite（`screening_funds` 表），详见 `useScreeningDb.ts`。 */
-  analysisMemory!: Table<AnalysisMemoryRecord>
   strategies!: Table<StrategyRecord>
   strategyScripts!: Table<StrategyScriptRecord>
 
@@ -239,6 +163,19 @@ export class GoFundDB extends Dexie {
     // P3.4：净值缓存搬到 service SQLite（`nav_history` + 覆盖度判断都在那边）。
     this.version(9).stores({
       navHistory: null,
+    })
+
+    // P6：其余表都成了死重量（其中 portfolio/tradeRecords 的前端调用方早已删除），
+    // 只留下 `migrateToServer.ts` 一次性导入还需要的那 5 张。
+    this.version(10).stores({
+      portfolio: null,
+      tradeRecords: null,
+      alertRules: null,
+      chatSessions: null,
+      chatMessages: null,
+      fundCache: null,
+      marketCache: null,
+      analysisMemory: null,
     })
   }
 }

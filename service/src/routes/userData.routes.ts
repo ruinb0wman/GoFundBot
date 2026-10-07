@@ -4,7 +4,11 @@ import { sendSuccess } from '../core/response.js';
 import { getMarketIndices } from '../services/marketService.js';
 
 /**
- * 遗留的用户数据桩路由（portfolio / alerts）。
+ * 遗留的用户数据桩路由（portfolio / alerts）—— **已知缺口**：前端实时页/持仓页仍在调用
+ * （`useFundRealtimeGroups`、`useFundRealtimeTrade`、`useFundDetail` 经 `services/portfolioApi.ts`），
+ * 但 service 侧不落库（读回空数组、写入只回一个 id），所以「分组 / 交易记录」改动不会保存。
+ * 要修就把这几张表做进 SQLite，或删掉对应前端入口。
+ *
  *
  * 前端已不再调用它们（用户数据改走 `/api/positions`、`/api/watchlist`、
  * `/api/strategies`、`/api/backtest-scripts`），保留只为不破坏既有 API 表面。

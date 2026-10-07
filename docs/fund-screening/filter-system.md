@@ -46,7 +46,7 @@ FundScreening.vue
 
 ### 2.2 行业标签筛选
 
-数据来源：`GET /api/screening/industry-tags` → 后端 `enrichmentMap` 统计。
+数据来源：`GET /api/screening/industry-tags`（service 按 `screening_funds.industry_tag_name` 聚合）。
 
 一级标签（基金大类）：根据 `industry_tag_name` 聚合，展示基金数量。
 
@@ -83,21 +83,23 @@ FundScreening.vue
 
 ## 三、筛选执行
 
-筛选条件定义在 `filters` 响应式对象（`useFundScreening.ts:163`），查询逻辑在 `useScreeningDb.queryFunds()`（`useScreeningDb.ts:225`）：
+筛选条件定义在 `filters` 响应式对象（`useFundScreening.ts`），查询**发给 service**：
 
 ```typescript
-async function queryFunds(filters, sortBy, sortOrder, page, pageSize):
-  // 1. IndexedDB where 子句: fund_types 或 pass_4433
-  // 2. 内存 filter: industry_tags / return_* / rank_pct_* / sharpe_ratio / calmar / keyword 等 30+ 条件
-  // 3. 内存 sort: 按指定字段 + 升降序
-  // 4. 分页切片: (page-1)*pageSize ~ page*pageSize
+// 前端：useScreeningDb.queryFunds() → POST /api/screening/query { filters, sort_by, sort_order, page, page_size }
+// 服务端：screeningService.queryScreening()
+//   1. 读 screening_funds 全表（约 3300 行）
+//   2. 过滤：industry_tags / fund_types / pass_4433 / return_* / rank_pct_* / sharpe_ratio / calmar / max_drawdown / keyword 等 30+ 条件
+//   3. 排序：按指定字段 + 升降序（null 恒排最后）
+//   4. 分页切片：(page-1)*pageSize ~ page*pageSize
 ```
 
-### 3.1 条件优先级
+### 3.1 条件语义
 
-1. `pass_4433=1` → IndexedDB 索引过滤
-2. `fund_types` 任意匹配 → IndexedDB `anyOf` 过滤
-3. 全量数据 → 内存 filter
+- `pass_4433: true` → `pass_4433 = 1`；`fund_types` 为数组则任一匹配；
+- 数值区间条件（`return_1m_min`、`sharpe_ratio_1y_min`…）：**字段为 null 时不参与过滤**（不算「小于」）；
+- 几个历史口径（不要"顺手修正"，页面数字会变）：`max_drawdown_3m_max` / `_6m_max` / `_3y_max` / `_all_max` **实际都读 `max_drawdown_1y`**；
+- `keyword` 同时匹配代码与名称（不区分大小写）。
 
 ### 3.2 高级条件矩阵
 
@@ -136,6 +138,6 @@ async function queryFunds(filters, sortBy, sortOrder, page, pageSize):
 
 ## 五、分页与排序
 
-- 每页 20 条
-- 排序在前端执行（IndexedDB 查询后内存排序）
-- 默认按 `return_1y` 降序
+- 每页 20 条（`page_size`，service 上限 5000）
+- 排序在 service 执行（`sort_by` + `sort_order`，默认 `return_1y` 降序）
+- null 值恒排最后（升序降序都一样）

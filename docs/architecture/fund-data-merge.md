@@ -43,15 +43,16 @@ return {
 
 ## 筛选数据富化 (Screening Enrichment)
 
-> 风险指标 / 行业分类已迁移至**前端**（`frontend/src/services/industryClassifier.ts` +
-> `computeRiskMetricsLocal`，写入 Dexie `screeningFunds`）。Node 端不再后台 enrich。
+> 风险指标 / 行业分类 / 4433 排名自 P3.3 起在 **service** 完成，落 SQLite `screening_funds`。
+> 算法本体在 `packages/core`（`number.ts` 的风险指标、`industryClassifier.ts`、`screeningEnrich.ts`），前端与 service 共用。
 
 ```typescript
-// frontend: useScreeningDb.syncFromServer → 本地丰富化
-// 1. /api/screening/sync 返回原始清单（fund_code / returns / nav ...）
-// 2. computeRiskMetricsLocal(navs) → 风险指标（夏普/回撤/波动/Calmar）
-// 3. classifyFundIndustry(fund_name) → 行业标签 + 4433 排名
-// 4. 写入 Dexie screeningFunds，做本地查询/看板聚合
+// service: screeningService.syncScreening → 富化
+// 1. /api/screening/sync 拉原始清单（fund_code / returns / nav ...）写 screening_funds
+// 2. classifyFundIndustry(fund_name) → 行业标签
+// 3. recomputeRanks() → 按 fund_type 分组的百分位 + 4433
+// 4. enrichScreening()（分批 300）→ computeRiskMetricsLocal(净值得自 nav_history) 写回
+// 前端：useScreeningDb 只是薄客户端（/sync → 循环 /compute → /query）
 ```
 
   enrichmentMap.set(code, {
@@ -92,7 +93,7 @@ cacheThrough(key, TTL, loader):
 
 ```
 ┌─ 单只基金详情:  16 sections 并行 → 各走自己的 cache + ProviderChain
-├─ 基金列表/筛选:  screeningSnapshot 全量拉取 → enrichFund 逐只富化 → 写入 Dexie
+├─ 基金列表/筛选:  screeningSnapshot 全量拉取 → service 富化并落 SQLite（screening_funds）
 ├─ 基金搜索:      内存缓存 full list → 客户端 JS 匹配+排序
 └─ 基金估值:      批量 API → 内存缓存 30s → 逐只匹配
 ```

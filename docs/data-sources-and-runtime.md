@@ -1,220 +1,68 @@
-# GoFundBot 数据来源 / 核心函数 / 运行时总览
+# 运行时与配置
 
----
+> 数据源本身（每个 provider 用哪个接口、能拿什么）见 [数据源](/architecture/data-sources) 与
+> [回退策略](/architecture/fallback-strategy)；架构全貌见 [Node 核心架构](/architecture/node-core)。
 
-## 一、运行时分布
+## 1. 运行时分布
 
-| 运行时 | 位置 | 角色 |
-|--------|------|------|
-| **Node.js (TS)** | `service/src/` | Express 后端 (port 8310)，ProviderChain 编排、缓存、业务逻辑、AI 对话 |
-| **Node.js (TS)** | `frontend/src/` | Vue 3 前端 (port 8517)，IndexedDB (Dexie.js) 本地持久化 |
-| **Python 3** | `python/cli/` | 工具脚本，由 `pythonRunner.ts` 通过 `child_process.spawn()` 调用 |
+| 运行时 | 位置 | 角色 | 端口 |
+|---|---|---|---|
+| Node.js (TS) | `service/src/` | Express：数据获取（ProviderChain）、SQLite 存储、计算（调 `packages/core`）、工具面 `/api/agent/*`、代码沙箱 | 8310（仅 `127.0.0.1`） |
+| Node.js (TS) | `frontend/src/` | Vue 3：展示与工作台；计算来自 `@gofund/core`；数据走 HTTP | 8517 |
+| Node.js (TS) | `packages/core/` | 两端共用的纯计算内核（不单独运行） | — |
+| Python 3 | `python/cli/` | 数据补全脚本，由 `pythonRunner.ts` 用 `child_process.spawn()` 调用（stdin/stdout JSON） | — |
+| Node.js (TS) | `docs/` | VitePress 文档站 | 8574（经前端 `/docs/*` 代理） |
+| 终端 pi | `.pi/` | 唯一 AI 层：工具桥 + 技能 | — |
 
----
+## 2. 起停
 
-## 二、数据来源一览
-
-### 2.1 基金数据 (FundProviders)
-
-| Provider | 文件 | 来源 API | 提供的能力 |
-|----------|------|---------|-----------|
-| **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkFundProvider.ts` | npm `stock-sdk` 包 | `estimate`, `navHistory`, `rankHistory`, `dividends` |
-| **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyFundProvider.ts` | `fund.eastmoney.com` `fundgz.1234567.com.cn` | 同上 + `search`, `basic`, `holdings`, `managers`, `assetAllocation`, `performance`, `screeningSnapshot`, `subscriptionRedemption`, `holderStructure`, `scaleFluctuation`, `positionTrend`, `totalReturnTrend` |
-| **Python fetch_fund** | `python/cli/fetch_fund.py` | `fund.eastmoney.com` (requests) | 基金详情批量爬取 |
-
-### 2.2 市场/行情数据 (MarketProviders)
-
-| Provider | 文件 | 来源 API | 提供的能力 |
-|----------|------|---------|-----------|
-| **tencent** | `service/src/providers/tencent/tencentMarketProvider.ts` | `qt.gtimg.cn` `proxy.finance.qq.com` | `quotes`, `kline`（腾讯 newfqkline，含成交额） |
-| **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts` | npm `stock-sdk` 包 | `quotes`, `kline`（`push2his`，当前被反爬切断）, `indices` (上证/深证/创业板/沪深300/科创50) |
-| **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `push2.eastmoney.com` `push2his.eastmoney.com` `push2ex.eastmoney.com` `datacenter-web.eastmoney.com` | `quotes`, `kline`, `sectors`, `sectorConstituents`, `indices`, `moneyFlow`, `marketMoneyFlow`, `breadth`（`marketBreadth.ts`）, `northFlow`（`marketNorthFlow.ts`，走 datacenter）, `globalIndices` |
-| **yahoo** (全球) | `service/src/providers/yahoo/yahooMarketProvider.ts` | Yahoo Finance API | 全球指数 K 线 (美股/港股等) |
-
-### 2.3 股票数据 (StockProviders)
-
-| Provider | 文件 | 来源 API | 能力 |
-|----------|------|---------|------|
-| **eastmoney** | `service/src/providers/eastmoney/eastmoneyStockProvider.ts` | `push2.eastmoney.com` | `reference` (代码/名称/行业/概念) |
-| **tencent** | `service/src/providers/tencent/tencentStockProvider.ts` | `qt.gtimg.cn` (GBK) | `reference` (仅 A 股，不支持港股) |
-
-### 2.4 新闻/快讯 (NewsProviders)
-
-| Provider | 文件 | 来源 API |
-|----------|------|---------|
-| **eastmoney** | `service/src/providers/eastmoney/eastmoneyNewsProvider.ts` | `newsapi.eastmoney.com` |
-| **baidu** | 同上（BaiduNewsProvider） | `finance.pae.baidu.com` |
-| **cls (财联社)** | 同上（ClsNewsProvider） | `www.cls.cn` |
-
-### 2.5 网络搜索 (Chat AI 联网搜索)
-
-| 引擎 | 文件 | 来源 | 优先级 |
-|------|------|------|--------|
-| **Bocha** | `service/src/services/searchService.ts` | `api.bocha.cn/v1/web-search` | 1 (需 API Key) |
-| **Tavily** | 同上 | `api.tavily.com/search` | 2 (需 API Key) |
-| **DuckDuckGo** | 同上 | `api.duckduckgo.com` | 3 (免费，兜底) |
-
-### 2.6 Python 脚本数据来源
-
-| 脚本 | 文件 | 来源 | 能力 |
-|------|------|------|------|
-| **fetch_fund** | `python/cli/fetch_fund.py` | `fund.eastmoney.com` (requests) | 单只/批量基金 NAV 历史、基本数据 |
-| **backtest** | `python/cli/backtest.py` | stdin (NAV 数据由 Node.js 传入) | ~~定投回测~~ **已迁前端** `frontend/src/services/backtest/`；脚本保留为黄金/差分基准 |
-| **data_complete** | `python/cli/data_complete.py` | `akshare` Python 库 | A 股列表、行业板块映射 |
-
----
-
-## 三、核心函数（Node.js Runtime）
-
-### 3.1 核心架构基础设施
-
-| 函数/类 | 文件 | 职责 |
-|---------|------|------|
-| `ProviderChain<P>` | `service/src/core/providerChain.ts:8` | 多 Provider 链式调用，自动降级（主→备→...→抛错） |
-| `MemoryCache` / `cacheThrough` | `service/src/core/cache.ts:13` / `:133` | 内存缓存 (TTL)，缓存穿透保护 |
-| `runPython<T>` | `service/src/services/pythonRunner.ts:32` | 通用 Python 脚本调用 (child_process) |
-| ~~`runBacktest<T>`~~ | ~~`service/src/services/pythonRunner.ts`~~ | **已删除（2026-09-29）**：回测改为前端本地计算 |
-
-### 3.2 基金核心服务 (`service/src/services/fundService.ts`)
-
-| 函数 | 职责 | Provider 链 |
-|------|------|-----------|
-| `getFundEstimate` | 实时估值 | stock-sdk → eastmoney (TTL 30s) |
-| `getFundNavHistory` | NAV 历史 | stock-sdk → eastmoney (TTL 24h) |
-| `getFundRankHistory` | 同类排名历史 | stock-sdk → eastmoney (TTL 24h) |
-| `getFundDividends` | 分红记录 | stock-sdk → eastmoney (TTL 7d) |
-| `getFundBasic` | 基金基本信息 | eastmoney only |
-| `getFundDetail` | 聚合 15 个子模块 | 混合 Provider |
-| `getFundScreeningSnapshot` | 基金筛选快照 | eastmoney only |
-| `searchFunds` | 基金搜索 | eastmoney only |
-
-### 3.3 市场核心服务 (`service/src/services/marketService.ts`)
-
-| 函数 | 职责 | Provider 链 |
-|------|------|-----------|
-| `getMarketQuotes` | 行情报价 | stock-sdk → eastmoney (TTL 15s) |
-| `getMarketKline` | A 股 K 线 | stock-sdk → eastmoney (TTL 1h) |
-| `getGlobalIndexKline` | 全球指数 K 线 | yahoo only |
-| `getMarketIndices` | 主要指数 | stock-sdk → eastmoney |
-| `getMarketSectors` | 板块排行 | eastmoney only |
-| `getSectorConstituents` | 板块成分股 | eastmoney only |
-| `getMarketBreadth` | 涨跌家数（沪深两市合计）+ 涨跌停家数 | eastmoney (TTL 15s) |
-| `getNorthFlow` | 北向资金成交总额 | eastmoney datacenter → akshare (TTL 5min) |
-| `getGoldRealtime` | 黄金实时行情 | eastmoney/akshare (TTL 60s) |
-| `getGoldHistory` | 黄金历史走势 | eastmoney/akshare (TTL 1h) |
-| `getMoneyFlow` | 个股资金流向 | eastmoney (TTL 30s) |
-| `getMarketMoneyFlow` | 大盘资金流向 | eastmoney (TTL 30s) |
-| `getLimitUpStocks` | 涨停股列表 | （未实现，仅 DTO/接口预留） |
-
-### 3.4 计算/分析模块（已迁移前端）
-
-| 函数 | 文件 | 职责 |
-|------|------|------|
-| `computeRiskMetricsLocal` | `frontend/src/.../utils/number.ts` | 最大回撤、夏普比率、波动率、Calmar 比率（前端计算，Golden 对齐旧 `riskMetricsService`） |
-| `classifyFundIndustry` | `frontend/src/services/industryClassifier.ts` | 正则匹配基金名称→行业标签（19 个类别） |
-| 筛选丰富化 | `useScreeningDb` + `industryClassifier` | 原始 /api/screening + NAV → 风险指标 + 行业分类 → Dexie |
-
-### 3.5 AI / 搜索模块（已迁移前端）
-
-| 函数/类 | 文件 | 职责 |
-|---------|------|------|
-| `SkillRouter` / `SKILL_DEFINITIONS` | `frontend/src/services/chatEngine/skills.ts` | 意图路由（关键词匹配 + LLM 路由），支持 8 种技能 |
-| `ToolSpec` 注册表 / `toolHandlers` | `frontend/src/services/chatEngine/toolContract.ts` + `toolCallParser.ts` + `toolHandlers.ts` | 工具契约（TypeBox Schema 驱动 + XML/原生归一化 + 校验信封执行） |
-| `searchWeb` | `frontend/src/services/searchService.ts` | 搜索引擎链（Exa→Bocha→Tavily→DDG 自动降级） |
-| `analyzeFund` / `analyzeFundStream` | `frontend/src/services/fundAnalyst.ts` | AI 基金分析（前端直调 LLM） |
-
-### 3.6 前端聚合计算（原 `researchService.ts`）
-
-| 函数 | 职责 |
-|------|------|
-| `buildDashboard` | 研究仪表盘（前端 `frontend/src/services/researchComputation.ts`） |
-| `buildResearchEtfTracking` | ETF 跟踪（前端） |
-| `buildResearchIndustryPerformance` | 行业板块表现（前端） |
-| `buildResearchSectorSummary` | 板块汇总（前端） |
-| `buildResearchFundDashboard` / `buildResearchMarketStats` | 基金看板 / 市场统计（前端） |
-
-### 3.7 新闻服务 (`service/src/services/newsService.ts`)
-
-| 函数 | 职责 |
-|------|------|
-| `getFlashNews` | 聚合快讯（EastMoney → Baidu → Cls 自动降级） |
-
----
-
-## 四、核心函数（Python Runtime）
-
-### 4.1 回测 — 已迁前端（`python/cli/backtest.py` 已删除）
-
-回测计算现在跑在浏览器里：`frontend/src/services/backtest/`（`backtestEngine.ts` 为核心，
-`pyCompat.ts` 复刻 CPython 的 `round()` 银行家舍入与 ISO 周键）。
-
-原 Python 实现（`python/cli/backtest.py` + `pythonRunner.runBacktest` + `POST /api/backtest/*`）
-于 2026-09-29 删除，删除前已完成逐值校验：
-
-| 校验 | 结果 |
-|------|------|
-| 黄金 fixtures（由 Python 实现导出，12 个用例） | 全部逐值一致，现冻结为 `frontend/src/services/backtest/__fixtures__/{engine,pyround,isoweek}.json` |
-| 随机差分测试（400+ 例，随机净值/乱序/重复日期） | 移植域内 0 mismatch |
-
-详见 `docs/architecture/backtest-engine.md`。
-
-### 4.2 基金爬取 (`python/cli/fetch_fund.py`)
-
-| 函数 | 职责 |
-|------|------|
-| `main` | 解析 --code/--all 参数 |
-| `fetch_fund` | 单只基金详情（NAV 历史、累计净值、业绩数据） |
-| `fetch_fund_list` | 全市场基金列表 |
-| `fetch_fund_detail_js` | 请求 pingzhongdata JS 文件 |
-| `parse_js_variable` | 解析 JS 变量为 JSON |
-
-输出 (stdout): `{ success, data: { funds: [...], total } }`
-
-### 4.3 数据补全 (`python/cli/data_complete.py`)
-
-| 函数 | 职责 | 来源 |
-|------|------|------|
-| `main` | 解析 --source/--type 参数 | - |
-| `complete_stock_list` | A 股全列表 | `akshare.stock_zh_a_spot_em()` |
-| `complete_industry_mapping` | 行业板块映射 | `akshare.stock_board_industry_name_ths()` |
-
-输出 (stdout): `{ success, data: { stocks: [...], industry: [...] } }`
-
----
-
-## 五、数据流核心路径
-
-```
-用户请求 → Express Route → service Layer (fund/market/research/chat)
-  → ProviderChain.run(operation, provider => provider.method())
-    → stock-sdk (主) 成功? → 返回 + 缓存
-    → stock-sdk 失败? → eastmoney (备) → 返回 (fallback=true)
-    → 全部失败? → AppError(503)
-
-  → cacheThrough(key, TTL, loader)
-    → 缓存命中? → 返回缓存数据
-    → 缓存未命中? → 执行 loader → 写入缓存
-
-Python 脚本调用（数据补全）:
-  → pythonRunner.runPython('data_complete.py', { input: {...} })
-  → child_process.spawn(python_bin, [script_path])
-  → stdin ← JSON (input)
-  → stdout → JSON ({ success, data })
-  → 解析返回
-
-前端持久化 (IndexedDB / Dexie.js):
-  → axios /api/* → API 响应 → Dexie 11 表
-  → 用户数据 (自选/持仓/交易/提醒) 纯前端 CRUD，不走后端
+```bash
+bun dev                      # 仓库根目录：一键起 service + frontend + docs
+cd service && bun run dev    # 只起 service（tsx watch，改代码即热重载）
+cd frontend && bun run dev   # 只起前端
 ```
 
----
+- `service` 支持 `SIGTERM`/`SIGINT` 优雅退出（10s 等待，期间关闭 SQLite 连接）。
+- 健康检查：`GET /api/health` —— 含内存缓存统计与 SQLite 净值缓存计数（`nav_cache`）。
 
-## 六、Provider Chain 编排一览
+## 3. 环境变量
 
-| 业务域 | 主 Provider | 备 Provider | 全局 Provider |
-|--------|-----------|-----------|-------------|
-| 基金数据 | stock-sdk | eastmoney | - |
-| 行情报价 | stock-sdk | eastmoney | yahoo (全球) |
-| 股票信息 | eastmoney | tencent | - |
-| 新闻快讯 | eastmoney | baidu → cls | - |
-| 网络搜索 | Bocha | Tavily → DuckDuckGo | - |
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `PORT` | `8310` | service 端口（前端 Vite 代理指向它） |
+| `HOST` | `127.0.0.1` | 监听地址；**改它等于把用户数据暴露到局域网** |
+| `GOFUND_DB_PATH` | `service/data/gofund.db` | SQLite 路径；测试用 `:memory:` |
+| `CORS_ORIGINS` | 前端 dev 源 | 允许的跨域来源（Electron 壳不需要） |
+| `HTTP_PROXY` / `HTTPS_PROXY` | 空 | 代理；**只有明确要走的调用**用它（Yahoo）；国内接口一律 `proxy: never` |
+| `LOG_DIR` | `python/Data/logs` | 结构化日志目录（`dataservice-YYYY-MM-DD.jsonl`） |
+| `CACHE_MAX_ENTRIES` | `2000` | 内存缓存条数上限 |
+| `GOFUND_API_BASE` | `http://localhost:8310` | **pi 扩展**用的 service 地址 |
+
+设置页能改的只有 **proxy URL**（`GET/PUT /api/settings`，落 SQLite；空串=不修改，`clearProxy: true` 才清除）。
+
+## 4. 缓存与限流
+
+| 层 | 位置 | TTL / 行为 |
+|---|---|---|
+| 内存缓存 | service（`core/cache.ts`） | 行情 15s / 基金估值 30s / 历史 24h / 分红 7d；`/api/health` 可见条数 |
+| SQLite 净值缓存 | `nav_history` + `nav_history_meta` | 覆盖度判断（窗口在过去 → 永久；窗口到今天 → 24h 内） |
+| SQLite 筛选库 | `screening_funds` | 富化结果长期保留；`risk_attempted` 防重复重试 |
+| 限流 | `express-rate-limit` | 300 请求 / 15 分钟（本地单用户足够；批量富化走单请求内的并发） |
+
+## 5. 数据源与回退（要点）
+
+- **市场行情**：stock-sdk → eastmoney；**基金**：joinquant → tencent → stock-sdk → eastmoney。
+- **被反爬切断的接口**（行业/概念板块列表、部分 K 线）走同花顺/腾讯的新端点或 Python（akshare）—— 见 [回退策略](/architecture/fallback-strategy) 与
+  [数据源](/architecture/data-sources) 里的「已知问题」。
+- **口径陷阱**（北向净流入恒为 null、涨跌停家数可能为 null、概念板块 `event_date` 不是行情日期）在
+  [pi 工具面](/architecture/pi-tools) 与技能文档里都有说明；工具返回的 `data_status: unavailable` **不要当 0**。
+
+## 6. Python 侧
+
+```bash
+python/.venv/bin/python cli/data_complete.py --source akshare --type stocks   # 数据补全
+python/.venv/bin/python cli/fetch_fund.py --code 019667                       # 单只基金
+```
+
+Python 只被 service 当作「取数工具」调用（`stdin: JSON → stdout: JSON`），**不对外提供 HTTP**；
+新增脚本放在 `python/cli/`，由 `service/src/services/pythonRunner.ts` 调用。

@@ -2,7 +2,7 @@
 
 ## 一、概述
 
-展示 A 股行业板块的涨跌幅排行，支持前 N 名显示、涨跌分布概览、展开全屏模态，数据有本地 IndexedDB 缓存。
+展示 A 股行业板块的涨跌幅排行，支持前 N 名显示、涨跌分布概览、展开全屏模态；缓存只在 service 内存里（TTL 15s），前端不再持久化。
 
 ## 二、数据流路径
 
@@ -16,7 +16,7 @@ GET /api/market/sectors?limit=90
     └── Python akshare 回退
           → data_complete.py --source akshare --type sector_spot
           → 同花顺板块数据
-    → 前端 SectorRank.vue → adaptiveRefresh + Dexie 缓存
+    → 前端 SectorRank.vue → adaptiveRefresh + service 内存缓存（15s）
 ```
 
 ### 关键文件
@@ -88,7 +88,7 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type sec
 | 项 | 说明 |
 |----|------|
 | 组件 | `frontend/src/components/SectorRank.vue` |
-| 数据刷新 | `useAdaptiveRefresh` + Dexie `marketCache` 持久化 |
+| 数据刷新 | `useAdaptiveRefresh`（按交易时段调刷新间隔）+ service 内存缓存 |
 | 涨跌分布 | 顶部概览条（上涨/平盘/下跌计数 + 比例条） |
 | 排序 | 默认按涨跌幅降序，前 90 个板块 |
 | 颜色规则 | 涨跌幅 ≥ 0 红色，< 0 绿色 |
@@ -102,7 +102,7 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type sec
 |--------|-----|------|
 | `market:sectors` | 15s | 板块行情缓存 |
 | `marketAkshare` | 30s | Python 回退数据缓存 |
-| 前端 Dexie `marketCache` | 持久化 | 本地缓存+过期检测（次日 9AM） |
+| — | — | 前端**不再缓存**板块数据（旧的 Dexie `marketCache` 表已在 P6 删除） |
 
 ## 七、已知问题
 
@@ -123,7 +123,8 @@ GET /api/market/concept-sectors?limit=20
       ├── ak.stock_fund_flow_concept(symbol="即时")   # 行情主表：387 个概念，按涨跌幅降序（每次现取 ~2s）
       └── ak.stock_board_concept_summary_ths()        # 驱动事件（约 10s，单独 file_cache 24h，失败即忽略）
     → {success, data: [...], total_count, data_date, source}
-  → 前端 toolHandlers.get_concept_sectors（data 为扁平数组，按数组解析）
+  → 消费方（服务端工具 `service/src/agent/toolsMarket.ts` 的 get_concept_sectors、前端概念板块面板）
+    注意：该路由的 `data` 是**扁平数组**（不是 `{items}`），按数组解析
 ```
 
 | 字段 | 来源 | 说明 |

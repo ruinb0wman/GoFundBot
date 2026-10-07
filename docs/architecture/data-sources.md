@@ -38,14 +38,15 @@
 
 | 引擎 | 文件 | 来源 | 优先级 |
 |------|------|------|--------|
-| **Bocha** | `service/src/services/searchService.ts` | `api.bocha.cn/v1/web-search` | 1 (需 API Key) |
-| **Tavily** | 同上 | `api.tavily.com/search` | 2 (需 API Key) |
-| **DuckDuckGo** | 同上 | `api.duckduckgo.com` | 3 (免费，兜底) |
+| **Exa** | `service/src/ai/search.ts` | MCP/JSON-RPC | 1（免费、无需 key） |
+| **DuckDuckGo** | 同上 | `api.duckduckgo.com` | 2（兜底） |
+
+接口：`POST /api/search`（service 唯一的"AI 相关"能力，仍不需要任何密钥）。
 
 ## Python 脚本数据来源
 
 | 脚本 | 文件 | 来源 | 能力 |
 |------|------|------|------|
 | **fetch_fund** | `python/cli/fetch_fund.py` | `fund.eastmoney.com` (requests) | 单只/批量基金 NAV 历史、基本数据 |
-| ~~**backtest**~~ | ~~`python/cli/backtest.py`~~ | — | **已删除（2026-09-29）**：回测改为前端本地计算 `frontend/src/services/backtest/` |
+| ~~**backtest**~~ | ~~`python/cli/backtest.py`~~ | — | **已删除（2026-09-29）**：回测引擎现在在 `packages/core/src/backtest/`，前端与 service 共用 |
 | **data_complete** | `python/cli/data_complete.py` | `akshare` Python 库 | A 股列表、行业板块映射、行业板块行情回退（`sector_spot`→同花顺）、概念板块行情+驱动事件（`concept_spot`→同花顺）、大盘资金流向回退 |

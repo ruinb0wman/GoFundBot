@@ -2,22 +2,22 @@
 
 ## 一、概述
 
-用户自选基金列表，支持分组管理、拖拽排序、批量操作、估值刷新。所有数据存储在浏览器 IndexedDB（Dexie.js），无需服务端持久化。
+用户自选基金列表，支持分组管理、拖拽排序、批量操作、估值刷新。数据真源是 **service SQLite**（`watchlist` + `watchlist_groups` 表），前端走 HTTP。
 
 ## 二、数据流路径
 
 ```
 用户操作（增删改查）
   → Pinia watchlistStore
-    → Dexie IndexedDB (watchlist 表 + watchlistGroups 表)
-    → 前端 UI 响应式更新
+    → /api/watchlist(/groups) → service SQLite (watchlist 表 + watchlist_groups 表)
+    → 前端 UI 响应式更新（写成功后派发 watchlist-updated）
 
 估值刷新
   → 用户点击刷新 / 定时自适应刷新
     → POST /api/watchlist/refresh-estimates
       → 服务端批量查询基金估值
     → 更新 watchlistStore.estimates
-      → Dexie marketCache 缓存
+      → service 内存缓存（估值数据不落库）
       → 前端显示实时估值
 ```
 
@@ -67,15 +67,17 @@
 
 ## 五、数据持久化
 
-所有数据仅存储在浏览器 IndexedDB，不同设备/浏览器之间不共享：
+数据存在 service SQLite（`service/data/gofund.db`），因此**同机不同浏览器看到的是同一份**：
 
 ```
-Dexie 数据库: GoFundBot
-  表: watchlist (主键 fundCode)
-  表: watchlistGroups (主键 ++id)
+SQLite: service/data/gofund.db
+  表: watchlist        (fund_code, fund_name, fund_type, group_id, sort_order, added_at)
+  表: watchlist_groups (id, name, sort_order)
 ```
 
-服务端不保存用户自选数据。估值数据通过 `POST /api/watchlist/refresh-estimates` 实时获取。
+- 接口：`GET/POST/PUT/DELETE /api/watchlist`、`/api/watchlist/groups`、`POST /api/watchlist/refresh-estimates`。
+- 旧版浏览器 Dexie 数据由 `db/migrateToServer.ts` 首次启动时一次性导入（localStorage flag + 服务端幂等）。
+- 估值仍走 `/api/watchlist/refresh-estimates`（实时取数，不落库）。
 
 ## 六、已知问题
 

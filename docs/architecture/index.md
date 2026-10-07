@@ -1,122 +1,44 @@
 # 技术架构总览
 
+GoFundBot 是一个**本机跑**的基金分析工具：数据与计算在 Node 后端（`service`），页面只做展示与工作台，AI 由终端 pi 承担。
+
+> 详细说明看 **[Node 核心架构](/architecture/node-core)**（服务分层、SQLite schema、共享内核、数据流、踩坑）。
+> 本页只是一张地图。
+
+## 进程
+
+| 进程 | 端口 | 是什么 |
+|---|---|---|
+| `service` | 8310 | Node + Express：数据获取（ProviderChain）、SQLite 存储、计算（调 `packages/core`）、工具面 `/api/agent/*`、策略代码沙箱。**不做 LLM、不持密钥**，只绑 `127.0.0.1` |
+| `frontend` | 8517 | Vue 3 + Vite：筛选面板 / 投研看板 / 回测工作台 / 策略页 / 持仓。计算来自 `@gofund/core`，数据走 HTTP（`/api` 由 Vite 代理） |
+| `docs` | 8574 | VitePress 文档站（经前端 `/docs/*` 代理访问） |
+| Python | — | 只做数据补全（akshare/eastmoney），无 HTTP 服务，由 service `spawn` 调用 |
+| 终端 pi | — | 唯一 AI 层：`.pi/extensions/gofund` 通用桥 + `.pi/skills`，全部能力通过 `/api/agent/*` |
+
+Electron 桌面壳（外部项目，可选）只是一个解禁 CORS 的浏览器窗口，加载运行中的前端 dev 服务，代码与 Web 完全一致。
+
+## 目录
+
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│  部署目标：浏览器（Web / Electron 桌面壳，CORS 由壳侧解禁）            │
-│                                                                    │
-│                    frontend (Vue 3 + Vite) 同一份 src               │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │  Dexie.js (IndexedDB)                                        │  │
-│  │  watchlist │ portfolio │ trades │ positions │ alertRules     │  │
-│  │  chatSessions │ chatMessages │ fundCache │ marketCache       │  │
-│  │  screeningFunds │ analysisMemory │ strategyMemory            │  │
-│  ├──────────────────────────────────────────────────────────────┤  │
-│  │  业务逻辑（前端化）                                           │  │
-│  │  industryClassifier（行业/基金类型分类）                      │  │
-│  │  researchComputation（市场统计/基金看板/ETF/板块汇总/行业表现）│  │
-│  │  riskMetrics（computeRiskMetricsLocal 风险指标）＋4433 排名    │  │
-│  ├──────────────────────────────────────────────────────────────┤  │
-│  │  AI / 搜索（前端直调）                                        │  │
-│  │  fundAnalyst（4 分析师+总监）│ portfolioAnalyst（组合诊断）    │  │
-│  │  strategyDraft（策略起草）│ reflection（分析反思）             │  │
-│  │  chatEngine（对话 + 工具调用 skills/tools）│ searchService     │  │
-│  │  llm.ts（OpenAI 兼容客户端，浏览器 fetch）                          │
-│  ├──────────────────────────────────────────────────────────────┤  │
-│  │  设置：LLM/Search key → localStorage；仅 Proxy URL → Node      │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-│    出站 HTTP 由浏览器 fetch 直出：                                  │
-│    · /api Vite 代理 → Node（Electron 桌面壳亦同，CORS 壳侧禁用）     │
-│    · 外部 API（LLM / 搜索）同源直调                                  │
-└────────────────────────────────┼───────────────────────────────────┘
-                                 │
-┌────────────────────────────────┼───────────────────────────────────┐
-│                   Node 薄后端 (localhost:8310)                       │
-│  Middleware: helmet │ cors │ rate-limit (300/15min) │ logger         │
-│  Routes: /api/fund │ /api/funds │ /api/market │ /api/stocks          │
-│          /api/news │ /api/screening（原始数据）                           │
-│          /api/alerts │ /api/user/portfolio │ /api/settings（proxy）  │
-│          /api/system │ /api/logs │ /api/health                       │
-│  Services: fundService │ marketService │ newsService │ stockService  │
-│            pythonRunner │ settingsService（proxy only）              │
-│  ProviderChain + DataSourceScorer（自适应降级） + MemoryCache         │
-│                              │                                      │
-│                   ┌─────────┴─────────┐                             │
-│                   ▼                   ▼                              │
-│          Python Scripts         External APIs                         │
-│          (data_complete)          (eastmoney/yahoo/...)            │
-└──────────────────────────────────────────────────────────────────────┘
+service/src/     Express 应用（routes / services / providers / db / core / agent / sandbox）
+frontend/src/    Vue 应用（views / components / composables / services / db(仅一次性导入)）
+packages/core/   两端共用的纯 TS 计算内核（回测 / 风险指标 / 分类 / 4433 / 投研聚合）
+packages/ui/     @gofund/ui 组件库（B* 系列控件 + 设计 token）
+python/          数据补全脚本（CLI，stdin/stdout JSON）
+docs/            本文档站
+.pi/             pi 扩展（工具桥）与技能
 ```
 
-> 回测已迁到前端（`frontend/src/services/backtest/`）；Node 的 `/api/backtest/*` 与
-> `python/cli/backtest.py` 已于 2026-09-29 删除，黄金 fixtures 冻结在
-> `frontend/src/services/backtest/__fixtures__/`。
+## 分层职责（一句话版）
 
-> 桌面 Electron 壳由外部项目提供（仅解禁 CORS），前端代码与浏览器完全一致。
+- **数据源**：`service/src/providers/`（ProviderChain 依次尝试，失败落 Python/akshare）→ 见 [数据源](/architecture/data-sources) 与 [回退策略](/architecture/fallback-strategy)。
+- **存储**：service SQLite（用户数据 / 筛选库 / 净值缓存 / 设置）→ 见 [Node 核心架构#存储](/architecture/node-core#_2-存储-service-sqlite)。
+- **计算**：`packages/core`（同一份源码两端共用，黄金 fixtures 双侧校验）→ 见 [回测引擎](/architecture/backtest-engine)。
+- **接口**：REST（数据 + 计算 + 用户数据）+ 工具面（pi）。
+- **AI**：终端 pi，工具清单来自 `GET /api/agent/tools` → 见 [pi 工具面](/architecture/pi-tools)。
 
-## 三运行时分布
+## 关键取舍
 
-| 运行时 | 位置 | 角色 |
-|--------|------|------|
-| **Node.js (TypeScript)** | `service/src/` | Express 薄后端 (port 8310)——数据获取、驱动 Python、本地数据代理（反爬/代理/限流/日志） |
-| **Node.js (TypeScript)** | `frontend/src/` | Vue 3 前端 (port 8517)——全部业务计算、AI 分析、联网搜索、用户数据 (IndexedDB) |
-| **Python 3** | `python/` | 工具脚本，由 `pythonRunner.ts` 通过 `child_process.spawn()` 调用 |
-
-## 职责边界（业务逻辑前端化）
-
-| 能力 | 位置 | 说明 |
-|------|------|------|
-| 筛选丰富化（风险指标/行业分类/排名/4433） | `frontend/src/services/industryClassifier.ts` + `useScreeningDb` | Node `/api/screening` 仅返回原始清单+NAV |
-| 市场统计/基金看板/ETF/板块汇总/行业表现 | `frontend/src/services/researchComputation.ts` | 从 Dexie screeningFunds + `/api/market/sectors` 计算 |
-| AI 基金分析 / 组合诊断 / 策略起草 / 反思 | `frontend/src/services/fundAnalyst.ts` 等 | 前端直调 OpenAI 兼容端点，key 存前端 |
-| AI 对话 + 工具调用（基金/行情/回测/搜索） | `frontend/src/services/chatEngine/` | `skills.ts` + `toolContract.ts` + `toolCallParser.ts` + `toolHandlers.ts` |
-| 定投回测引擎（月/周/日/一次性 + 止盈止损 + 定投方式） | `frontend/src/services/backtest/` | `backtestEngine.ts` 与 `python/cli/backtest.py` 逐值对齐（黄金 fixtures 由 `python/tests/gen_backtest_fixtures.py` 生成） |
-| 联网搜索链 Exa→Bocha→Tavily→DDG | `frontend/src/services/searchService.ts` | key 取前端设置 |
-| 设置 | LLM/Search key 存前端 localStorage；仅 Proxy URL → Node | Node `/api/settings` 只剩 proxy 子域 |
-| 数据获取 / 反爬 / 代理（Python 仅剩数据补全） | `service/src/` | 保留不变 |
-
-## 关键依赖
-
-| 依赖 | 用途 |
-|------|------|
-| **Express** | Node 薄后端 HTTP 服务 + 路由 |
-| **Vue 3 + Vite** | 前端框架 |
-| **Dexie.js** | 浏览器 IndexedDB ORM（14 表，含 backtestRuns） |
-| **Pinia** | 前端状态管理 |
-| **helmet / express-rate-limit** | 安全头 / 限流 |
-| **stock-sdk** | npm 包，基金净值/行情主数据源 |
-| **akshare** | Python 库，A 股数据回退来源 |
-
-## 关键设计决策
-
-| 决策 | 选择 | 原因 |
-|------|------|------|
-| 业务逻辑归属 | 全部前端化 | 浏览器（含 Electron 壳）共用同一套计算/AI/搜索，Node 瘦身为纯数据层 |
-| 桌面 CORS | Electron 壳侧解禁 | 前端不感知运行时差异，同一份代码浏览器/桌面通用 |
-| 用户数据存储 | 浏览器 IndexedDB (Dexie.js) | 无服务端状态，零运维，隐私友好 |
-| 数据源编排 | ProviderChain 链式调降 | 多数据源自动降级，业务代码无感 |
-| Python 集成 | `child_process.spawn` + JSON 通信 | 无 HTTP 服务开销，类型安全 |
-| AI 分析 | Multi-Agent Debate (4+1) | 多角度评估，减少单模型偏见 |
-| 设置 | LLM/Search key 前端本地，仅 Proxy 下发 Node | 隐私与简化；Node 抓取走用户代理 |
-
-## 各架构模块导航
-
-| 模块 | 文档 |
-|------|------|
-| 数据源 | [数据源](./data-sources) |
-| 数据流向 | [数据流向](./data-flow) |
-| 数据回退策略 | [数据回退策略](./fallback-strategy) |
-| 各模块数据源映射 | [模块数据源映射](./module-data-sources) |
-| 基金数据合并策略 | [基金数据合并策略](./fund-data-merge) |
-| AI 分析框架总览 | [AI 分析框架总览](./ai-overview) |
-| AI 对话系统 | [AI 对话系统](./ai-chat) |
-| AI 基金分析与持仓分析 | [AI 基金分析与持仓分析](./ai-fund-analysis) |
-| 记忆与反思系统 | [记忆与反思系统](./ai-memory) |
-
-## 相关文档
-
-| 文档 | 内容 |
-|------|------|
-| [`data-sources-and-runtime.md`](../data-sources-and-runtime) | 数据来源/核心函数/运行时总览 |
-| [`tushare.md`](../tushare) | Tushare Pro 接入方案与定价分析 |
-| [`market-money-flow.md`](../market-money-flow) | 今日资金流向数据流详解 |
-| [`market-global.md`](../market-global) | 全球行情数据流详解 |
+- **不引入前端状态库**：用户数据不在浏览器，页面刷新即从 service 拿最新（IndexedDB 只剩一次性导入旧数据的路径）。
+- **计算内核不构建 dist**：前端与 service 直连 `packages/core/src`，避免「前端源码 vs 后端产物」两套实现。
+- **数据源坏了就降级**：ProviderChain + Python 回退，宁可少字段也不编数据（前端对 `data_status: unavailable` 显式提示）。

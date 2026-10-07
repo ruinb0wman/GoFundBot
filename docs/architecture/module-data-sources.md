@@ -43,31 +43,32 @@
 | 路由 | 服务函数 | ProviderChain | Cache TTL |
 |------|---------|--------------|-----------|
 | `GET /api/screening/sync` | (screening router) | eastmoney screeningSnapshot | 次日 9AM |
-| `POST /api/screening/query` | (screening router) | 前端 Dexie + 富化数据（**deprecated**） | — |
+| `POST /api/screening/query` | `screeningService.queryScreening` | SQLite `screening_funds`（过滤/排序/分页都在这里） | — |
 | `GET /api/screening/fund/:code` | (screening router) | enrichFund(Nav + type + risk + industry) | 24h |
 
-## 研究模块（已前端化）
+## 研究模块
 
-> `/api/research/*` 已撤销。看板聚合在前端 `researchComputation.ts` 完成：
-> 数据 = Dexie `screeningFunds`（`/api/screening/sync` 同步）+ `/api/market/sectors`。
+`GET /api/research/dashboard` → `researchService.getResearchDashboard()` → `packages/core buildDashboard()`，
+数据来自 SQLite `screening_funds`（不再需要前端聚合，也不再取板块行情 —— `buildDashboard` 的 `sectors`
+参数与 `buildResearchSectorSummary()` 都是零调用死代码，已删）。
 
-| 目录 | 数据源 | 备注 |
-|------|--------|------|
-| 市场统计 / 基金看板 / ETF / 行业表现 | Dexie screeningFunds 聚合 | 前端计算 |
-| 板块汇总 | `/api/market/sectors` | 前端 `buildResearchSectorSummary` |
+| 区块 | 数据源 |
+|---|---|
+| 市场统计 / 基金看板 / ETF / 行业表现 | SQLite `screening_funds` 聚合（core） |
 
-## AI 模块（已前端化）
+## AI 模块 → 终端 pi
 
-> `/api/chat`、`/api/fund/:code/analyze`、`/api/user/portfolio/analyze`、`/api/analysis-memory`、
-> `/api/strategy/draft` 均已撤销，改为前端直调 LLM（`llm.ts`）+ 前端对话引擎（`chatEngine/`）。
+> 前端 AI（`chatEngine/`、`fundAnalyst.ts`、`portfolioAnalyst.ts`、`reflection.ts`、`strategyDraft.ts`）
+> 与 service 的 LLM 网关（`/api/llm/*`）**均已删除**。AI 由终端 pi 承担，service 只提供工具面。
 
-| 能力 | 前端实现 | 数据源 |
-|------|---------|--------|
-| AI 对话 + 工具调用 | `chatEngine/`（skills/tools/toolHandlers） | Node API（基金/行情/回测）+ 本地计算 + 前端搜索 |
-| 基金分析（4+1） | `fundAnalyst.ts` | Node `/api/fund*` + 前端 LLM |
-| 持仓诊断 | `portfolioAnalyst.ts` | Node `/api/fund*` + 前端 LLM |
-| 分析反思 | `reflection.ts` | 前端 LLM |
-| 策略起草 | `strategyDraft.ts` | 前端 LLM |
+| 能力 | 现在怎么做 |
+|---|---|
+| 对话 + 工具调用 | pi 会话，工具来自 `GET /api/agent/tools`（27 个） |
+| 基金/持仓分析 | pi 组合工具：`get_fund_detail` + `get_positions` + `run_backtest` + `list_strategies` |
+| 策略起草/更新 | `list_strategies` → 展示方案 → 用户确认 → `save_strategy`（带确认令牌） |
+| 联网搜索 | `POST /api/search`（Exa → DuckDuckGo，无需 key）；pi 侧也可用自带 `web_search` |
+
+细节见 [pi 工具面](/architecture/pi-tools)。
 
 ## 其他模块
 
@@ -75,5 +76,6 @@
 |------|---------|--------------|-----------|
 | `GET /api/news/flash` | `getFlashNews` | [eastmoney → baidu → cls] | 30s |
 | `GET /api/stocks/:code/reference` | `getStockReference` | [eastmoney → tencent] | 7d |
-| `POST /api/backtest/fixed-investment` | ~~已删除（2026-09-29）~~ | 回测改为前端本地计算，见 `docs/architecture/backtest-engine.md` | — |
-| `GET /api/settings` | (settings router) | 仅 proxy 子域 | — |
+| `POST /api/backtest/{fixed-investment,portfolio,compare-strategies}` | `backtestService` | 走 `packages/core` 引擎 + 净值 SQLite 缓存 | 净值 24h |
+| `GET /api/settings` | `settingsService` | 仅 proxy 子域（SQLite `settings`） | — |
+| `POST /api/agent/call` | `agent/tools.ts` | 工具面（27 个，直接调内部函数） | — |

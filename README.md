@@ -2,19 +2,18 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)]() [![Vue.js](https://img.shields.io/badge/Vue.js-3-green.svg)]()
 
-GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分析与可视化工具。它不仅提供实时的基金数据查询和可视化图表，还集成了先进的 AI 大模型（LLM），为用户提供深度的基金投资分析、风险评估及市场研判报告。所有持久化数据存储在浏览器端 IndexedDB（Dexie.js）中，服务端无状态。
+GoFundBot 是一个本机跑的基金分析与可视化工具：Node 后端负责数据获取、存储与计算，Vue 3 前端负责展示与工作台，**AI 由终端 [pi](https://github.com/earendil-works/pi) 承担**（应用本身不接入任何大模型、不持有任何密钥）。
 
-**架构说明**：业务计算 / AI 分析 / 联网搜索已全部下沉到前端（浏览器与桌面 Electron 壳共用同一份 `frontend/src`）；Node 为数据获取 + 驱动 Python + 本地数据代理的薄后端。仓库为**按职责平铺的 monorepo**（`service` / `frontend` / `python` / `docs` / `packages`），面向**浏览器**部署；桌面端由外部 Electron 浏览器壳解禁 CORS，前端同一份代码直出、无任何运行时分支。
+**架构说明**：`service`（Node + SQLite）是数据、用户数据与工具面的唯一真源；计算内核 `packages/core` 由前后端共用同一份源码；前端只做展示与工作台。仓库为**按职责平铺的 monorepo**（`service` / `frontend` / `packages` / `python` / `docs`），桌面端由外部 Electron 浏览器壳解禁 CORS，前端同一份代码直出、无任何运行时分支。详见 [Node 核心架构](docs/architecture/node-core.md)。
 
 ## 🚀 功能特性
 
-### 🤖 AI 智能投顾
-*   **多分析师辩论**：四位专业 AI 分析师（业绩/持仓/经理/市场环境）并行评估，研究总监综合裁决。
-*   **标准化 5 档评级**：基于结构化 JSON 输出的 Strong Buy→Sell 评级体系，可信度高。
-*   **记忆反思系统**：每次分析决策自动存储，后续拉取实际收益并生成事后反思，注入未来分析。
-*   **防幻觉设计**：预获取东方财富/财联社/百度股市通实时快讯及行业板块数据，直接注入 prompt。
-*   **智能仪表盘**：通过 AI 对基金的业绩、管理能力、持仓及市场前景进行多维度打分。
-*   **市场情绪摘要**：每日自动生成市场行情摘要，捕捉关键市场动态与板块机会。
+### 🤖 AI 由终端 pi 承担
+*   **工具面单一真源**：`GET /api/agent/tools` 提供 **27 个工具**（行情/板块/资金流/基金/快讯 + 回测 + 筛选 + 投研看板 + 策略与持仓），pi 扩展启动时拉清单动态注册。
+*   **同源同值**：工具处理器直接调 service 内部函数（同一份 core 引擎、同一份 SQLite 缓存），所以模型看到的数字与页面一致。
+*   **执行/写入要确认**：`save_strategy`、`run_strategy_code`、`save_strategy_script` 第一次调用只返回确认令牌，用户确认并原样重调才真正执行。
+*   **自由代码回测**：pi 可以写策略代码（`prepare(sdk)` 声明池、`onDay(s)` 逐日决策）并直接跑出结果；在 `node:worker_threads` 沙箱里执行，5s 超时强制终止。
+*   **零密钥**：应用不存 LLM key；唯一的"AI 相关"服务端能力是无需 key 的搜索 `POST /api/search`（Exa → DuckDuckGo）。
 
 ### 📊 全面数据可视化
 *   **基金详情页**：
@@ -29,8 +28,8 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 ### 🛠 便捷工具
 *   **基金搜索**：支持代码/名称快速搜索（ProviderChain 实时查询）。
-*   **自选管理**：一键添加/移除自选基金，随时跟踪关注标的（数据存储在浏览器 IndexedDB）。
-*   **定投回测**：通过 Python 脚本进行多策略回测（**每月/每周/每日定投、一次性买入 + 止盈止损**）。
+*   **自选管理**：一键添加/移除自选基金，随时跟踪关注标的（数据存在 service SQLite）。
+*   **代码优先回测**：`prepare/onDay` 自由策略代码（也可用页面模板），单基金 + 多资产组合 + 再平衡 + 现金腿；引擎在 `packages/core`，前端与 service 同源同值。
 *   **桌面端**：支持 Electron 浏览器壳（壳侧解禁 CORS，直连 Node / 外部 API 不受浏览器限制）。
 *   **一键启动**：根目录 `bun dev` 同时启动后端 + 前端 + 文档站。
 
@@ -59,15 +58,13 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 ![基金详情.png](docs/images/基金详情.png)
 
-- 使用LLM辅助分析基金情况（结论仅供参考）
-
-![LLM](docs/images/LLM分析.png)
+- 需要 AI 分析时：在仓库目录起一个终端 `pi` 会话，让它用 `get_fund_detail` / `run_backtest` / `list_strategies` 等工具回答（截图见 [pi 工具面](docs/architecture/pi-tools.md)）。
 
 #### （3）基金筛选
 
 - 提供了4433法则、夏普比率、低波动策略等快速筛选策略，点击即可使用。
 - 提供了自定义筛选条件的选择，可以根据基金类型、收益率、回撤等选项筛选基金。
-- 风险指标（夏普/卡玛/波动率/最大回撤）由前端从 NAV 历史本地计算，不依赖服务端内存缓存。
+- 数据与富化都在 service（SQLite `screening_funds`）：刷新时算好风险指标/行业标签/4433 排名，页面与 pi 共用同一份结果。
 
 ![基金筛选.png](docs/images/基金筛选.png)
 
@@ -84,8 +81,8 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 #### （5）定投回测
 
-- 支持每月/每周/每日定投、一次性买入，可设置止盈/止损条件。
-- 目前只支持单基回测，后续会加入组合回测。
+- 代码优先的工作台：`prepare(sdk)` 声明固定标的池（可用 `sdk.screen()` 从本地基金库筛选），`onDay(s)` 按基金代码逐日决策。
+- 支持单基金定投/价值平均/均线偏离、多资产权重 + 日历/阈值再平衡 + 定期注水 + 现金腿；也可让 pi 直接跑（`run_strategy_code`）。
 
 ![定投回测.png](docs/images/定投回测.png)
 
@@ -101,7 +98,7 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 #### （7）桌面端使用（Electron 浏览器壳）
 
-桌面端由外部 Electron 浏览器壳提供（壳侧禁用 Web Security / 解禁 CORS）。前端无需任何适配——按 Web 方式部署即可：Electron 壳加载运行中的前端 dev 服务，LLM / 搜索 / Node API 均以普通 `fetch` 直连。
+桌面端由外部 Electron 浏览器壳提供（壳侧禁用 Web Security / 解禁 CORS）。前端无需任何适配——按 Web 方式部署即可：Electron 壳加载运行中的前端 dev 服务，Node API 以普通 `fetch` 直连（壳侧解禁 CORS）。
 
 ```bash
 # 1. 启动后端 + 前端 dev + 文档站
@@ -117,31 +114,33 @@ cd docs && bun install && bunx vitepress dev --port 8574   # 文档站 :8574
 ### 后端 (service)
 *   **语言**: Node.js / TypeScript
 *   **框架**: Express
-*   **数据源编排**: ProviderChain (stock-sdk → eastmoney → baidu/cls)
-*   **缓存**: 内存 LRU, 分资源类型 TTL (30s ~ 7d)
+*   **数据源编排**: ProviderChain (行情 stock-sdk → eastmoney；基金 joinquant → tencent → stock-sdk → eastmoney)，失败落 Python/akshare
+*   **存储**: SQLite (`node:sqlite`) — 用户数据 / 筛选库 / 净值缓存 / 设置，见 `src/db/migrations/`
+*   **计算**: 调 `packages/core`（回测 / 组合 / 风险指标 / 行业分类 / 4433 / 投研聚合）
+*   **工具面**: `/api/agent/tools`（27 个工具，Zod → JSON Schema）+ `/api/agent/call`（写/执行类需确认令牌）
+*   **代码沙箱**: `node:worker_threads`（5s 超时 terminate）
+*   **缓存**: 内存 LRU (30s ~ 7d) + SQLite 净值缓存（带覆盖度判断）
 *   **限流**: express-rate-limit (300/15min)
 *   **安全头**: Helmet (CSP/COEP 禁用)
 *   **输入校验**: Zod schemas
-*   **Python Runner**: `child_process.spawn()` 驱动 Python CLI（回测 / `data_complete` 数据补全）
-*   **筛选接口**: `/api/screening` 仅返回原始清单，富化（风险指标/行业分类/4433）在前端本地计算
-*   **设置接口**: 最小化——仅下发 Proxy URL（LLM/搜索 Key 存前端）
+*   **Python Runner**: `child_process.spawn()` 驱动 Python CLI（只做数据补全）
+*   **筛选接口**: `/api/screening/{sync,compute,ranks,query,status,industry-tags,screen-rows}` —— 拉清单 + 富化 + 查询都在 service
+*   **设置接口**: 最小化——仅下发 Proxy URL（应用不持有任何密钥）
 *   **结构化日志**: JSON 格式 + `requestId` 链路追踪
 
 ### Python 计算层 (python)
 *   **语言**: Python 3.11+
-*   **回测引擎**: 定投模拟（月/周/日/一次性买入）+ 止盈止损
-*   **数据获取**: akshare / 东方财富 eastmoney API（`data_complete.py`）
-*   **风险指标 / 行业分类**: 已迁移前端（`industryClassifier.ts` + `number.ts`），Python 侧不再承担
-*   **搜索**: 已迁移前端（`searchService.ts`），Python 侧不再承担
+*   **职责**: 只做数据补全 —— `data_complete.py`（akshare/eastmoney）、`fetch_fund.py`（单只基金）
+*   **回测引擎**: 已迁到 `packages/core/src/backtest/`（TS），Python 侧不再承担
+*   **风险指标 / 行业分类 / 搜索**: 分别在 `packages/core` 与 `service/src/ai/search.ts`，Python 侧不再承担
 
 ### 前端 (frontend)
 *   **框架**: Vue 3 (Composition API + TypeScript, 全部 `<script setup lang="ts">`)
 *   **构建工具**: Vite + vue-tsc (TypeScript typecheck)
 *   **状态管理**: Pinia
-*   **持久化**: Dexie.js (IndexedDB) — 所有用户数据 + 基金缓存
-*   **业务计算**: `industryClassifier`（行业/类型分类）、`computeRiskMetricsLocal`（风险指标）、4433 排名、`researchComputation`（投研看板聚合）
-*   **AI 客户端**: `llm.ts`（OpenAI 兼容直调，JSON + 流式）+ `fundAnalyst` / `portfolioAnalyst` / `strategyDraft` / `chatEngine`
-*   **联网搜索**: `searchService.ts`（Exa → Bocha → Tavily → DuckDuckGo 多源降级）
+*   **持久化**: 用户数据/缓存都在 service SQLite；本地 IndexedDB 只剩一次性导入旧数据的路径（`db/migrateToServer.ts`）
+*   **业务计算**: 来自 `@gofund/core`（与 service 共用同一份源码）；页面只做展示与交互
+*   **AI / 搜索客户端**: 无 —— 前端没有聊天或 AI 入口，AI 交互在终端 pi
 *   **环境适配**: `httpClient.ts`（统一浏览器 fetch；Electron 壳侧解禁 CORS）
 *   **UI 组件**: 自定义响应式组件 + `@gofund/ui` 基础组件库
 *   **可视化**: ECharts + vue-echarts
@@ -195,15 +194,14 @@ npm install
 ### 3. 配置环境变量
 
 ```bash
-# service 配置（按需；LLM/Search Key 已迁移前端，不再需要 Node 侧配置）
+# service 配置（按需；应用不持有任何 LLM/搜索密钥）
 cp service/.env.example service/.env
 ```
 
-- **AI 配置**：浏览器访问 **设置 → AI 配置** 填写 API Key / Base / Model（默认 `https://api.siliconflow.cn/v1`、`Qwen/Qwen2.5-7B-Instruct`）。
-- **搜索配置**：**设置 → 搜索** 填写 Bocha / Tavily Key（Exa 免费无需 Key）。
-- **代理设置**：**设置 → 代理设置** 填写 Proxy URL（下发 Node，供 Yahoo Finance 抓取）。
+- **AI 配置**：没有。AI 在终端 pi 侧（用你自己的 pi 配置与密钥），应用不接入 LLM。
+- **代理设置**：页面 **设置 → 代理设置** 填写 Proxy URL（下发给 Node，供 Yahoo Finance 抓取；国内接口一律直连）。
 
-> 密钥仅存于浏览器前端（localStorage），不落服务端。`service/.env` 仅按需配置 `HTTP_PROXY` / `HTTPS_PROXY`（访问 Yahoo Finance 国际 API 需要）。
+> `service/.env` 仅按需配置 `HTTP_PROXY` / `HTTPS_PROXY`、`HOST`、`GOFUND_DB_PATH` 等（见 `service/.env.example`）。
 
 ### 4. 一键启动
 
@@ -242,30 +240,33 @@ python/.venv/bin/python python/cli/data_complete.py --source akshare --type stoc
 
 ```text
 GoFundBot/
-├── service/                     # Express 薄后端（数据获取 + Python 驱动 + 数据代理）
+├── service/                     # Node 后端（数据 + 存储 + 计算 + 工具面）
 │   ├── src/
 │   │   ├── app.ts               # 应用入口 — 路由注册 + 中间件
-│   │   ├── routes/              # API 路由（fund/market/screening/backtest/settings/...）
-│   │   ├── services/            # 数据层服务（fundService, marketService, pythonRunner, ...）
+│   │   ├── routes/              # API 路由（fund/market/screening/backtest/research/agent/...）
+│   │   ├── services/            # 数据与计算服务（fundService, screeningService, backtestService, navCacheService, userDataService...）
+│   │   ├── agent/               # pi 工具注册表（27 个工具 + 确认令牌）
+│   │   ├── sandbox/             # 策略代码沙箱（node:worker_threads）
+│   │   ├── db/                  # SQLite 连接 + 迁移（001~004）
 │   │   ├── providers/           # 数据源（eastmoney, stock-sdk, tencent, yahoo, joinquant）
 │   │   ├── core/                # 基础设施（logger, cache, errors, response, providerChain）
-│   │   ├── types/               # DTO 类型定义
 │   │   └── __tests__/           # 单元测试
 │   └── package.json
-├── frontend/                    # Vue 3 + TypeScript 前端（业务计算 / AI / 搜索全部在此）
+├── frontend/                    # Vue 3 + TypeScript 前端（展示与工作台）
 │   ├── src/
-│   │   ├── db/                  # Dexie.js IndexedDB schema
+│   │   ├── db/                  # 仅用于一次性导入旧 IndexedDB 数据
 │   │   ├── components/          # Vue 组件
-│   │   ├── composables/         # 组合式函数（useDexieCache, useFundWatchlist...）
+│   │   ├── composables/         # 组合式函数（useFundScreening, useResearchDashboard...）
 │   │   ├── stores/              # Pinia 状态管理
-│   │   ├── services/            # API 客户端 + 业务计算（llm, fundAnalyst, chatEngine, industryClassifier, searchService, httpClient...）
+│   │   ├── services/            # API 客户端（api/httpClient/userDataApi/screeningRows...）
 │   │   └── views/               # 页面视图
 │   └── package.json
 ├── packages/
+│   ├── core/                     # 共享计算内核 @gofund/core（回测/组合/风险/分类/4433/投研聚合）
 │   └── ui/                       # UI 组件库 @gofund/ui（Vite lib mode 构建，组件级 chunk + dts）
-├── python/                       # Python CLI 脚本（计算/数据补全）
+├── .pi/                          # 终端 pi 的工具桥扩展与技能
+├── python/                       # Python CLI 脚本（数据补全）
 │   ├── cli/                      # 可执行脚本
-│   │   ├── backtest.py           # 定投回测（月/周/日/一次性 + 止盈止损）
 │   │   ├── fetch_fund.py         # 基金数据拉取
 │   │   ├── data_complete.py      # 数据补全（akshare/eastmoney 拉取）
 │   │   ├── check_file_length.py  # 文件行数检查（单文件 ≤500 行）
