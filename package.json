@@ -10,7 +10,8 @@
     "dev": "bun run setup:venv && concurrently -n svc,fe,doc -c blue,green,yellow \"bun run dev:service\" \"bun run dev:frontend\" \"bun run docs:dev\"",
     "docs:dev": "cd docs && bunx vitepress dev --port 8574",
     "dev:service": "cd service && bun run dev",
-    "dev:frontend": "cd frontend && bun run dev --host"
+    "dev:frontend": "cd frontend && bun run dev --host",
+    "gen:tools": "cd service && bunx tsx scripts/gen-tools-manifest.ts"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

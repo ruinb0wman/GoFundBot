@@ -1,5 +1,9 @@
 # 计划：给终端 pi 接上 GoFundBot 数据（不动前端）
 
+
+> ⚠️ **2026-10-07 更新（P4）**：本文描述的「扩展里定义 15 个只读工具」已过时 —— 工具清单
+> 现由 service 的 `/api/agent/tools` 提供，扩展只做通用桥。见 `.pi/extensions/gofund/README.md`。
+
 ## 1. 目标与假设
 
 **目标**：让在 `GoFundBot` 仓库里运行的原生 pi（CLI/TUI）能直接查询本项目的行情/基金/资讯数据，
