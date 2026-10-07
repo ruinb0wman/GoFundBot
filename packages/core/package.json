@@ -1,0 +1,17 @@
+{
+  "name": "@gofund/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "GoFundBot 共享计算内核（回测引擎 / 组合引擎 / 风险指标 / 行业分类 / 投研聚合 / 策略沙箱）——前端与 Node service 用同一份纯 TS 实现",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "decimal.js": "^10.6.0"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}
