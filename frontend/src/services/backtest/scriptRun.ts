@@ -9,11 +9,11 @@
  * Shared by the workspace page and the `run_strategy_code(script_name)` tool.
  */
 
-import { samplePortfolioBacktest, type SampledPortfolioBacktest } from './portfolioSample'
+import { samplePortfolioBacktest, type SampledPortfolioBacktest } from '@gofund/core/backtest/portfolioSample'
 import { planStrategyCode, runPortfolioStrategyCodeRaw } from './runStrategyCode'
 import { loadNav, screenRows } from './dataBroker'
 import type { NavPoint, PortfolioAsset, PortfolioBacktestResult, PortfolioSpec } from './backtestTypes'
-import type { StrategyPlan } from './strategySandbox'
+import type { StrategyPlan } from '@gofund/core/backtest/strategySandbox'
 import type { StrategyScriptRecord } from '../../db/strategyScripts'
 
 /** Optional host overrides applied on top of what `prepare()` declared (LLM tool args). */

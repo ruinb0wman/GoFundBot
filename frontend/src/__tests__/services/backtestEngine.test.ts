@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { runBacktest } from '../../services/backtest/backtestEngine'
-import { isBacktestResult, type BacktestSpec, type NavPoint } from '../../services/backtest/backtestTypes'
+import { runBacktest } from '@gofund/core/backtest/backtestEngine'
+import { isBacktestResult, type BacktestSpec, type NavPoint } from '@gofund/core/backtest/backtestTypes'
 import engineFixture from '../../services/backtest/__fixtures__/engine.json'
 
 /**

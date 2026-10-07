@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { pickScheduleDates, runPortfolioBacktest } from '../../services/backtest/portfolioBacktest'
-import { samplePortfolioBacktest } from '../../services/backtest/portfolioSample'
-import { isPortfolioResult, type NavPoint, type PortfolioHooks, type PortfolioSpec } from '../../services/backtest/backtestTypes'
+import { pickScheduleDates, runPortfolioBacktest } from '@gofund/core/backtest/portfolioBacktest'
+import { samplePortfolioBacktest } from '@gofund/core/backtest/portfolioSample'
+import { isPortfolioResult, type NavPoint, type PortfolioHooks, type PortfolioSpec } from '@gofund/core/backtest/backtestTypes'
 
 function series(dates: string[], navs: number[]): NavPoint[] {
   return navs.map((nav, i) => ({ date: dates[i], nav }))

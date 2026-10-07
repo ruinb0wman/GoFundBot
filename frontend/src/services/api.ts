@@ -69,15 +69,20 @@ export const screeningAPI = {
   startUpdate(options: Record<string, unknown> = {}) { return api.post('/screening/update', options) },
   stopUpdate() { return api.post('/screening/stop') },
   query(params: Record<string, unknown>) { return api.post('/screening/query', params) },
-  getStrategies() { return api.get('/screening/strategies') },
-  getAvailableTypes(params: Record<string, unknown>) { return api.post('/screening/available-types', params) },
+  /** 分批富化风险指标（一次一批，limit 默认服务端 300）。 */
+  compute(params: Record<string, unknown> = {}) { return api.post('/screening/compute', params) },
+  /** 重算 4433 排名。 */
+  ranks() { return api.post('/screening/ranks') },
+  /** 行业标签计数（筛选页标签面板）。 */
   getIndustryTags() { return api.get('/screening/industry-tags') },
-  getStockIndustryStatus() { return api.get('/screening/stock-industry/status') },
-  warmupStockIndustry(params: Record<string, unknown> = {}) { return api.post('/screening/stock-industry/warmup', params) },
+  /** 策略沙箱 `screen()` 用的全量字段（7 列）。 */
+  getScreenRows() { return api.get('/screening/screen-rows') },
   getFundDetail(fundCode: string) { return api.get(`/screening/fund/${fundCode}`) },
-  fillRiskMetrics() { return api.post('/screening/fill-risk') },
-  updateSingleFund(fundCode: string) { return api.post(`/screening/update-single/${fundCode}`) },
-  recalculateRankings() { return api.post('/screening/recalculate-rankings') },
+}
+
+export const researchAPI = {
+  /** 投研看板（service 聚合，与 pi 的 get_research_dashboard 同一份实现）。 */
+  getDashboard(params: Record<string, unknown> = {}) { return api.get('/research/dashboard', { params }) },
 }
 
 export const marketAPI = {

@@ -4,17 +4,7 @@
       :fundCode="currentFundCode"
       :fundData="fundDetail"
       :riskMetrics="riskMetrics"
-      @trigger-ai-analysis="handleStartAIAnalysis"
     />
-
-    <div v-show="showAIAnalysis" class="ai-analysis-section">
-      <FundAIAnalysis
-        ref="fundAIAnalysisRef"
-        :fundCode="currentFundCode"
-        @close="showAIAnalysis = false"
-        @analysis-complete="handleAnalysisComplete"
-      />
-    </div>
 
     <div v-if="fundDetail" class="dashboard">
       <div class="main-area">
@@ -125,7 +115,6 @@ import FundPortfolio from './FundPortfolio.vue'
 import FundAbilityEval from './FundAbilityEval.vue'
 import FundSubscription from './FundSubscription.vue'
 import FundSameType from './FundSameType.vue'
-import FundAIAnalysis from './FundAIAnalysis.vue'
 import StockPopup from './StockPopup.vue'
 
 import { useFundDetail } from '../composables/useFundDetail'
@@ -134,13 +123,13 @@ const props = defineProps({ fundCode: { type: String, default: '' } })
 const emit = defineEmits(['navigate-to-fund'])
 
 const {
-  currentFundCode, fundDetail, loading, error, showAIAnalysis,
-  fundAIAnalysisRef, riskMetrics, tradeRecords,
+  currentFundCode, fundDetail, loading, error,
+  riskMetrics, tradeRecords,
   processedNetWorthTrend, processedAcWorthTrend,
   modalVisible, modalType, openModal, closeModal,
   stockModalVisible, stockQuoteLoading, stockQuoteData, stockQuoteError,
   handleStockClick, closeStockModal, handleSameTypeFundSelect,
-  handleStartAIAnalysis, handleAnalysisComplete, retry
+  retry
 } = useFundDetail(props, emit)
 </script>
 

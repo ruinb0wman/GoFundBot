@@ -48,12 +48,6 @@
         </div>
       </div>
 
-      <div class="header-middle-group">
-        <BButton type="primary" size="small" icon="Sparkles" @click="$emit('trigger-ai-analysis')">
-          <span class="btn-text">{{ 'AI 智能分析' }}</span>
-        </BButton>
-      </div>
-
       <div class="header-right">
         <div class="change-box">
           <div class="label">{{ isEstimateFresh ? '估算涨幅' : '涨跌幅' }}</div>
@@ -136,10 +130,6 @@ const props = withDefaults(defineProps<{
   fundData: null,
   riskMetrics: null,
 })
-
-defineEmits<{
-  'trigger-ai-analysis': []
-}>()
 
 const fundInfo = ref<Record<string, any> | null>(null)
 const loading = ref(false)

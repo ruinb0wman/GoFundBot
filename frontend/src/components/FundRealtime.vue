@@ -37,16 +37,8 @@
       <div v-else class="overview-grid empty-hint">{{ '暂未设置持仓' }}</div>
 
       <div class="overview-actions" v-if="hasHoldings" style="margin-top: 10px; display: flex; gap: 8px;">
-        <BButton size="small" @click="showPortfolioAnalysis = !showPortfolioAnalysis">
-          <LucideIcon name="PieChart" :size="14" /> AI 持仓诊断
-        </BButton>
       </div>
 
-      <PortfolioAIAnalysis
-        v-if="showPortfolioAnalysis"
-        :funds="funds.map(f => ({ code: f.code, share: (holdings[f.code]?.share || 0), cost: (holdings[f.code]?.cost || 0) }))"
-        @close="showPortfolioAnalysis = false"
-      />
     </div>
 
     <div class="pending-txns-bar" v-if="pendingTxns.length">
@@ -208,7 +200,6 @@ import { BButton, BCard, BInputNumber, BFileInput } from '@gofund/ui'
 import { computed, onMounted, watch, nextTick } from 'vue'
 import { useFundMiniChart } from '../composables/useFundMiniChart'
 
-import PortfolioAIAnalysis from './PortfolioAIAnalysis.vue'
 import { useFundRealtime } from '../composables/useFundRealtime'
 import FundRealtimeModals from './FundRealtimeModals.vue'
 import { fmtMoney, fmtPercent, fmtNumber } from '../utils/number'
@@ -258,7 +249,6 @@ const {
   getTradeNav, getTradeResultShares, canSubmitTrade, submitButtonText,
   settleTrade, genTxnId, saveTrade, cancelPendingTxn, settlePendingTxnsIfReady,
   saveRefreshMs, updateNowTime, exportData, importData, handleClickOutside,
-  showPortfolioAnalysis,
 } = useFundRealtime(emit)
 
 function onImport(files: FileList | null) {

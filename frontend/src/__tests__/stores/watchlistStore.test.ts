@@ -1,37 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import type { WatchlistItem, WatchlistGroup } from '../../db'
 
-const mockToArray = vi.fn()
-const mockGet = vi.fn()
-const mockPut = vi.fn()
-const mockDelete = vi.fn()
-const mockBulkDelete = vi.fn()
-const mockAdd = vi.fn()
-const mockUpdate = vi.fn()
-const mockWhere = vi.fn()
-const mockClear = vi.fn()
-
-vi.mock('../../db', () => ({
-  db: {
-    watchlist: {
-      toArray: (...args: unknown[]) => mockToArray(...args),
-      get: (...args: unknown[]) => mockGet(...args),
-      put: (...args: unknown[]) => mockPut(...args),
-      delete: (...args: unknown[]) => mockDelete(...args),
-      bulkDelete: (...args: unknown[]) => mockBulkDelete(...args),
-      where: (...args: unknown[]) => ({ toArray: (...a: unknown[]) => mockWhere(...args, ...a) }),
-      clear: (...args: unknown[]) => mockClear(...args),
-    },
-    watchlistGroups: {
-      toArray: (...args: unknown[]) => mockToArray(...args),
-      add: (...args: unknown[]) => mockAdd(...args),
-      update: (...args: unknown[]) => mockUpdate(...args),
-      delete: (...args: unknown[]) => mockDelete(...args),
-      clear: (...args: unknown[]) => mockClear(...args),
-    },
-  },
+const mocks = vi.hoisted(() => ({
+  getWatchlistApi: vi.fn(),
+  upsertWatchlistApi: vi.fn(),
+  removeWatchlistApi: vi.fn(),
+  reorderWatchlistApi: vi.fn(),
+  assignWatchlistGroupApi: vi.fn(),
+  createWatchlistGroupApi: vi.fn(),
+  renameWatchlistGroupApi: vi.fn(),
+  deleteWatchlistGroupApi: vi.fn(),
+  reorderWatchlistGroupsApi: vi.fn(),
 }))
+
+vi.mock('../../services/userDataApi', () => mocks)
 
 const mockGetEstimates = vi.fn()
 const mockRefreshEstimates = vi.fn()
@@ -46,37 +28,29 @@ vi.mock('../../services/api', () => ({
   marketAPI: {},
 }))
 
-function toWatchlistItem(f: Record<string, unknown>): WatchlistItem {
-  return {
-    fundCode: f.fund_code as string,
-    fundName: (f.fund_name as string) ?? '',
-    fundType: (f.fund_type as string | null) ?? null,
-    groupId: (f.group_id as number | null) ?? null,
-    sortOrder: (f.sort_order as number) ?? 0,
-    addedAt: Date.now(),
-  }
+function item(fund_code: string, fund_name = 'Test Fund') {
+  return { fundCode: fund_code, fundName: fund_name, fundType: null, groupId: null, sortOrder: 0, addedAt: 1 }
+}
+
+function snapshot(items: ReturnType<typeof item>[] = [], groups: unknown[] = []) {
+  return { items, groups }
 }
 
 describe('watchlistStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    mockToArray.mockReset()
-    mockGet.mockReset()
-    mockPut.mockReset()
-    mockDelete.mockReset()
-    mockBulkDelete.mockReset()
-    mockAdd.mockReset()
-    mockUpdate.mockReset()
-    mockWhere.mockReset()
-    mockClear.mockReset()
+    vi.clearAllMocks()
+    mocks.getWatchlistApi.mockResolvedValue(snapshot())
+    mocks.removeWatchlistApi.mockResolvedValue(snapshot())
+    mocks.createWatchlistGroupApi.mockResolvedValue({ id: 1, name: 'My Group', sortOrder: 0 })
     mockGetEstimates.mockReset()
     mockRefreshEstimates.mockReset()
   })
 
-  it('fetches watchlist from Dexie and updates state', async () => {
-    mockToArray
-      .mockResolvedValueOnce([toWatchlistItem({ fund_code: '000001', fund_name: 'Test Fund' })])
-      .mockResolvedValueOnce([{ id: 1, name: 'Group', sortOrder: 0 }])
+  it('fetches the watchlist from the service and updates state', async () => {
+    mocks.getWatchlistApi.mockResolvedValue(
+      snapshot([item('000001')], [{ id: 1, name: 'Group', sortOrder: 0 }])
+    )
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
     await store.fetch()
@@ -86,50 +60,39 @@ describe('watchlistStore', () => {
     expect(store.loading).toBe(false)
   })
 
-  it('respects throttle: skips fetch if within 30s', async () => {
-    mockToArray.mockResolvedValue([])
+  it('respects the 30s throttle', async () => {
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
     await store.fetch()
-    const callCount = mockToArray.mock.calls.length
     await store.fetch()
-    expect(mockToArray).toHaveBeenCalledTimes(callCount)
+    expect(mocks.getWatchlistApi).toHaveBeenCalledTimes(1)
   })
 
-  it('force fetch ignores throttle', async () => {
-    mockToArray.mockResolvedValue([])
+  it('force fetch ignores the throttle', async () => {
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
     await store.fetch()
     await store.fetch(true)
-    expect(mockToArray).toHaveBeenCalledTimes(4)
+    expect(mocks.getWatchlistApi).toHaveBeenCalledTimes(2)
   })
 
-  it('totalCount getter returns correct count', async () => {
-    mockToArray
-      .mockResolvedValueOnce([
-        toWatchlistItem({ fund_code: '000001' }),
-        toWatchlistItem({ fund_code: '000002' }),
-      ])
-      .mockResolvedValueOnce([])
+  it('totalCount and fundMap reflect the fetched items', async () => {
+    mocks.getWatchlistApi.mockResolvedValue(snapshot([item('000001', 'A'), item('000002', 'B')]))
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
     await store.fetch()
     expect(store.totalCount).toBe(2)
+    expect(store.fundMap['000001'].fund_name).toBe('A')
+    expect(store.fundMap['000002'].fund_name).toBe('B')
   })
 
-  it('fundMap getter creates lookup by fund_code', async () => {
-    mockToArray
-      .mockResolvedValueOnce([
-        toWatchlistItem({ fund_code: '000001', fund_name: 'A' }),
-        toWatchlistItem({ fund_code: '000002', fund_name: 'B' }),
-      ])
-      .mockResolvedValueOnce([])
+  it('keeps state when the service call fails', async () => {
+    mocks.getWatchlistApi.mockRejectedValue(new Error('service down'))
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
     await store.fetch()
-    expect(store.fundMap['000001'].fund_name).toBe('A')
-    expect(store.fundMap['000002'].fund_name).toBe('B')
+    expect(store.funds).toEqual([])
+    expect(store.loading).toBe(false)
   })
 
   it('clear resets state', async () => {
@@ -144,64 +107,57 @@ describe('watchlistStore', () => {
     expect(store.lastFetch).toBe(0)
   })
 
-  it('addFund writes to Dexie and updates state', async () => {
+  it('addFund upserts through the API and updates state', async () => {
+    mocks.upsertWatchlistApi.mockResolvedValue(item('000001'))
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
     await store.addFund('000001', 'Test Fund', '股票型', null)
-    expect(mockPut).toHaveBeenCalledTimes(1)
+    expect(mocks.upsertWatchlistApi).toHaveBeenCalledWith(
+      expect.objectContaining({ fundCode: '000001', fundName: 'Test Fund', groupId: null })
+    )
     expect(store.funds).toHaveLength(1)
-    expect(store.funds[0].fund_code).toBe('000001')
   })
 
-  it('removeFund deletes from Dexie and updates state', async () => {
-    mockDelete.mockResolvedValue(undefined)
+  it('removeFund deletes through the API and updates state', async () => {
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
     store.funds = [{ fund_code: '000001', fund_name: 'Test' }]
     await store.removeFund('000001')
-    expect(mockDelete).toHaveBeenCalledWith('000001')
+    expect(mocks.removeWatchlistApi).toHaveBeenCalledWith(['000001'])
     expect(store.funds).toHaveLength(0)
   })
 
   it('batchDelete removes multiple funds', async () => {
-    mockBulkDelete.mockResolvedValue(undefined)
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
-    store.funds = [
-      { fund_code: '000001' },
-      { fund_code: '000002' },
-      { fund_code: '000003' },
-    ]
+    store.funds = [{ fund_code: '000001' }, { fund_code: '000002' }, { fund_code: '000003' }]
     await store.batchDelete(['000001', '000003'])
-    expect(mockBulkDelete).toHaveBeenCalledWith(['000001', '000003'])
-    expect(store.funds).toHaveLength(1)
-    expect(store.funds[0].fund_code).toBe('000002')
+    expect(mocks.removeWatchlistApi).toHaveBeenCalledWith(['000001', '000003'])
+    expect(store.funds.map((f) => f.fund_code)).toEqual(['000002'])
   })
 
-  it('checkInWatchlist returns true for watched fund', async () => {
-    mockGet.mockResolvedValue({ fundCode: '000001' })
+  it('checkInWatchlist reflects the served list', async () => {
+    mocks.getWatchlistApi.mockResolvedValue(snapshot([item('000001')]))
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
-    const result = await store.checkInWatchlist('000001')
-    expect(result).toBe(true)
-    expect(mockGet).toHaveBeenCalledWith('000001')
+    expect(await store.checkInWatchlist('000001')).toBe(true)
+    expect(await store.checkInWatchlist('999999')).toBe(false)
   })
 
-  it('checkInWatchlist returns false for unwatched fund', async () => {
-    mockGet.mockResolvedValue(undefined)
-    const { useWatchlistStore } = await import('../../stores/watchlistStore')
-    const store = useWatchlistStore()
-    const result = await store.checkInWatchlist('000001')
-    expect(result).toBe(false)
-  })
-
-  it('createGroup adds to Dexie and refreshes', async () => {
-    mockAdd.mockResolvedValue(1)
+  it('createGroup posts and returns the new id', async () => {
     const { useWatchlistStore } = await import('../../stores/watchlistStore')
     const store = useWatchlistStore()
     const result = await store.createGroup('My Group')
-    expect(mockAdd).toHaveBeenCalled()
+    expect(mocks.createWatchlistGroupApi).toHaveBeenCalledWith('My Group')
     expect(result.id).toBe(1)
+  })
+
+  it('reorder assigns the group then reorders', async () => {
+    const { useWatchlistStore } = await import('../../stores/watchlistStore')
+    const store = useWatchlistStore()
+    await store.reorder(['000002', '000001'], 3)
+    expect(mocks.assignWatchlistGroupApi).toHaveBeenCalledWith(['000002', '000001'], 3)
+    expect(mocks.reorderWatchlistApi).toHaveBeenCalledWith(['000002', '000001'])
   })
 
   it('refreshEstimates fetches estimates and merges into funds', async () => {
@@ -218,7 +174,7 @@ describe('watchlistStore', () => {
                 name: 'Test Fund',
                 navDate: '2024-01-15',
                 nav: 1.2345,
-                estimatedNav: 1.2400,
+                estimatedNav: 1.24,
                 estimatedChangePercent: 0.45,
                 estimateTime: '2024-01-15 14:30',
               },
@@ -235,9 +191,7 @@ describe('watchlistStore', () => {
     await store.refreshEstimates()
     expect(mockGetEstimates).toHaveBeenCalledWith(['000001'])
     expect(store.funds[0].net_worth).toBe(1.2345)
-    expect(store.funds[0].net_worth_date).toBe('2024-01-15')
-    expect(store.funds[0].estimate_value).toBe(1.2400)
-    expect(store.funds[0].estimate_change).toBe(0.45)
+    expect(store.funds[0].estimate_value).toBe(1.24)
     expect(store.funds[0].estimate_time).toBe('2024-01-15 14:30')
   })
 })

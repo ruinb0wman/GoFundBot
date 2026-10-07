@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isoWeekKey, isoWeekNumber, isoWeekYear, monthKey, pyRound } from '../../services/backtest/pyCompat'
+import { isoWeekKey, isoWeekNumber, isoWeekYear, monthKey, pyRound } from '@gofund/core/backtest/pyCompat'
 import pyroundFixture from '../../services/backtest/__fixtures__/pyround.json'
 import isoweekFixture from '../../services/backtest/__fixtures__/isoweek.json'
 

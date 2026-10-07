@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { sampleBacktest, describeSpec } from '../../services/backtest/timelineSample'
-import { resolveDateRange, specFromToolArgs } from '../../services/backtest/toolArgs'
-import { compareStrategies } from '../../services/backtest/strategyCompare'
-import { normalizeSpec } from '../../services/backtest/strategyRules'
-import type { BacktestResult, NavPoint } from '../../services/backtest/backtestTypes'
-import { truncateJson } from '../../services/chatEngine/toolLoop'
+import { sampleBacktest, describeSpec } from '@gofund/core/backtest/timelineSample'
+import { resolveDateRange, specFromToolArgs } from '@gofund/core/backtest/toolArgs'
+import { compareStrategies } from '@gofund/core/backtest/strategyCompare'
+import { normalizeSpec } from '@gofund/core/backtest/strategyRules'
+import type { BacktestResult, NavPoint } from '@gofund/core/backtest/backtestTypes'
+import { truncateJson } from '../../utils/json'
 import engineFixture from '../../services/backtest/__fixtures__/engine.json'
 
 const fixtures = engineFixture as unknown as Array<{ name: string; output: Record<string, unknown> }>

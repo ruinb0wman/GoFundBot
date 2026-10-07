@@ -1,60 +1,57 @@
 /**
- * Saved backtest schemes (IndexedDB via Dexie).
+ * 回测方案（策略代码）。
  *
- * One record = one replayable strategy: the code itself. Pool / window / amounts all
- * live in the code's `prepare()`, so there is no separate config to keep in sync.
+ * Node 核心化（P2）后方案存在 service 的 SQLite（`strategy_scripts` 表）；
+ * 本模块保留原导出签名，内部转发到 `services/userDataApi.ts`。
+ *
+ * 一条记录 = 一个可重放策略：代码本身就是全部配置（池/窗口/金额都写在 `prepare()` 里）。
  */
-
-import { db, type StrategyScriptRecord } from './index'
-import type { BacktestSummary, PortfolioSummary } from '../services/backtest/backtestTypes'
+import type { StrategyScriptRecord } from './index'
+import type { BacktestSummary, PortfolioSummary } from '@gofund/core/backtest/backtestTypes'
+import {
+  createScriptApi,
+  deleteScriptApi,
+  getScriptApi,
+  listScriptsApi,
+  recordScriptRunApi,
+  updateScriptApi,
+  type StrategyScriptInput,
+} from '../services/userDataApi'
 
 export type { StrategyScriptRecord }
+export type { StrategyScriptInput }
 
-export interface StrategyScriptInput {
-  name: string
-  code: string
-  source?: 'manual' | 'ai'
-}
-
-/** All schemes, most recently updated first. */
+/** 所有方案，最近更新的在前（服务端已排序）。 */
 export async function listStrategyScripts(): Promise<StrategyScriptRecord[]> {
-  const all = await db.strategyScripts.toArray()
-  return all.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+  return listScriptsApi()
 }
 
 export async function getStrategyScript(id: number): Promise<StrategyScriptRecord | undefined> {
-  return db.strategyScripts.get(id)
+  return (await getScriptApi(id)) ?? undefined
 }
 
-/** Case-insensitive name lookup. Returns every match so the caller can disambiguate. */
+/** 大小写不敏感的名称精确匹配；返回全部命中，交给调用方消歧。 */
 export async function findStrategyScriptsByName(name: string): Promise<StrategyScriptRecord[]> {
   const needle = name.trim().toLowerCase()
   if (!needle) return []
-  const all = await db.strategyScripts.toArray()
+  const all = await listScriptsApi()
   return all.filter((script) => script.name.trim().toLowerCase() === needle)
 }
 
 export async function createStrategyScript(input: StrategyScriptInput): Promise<number> {
-  const now = Date.now()
-  return db.strategyScripts.add({
-    name: input.name.trim() || '未命名方案',
-    code: input.code,
-    source: input.source ?? 'manual',
-    createdAt: now,
-    updatedAt: now,
-  })
+  const created = await createScriptApi(input)
+  return created.id
 }
 
-export async function updateStrategyScript(id: number, patch: Partial<Omit<StrategyScriptInput, 'source'>>): Promise<void> {
-  await db.strategyScripts.update(id, {
-    ...(patch.name !== undefined ? { name: patch.name.trim() || '未命名方案' } : {}),
-    ...(patch.code !== undefined ? { code: patch.code } : {}),
-    updatedAt: Date.now(),
-  })
+export async function updateStrategyScript(
+  id: number,
+  patch: Partial<Omit<StrategyScriptInput, 'source'>>,
+): Promise<void> {
+  await updateScriptApi(id, patch)
 }
 
 export async function deleteStrategyScript(id: number): Promise<void> {
-  await db.strategyScripts.delete(id)
+  await deleteScriptApi(id)
 }
 
 export async function duplicateStrategyScript(id: number): Promise<number | undefined> {
@@ -65,5 +62,5 @@ export async function duplicateStrategyScript(id: number): Promise<number | unde
 
 /** Record the outcome of a run so the list can show "上次运行". */
 export async function recordScriptRun(id: number, summary: BacktestSummary | PortfolioSummary): Promise<void> {
-  await db.strategyScripts.update(id, { lastRunAt: Date.now(), lastSummary: summary, updatedAt: Date.now() })
+  await recordScriptRunApi(id, summary)
 }

@@ -7,7 +7,7 @@
  */
 
 import api from '../api';
-import { runBacktest } from './backtestEngine';
+import { runBacktest } from '@gofund/core/backtest/backtestEngine';
 import type { BacktestFailure, BacktestResult, BacktestSpec, NavPoint } from './backtestTypes';
 
 export interface BacktestRequest extends BacktestSpec {

@@ -19,7 +19,7 @@ import {
   handleRunPortfolioStrategyRequest,
   type PlanRequestPayload,
   type RunPortfolioStrategyPayload,
-} from './strategySandbox';
+} from '@gofund/core/backtest/strategySandbox';
 
 const BLOCKED_GLOBALS = [
   'fetch',

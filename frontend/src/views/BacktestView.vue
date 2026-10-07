@@ -9,10 +9,6 @@
         @duplicate="duplicate"
         @remove="remove"
       />
-
-      <section class="chat-panel-wrap">
-        <ChatPanel channel="backtest" force-skill="investment_strategy" embedded />
-      </section>
     </div>
 
     <section class="workbench">
@@ -35,13 +31,6 @@
             {{ running ? '运行中…' : '运行回测' }}
           </BButton>
         </div>
-      </div>
-
-      <div v-if="llmParams" class="llm-banner">
-        <LucideIcon name="Sparkles" :size="14" />
-        <span>{{ 'AI 在对话中生成了策略代码。' }}</span>
-        <BButton size="small" type="primary" @click="loadLlmSuggestion">{{ '载入编辑器' }}</BButton>
-        <BButton size="small" text @click="dismissLlmSuggestion">{{ '忽略' }}</BButton>
       </div>
 
       <div v-if="error" class="error-message">{{ error }}</div>
@@ -67,12 +56,11 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { BButton, LucideIcon } from '@gofund/ui'
-import ChatPanel from '../components/ChatPanel.vue'
+import { useBacktestWorkspace } from '../composables/useBacktestWorkspace'
 import CodeEditor from '../components/backtest/CodeEditor.vue'
 import BacktestScriptList from '../components/backtest/BacktestScriptList.vue'
 import BacktestResultPanel from '../components/backtest/BacktestResultPanel.vue'
-import { useBacktestWorkspace } from '../composables/useBacktestWorkspace'
-import { STRATEGY_TEMPLATES, type StrategyTemplate } from '../services/backtest/strategyTemplates'
+import { STRATEGY_TEMPLATES, type StrategyTemplate } from '@gofund/core/backtest/strategyTemplates'
 
 defineOptions({ name: 'BacktestView' })
 
@@ -88,7 +76,6 @@ const {
   error,
   outcome,
   toolTab,
-  llmParams,
   select,
   newScript,
   applyTemplate,
@@ -97,8 +84,6 @@ const {
   duplicate,
   remove,
   runTest,
-  loadLlmSuggestion,
-  dismissLlmSuggestion,
 } = useBacktestWorkspace(initialFundCode)
 
 const templates = computed(() => STRATEGY_TEMPLATES)

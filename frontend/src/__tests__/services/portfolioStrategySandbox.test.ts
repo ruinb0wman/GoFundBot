@@ -4,8 +4,8 @@ import {
   makePortfolioDecision,
   StrategyCodeError,
   toIndexDecision,
-} from '../../services/backtest/strategySandbox'
-import type { NavPoint, PortfolioDecisionState, PortfolioSpec } from '../../services/backtest/backtestTypes'
+} from '@gofund/core/backtest/strategySandbox'
+import type { NavPoint, PortfolioDecisionState, PortfolioSpec } from '@gofund/core/backtest/backtestTypes'
 
 const SERIES: Record<string, NavPoint[]> = {
   A: [

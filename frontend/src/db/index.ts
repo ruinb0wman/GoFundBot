@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { BacktestSummary, NavPoint, PortfolioSummary } from '../services/backtest/backtestTypes'
+import type { BacktestSummary, PortfolioSummary } from '@gofund/core/backtest/backtestTypes'
 
 /**
  * A replayable backtest scheme. Everything that defines the run (pool, window,
@@ -16,17 +16,6 @@ export interface StrategyScriptRecord {
   lastSummary?: BacktestSummary | PortfolioSummary
 }
 
-/** Cached NAV series per fund code (see `services/backtest/dataBroker.ts`). */
-export interface NavCacheEntry {
-  code: string
-  /** Ascending, de-duplicated by date. */
-  points: NavPoint[]
-  firstDate: string
-  lastDate: string
-  /** The date we last fetched *through* ("we have everything up to here"). */
-  fetchedThrough: string
-  updatedAt: number
-}
 
 export interface WatchlistItem {
   fundCode: string
@@ -120,6 +109,10 @@ export interface MarketCacheEntry {
   updatedAt: number
 }
 
+/**
+ * 一行筛选结果 —— 现在是 **service `/api/screening/query` 的响应形状**
+ * （本地 Dexie `screeningFunds` 表已在 P3.3 删除）。
+ */
 export interface ScreeningFund {
   fund_code: string
   fund_name: string
@@ -187,11 +180,10 @@ export class GoFundDB extends Dexie {
   chatMessages!: Table<ChatMessage>
   fundCache!: Table<FundCacheEntry>
   marketCache!: Table<MarketCacheEntry>
-  screeningFunds!: Table<ScreeningFund>
+  /** @deprecated 筛选数据的唯一真源已是 service SQLite（`screening_funds` 表），详见 `useScreeningDb.ts`。 */
   analysisMemory!: Table<AnalysisMemoryRecord>
   strategies!: Table<StrategyRecord>
   strategyScripts!: Table<StrategyScriptRecord>
-  navHistory!: Table<NavCacheEntry>
 
   constructor() {
     super('GoFundBot')
@@ -237,6 +229,16 @@ export class GoFundDB extends Dexie {
       strategyScripts: '++id, name, updatedAt',
       navHistory: 'code, lastDate, updatedAt',
       screeningFunds: 'fund_code, fund_type, pass_4433, updated_time, nav_date',
+    })
+
+    // P3.3：筛选富化搬到 service SQLite，本地表删除（旧数据留在 IndexedDB 里不再读）。
+    this.version(8).stores({
+      screeningFunds: null,
+    })
+
+    // P3.4：净值缓存搬到 service SQLite（`nav_history` + 覆盖度判断都在那边）。
+    this.version(9).stores({
+      navHistory: null,
     })
   }
 }

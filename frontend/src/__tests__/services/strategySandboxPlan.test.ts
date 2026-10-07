@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compileStrategyModule, filterScreenRows, handlePlanRequest, MAX_POOL, type ScreenRow } from '../../services/backtest/strategySandbox'
+import { compileStrategyModule, filterScreenRows, handlePlanRequest, MAX_POOL, type ScreenRow } from '@gofund/core/backtest/strategySandbox'
 
 const ROWS: ScreenRow[] = [
   { code: '110022', name: '易方达消费行业', type: '股票型', return_1y: 12, sharpe_ratio_1y: 1.4, max_drawdown_1y: -15, nav_date: '2026-10-03' },

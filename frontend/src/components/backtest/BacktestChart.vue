@@ -9,7 +9,7 @@ import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import Decimal from 'decimal.js'
 import { useEChartsTheme } from '../../composables/useEChartsTheme'
-import type { PortfolioBacktestResult } from '../../services/backtest/backtestTypes'
+import type { PortfolioBacktestResult } from '@gofund/core/backtest/backtestTypes'
 
 const props = defineProps<{ result: PortfolioBacktestResult }>()
 

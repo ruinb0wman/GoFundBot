@@ -3,7 +3,7 @@
     <div class="page-header">
       <div class="page-title">
         <h1><LucideIcon name="NotebookPen" :size="22" /> {{ '策略研究' }}</h1>
-        <p>{{ '与 AI 讨论投资策略并保存为策略记忆；AI 会在基金分析、持仓诊断和对话中自动考虑你的策略。' }}</p>
+        <p>{{ '在这里维护你的投资策略；pi（终端 AI）会读取启用的策略作为分析背景。' }}</p>
       </div>
       <div class="page-stats">
         <span class="stat-chip">
@@ -29,7 +29,7 @@
           <div v-if="strategies.length === 0" class="memory-empty">
             <LucideIcon name="BookOpen" :size="28" />
             <p>{{ '还没有策略记忆' }}</p>
-            <p class="sub">{{ '点「新建」手动添加，或在右侧与 AI 讨论后一键保存' }}</p>
+            <p class="sub">{{ '点「新建」手动添加策略。' }}</p>
           </div>
 
           <div v-for="s in strategies" :key="s.id" class="memory-item" :class="{ disabled: !s.active }">
@@ -68,15 +68,6 @@
         </div>
       </aside>
 
-      <section class="chat-panel-wrap">
-        <ChatPanel
-          channel="strategy"
-          force-skill="strategy"
-          embedded
-          @save-draft="handleSaveDraft"
-        />
-      </section>
-
       <BaseModal
         :visible="formOpen"
         :title="editingId != null ? '编辑策略记忆' : '新建策略记忆'"
@@ -103,28 +94,9 @@
           </div>
           <div class="editor-row">
             <label class="toggle-label">
-              <input type="checkbox" v-model="form.active" /> {{ '启用（AI 分析时参考）' }}
+              <input type="checkbox" v-model="form.active" /> {{ '启用（供 AI 参考）' }}
             </label>
-            <BButton v-if="!drafting" text size="small" @click="openDraftTopic">
-              <LucideIcon name="Wand2" :size="14" /> {{ 'AI 帮我起草' }}
-            </BButton>
-            <BButton v-else text size="small" disabled>
-              <LucideIcon name="Loader" :size="14" class="spinning" /> {{ '起草中…' }}
-            </BButton>
           </div>
-          <div v-if="draftTopicPrompt" class="draft-topic-row">
-            <input
-              v-model="draftTopic"
-              class="text-input"
-              placeholder="输入策略主题，例如：每月3000元的稳健定投"
-              @keydown.enter.exact.prevent="confirmDraft"
-            />
-            <BButton size="small" type="primary" :disabled="!draftTopic.trim() || drafting" @click="confirmDraft">
-              {{ '生成' }}
-            </BButton>
-            <BButton size="small" text @click="cancelDraft">X</BButton>
-          </div>
-          <div v-if="draftError" class="draft-error">{{ draftError }}</div>
         </div>
         <template #footer>
           <BButton size="small" @click="closeForm">{{ '取消' }}</BButton>
@@ -157,12 +129,9 @@
 
 <script setup lang="ts">
 import { BButton, BSwitch, BaseModal, LucideIcon } from '@gofund/ui'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { marked } from 'marked'
-import ChatPanel from '../components/ChatPanel.vue'
-import { draftStrategy } from '../services/strategyDraft'
 import { openDocLink } from '../services/docLink'
-import { useLLMConfig } from '../composables/useLLMConfig'
 import {
   listStrategies,
   addStrategy,
@@ -170,6 +139,7 @@ import {
   toggleStrategyActive,
   removeStrategy,
   buildActiveStrategyContext,
+  STRATEGIES_CHANGED_EVENT,
   type StrategyInput,
 } from '../db/strategyMemory'
 import type { StrategyRecord } from '../db'
@@ -180,10 +150,6 @@ const strategies = ref<StrategyRecord[]>([])
 const formOpen = ref(false)
 const editingId = ref<number | null>(null)
 const form = ref({ title: '', content: '', tagsText: '', active: true })
-const draftTopicPrompt = ref(false)
-const draftTopic = ref('')
-const drafting = ref(false)
-const draftError = ref('')
 const confirmDeleteId = ref<number | null>(null)
 const previewItem = ref<StrategyRecord | null>(null)
 
@@ -193,7 +159,13 @@ async function refresh() {
   strategies.value = await listStrategies()
 }
 
-onMounted(refresh)
+onMounted(() => {
+  refresh()
+  // 写者无关：UI 表单、HTTP 客户端（pi 走 /api/agent/call → /api/strategies）都发同一个信号。
+  window.addEventListener(STRATEGIES_CHANGED_EVENT, refresh)
+})
+
+onUnmounted(() => window.removeEventListener(STRATEGIES_CHANGED_EVENT, refresh))
 
 function openForm() {
   formOpen.value = true
@@ -203,9 +175,6 @@ function closeForm() {
   formOpen.value = false
   editingId.value = null
   form.value = { title: '', content: '', tagsText: '', active: true }
-  draftTopicPrompt.value = false
-  draftTopic.value = ''
-  draftError.value = ''
   confirmDeleteId.value = null
 }
 
@@ -223,7 +192,6 @@ function startEdit(s: StrategyRecord) {
     tagsText: (s.tags ?? []).join(', '),
     active: s.active === 1,
   }
-  draftTopicPrompt.value = false
   openForm()
 }
 
@@ -252,48 +220,6 @@ async function handleRemove(s: StrategyRecord) {
   await removeStrategy(s.id!)
   confirmDeleteId.value = null
   await refresh()
-}
-
-function openDraftTopic() {
-  draftError.value = ''
-  draftTopicPrompt.value = true
-}
-
-function cancelDraft() {
-  draftTopicPrompt.value = false
-  draftTopic.value = ''
-}
-
-async function confirmDraft() {
-  const topic = draftTopic.value.trim()
-  if (!topic || drafting.value) return
-  drafting.value = true
-  draftError.value = ''
-  try {
-    const strategyContext = await buildActiveStrategyContext()
-    const draft = await draftStrategy(
-      { topic, strategyContext: strategyContext || undefined },
-      useLLMConfig().config.value,
-    )
-    form.value.title = draft.title || topic
-    form.value.content = draft.content || ''
-    form.value.tagsText = Array.isArray(draft.tags) ? draft.tags.join(', ') : ''
-    form.value.active = true
-    draftTopicPrompt.value = false
-    draftTopic.value = ''
-  } catch (e: unknown) {
-    const err = e as { message?: string }
-    draftError.value = '起草失败：' + (err?.message || '未知错误')
-  } finally {
-    drafting.value = false
-  }
-}
-
-function handleSaveDraft(draft: { title: string; content: string }) {
-  startCreate()
-  form.value.title = draft.title
-  form.value.content = draft.content
-  form.value.active = true
 }
 
 function renderMarkdown(text: string): string {

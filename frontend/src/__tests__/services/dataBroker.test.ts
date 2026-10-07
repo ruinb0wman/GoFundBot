@@ -1,42 +1,59 @@
-import { describe, expect, it } from 'vitest'
-import { isFresh, NAV_TTL_MS } from '../../services/backtest/dataBroker'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 
-const TODAY = '2026-10-06'
-const entry = (over: Partial<{ firstDate: string; fetchedThrough: string; updatedAt: number }> = {}) => ({
-  firstDate: '2012-05-03',
-  fetchedThrough: TODAY,
-  updatedAt: Date.now(),
-  ...over,
+const navMocks = vi.hoisted(() => ({ fetchNavHistory: vi.fn() }))
+vi.mock('../../services/backtest/runBacktestForFund', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('../../services/backtest/runBacktestForFund')
+  return { ...actual, fetchNavHistory: navMocks.fetchNavHistory }
 })
 
-describe('isFresh', () => {
-  it('hits a recently fetched window ending today', () => {
-    expect(isFresh(entry(), { start: '2023-10-06', end: TODAY }, TODAY)).toBe(true)
+const { MAX_FETCHES_PER_RUN, loadNav } = await import('../../services/backtest/dataBroker')
+
+const series = (from: string, days: number) => {
+  const start = Date.parse(`${from}T00:00:00Z`)
+  return Array.from({ length: days }, (_, i) => ({
+    date: new Date(start + i * 86_400_000).toISOString().slice(0, 10),
+    nav: 1 + i / 100,
+  }))
+}
+
+describe('loadNav', () => {
+  beforeEach(() => {
+    navMocks.fetchNavHistory.mockReset()
   })
 
-  it('hits a window that ends before the last fetch, even if the entry is old', () => {
-    expect(
-      isFresh(entry({ fetchedThrough: '2026-06-01', updatedAt: 0 }), { start: '2020-01-01', end: '2025-01-01' }, TODAY),
-    ).toBe(true)
+  it('clips every series to the requested window', async () => {
+    navMocks.fetchNavHistory.mockResolvedValue(series('2025-01-01', 400))
+    const result = await loadNav(['110022'], { start: '2025-06-01', end: '2025-06-30' })
+
+    expect(result.fetched).toBe(1)
+    expect(result.errors).toEqual({})
+    const points = result.navByCode['110022']
+    expect(points.length).toBe(30)
+    expect(points[0].date).toBe('2025-06-01')
+    expect(points[points.length - 1].date).toBe('2025-06-30')
   })
 
-  it('misses when the entry is older than the TTL and the window reaches today', () => {
-    expect(isFresh(entry({ updatedAt: Date.now() - NAV_TTL_MS - 1000 }), { start: '2023-10-06', end: TODAY }, TODAY)).toBe(false)
+  it('de-duplicates codes and reports an empty series as an error', async () => {
+    navMocks.fetchNavHistory.mockResolvedValue([])
+    const result = await loadNav(['110022', '110022', ' '], { start: '2025-01-01', end: '2025-12-31' })
+    expect(result.fetched).toBe(1)
+    expect(result.errors['110022']).toContain('为空')
   })
 
-  it('hits a fund younger than the window (full history is all that exists)', () => {
-    expect(isFresh(entry({ firstDate: '2024-01-01' }), { start: '2023-10-06', end: TODAY }, TODAY)).toBe(true)
+  it('never throws: a failing code becomes an entry in errors', async () => {
+    navMocks.fetchNavHistory.mockRejectedValue(new Error('provider down'))
+    const result = await loadNav(['110022'], { start: '2025-01-01', end: '2025-12-31' })
+    expect(result.navByCode['110022']).toEqual([])
+    expect(result.errors['110022']).toContain('provider down')
   })
 
-  it('misses when we never fetched through the requested end', () => {
-    expect(isFresh(entry({ fetchedThrough: '2026-09-01' }), { start: '2023-10-06', end: TODAY }, TODAY)).toBe(false)
-  })
+  it('stops fetching past the per-run budget', async () => {
+    navMocks.fetchNavHistory.mockResolvedValue(series('2025-01-01', 10))
+    const codes = Array.from({ length: MAX_FETCHES_PER_RUN + 5 }, (_, i) => `1${String(i).padStart(5, '0')}`)
+    const result = await loadNav(codes, { start: '2025-01-01', end: '2025-12-31' })
 
-  it('treats a legacy entry without the marker as stale', () => {
-    expect(isFresh({ ...entry(), fetchedThrough: '' }, { start: '2023-10-06', end: TODAY }, TODAY)).toBe(false)
-  })
-
-  it('clamps a future end to today (a cache through today covers it)', () => {
-    expect(isFresh(entry(), { start: '2023-10-06', end: '2030-01-01' }, TODAY)).toBe(true)
+    expect(result.fetched).toBe(MAX_FETCHES_PER_RUN)
+    const skipped = Object.entries(result.errors).filter(([, message]) => message.includes('上限'))
+    expect(skipped).toHaveLength(5)
   })
 })

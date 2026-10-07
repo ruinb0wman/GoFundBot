@@ -110,7 +110,7 @@ import Decimal from 'decimal.js'
 import { BButton, LucideIcon } from '@gofund/ui'
 import BacktestChart from './BacktestChart.vue'
 import { returnClass as getReturnClass } from '../../utils/number'
-import type { PortfolioBacktestResult } from '../../services/backtest/backtestTypes'
+import type { PortfolioBacktestResult } from '@gofund/core/backtest/backtestTypes'
 
 const props = defineProps<{ result: PortfolioBacktestResult }>()
 

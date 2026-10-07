@@ -73,7 +73,6 @@
 
     <MobileDrawer :isOpen="drawerOpen" :activeRoute="String(route.name || '')" @close="drawerOpen = false" />
     <BottomNav />
-    <ChatBubble v-if="route.name !== 'strategy' && route.name !== 'backtest' && route.name !== 'backtest-fund'" />
   </div>
 </template>
 
@@ -90,14 +89,9 @@ import BottomNav from './components/BottomNav.vue'
 import FlashNews from './components/FlashNews.vue'
 import SectorRank from './components/SectorRank.vue'
 import AlertBadge from './components/AlertBadge.vue'
-import ChatBubble from './components/ChatBubble.vue'
-import { onMounted } from 'vue'
 import { useApp } from './composables/useApp'
-import { useAppSettings } from './composables/useAppSettings'
 
 defineOptions({ name: 'App' })
-
-const { settings } = useAppSettings()
 
 const {
   drawerOpen, currentTime, route, router, isMobile,
@@ -106,10 +100,6 @@ const {
   handleNavigate, handleHeaderSearch, resetToDashboard,
   handleAddToCompare, handleRemoveFromCompare, handleClearCompare
 } = useApp()
-
-onMounted(() => {
-  // Search keys are stored in the frontend only; nothing to sync to Node.
-})
 </script>
 
 <style>

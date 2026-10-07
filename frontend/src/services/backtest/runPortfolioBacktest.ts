@@ -7,7 +7,7 @@
  */
 
 import { fetchNavHistory } from './runBacktestForFund';
-import { runPortfolioBacktest } from './portfolioBacktest';
+import { runPortfolioBacktest } from '@gofund/core/backtest/portfolioBacktest';
 import { isPortfolioResult, type NavPoint, type PortfolioBacktestFailure, type PortfolioBacktestResult, type PortfolioSpec } from './backtestTypes';
 
 export interface PortfolioBacktestRequest extends PortfolioSpec {

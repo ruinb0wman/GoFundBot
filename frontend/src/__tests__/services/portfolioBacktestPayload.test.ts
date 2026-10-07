@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { runPortfolioBacktest } from '../../services/backtest/portfolioBacktest'
-import { samplePortfolioBacktest } from '../../services/backtest/portfolioSample'
-import { truncateJson } from '../../services/chatEngine/toolLoop'
-import type { NavPoint, PortfolioBacktestResult, PortfolioSpec } from '../../services/backtest/backtestTypes'
+import { runPortfolioBacktest } from '@gofund/core/backtest/portfolioBacktest'
+import { samplePortfolioBacktest } from '@gofund/core/backtest/portfolioSample'
+import { truncateJson } from '../../utils/json'
+import type { NavPoint, PortfolioBacktestResult, PortfolioSpec } from '@gofund/core/backtest/backtestTypes'
 
 /**
  * Regression: `truncateJson` pretty-prints and hard-cuts at 4000 chars, so an

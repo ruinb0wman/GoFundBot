@@ -4,8 +4,6 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { screeningAPI, fundAPI } from '../services/api'
 import { useScreeningDb, type ScreeningStatus } from './useScreeningDb'
 import { useWatchlistStore } from '../stores/watchlistStore'
-import { db } from '../db'
-import { classifyFundIndustry } from '../services/industryClassifier'
 import { fmtNumber, returnClass as calcReturnClass } from '../utils/number'
 import type { ScreeningFund } from '../db'
 
@@ -696,13 +694,10 @@ export function useFundScreening(emit: (event: string, ...args: unknown[]) => vo
 
     const fetchIndustryTags = async () => {
         try {
-            const funds = await db.screeningFunds.toArray()
-            const tagCount = new Map<string, number>()
-            for (const f of funds) {
-                const tag = f.industry_tag_name || classifyFundIndustry(f.fund_name || '')
-                if (tag) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1)
-            }
-            const allTags = Array.from(tagCount.entries()).map(([name, count]) => ({ name, count }))
+            // 行业标签分类在 service 端同步时完成（`GET /api/screening/industry-tags`）。
+            const res = await screeningAPI.getIndustryTags()
+            const body = res.data as { data?: { tags?: { name: string; count: number }[] } } | undefined
+            const allTags = body?.data?.tags ?? []
 
             const sectorGroupsDef = [
                 { name: '医药医疗', patterns: ['医药医疗'] },
@@ -979,9 +974,9 @@ export function useFundScreening(emit: (event: string, ...args: unknown[]) => vo
         fetchWatchlistCodes()
         fetchIndustryTags()
 
-        // 检测本地是否有缓存数据
-        const { db } = await import('../db')
-        const count = await db.screeningFunds.count()
+        // 服务端 SQLite 里的筛选数据在不在？（P3.3 起唯一真源）
+        const localStatus = await getLocalStatus()
+        const count = localStatus.basic_count
 
         if (count > 0) {
             // 有缓存 → 先显示，再后台静默同步

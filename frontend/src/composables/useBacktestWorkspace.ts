@@ -1,12 +1,11 @@
 /**
- * Backtest workspace state: saved-scheme CRUD, run orchestration and the chat → editor
- * bridge. Kept out of the view so `BacktestView.vue` stays layout-only.
+ * Backtest workspace state: saved-scheme CRUD and run orchestration.
+ * Kept out of the view so `BacktestView.vue` stays layout-only.
  *
  * A scheme is just code: `prepare()` declares the pool/window/amounts, `onDay()` decides.
  */
 
-import { computed, onMounted, ref, watch } from 'vue'
-import { useChatStore } from '../stores/chatStore'
+import { computed, onMounted, ref } from 'vue'
 import {
   createStrategyScript,
   deleteStrategyScript,
@@ -18,7 +17,7 @@ import {
   type StrategyScriptRecord,
 } from '../db/strategyScripts'
 import { runScript, type ScriptRunOutcome } from '../services/backtest/scriptRun'
-import { DEFAULT_STRATEGY_CODE, type StrategyTemplate } from '../services/backtest/strategyTemplates'
+import { DEFAULT_STRATEGY_CODE, type StrategyTemplate } from '@gofund/core/backtest/strategyTemplates'
 
 /** Deep link `/backtest/:code` starts from a one-fund scheme. */
 function fundStarterCode(fundCode: string): string {
@@ -34,8 +33,6 @@ function onDay(s) {
 }
 
 export function useBacktestWorkspace(initialFundCode = '') {
-  const chatStore = useChatStore()
-
   const scripts = ref<StrategyScriptRecord[]>([])
   const currentId = ref<number | null>(null)
   const name = ref('未命名方案')
@@ -125,39 +122,6 @@ export function useBacktestWorkspace(initialFundCode = '') {
     }
   }
 
-  // ── chat → editor bridge ──────────────────────────────────────────────────────
-  const llmParams = ref<Record<string, unknown> | null>(null)
-
-  function scanLlmCalls() {
-    const calls = [...chatStore.messages.flatMap((message) => message.toolCalls ?? []), ...chatStore.activeToolCalls]
-    for (let i = calls.length - 1; i >= 0; i -= 1) {
-      const call = calls[i]
-      const params = call.params as { code?: unknown } | undefined
-      if (
-        (call.name === 'run_strategy_code' || call.name === 'save_strategy_script') &&
-        typeof params?.code === 'string' &&
-        params.code.trim()
-      ) {
-        llmParams.value = { ...call.params }
-        return
-      }
-    }
-  }
-
-  watch(() => [chatStore.messages.length, chatStore.activeToolCalls.length], scanLlmCalls)
-
-  function loadLlmSuggestion() {
-    if (!llmParams.value) return
-    name.value = String(llmParams.value.name ?? llmParams.value.script_name ?? 'AI 策略')
-    code.value = String(llmParams.value.code ?? '')
-    outcome.value = null
-    toolTab.value = 'edit'
-  }
-
-  function dismissLlmSuggestion() {
-    llmParams.value = null
-  }
-
   const currentRecord = computed(() => scripts.value.find((script) => script.id === currentId.value) ?? null)
 
   onMounted(async () => {
@@ -176,7 +140,6 @@ export function useBacktestWorkspace(initialFundCode = '') {
     error,
     outcome,
     toolTab,
-    llmParams,
     refresh,
     select,
     newScript,
@@ -186,7 +149,5 @@ export function useBacktestWorkspace(initialFundCode = '') {
     duplicate,
     remove,
     runTest,
-    loadLlmSuggestion,
-    dismissLlmSuggestion,
   }
 }

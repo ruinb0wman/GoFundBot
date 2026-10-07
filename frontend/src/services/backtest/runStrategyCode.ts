@@ -11,7 +11,7 @@
  */
 
 import type { NavPoint, PortfolioBacktestResult, PortfolioSpec } from './backtestTypes';
-import type { ScreenRow, StrategyPlan } from './strategySandbox';
+import type { ScreenRow, StrategyPlan } from '@gofund/core/backtest/strategySandbox';
 
 export const STRATEGY_TIMEOUT_MS = 5000;
 

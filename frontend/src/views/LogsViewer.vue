@@ -86,7 +86,7 @@
     </div>
 
     <div class="analysis-section">
-      <h3>{{ 'AI 日志分析' }}</h3>
+      <h3>{{ '日志分析（规则）' }}</h3>
       <BButton type="primary" size="small" @click="runAnalysis" :disabled="analyzing">
         <LucideIcon name="Sparkles" :size="16" />
         {{ analyzing ? '分析中...' : '开始分析' }}
@@ -144,8 +144,6 @@
 import { BButton, BInput, BDatePicker } from '@gofund/ui'
 import { ref, onMounted, computed } from 'vue'
 import { VxeTable, VxeColumn } from 'vxe-table'
-import { analyzeLogsWithAI } from '../services/analysis/logAnalysis'
-import { useLLMConfig } from '../composables/useLLMConfig'
 
 const source = ref('dataservice')
 const dateStr = ref(new Date().toISOString().slice(0, 10))
@@ -224,14 +222,22 @@ function nextPage() {
   loadLogs()
 }
 
+/** 规则式日志分析（service `POST /api/logs/analyze`）——LLM 摘要已随后端 AI 删除。 */
 async function runAnalysis() {
   analyzing.value = true
   analysisError.value = ''
   analysisResult.value = null
   try {
-    const llmConfig = useLLMConfig().config.value
-    const result = await analyzeLogsWithAI(source.value, dateStr.value, llmConfig)
-    analysisResult.value = result
+    const res = await fetch('/api/logs/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: source.value, date: dateStr.value }),
+    })
+    const json = await res.json()
+    if (!res.ok || !json?.success) {
+      throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
+    }
+    analysisResult.value = json.data
   } catch (e: any) {
     analysisError.value = String(e?.message ?? e)
   } finally {

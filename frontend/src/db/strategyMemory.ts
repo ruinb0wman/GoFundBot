@@ -1,17 +1,35 @@
-import { db, type StrategyRecord } from './index'
+/**
+ * 策略记忆。
+ *
+ * Node 核心化（P2）后策略存在 service 的 SQLite（`strategies` 表）；
+ * 本模块保留原导出签名，内部转发到 `services/userDataApi.ts`。
+ * `buildStrategyContext` / `truncate` 仍是纯函数（提示词注入格式不变，测试依赖它们）。
+ *
+ * 写入后派发 `gofund:strategies-changed`，`StrategyView` 监听并刷新
+ * （写者无关：UI 表单与 HTTP 客户端都触发同一个信号）。
+ */
+import type { StrategyRecord } from './index'
+import {
+  addStrategyApi,
+  listStrategiesApi,
+  removeStrategyApi,
+  updateStrategyApi,
+  type StrategyInput,
+} from '../services/userDataApi'
 
-export interface StrategyInput {
-  title: string
-  content: string
-  tags: string[]
-  active?: number
-  source?: 'manual' | 'ai-draft'
-}
+export type { StrategyInput }
 
 const MAX_ACTIVE = 5
 const MAX_TITLE = 40
 const MAX_CONTENT = 600
 const MAX_TOTAL = 3000
+
+export const STRATEGIES_CHANGED_EVENT = 'gofund:strategies-changed'
+
+function notifyStrategiesChanged(): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(STRATEGIES_CHANGED_EVENT))
+}
 
 export function truncate(s: string, n: number): string {
   if (s.length <= n) return s
@@ -54,51 +72,37 @@ export function buildStrategyContext(strategies: StrategyRecord[]): string {
   return parts.join('\n')
 }
 
-/** Query active strategy memory entries (enabled only). */
+/** Query active strategy memory entries (enabled only), newest updated first. */
 export async function getActiveStrategies(): Promise<StrategyRecord[]> {
-  const all = await db.strategies
-    .where('active')
-    .equals(1)
-    .toArray()
-  return all.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+  const all = await listStrategiesApi()
+  return all.filter(s => s.active === 1).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
 }
 
-/** Query all strategy entries, enabled first, then most recently updated. */
+/** Query all strategy entries (服务端已按「启用优先 + 更新时间倒序」返回). */
 export async function listStrategies(): Promise<StrategyRecord[]> {
-  const all = await db.strategies.toArray()
-  return all.sort((a, b) => {
-    if (a.active !== b.active) return b.active - a.active
-    return (b.updatedAt ?? 0) - (a.updatedAt ?? 0)
-  })
+  return listStrategiesApi()
 }
 
-/** Build strategy context for prompt injection from the DB (convenience). */
+/** Build strategy context for prompt injection from the API (convenience). */
 export async function buildActiveStrategyContext(): Promise<string> {
   return buildStrategyContext(await getActiveStrategies())
 }
 
 export async function addStrategy(input: StrategyInput): Promise<number> {
-  const now = Date.now()
-  return db.strategies.add({
-    title: input.title.trim() || '未命名策略',
-    content: input.content.trim(),
-    tags: (input.tags ?? []).filter(Boolean),
+  const created = await addStrategyApi({
+    title: input.title,
+    content: input.content,
+    tags: input.tags ?? [],
     active: input.active ?? 1,
     source: input.source ?? 'manual',
-    createdAt: now,
-    updatedAt: now,
   })
+  notifyStrategiesChanged()
+  return created.id
 }
 
 export async function updateStrategy(id: number, patch: Partial<StrategyInput>): Promise<void> {
-  await db.strategies.update(id, {
-    ...(patch.title !== undefined ? { title: patch.title.trim() || '未命名策略' } : {}),
-    ...(patch.content !== undefined ? { content: patch.content.trim() } : {}),
-    ...(patch.tags !== undefined ? { tags: patch.tags.filter(Boolean) } : {}),
-    ...(patch.active !== undefined ? { active: patch.active } : {}),
-    ...(patch.source !== undefined ? { source: patch.source } : {}),
-    updatedAt: Date.now(),
-  })
+  await updateStrategyApi(id, patch)
+  notifyStrategiesChanged()
 }
 
 export async function toggleStrategyActive(id: number, active: boolean): Promise<void> {
@@ -106,5 +110,6 @@ export async function toggleStrategyActive(id: number, active: boolean): Promise
 }
 
 export async function removeStrategy(id: number): Promise<void> {
-  await db.strategies.delete(id)
+  await removeStrategyApi(id)
+  notifyStrategiesChanged()
 }
