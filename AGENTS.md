@@ -146,6 +146,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
 | `frontend/src/services/` | API client（api.ts 基于 httpClient 环境路由、portfolioApi.ts、chatApi.ts + chatEngine） |
 | `docs/` | VitePress 文档站（`docs/.vitepress/config.ts` 导航/侧边栏配置） |
+| `.pi/extensions/gofund/` | **pi 数据工具扩展**（15 个只读工具，直连 service `:8310` 既有路由，不新增 service 代码、不改前端）：让在仓库目录启动的终端 pi 能查行情/板块/资金流/基金/快讯；口径映射（北向/涨跌家数/概念板块/主力资金）与前端 `toolHandlers.ts` 刻意重复一份，见该目录 README。配套 skill `.pi/skills/gofund-data/SKILL.md` |
 | `packages/ui/` | **UI 组件库 `@gofund/ui`** — B* 系列表单控件与浮层/反馈组件、设计 token（明暗双主题）、composables；Vite lib mode 构建（组件级 chunk + dts）；frontend 经 vite/tsconfig 别名直连 `packages/ui/src/index.ts`（`@gofund/ui`），开发 HMR 与构建均从源；`file:../packages/ui` 仅为发布用依赖声明 |
 | `docs/fund-screening/` | 基金筛选模块细分文档（概览/数据流/筛选面板/指标丰富化/4433法则） |
 | `docs/market-*.md` | 市场数据各功能模块说明文档 |
