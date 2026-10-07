@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ nativeFetch: vi.fn() }))
 vi.mock('../../services/httpClient', () => ({ nativeFetch: mocks.nativeFetch }))
+vi.mock('../../core/logger', () => ({
+  clientLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
 
 import {
   chatCompletion,
@@ -131,5 +134,29 @@ describe('chatCompletionStream', () => {
     }
 
     expect(chunks[0]?.reasoning).toBe('a')
+  })
+})
+
+describe('request timeout', () => {
+  it('rejects a hung non-streaming call instead of waiting forever', async () => {
+    vi.useFakeTimers()
+    try {
+      mocks.nativeFetch.mockReset()
+      mocks.nativeFetch.mockImplementation(
+        (_url: string, init: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+          }),
+      )
+
+      const pending = chatCompletion(CONFIG, { messages: [{ role: 'user', content: 'hi' }], timeoutMs: 20 })
+      const guarded = pending.catch(() => {})
+      await vi.advanceTimersByTimeAsync(10_000)
+
+      await expect(pending).rejects.toThrow(/timeout/i)
+      await guarded
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

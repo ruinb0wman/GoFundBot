@@ -7,6 +7,7 @@
  */
 
 import { nativeFetch } from './httpClient'
+import { clientLogger } from '../core/logger'
 
 export interface LLMConfig {
   apiKey: string
@@ -83,6 +84,11 @@ export interface LLMResponse {
 const DEFAULT_API_BASE = 'https://api.siliconflow.cn/v1'
 const DEFAULT_MODEL = 'Qwen/Qwen2.5-7B-Instruct'
 
+/** Non-streaming calls (tool selection / JSON finish). Bounds a hung provider. */
+const DEFAULT_REQUEST_TIMEOUT_MS = 120_000
+/** Streaming calls: total cap from connection open to the last chunk. */
+const DEFAULT_STREAM_TIMEOUT_MS = 300_000
+
 function resolveBase(config: LLMConfig): string {
   return (config.apiBase || DEFAULT_API_BASE).replace(/\/+$/, '')
 }
@@ -98,7 +104,7 @@ function sleep(ms: number): Promise<void> {
 function isRetryableLLMError(error: unknown): boolean {
   const msg = String(error).toLowerCase()
   if (/\b(40[134]|422)\b/.test(msg)) return false
-  return /timeout|econn|eaddrinuse|enotfound|etimedout|fetch.*failed|network|5\d{2}|429|upstream.*request.*failed|remote.*end.*closed/.test(msg)
+  return /timeout|abort|超时|econn|eaddrinuse|enotfound|etimedout|fetch.*failed|network|5\d{2}|429|upstream.*request.*failed|remote.*end.*closed/.test(msg)
 }
 
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<{ value: T; retries: number }> {
@@ -124,6 +130,8 @@ export interface ChatCompletionOptions {
   max_tokens?: number
   response_format?: { type: 'json_object' }
   stream?: boolean
+  /** Per-call HTTP timeout in ms (non-stream defaults to 120s, stream to 300s). */
+  timeoutMs?: number
 }
 
 function buildBody(config: LLMConfig, options: ChatCompletionOptions, withStream: boolean): Record<string, unknown> {
@@ -150,14 +158,29 @@ function buildBody(config: LLMConfig, options: ChatCompletionOptions, withStream
 async function requestChat(config: LLMConfig, options: ChatCompletionOptions): Promise<Response> {
   const base = resolveBase(config)
   const url = `${base}/chat/completions`
-  return nativeFetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify(buildBody(config, options, false)),
-  }, config.conversationId)
+  const timeoutMs = options.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await nativeFetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify(buildBody(config, options, false)),
+      signal: controller.signal,
+    }, config.conversationId)
+  } catch (error) {
+    if (controller.signal.aborted) {
+      clientLogger.warn('llm.timeout', { timeoutMs, model: resolveModel(config) })
+      // Keep the English word `timeout` so `withRetry` treats it as retryable.
+      throw new Error(`LLM request timeout after ${timeoutMs}ms`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /** Non-streaming chat completion. Returns content + usage + optional tool_calls. */
@@ -174,6 +197,7 @@ export async function chatCompletion(
     } catch {
       // ignore
     }
+    clientLogger.error('llm.http_error', { status: response.status, message, model: resolveModel(config) })
     throw new Error(message)
   }
   const json = await response.json()
@@ -209,6 +233,7 @@ export async function chatCompletionJson<T = Record<string, unknown>>(
     } catch {
       // ignore
     }
+    clientLogger.error('llm.http_error', { status: response.status, message, model: resolveModel(config) })
     throw new Error(message)
   }
   const json = await response.json()
@@ -237,7 +262,11 @@ export async function openChatStream(
   const base = resolveBase(config)
   const url = `${base}/chat/completions`
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 300000)
+  const timeoutMs = options.timeoutMs ?? DEFAULT_STREAM_TIMEOUT_MS
+  const timer = setTimeout(() => {
+    clientLogger.warn('llm.stream_timeout', { timeoutMs, model: resolveModel(config) })
+    controller.abort()
+  }, timeoutMs)
 
   try {
     const response = await nativeFetch(url, {
@@ -257,6 +286,7 @@ export async function openChatStream(
       } catch {
         // ignore
       }
+      clientLogger.error('llm.http_error', { status: response.status, message, model: resolveModel(config) })
       throw new Error(message)
     }
     const reader = response.body?.getReader()

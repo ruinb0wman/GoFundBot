@@ -17,9 +17,25 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null
 function flush(): void {
   if (buffer.length === 0) return
   const batch = buffer.splice(0, MAX_BUFFER)
+  const payload = JSON.stringify({ entries: batch })
   try {
-    const payload = JSON.stringify({ entries: batch })
-    navigator.sendBeacon('/api/logs/ingest', payload)
+    // A plain string makes sendBeacon send `text/plain`, which the service's
+    // `express.json()` ignores (`/api/logs/ingest` then answers 400 and the
+    // entries are lost). A JSON Blob keeps the Content-Type parseable.
+    const blob = new Blob([payload], { type: 'application/json' })
+    if (navigator.sendBeacon?.('/api/logs/ingest', blob)) return
+  } catch {
+    // fall through to fetch
+  }
+  try {
+    void fetch('/api/logs/ingest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {
+      // service unreachable / offline — drop the batch
+    })
   } catch {
     // 静默失败
   }

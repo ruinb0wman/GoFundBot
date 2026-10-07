@@ -133,7 +133,11 @@
 
       <!-- Retry banner -->
       <div v-if="chatStore.retryMessage" class="retry-banner">
-        <LucideIcon name="Loader" :size="12" class="spinning" />
+        <LucideIcon
+          :name="chatStore.retryLevel === 'warn' ? 'TriangleAlert' : 'Loader'"
+          :size="12"
+          :class="{ spinning: chatStore.retryLevel !== 'warn' }"
+        />
         <span>{{ chatStore.retryMessage }}</span>
       </div>
 

@@ -24,6 +24,7 @@ import {
   listToolSpecs,
   toolSpecToOpenAI,
   toolSpecsToXml,
+  validateToolCall,
 } from './toolContract'
 import { extractToolCalls, sanitizeAssistantContent } from './toolCallParser'
 import {
@@ -38,6 +39,7 @@ import {
 } from './toolLoop'
 import { isEmptyToolResult } from './toolResultStatus'
 import { requiresApproval, type ApprovalRequest } from './toolApproval'
+import { clientLogger } from '../../core/logger'
 import type { AppSettings } from '../../composables/useAppSettings'
 
 export interface ChatStreamEvent {
@@ -119,6 +121,12 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
     event: 'skill_selected',
     data: JSON.stringify({ name: resolvedSkill.name, description: resolvedSkill.description }),
   }
+  clientLogger.info('chat.turn.start', {
+    skill: resolvedSkill.name,
+    model,
+    apiBase,
+    historyCount: messages.length,
+  })
 
   const openaiMessages: LLMMessage[] = [
     { role: 'system', content: buildSystemPrompt(resolvedSkill.systemPrompt, resolvedSkill.toolNames, strategyContext) },
@@ -139,10 +147,12 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
 
   let endedWithError = false
   let streamedAnyContent = false
+  let toolRounds = 0
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     let llmUsage: { input_tokens?: number; output_tokens?: number; total_tokens?: number } = {}
     let response: StreamingResponse
+    const llmStart = Date.now()
     try {
       const { value: llmResponse, retries: llmRetries } = await withRetry(() =>
         chatCompletion(config, {
@@ -160,6 +170,13 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
       if (llmResponse.usage) llmUsage = llmResponse.usage
     } catch (error) {
       endedWithError = true
+      clientLogger.error('chat.llm.failed', {
+        iter,
+        durationMs: Date.now() - llmStart,
+        error: String(error),
+        model,
+        apiBase,
+      })
       yield { event: 'error', data: JSON.stringify({ message: `LLM 调用失败: ${String(error)}` }) }
       break
     }
@@ -169,7 +186,20 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
     const parsed = extractToolCalls(message?.content || '')
     const calls = normalizeToolCalls(nativeCalls, parsed.calls)
 
+    clientLogger.info('chat.llm.call', {
+      iter,
+      durationMs: Date.now() - llmStart,
+      contentChars: (message?.content || '').length,
+      nativeCalls: nativeCalls.length,
+      xmlCalls: parsed.calls.length,
+      totalTokens: llmUsage.total_tokens,
+    })
+
     if (calls.length > 0) {
+      // Only count rounds that actually hit a registered tool. A model that
+      // hallucinates unknown tool names for 8 rounds is a different failure and
+      // keeps the generic "no valid answer" message.
+      if (calls.some((c) => validateToolCall(c.name, c.args).ok)) toolRounds += 1
       openaiMessages.push({
         role: 'assistant',
         content: parsed.cleaned || null,
@@ -216,6 +246,15 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
         const hasError = envelope.ok === false
         // UI-only hint: the call succeeded but returned nothing usable.
         const isEmpty = envelope.ok ? isEmptyToolResult(envelope.data) : false
+        if (hasError) {
+          clientLogger.warn('chat.tool.error', {
+            name: call.name,
+            durationMs,
+            message: envelope.ok === false ? envelope.error.message : '',
+          })
+        } else {
+          clientLogger.info('chat.tool.end', { name: call.name, durationMs, empty: isEmpty })
+        }
 
         yield {
           event: 'tool_end',
@@ -249,6 +288,7 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
           yield { event: 'status', data: JSON.stringify({ message: `LLM 调用失败，已自动重试 ${streamRetries} 次` }) }
         }
 
+        clientLogger.info('chat.stream.start', { iter })
         for await (const chunk of stream) {
           if (chunk.usage) streamUsage = chunk.usage
           if (chunk.token) {
@@ -257,11 +297,34 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
             yield { event: 'token', data: JSON.stringify({ token: chunk.token, full: sanitizeAssistantContent(fullContent) }) }
           }
         }
+        clientLogger.info('chat.stream.end', {
+          iter,
+          chars: fullContent.length,
+          totalTokens: streamUsage.total_tokens,
+        })
       } catch (error) {
         if (fullContent) {
+          // The user already saw part of the answer. Keep it, but make the
+          // interruption loud instead of silently stopping (and log it) —
+          // previously this branch just `break`ed with no error/log at all.
+          clientLogger.warn('chat.stream.interrupted', {
+            iter,
+            chars: fullContent.length,
+            error: String(error),
+            model,
+            apiBase,
+          })
+          yield {
+            event: 'status',
+            data: JSON.stringify({
+              message: `回答在传输中断（${String(error)}），已保留已生成内容`,
+              level: 'warn',
+            }),
+          }
           yield { event: 'token', data: JSON.stringify({ token: '', full: fullContent }) }
           break
         }
+        clientLogger.warn('chat.stream.failed', { iter, error: String(error), model, apiBase })
 
         try {
           const { value: fallbackResponse, retries: fallbackRetries } = await withRetry(
@@ -295,12 +358,22 @@ export async function* chat(args: ChatArgs): AsyncGenerator<ChatStreamEvent> {
   }
 
   if (!endedWithError && !streamedAnyContent) {
+    const exhausted = toolRounds > 0
+    if (exhausted) {
+      clientLogger.warn('chat.loop.exhausted', { iterations: MAX_TOOL_ITERATIONS, toolRounds })
+    }
     yield {
       event: 'status',
-      data: JSON.stringify({ message: 'AI 未能完成回答（未获取到有效数据），请重试或更换模型' }),
+      data: JSON.stringify({
+        message: exhausted
+          ? `已达到工具调用轮次上限（${MAX_TOOL_ITERATIONS} 轮）仍未收尾，可缩小问题范围或重试`
+          : 'AI 未能完成回答（未获取到有效数据），请重试或更换模型',
+        level: exhausted ? 'warn' : 'info',
+      }),
     }
   }
 
+  clientLogger.info('chat.turn.end', { endedWithError, streamedAnyContent, toolRounds })
   yield { event: 'done', data: JSON.stringify({ status: 'done' }) }
 }
 

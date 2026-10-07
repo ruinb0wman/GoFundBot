@@ -111,7 +111,7 @@ chatEngine.chat({ messages, skill, llmConfig, strategyContext, searchSettings })
   tool_start     → { name, params, tool_call_id }
   tool_end       → { name, duration_ms, error?, empty? }
   token          → { token, full }
-  status         → { message }
+  status         → { message, level? }   // level: 'info'（瞬态，5s 自清）| 'warn'（常驻到下一条消息）
   usage          → { input_tokens, output_tokens, total_tokens }
   error          → { message }
   done           → { status }
@@ -119,17 +119,61 @@ chatEngine.chat({ messages, skill, llmConfig, strategyContext, searchSettings })
 
 `chatStore.sendMessage` → `chatAPI.sendMessage` → `chatEngine.chat(...)`。
 
+### 中断的可见化（2026-10 修）
+
+用户側曾出现「回测页 AI 回答无故中断」——根因是引擎在**流式出错但已有 token** 时静默 `break`。
+现在三条失败路径都会留下痕迹：
+
+| 场景 | 事件 | 日志事件 | 行为 |
+|------|------|----------|------|
+| 流式传输中途断开（网络/300s abort/provider 关连接） | `status level='warn'`「回答在传输中断…」 | `chat.stream.interrupted` | **保留已生成的半截正文**，常驻警告 banner（不再静默停止） |
+| 非流式 `chatCompletion` 超时（默认 120s，`timeoutMs` 可覆盖） | `error`「LLM 调用失败: …timeout…」 | `llm.timeout` / `llm.http_error` | 抛出可重试错误，由 `withRetry` 退避重试；不再无限挂起 |
+| 连续 8 轮都在调工具仍无最终回答 | `status level='warn'`「已达到工具调用轮次上限…」 | `chat.loop.exhausted` | 明确提示轮次耗尽（仅当确实命中已注册工具才计入） |
+
+> 仅靠幻觉工具名循环 8 轮仍走原来的「未能完成回答」泛化提示（`toolRounds` 只统计通过
+> `validateToolCall` 的轮次）。
+
 ## 上下文与持久化
 
 - 系统提示 = 技能提示 + 工具契约（TOOL_CALL_RULES + `<available_tools>`）+ 用户策略记忆
-- 消息裁剪：`estimateTokens`（3 chars/token），超 50k token 时从头部丢弃
-- 工具调用最多 8 轮；LLM 失败自动重试（可重试错误退避 1s/2s）
+- 消息裁剪：`estimateTokens`（3 chars/token），超 50k token 时从头部丢弃。裁剪按**组**删除：
+  `assistant(tool_calls)` 与其后紧邻的 `tool` 回复同生共死，避免拆散配对导数 provider 返回 400
+  （`toolLoop.ts::trimMessages`）
+- 工具调用最多 8 轮；LLM 失败自动重试（可重试错误退避 1s/2s；`abort`/`超时` 也视为可重试）
 - **持久化**：助手消息落 Dexie `chatMessages` 时 content 已净化，`toolName`/`toolParamsJson` 记录
   首个工具调用，`toolCallsJson`（非索引字段，无需迁移）保存完整工具 chips 元数据（含 `status`）；
   读历史时对旧污染正文做 `sanitizeAssistantContent` 清洗并从 `toolCallsJson` 恢复工具 chips。
   注意 `onDone` **必须**在 `finalizeStream()` 之前捕获 `activeToolCalls`——finalizeStream 会把它清空，
   早先顺序颠倒导致 chips 从未落库（2026-09-29 修）。
+- **单次终结（幂等）**：引擎在 `error` 之后仍会 `yield done`，`chatApi` 的 catch 也同时调 `onError`+`onDone`。
+  `chatStore` 用 `streamClosed` 守卫 `finalizeStream()` / `onDone`，保证一轮只落库一次
+  （早先报错会把同一条 assistant 消息写两遍）。
 - **UI**：工具 chips 名称由注册表 `label` 派生（`toolLabel()`），不再硬编码/兜底显示原始工具名。
   四种状态：`running`（spinner）/ `done`（绿勾）/ `error`（红叉，请求失败）/ **`empty`（黄色 `TriangleAlert` + 「暂无数据」，请求成功但没拿到可用数据）**。
   `empty` 由 `toolResultStatus.ts::isEmptyToolResult` 在引擎侧判定（UI 专用，不回喂模型），按**数据内容**而非 `data_status`：
   空数组、全 null/全 0 的 payload 才算空，所以北向资金（恒 `unavailable` 但成交总额有效）保持绿勾。
+
+## 可观测性（前端日志）
+
+AI 链路全部走前端 `core/logger.ts::clientLogger` → `navigator.sendBeacon('/api/logs/ingest')`，
+由 service 写入 `frontend-YYYY-MM-DD.jsonl`。在「日志」页把来源切到 **Frontend** 即可按关键词过滤。
+
+> 上报必须用 **JSON Blob**（`new Blob([json], { type: 'application/json' })`）。`sendBeacon(url, string)`
+> 发的是 `text/plain`，`express.json()` 不会解析 → `/ingest` 返回 400，日志被静默丢弃（2026-10-07 修）。
+> `sendBeacon` 不可用/返回 false 时回退到 `fetch(..., { keepalive: true })`。
+
+审计事件名（context 只放元数据：skill/model/耗时/字符数/错误串/工具名，**不含 apiKey / Authorization / 完整 prompt**）：
+
+| 事件 | 级别 | 含义 |
+|------|------|------|
+| `chat.turn.start` / `chat.turn.end` | info | 一轮对话的起止（skill、模型、历史条数、结束状态） |
+| `chat.llm.call` | info | 每次非流式调用（iter、耗时、内容长度、原生/XML 工具数、token） |
+| `chat.llm.failed` | error | 非流式调用抛错 |
+| `chat.tool.end` / `chat.tool.error` | info / warn | 工具执行结果与耗时 |
+| `chat.stream.start` / `chat.stream.end` | info | 流式连接与正常完成 |
+| `chat.stream.interrupted` | warn | **流中途断开但保留了半截正文**（核心排查点） |
+| `chat.stream.failed` | warn | 流在无 token 时失败 → 走非流式 fallback |
+| `chat.loop.exhausted` | warn | 工具轮次上限耗尽 |
+| `llm.timeout` / `llm.stream_timeout` | warn | 非流式 / 流式超时 |
+| `llm.http_error` | error | provider 返回非 2xx（含其错误文本） |
+| `chat.api.failed` / `chat.turn.error` | error | 生成器抛出 / 展示给用户的错误 |

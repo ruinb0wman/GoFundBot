@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { chatAPI, type ChatSessionDto, type ChatMessageDto, type ToolCallInfo, type SkillInfo } from '../services/chatApi'
 import { toolApproval } from '../services/chatEngine/toolApproval'
+import { clientLogger } from '../core/logger'
 import { db } from '../db'
 import { useLLMConfig } from '../composables/useLLMConfig'
 import { buildActiveStrategyContext } from '../db/strategyMemory'
@@ -43,10 +44,13 @@ export const useChatStore = defineStore('chat', {
     currentSessionId: null as number | null,
     messages: [] as DisplayMessage[],
     isStreaming: false,
+    /** Guards the single terminal transition per turn (error then done double-fire). */
+    streamClosed: false,
     streamingContent: '',
     activeToolCalls: [] as ToolCallStatus[],
     sessionTotalTokens: 0,
     retryMessage: '',
+    retryLevel: 'info' as 'info' | 'warn',
     isOpen: false,
     isWideMode: false,
     initialized: false,
@@ -206,9 +210,11 @@ export const useChatStore = defineStore('chat', {
       }
 
       this.isStreaming = true
+      this.streamClosed = false
       this.streamingContent = ''
       this.activeToolCalls = []
       this.retryMessage = ''
+      this.retryLevel = 'info'
       this.currentSkill = null
 
       const skillParam = this.channel === 'strategy'
@@ -250,13 +256,20 @@ export const useChatStore = defineStore('chat', {
             streaming.usage = { inputTokens, outputTokens, totalTokens }
           }
         },
-        onStatus: (message: string) => {
+        onStatus: (message: string, level?: 'info' | 'warn') => {
           this.retryMessage = message
+          this.retryLevel = level === 'warn' ? 'warn' : 'info'
+          // Terminal warnings (e.g. an interrupted stream) stay until the next send;
+          // transient retry notices clear themselves after 5s.
+          if (level === 'warn') return
           setTimeout(() => {
             if (this.retryMessage === message) this.retryMessage = ''
           }, 5000)
         },
         onDone: async () => {
+          // onError already finalized + persisted this turn; the engine still emits
+          // `done` afterwards, so without this guard the assistant row is written twice.
+          if (this.streamClosed) return
           // Capture the chips *before* finalizeStream() resets activeToolCalls,
           // otherwise the persisted history always loses its tool calls.
           const toolCalls = [...this.activeToolCalls]
@@ -280,6 +293,7 @@ export const useChatStore = defineStore('chat', {
           await this.refreshSessions()
         },
         onError: async (error: string) => {
+          clientLogger.error('chat.turn.error', { error })
           this.streamingContent = error
           this.finalizeStream()
           if (this.currentSessionId) {
@@ -301,6 +315,8 @@ export const useChatStore = defineStore('chat', {
     },
 
     finalizeStream() {
+      if (this.streamClosed) return
+      this.streamClosed = true
       if (this.streamingContent || this.activeToolCalls.length > 0) {
         this.messages.push({
           id: `assistant-${Date.now()}`,

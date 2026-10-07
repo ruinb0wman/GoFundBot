@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   chatCompletion: vi.fn(),
   openChatStream: vi.fn(),
   executeTool: vi.fn(),
+  clientLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
 vi.mock('../../services/llm', () => ({
@@ -13,6 +14,7 @@ vi.mock('../../services/llm', () => ({
 vi.mock('../../services/chatEngine/toolHandlers', () => ({
   executeTool: mocks.executeTool,
 }))
+vi.mock('../../core/logger', () => ({ clientLogger: mocks.clientLogger }))
 
 import { chat, SKILL_MAP, type ChatArgs } from '../../services/chatEngine'
 import { TOOL_REGISTRY } from '../../services/chatEngine/toolContract'
@@ -219,5 +221,52 @@ describe('code-execution approval gate', () => {
     expect(mocks.executeTool).toHaveBeenCalledTimes(1)
     expect(mocks.executeTool.mock.calls[0][0]).toBe('run_strategy_code')
     expect(events.some((e) => e.event === 'tool_start')).toBe(true)
+  })
+})
+
+describe('stream interruption surfacing', () => {
+  it('keeps partial content and emits a warn status when the stream dies mid-answer', async () => {
+    mocks.chatCompletion.mockResolvedValue({ content: '', tool_calls: undefined })
+    mocks.openChatStream.mockImplementation(() => {
+      async function* dying() {
+        yield { token: '前半句。', full: '前半句。' }
+        throw new Error('network reset')
+      }
+      return dying()
+    })
+
+    const events = await collectEvents('随便问问', { skill: 'market_overview' })
+
+    // partial answer survives instead of vanishing
+    const tokens = events.filter((e) => e.event === 'token').map((e) => e.data.token).join('')
+    expect(tokens).toBe('前半句。')
+    // …and the interruption is now loud + logged
+    const warn = events.find((e) => e.event === 'status' && e.data.level === 'warn')
+    expect(warn?.data.message).toContain('传输中断')
+    expect(mocks.clientLogger.warn).toHaveBeenCalledWith(
+      'chat.stream.interrupted',
+      expect.objectContaining({ chars: 4 }),
+    )
+    expect(events[events.length - 1]?.event).toBe('done')
+  })
+})
+
+describe('tool round exhaustion', () => {
+  it('reports the iteration cap when the model only ever calls tools', async () => {
+    mocks.executeTool.mockResolvedValue({ data_status: 'available', items: [{ name: 'x' }] })
+    mocks.chatCompletion.mockResolvedValue({
+      content: '',
+      tool_calls: [{ id: 't', type: 'function', function: { name: 'get_market_indices', arguments: '{}' } }],
+    })
+
+    const events = await collectEvents('今天大盘怎么样', { skill: 'market_overview' })
+
+    expect(mocks.executeTool).toHaveBeenCalledTimes(8)
+    const status = events.find((e) => e.event === 'status' && e.data.level === 'warn')
+    expect(status?.data.message).toContain('轮次上限')
+    expect(mocks.clientLogger.warn).toHaveBeenCalledWith(
+      'chat.loop.exhausted',
+      expect.objectContaining({ iterations: 8 }),
+    )
   })
 })

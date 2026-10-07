@@ -2,6 +2,7 @@ import { db } from '../db'
 import type { LLMConfig } from './llm'
 import { chat, type ChatStreamEvent } from './chatEngine'
 import { sanitizeAssistantContent } from './chatEngine/toolCallParser'
+import { clientLogger } from '../core/logger'
 import type { ApprovalRequest } from './chatEngine/toolApproval'
 import { useAppSettings } from '../composables/useAppSettings'
 
@@ -43,7 +44,7 @@ export interface ChatCallbacks {
   onToolConfirmed?: (tool: { tool_call_id: string; approved: boolean }) => void
   onSkillSelected: (skill: SkillInfo) => void
   onUsage: (inputTokens: number, outputTokens: number, totalTokens: number) => void
-  onStatus: (message: string) => void
+  onStatus: (message: string, level?: 'info' | 'warn') => void
   onDone: () => void
   onError: (error: string) => void
 }
@@ -63,6 +64,7 @@ export const chatAPI = {
         this._handleEvent(event, callbacks)
       }
     } catch (err) {
+      clientLogger.error('chat.api.failed', { error: String(err) })
       callbacks.onError(String(err))
       callbacks.onDone()
     }
@@ -120,7 +122,7 @@ export const chatAPI = {
           break
         case 'status':
           if (callbacks.onStatus) {
-            callbacks.onStatus(parsed.message || '')
+            callbacks.onStatus(parsed.message || '', parsed.level === 'warn' ? 'warn' : 'info')
           }
           break
         case 'error':

@@ -24,7 +24,7 @@ export function sleep(ms: number): Promise<void> {
 export function isRetryableLLMError(error: unknown): boolean {
   const msg = String(error).toLowerCase()
   if (/\b(40[134]|422)\b/.test(msg)) return false
-  return /timeout|econn|eaddrinuse|enotfound|etimedout|fetch.*failed|network|5\d{2}|429|upstream.*request.*failed|remote.*end.*closed/.test(msg)
+  return /timeout|abort|超时|econn|eaddrinuse|enotfound|etimedout|fetch.*failed|network|5\d{2}|429|upstream.*request.*failed|remote.*end.*closed/.test(msg)
 }
 
 export async function withRetry<T>(
@@ -65,10 +65,18 @@ export function estimateMessagesTokens(messages: LLMMessage[]): number {
 }
 
 export function trimMessages(messages: LLMMessage[], maxTokens: number): void {
-  while (estimateMessagesTokens(messages) > maxTokens && messages.length > 1) {
-    const skip = messages.length > 0 && messages[0]?.role === 'system' ? 1 : 0
-    if (messages.length <= skip + 1) break
-    messages.splice(skip, 1)
+  const skip = messages[0]?.role === 'system' ? 1 : 0
+  while (estimateMessagesTokens(messages) > maxTokens && messages.length > skip + 1) {
+    const first = messages[skip]
+    // Drop an assistant `tool_calls` message together with every `tool` reply that
+    // belongs to it — removing only one side orphans the pair and the provider
+    // rejects the next request with 400.
+    let drop = 1
+    if (first?.role === 'assistant' && first.tool_calls?.length) {
+      while (messages[skip + drop]?.role === 'tool') drop += 1
+    }
+    if (messages.length - drop <= skip) break
+    messages.splice(skip, drop)
   }
 }
 

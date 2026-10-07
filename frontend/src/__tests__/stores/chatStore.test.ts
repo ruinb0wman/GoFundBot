@@ -23,6 +23,9 @@ vi.mock('../../db', () => ({
 vi.mock('../../db/strategyMemory', () => ({
   buildActiveStrategyContext: vi.fn().mockResolvedValue(''),
 }))
+vi.mock('../../core/logger', () => ({
+  clientLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
 vi.mock('../../composables/useLLMConfig', () => ({
   useLLMConfig: () => ({ config: { value: {} } }),
 }))
@@ -86,5 +89,30 @@ describe('chatStore tool chip persistence', () => {
     // finalized message is in the timeline, pending call list is reset
     expect(store.activeToolCalls).toEqual([])
     expect(store.messages[store.messages.length - 1]?.toolCalls?.[0].status).toBe('error')
+  })
+})
+
+describe('turn error finalization', () => {
+  beforeEach(() => {
+    mocks.sendMessage.mockReset()
+    mocks.addMessage.mockClear()
+    setActivePinia(createPinia())
+  })
+
+  // The engine emits `error` and then still emits `done`; onError already finalized
+  // and persisted, so onDone must not write the assistant row a second time.
+  it('persists a single assistant row when onError is followed by onDone', async () => {
+    const store = useChatStore()
+    store.currentSessionId = 7
+
+    mocks.sendMessage.mockImplementation(async (_messages: unknown, callbacks: any) => {
+      await callbacks.onError('boom')
+      await callbacks.onDone()
+    })
+
+    await store.sendMessage('hi')
+
+    expect(savedAssistantMessage().content).toBe('boom')
+    expect(store.isStreaming).toBe(false)
   })
 })
