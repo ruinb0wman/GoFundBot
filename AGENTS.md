@@ -4,17 +4,16 @@
 
 **Two services**, start in order:
 
-1. **service** (port 8310) — Node.js/Express/TypeScript **薄后端**（数据获取层）
-   - All API routes (`/api/fund/*`, `/api/market/*`, `/api/screening/*`, etc.) — 业务计算已迁移前端，后端只返回原始数据（回测路由已删除）
+1. **service** (port 8310) — Node.js/Express/TypeScript 后端（**数据 + 计算 + 用户数据 + 工具面**）
+   - All API routes (`/api/fund/*`, `/api/market/*`, `/api/screening/*`, `/api/backtest/*`, `/api/agent/*`, etc.) — 纯计算在共享内核 `packages/core`，**service 不做任何 LLM 调用**
    - ProviderChain (stock-sdk → eastmoney → baidu/cls) for real-time financial data
-   - PythonRunner: spawns Python scripts for data completion (akshare)；回测已迁前端
+   - PythonRunner: spawns Python scripts for data completion (akshare)；回测已迁 `packages/core`（service 侧 `/api/backtest/*`，前端页面同源同值）
    - 反爬(Referer)、Yahoo 走代理、速率/校验/日志；最小代理配置接口（仅 Proxy URL）
-2. **frontend** (port 8517) — Vue 3 + Vite，proxies `/api` → service。**全部业务逻辑在前端**：
-   - 筛选丰富化（`industryClassifier.ts` 行业分类 + `computeRiskMetricsLocal` 风险指标 + 4433 排名，`useScreeningDb`）
-   - 投研看板计算（`researchComputation.ts`，从 Dexie screeningFunds + `/api/market/sectors` 聚合）
-   - AI：`llm.ts`（OpenAI 兼容客户端直调）+ `fundAnalyst` / `portfolioAnalyst` / `strategyDraft` / `reflection` / `chatEngine`（对话+工具调用）；分析场景统一走 `analysis/`（场景 Skill 注册表 + 共享引擎，复用 chat 工具契约）
-   - 联网搜索：`searchService.ts`（Exa→Bocha→Tavily→DuckDuckGo，key 存前端 localStorage）
-   - 设置：LLM/Search key 存前端；仅 Proxy URL 下发 Node
+2. **frontend** (port 8517) — Vue 3 + Vite，proxies `/api` → service。**只做展示与工作台**（计算已归 service / `packages/core`）：
+   - 筛选与投研看板：全部调 `/api/screening/*`（SQLite 真源），本地只调 `researchComputation` 聚合展示
+   - 回测工作台：代码在浏览器 Worker 里跑（引擎来自 `packages/core`），净值与方案走 service
+   - 搜索：`POST /api/search`（Exa 免费 → DuckDuckGo，无需 key；`service/src/ai/search.ts`）
+   - 设置：仅 Proxy URL（落 SQLite）；**应用不持有任何 LLM/搜索密钥**
 3. **Electron 桌面壳**（外部项目，可选）— 仅解禁 CORS（壳侧禁用 Web Security）：浏览器窗口加载**运行中的前端 dev 服务** origin（`http://localhost:8517`）。前端代码与 Web 完全一致——无运行时分支，`httpClient.ts` 统一走浏览器 fetch（`/api` 走 Vite 代理）。
 
 **Python** is tool-only (no HTTP server). Called via `child_process.spawn()` from Express:
@@ -22,24 +21,28 @@
 stdin: JSON → Python compute → stdout: JSON
 ```
 
-**All persistent data lives in IndexedDB** (Dexie.js) on the frontend:
-- User data: watchlist, portfolio, trades, positions, alerts, chat history, strategy memory
-- Cache: fund details, NAV history, market data, screening funds
+**User data lives in the service's SQLite**（P2，2026-10-07）；前端 Dexie 只留缓存：
+- 用户数据（归 service）：watchlist(+groups)、positions、strategies、strategy_scripts（`service/src/db/migrations/002_user_data.ts`）
+- 缓存（**P3.4 起都在 service SQLite**）：净值序列（`nav_history`，带覆盖度判断）、筛选库（`screening_funds`）；Dexie 只剩一次性导入用的历史表（见 `db/migrateToServer.ts`）
 
 ## Data flow
 
 ```
 Real-time data:   ProviderChain → Express → frontend → IndexedDB (Dexie)
-User data CRUD:   frontend → IndexedDB (Dexie) — no server round-trip
-Backtest:         前端 services/backtest/ 本地计算（NAV 取自 /api/funds/:code/nav-history）→ /backtest 工作台（代码编辑器 + 图表）
-                  方案 = 代码（prepare 声明固定池 + onDay 逐日决策，按基金代码寻址）存 Dexie(strategyScripts)
-                  净值 Dexie 优先缓存（db/navCache.ts + services/backtest/dataBroker.ts），缺失/过期才取
+User data CRUD:   frontend → /api/{watchlist,positions,strategies,backtest-scripts} → SQLite（一次性导入见 db/migrateToServer.ts）
+Backtest:         共享内核 packages/core 本地计算（NAV 取自 /api/funds/:code/nav-history）→ /backtest 工作台（代码编辑器 + 图表）
+Backtest(server): POST /api/backtest/{fixed-investment,portfolio,compare-strategies} → backtestService 取净值（同一 provider 链/缓存）+ core 引擎（pi 与脚本用）
+                  方案 = 代码（prepare 声明固定池 + onDay 逐日决策，按基金代码寻址）存 **service SQLite**（/api/backtest-scripts）
+                  净值缓存：service SQLite（`nav_history` + 覆盖度判断），任何窗口都从缓存切片；前端不再自己判断过期
                   组合引擎：portfolioBacktest.ts（多资产权重 + 日历/阈值再平衡 + 注水 + cash 腿）→ run_portfolio_backtest 工具
+Code backtest:    service 与页面两条路，同一份 core 引擎：服务端 node:worker_threads 沙箱（/api/agent/call: run_strategy_code，5s 超时 terminate）／浏览器 Worker（/backtest 页面）
                   Python backtest.py 与 Node /api/backtest 已于 2026-09-29 删除（黄金 fixtures 冻结在 frontend/src/services/backtest/__fixtures__/）
+pi tools:         pi(.pi/extensions/gofund 通用桥) → GET /api/agent/tools（清单）→ POST /api/agent/call → service 内部函数
+                  写操作（save_strategy）第一次只回 CONFIRM_REQUIRED + 令牌，参数一致才落库
 Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → stdout JSON → Express
-Screening enrichment: frontend sync raw /api/screening → 本地 computeRiskMetrics + classifyFundIndustry → Dexie
-Web search:       frontend chatEngine/searchService → Exa/Bocha/Tavily/DDG（key 前端本地）
-Settings:         LLM/Search key 前端 localStorage；Proxy URL → PUT /api/settings（仅 proxy 子域）
+Screening enrich:  frontend sync raw /api/screening/sync → service 算风险指标+行业+4433 → SQLite；前端只调 /query /compute /status
+Web search:       `POST /api/search`（Exa→DDG，无 key）；pi 侧另有自带 `web_search`
+Settings:         Proxy URL → PUT /api/settings（SQLite 持久化）；无任何 API 密钥
 Desktop HTTP:     浏览器 fetch（Electron 壳侧解禁 CORS），与 Web 行为一致（/api 走 Vite 代理）
 ```
 
@@ -101,6 +104,14 @@ python/.venv/bin/python python/cli/check_file_length.py
 ## Key details
 
 - **Rate limiting**: `express-rate-limit` (300/15min).
+- **监听地址**: 默认 `127.0.0.1`（`HOST` 覆盖）。service 承载用户数据后不再默认暴露局域网。
+- **策略代码沙箱（3.4③，2026-10-07）**: `node:worker_threads`，与浏览器 Worker 同款全局遮蔽 + 5s 超时 `terminate()`。**不是硬沙箱**（动态 `import()` 关不掉，见 `sandbox/strategyWorker.ts` 说明），所以 `run_strategy_code` 属**执行类**工具，需确认令牌。
+- **pi 工具面（P4，2026-10-07）**: service 是工具契约唯一真源 —— `GET /api/agent/tools`（**27 个工具**：市场/基金/快讯 15 + 回测 3 + 筛选 2 + 投研 1 + 用户数据 6（含代码回测 3））、`POST /api/agent/call`（Zod 校验 → 执行 → 截断 30k 字符）。写操作（`save_strategy`）第一次只回 `CONFIRM_REQUIRED` + 令牌，参数一致才能落库（`agent/confirm.ts`）。扩展端不再抄任何映射。静态清单用 `bun run gen:tools` 重新生成。
+- **服务端计算（P3.2，2026-10-07）**: `POST /api/backtest/fixed-investment` · `/portfolio` · `/compare-strategies` ——
+  用 `packages/core` 的引擎（与前端同源同值），参数沿用**聊天时代的 snake_case**（`toolArgs.ts` 映射），
+  净值走 `/api/funds/:code/nav-history` 的 provider 链 + 24h 缓存。语义：结构错误 → 400，取数/数据不足 → 200 + `data.error`。
+- **共享计算内核**: `packages/core`（`@gofund/core`）—— 两边直连源码，service **用相对路径** import（别名只对 tsx/类型检查生效，`tsc` 产物会保留别名 specifier）。
+- **SQLite**: `service/src/db/`（`node:sqlite`）。首次 `getDb()` 执行迁移；`transaction()` 为手工 BEGIN/COMMIT 包装（不支持嵌套）。
 - **Input validation**: Zod schemas on key POST routes.
 - **Security headers**: service uses `helmet` (CSP/COEP disabled).
 - **Structured logging**: JSON via `core/logger.ts` (service) with `requestId` per request. Daily files `dataservice-YYYY-MM-DD.jsonl` under `python/Data/logs`.
@@ -108,10 +119,13 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **Cache TTLs**: fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
 - **Graceful shutdown**: service handles `SIGTERM`/`SIGINT` — 10s wait, then force exit.
 - **Vite proxy**: `frontend/vite.config.ts` proxies `/api` → `localhost:8310`, `/docs` → `localhost:8574`.
-- **Dexie.js**: All persistent data in IndexedDB, 15 tables in `frontend/src/db/index.ts` (含 strategies / analysisMemory / strategyScripts / navHistory)。
-- **Settings endpoint**: `GET/PUT /api/settings` — **仅 proxy 子域**（LLM/Search key 已迁移前端 localStorage：`useLLMConfig` / `useAppSettings`）。
-- **Search chain（前端）**: Exa（MCP/JSON-RPC，免费无 Key）→ Bocha → Tavily → DuckDuckGo（自动降级）；`frontend/src/services/searchService.ts`。
-- **Screening data refresh**: 筛选页 onMounted + localStorage 持久化 `lastSyncTime` → 检测过期（今日 9AM）→ 强制 `force=true` 全量刷新。AI chat `get_industry_performance` 共享同一缓存（cacheThrough TTL=次日 9AM）。
+- **用户数据在 service**：`service/src/db/`（SQLite）+ `services/userDataService.ts` + `routes/{watchlist,positions,strategies,userImport}.routes.ts`；前端 `db/*.ts` 只是 HTTP 薄封装（导出签名不变）。首次启动把旧 Dexie 数据导入（`db/migrateToServer.ts`，幂等）。
+- **Settings endpoint**: `GET/PUT /api/settings` — **仅 proxy 子域**（落 SQLite）。应用不持有 LLM/搜索密钥（pi 是唯一 AI）。
+- **搜索网关**: `POST /api/search`（Exa 免费 → DuckDuckGo 降级；`service/src/ai/search.ts`）——无 key，留给需要 HTTP 搜索的服务端调用方。
+- **AI 定位（2026-10-07）**: 前端 AI 层（chatEngine / analysis / 两位分析师 / ChatPanel / 设置里的密钥页）**已全部删除**；AI 由**终端 pi** 承担（`.pi/extensions/` + `.pi/skills/`）。service 不做任何 LLM 调用。
+- **Search chain（service）**: Bocha → Tavily → Exa（免费无 Key）→ DuckDuckGo（自动降级）；`service/src/ai/search.ts`。
+- **投研看板（P3.4）**: `GET /api/research/dashboard`（core `buildDashboard`，读 SQLite 筛选行）。payload 里**不再带全量基金行**（曾经 1.6MB），汇总口径（`pass_4433` / `risk_ready`）由 core 算好，前端与 pi 工具共用紧凑版（`compactDashboard`）。
+- **Screening（P3.3 起在 service）**: `/api/screening/sync`（快照 + 行业标签 + 4433 排名 + 首批富化）、`/compute`（分批富化风险指标，默认 300/批）、`/ranks`、`/query`（筛选/排序/分页）、`/status`、`/industry-tags`、`/screen-rows`（沙箱 `sdk.screen()` 的 7 列）。数据落 SQLite `screening_funds`；前端 `useScreeningDb` 只是薄客户端（本地 `screeningFunds` 表已删）。`/query` 的过滤语义与迁移前逐条对齐（含 `max_drawdown_*_max` 都读 `max_drawdown_1y` 这类历史口径）。
 - **Proxy**: 国内 API（东方财富）用 `proxy: 'never'` 直连；Yahoo Finance（被封）走 `proxy: 'auto'` 随代理配置。`eastmoneyRequest.ts` 统一添加 `Referer` 头防止反爬。
 - **Docs**: VitePress 构建的文档站，配置在 `docs/.vitepress/config.ts`（nav + sidebar）。模块级详细文档按功能目录组织（如 `docs/fund-screening/`），在侧边栏对应分组。文档通过 frontend `/docs/*` 代理访问。
 
@@ -123,38 +137,39 @@ python/.venv/bin/python python/cli/check_file_length.py
 |-----------|------|
 | `service/src/` | Express app with ProviderChain, all routes |
 | `service/src/app.ts` | App bootstrap — route registration, middleware |
-| `service/src/routes/` | All Express route handlers (fund, market, screening, backtest, settings, etc.) |
-| `service/src/services/` | 数据层服务（fundService, marketService, pythonRunner, settingsService(proxy)）；业务计算已迁移前端 |
+| `service/src/routes/` | All Express route handlers (fund, market, screening, backtest, research, agent, settings, etc.) |
+| `service/src/services/` | 数据层与计算服务（fundService, marketService, pythonRunner, settingsService（SQLite）, **userDataService**（用户数据 CRUD）, **backtestService**（core 回测引擎）, **screeningService**（筛选存储+富化+查询）, **navCacheService**（净值缓存 + 覆盖度）, **researchService**（投研看板聚合））|
+| `service/src/ai/` | 搜索网关（`search.ts`，Exa→DDG，无 key）。service **不做 LLM 调用** |
 | `service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo)；eastmoney 的涨跌家数/北向资金实现在 `eastmoney/marketBreadth.ts`、`eastmoney/marketNorthFlow.ts` |
 | `service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
+| `service/src/db/` | **SQLite 连接与迁移**（Node 内置 `node:sqlite`，零依赖）。用户数据/设置/缓存的唯一真源；文件路径由 `core/dbPaths.ts` 决定（`GOFUND_DB_PATH`，默认 `service/data/gofund.db`，测试用 `:memory:`）。迁移只追加不改，`schema_version` 记版本 |
 | `service/src/types/` | DTO interfaces (fund.ts, common.ts) |
 | `python/cli/` | Python CLI scripts (data_complete, fetch_fund) |
 | `python/cli/shared/` | Shared Python utilities (file_cache) |
-| `frontend/src/services/llm.ts` | OpenAI 兼容 LLM 客户端（浏览器 fetch，JSON+流式） |
-| `frontend/src/services/fundAnalyst.ts` | AI 基金分析（4 分析师+总监）——内部经 `analysis/analysisEngine` runTask：每分析师/总监都是可工具子调用（子集工具/全集），输出经 Schema 校验；公开签名（analyzeFund/analyzeFundStream）与阶段语义不变 |
-| `frontend/src/services/portfolioAnalyst.ts` | 组合诊断分析（前端直调）——经 `analysis/` 引擎 + `portfolio_diagnosis` 场景（市场面工具子集），Schema 校验，注入策略上下文 |
-| `frontend/src/services/analysis/` | **分析场景框架**：`analysisScenarios.ts`（3 场景 Skill 注册表：fund_analysis/portfolio_diagnosis/log_analysis）、`scenarioTypes.ts`（TypeBox 输出 Schema，字段与 DTO 一致）、`analysisEngine.ts`（runTask/runScenario 共享引擎：工具循环+结构化收尾+INVALID_OUTPUT 纠错重试≤2+fallback 降级）、`logAnalysis.ts`（AI 日志分析适配器，规则引擎 `/api/logs/analyze` 为降级源，service 零改动） |
-| `frontend/src/services/backtest/` | **回测引擎（前端）**：`backtestEngine.ts`（与 `python/cli/backtest.py` 逐值对齐，黄金 fixtures 见 `__fixtures__/`）、`strategyRules.ts`（定投日/价值平均/均线偏离）、`pyCompat.ts`（CPython round/ISO 周）、`strategyCompare.ts`（多策略推荐，`compare_backtest_strategies` 工具）、`timelineSample.ts`（工具输出抽样）、`runBacktestForFund.ts`、`toolArgs.ts`；**`portfolioBacktest.ts` + `runPortfolioBacktest.ts`**（多资产引擎：权重归一化、日期并集+前向填充、日历/阈值再平衡、定期注水、synthetic 现金腿、TWR 年化；资产数下限已放宽为 1，代码回测也走它）；**`strategySandbox.ts` + `strategyWorker.ts` + `runStrategyCode.ts` + `scriptRun.ts` + `dataBroker.ts` + `strategyTemplates.ts`**（代码回测：`prepare(sdk)` 声明固定池、`onDay(s)` 按基金代码逐日决策，Worker 两段调用 plan/run，5s 超时；`dataBroker.ts` 做 **Dexie 优先**净值解析 + 限并发/每轮预算）；持久化在 `frontend/src/db/strategyScripts.ts`，净值缓存在 `frontend/src/db/navCache.ts`。详见 `docs/architecture/backtest-engine.md` |
-| `frontend/src/services/chatEngine/` | AI 对话引擎（skills.ts 技能 / toolContract.ts 工具契约* / toolCallParser.ts 调用解析与净化 / toolHandlers.ts 实现 / **toolLoop.ts 共享工具循环**（归一化+信封+重试/裁剪，chat 与分析场景复用）/ toolResultStatus.ts（空结果判定 → 工具条黄色感叹号）/ index.ts 编排）<br>*ToolSpec（TypeBox Schema）单一数据源：派生 OpenAI tools 参数、`<available_tools>` XML 清单与运行时校验；原生 tool_calls 与 `<ai_tool_calls>` XML 归一化为统一契约，未知工具名纠错回喂，正文永不出现工具标记 |
-| `frontend/src/services/searchService.ts` | 前端搜索链（Exa → Bocha → Tavily → DuckDuckGo） |
-| `frontend/src/services/industryClassifier.ts` | 行业/基金类型分类（筛选丰富化 + 聊天工具共用） |
+| `frontend/src/services/backtest/` | **回测的「取数/执行」胶水**（计算本体在 `packages/core`）：`runBacktestForFund.ts`（取 NAV + 调 core 引擎）、`runPortfolioBacktest.ts`、`dataBroker.ts`（向 service 要净值 + 限并发/每轮预算）、`runStrategyCode.ts` + `strategyWorker.ts`（Worker 两段调用 plan/run，5s 超时）、`scriptRun.ts`、`backtestTypes.ts`（兼容性转出 core）。持久化在 service SQLite（`/api/backtest-scripts`）；净值缓存在 service `nav_history` 表 |
+| `frontend/src/composables/useScreeningDb.ts` | 筛选的**薄 HTTP 客户端**（P3.3）：`syncFromServer`（/sync → 循环 /compute 富化到底）/ `getStatus` / `queryFunds` / `compute4433`，签名与迁移前一致；4433 算法已移到 `@gofund/core/screeningEnrich` |
+| `frontend/src/services/screeningRows.ts` | 沙箱 `screen()` 的基金池（`GET /api/screening/screen-rows`，进程内缓存 10min） |
 | `frontend/src/services/researchComputation.ts` | 投研看板聚合计算（市场统计/基金看板/ETF/板块/行业表现） |
 | `frontend/src/services/httpClient.ts` | HTTP 适配器（统一浏览器 fetch；Electron 壳侧解禁 CORS，无运行时分支） |
-| `frontend/src/db/` | Dexie schema (index.ts) — all IndexedDB table definitions |
-| `frontend/src/db/positions.ts` | 持仓 CRUD（IndexedDB `positions` 表）：`useMyPositions` 与 `get_portfolio_holdings` 工具共用。历史上 `/api/user/portfolio/positions` 是返回 `[]` 的桩、持仓只存内存，此文件把持仓真正落库 |
+| `frontend/src/db/` | Dexie schema (index.ts) + **服务端数据客户端的薄封装**：`positions.ts` / `strategyMemory.ts` / `strategyScripts.ts` 内部转发到 `services/userDataApi.ts`（保留原签名）；`migrateToServer.ts` 做一次性导入 |
+| `frontend/src/db/positions.ts` | 持仓 CRUD（**内部走 `/api/positions`**）：`useMyPositions` 使用 |
 | `frontend/src/composables/` | Vue composables (useDexieCache, useFundWatchlist, useAppSettings, etc.) |
-| `frontend/src/stores/` | Pinia stores (watchlistStore updated with Dexie sync) |
-| `frontend/src/services/` | API client（api.ts 基于 httpClient 环境路由、portfolioApi.ts、chatApi.ts + chatEngine） |
+| `frontend/src/stores/` | Pinia stores (watchlistStore 内部走 `/api/watchlist`) |
+| `frontend/src/services/` | API client（api.ts 基于 httpClient 环境路由、portfolioApi.ts、docLink.ts） |
 | `docs/` | VitePress 文档站（`docs/.vitepress/config.ts` 导航/侧边栏配置） |
-| `.pi/extensions/gofund/` | **pi 数据工具扩展**（15 个只读工具，直连 service `:8310` 既有路由，不新增 service 代码、不改前端）：让在仓库目录启动的终端 pi 能查行情/板块/资金流/基金/快讯；口径映射（北向/涨跌家数/概念板块/主力资金）与前端 `toolHandlers.ts` 刻意重复一份，见该目录 README。配套 skill `.pi/skills/gofund-data/SKILL.md` |
+| `service/src/agent/` | **工具注册表（工具契约的唯一真源）**：`tools.ts`（清单组装）+ `toolsMarket/toolsFund/toolsCompute.ts`（23 个工具，Zod 参数 + 直接调 service 内部函数）+ `confirm.ts`（写操作确认令牌）。参数用 **Zod**，`z.toJSONSchema()` 派生成 pi/OpenAI 的 JSON Schema |
+| `service/src/routes/agent.routes.ts` | `GET /api/agent/tools`（清单）、`POST /api/agent/call`（校验 + 执行 + 结果截断 + 写操作确认门） |
+| `service/src/sandbox/` | **策略代码沙箱（Node）**：`strategyWorker.ts`（worker 入口，抹掉宿主全局）+ `runStrategyCode.ts`（宿主：plan → 取净值 → portfolio，5s 超时 `terminate()`）。隔离是 **best-effort**：`new Function` 里关不掉动态 `import()`（浏览器里是语法错误，Node 不是）→ 真正边界是「用户确认令牌」。worker 文件后缀按当前模块推断（dev `.ts` / dist `.js`） |
+| `.pi/extensions/gofund/` | **pi 通用桥**（不再定义具体工具）：启动时拉 `/api/agent/tools`（**27 个工具**）逐个 `registerTool`；服务离线 → 用 `tools.manifest.ts`（`bun run gen:tools` 生成）；都没有 → 只注册 `gofund_call(tool, args)`。配套 skill `.pi/skills/gofund-data/SKILL.md` |
+| `.pi/skills/gofund-strategy/SKILL.md` | 策略读写工作流（`list_strategies` / `save_strategy` + 确认门），以及「给用户看页面就调 bow 的 `browser_*`」 |
+| `packages/core/` | **共享计算内核 `@gofund/core`**（纯 TS，仅依赖 decimal.js）：回测引擎、组合引擎、策略沙箱、CPython 兼容、风险指标（`computeRiskMetricsLocal`）、行业分类、投研聚合。**前端与 service 同源同值**（前端走 vite alias/vitest alias 直连 src；service 用相对路径引 `packages/core/src`，不做 dist）；core 内相对 import 必须带 `.js` 后缀。黄金 fixtures 两侧各跑一次（`frontend/src/__tests__` + `service/src/__tests__/services/core-golden.test.ts`）。见 `packages/core/README.md` |
 | `packages/ui/` | **UI 组件库 `@gofund/ui`** — B* 系列表单控件与浮层/反馈组件、设计 token（明暗双主题）、composables；Vite lib mode 构建（组件级 chunk + dts）；frontend 经 vite/tsconfig 别名直连 `packages/ui/src/index.ts`（`@gofund/ui`），开发 HMR 与构建均从源；`file:../packages/ui` 仅为发布用依赖声明 |
 | `docs/fund-screening/` | 基金筛选模块细分文档（概览/数据流/筛选面板/指标丰富化/4433法则） |
 | `docs/market-*.md` | 市场数据各功能模块说明文档 |
 | `docs/architecture/` | 技术架构文档（数据源/数据流/回退策略/AI分析等） |
 | `docs/strategy/` | 策略板块文档（概览/策略记忆与AI注入） |
-| `frontend/src/services/strategyDraft.ts` | AI 策略起草（LLM JSON + 模板降级，前端直调） |
-| `frontend/src/db/strategyMemory.ts` | 策略记忆 CRUD + `buildStrategyContext()` 上下文格式化 |
-| `frontend/src/views/StrategyView.vue` + `frontend/src/components/ChatPanel.vue` | 策略板块 UI（记忆列表/编辑表单 + 复用主聊天窗口，channel='strategy'） |
+| `frontend/src/db/strategyMemory.ts` | 策略记忆 CRUD（**内部走 `/api/strategies`**）+ `buildStrategyContext()` 上下文格式化 |
+| `frontend/src/views/StrategyView.vue` | 策略板块 UI（记忆列表/编辑表单；供 pi 通过 dev 桥读写） |
 
 ## Testing
 
@@ -204,9 +219,8 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 ### 板块数据 (market sectors)
 
 - **`push2.eastmoney.com/api/qt/clist/get`（行业+概念板块列表）被反爬切断**：直连/代理、IPv4/IPv6、curl/undici 全部 `SSL_read: unexpected eof`（`other side closed`）；同一 host 的 `ulist.np/get`（涨跌家数）与 `push2ex`/`datacenter-web` 正常（`push2his` 的 kline 接口后来也被切断，见「K 线 / 近7日A股成交量」）。实测 2026-09-29 是当日唯一持续报错的调用（26/26）。**行业板块因此长期走 akshare 同花顺降级**（`source: 'akshare_ths'`），代价是 `code` 为空串（→ `/market/sectors/:code/constituents` 对该批数据不可用），**不打算再绕网络**。
-- **概念板块只有 AI 工具，没有页面**：`GET /api/market/concept-sectors`（`getMarketConceptSectorsFromAkshare`）→ `data_complete.py --type concept_spot` = 同花顺 `stock_fund_flow_concept('即时')` 行情主表（387 个概念，按涨跌幅降序，每次现取 ~2s）+ `stock_board_concept_summary_ths()` 驱动事件（约 10s，单独 `file_cache` 24h，失败即忽略）。**不走 EastMoney**。
+- **概念板块只有 API/pi 工具，没有页面**：`GET /api/market/concept-sectors`（`getMarketConceptSectorsFromAkshare`）→ `data_complete.py --type concept_spot` = 同花顺 `stock_fund_flow_concept('即时')` 行情主表（387 个概念，按涨跌幅降序，每次现取 ~2s）+ `stock_board_concept_summary_ths()` 驱动事件（约 10s，单独 `file_cache` 24h，失败即忽略）。**不走 EastMoney**。
 - **踩过的坑（2026-09-29 修复）**：`toolHandlers.get_concept_sectors` 曾误按 `unpack(res)?.data?.items` 解析，而该路由的 `data` 是**扁平数组**（和 `/market/sectors` 同款信封），所以恒返回空 `items`；并且它早期直接复用了**行业**板块端点（`m:90+t:2`），契约里写的「驱动事件/成分股数量」从未接通。
-- **AI 工具状态条**：请求成功但结果无可用数据时显示黄色感叹号 + 「暂无数据」（`frontend/src/services/chatEngine/toolResultStatus.ts` → `ToolCallStatus.status = 'empty'` → `ChatPanel.vue`）。判定按**数据内容**而非 `data_status`——北向资金恒为 `unavailable` 但成交总额有效，不会误报黄色。新增数据工具请复用它，别再在组件里写状态判断。
 
 ### K 线 / 近7日A股成交量 (market kline & volume)
 
