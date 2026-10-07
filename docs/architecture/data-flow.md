@@ -6,7 +6,7 @@
 用户操作 → Vue Component
   → Composable / API Client
     → axios (GET/POST /api/xxx)
-      → Vite Proxy (开发) / Express static (生产)
+      → Vite Proxy
         → Route Handler (asyncHandler)
           → service Function
             → cacheThrough(cacheKey, TTL, loader)

@@ -1,5 +1,3 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
@@ -51,13 +49,6 @@ export function createApp() {
   app.use('/api/settings', settingsRouter);
   app.use('/api', systemRouter);
   app.use('/api/logs', logsRouter);
-
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const docsDist = path.resolve(__dirname, '../../docs/.vitepress/dist');
-  if (process.env.NODE_ENV === 'production' || process.env.SERVE_DOCS === 'true') {
-    app.use('/docs', express.static(docsDist));
-  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);

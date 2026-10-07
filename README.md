@@ -101,15 +101,15 @@ GoFundBot 是一个基于 Node.js (Express) 和 Vue 3 构建的智能基金分�
 
 #### （7）桌面端使用（Electron 浏览器壳）
 
-桌面端由外部 Electron 浏览器壳提供（壳侧禁用 Web Security / 解禁 CORS）。前端无需任何适配——按 Web 方式部署即可：Electron 壳加载运行中的前端服务，LLM / 搜索 / Node API 均以普通 `fetch` 直连。
+桌面端由外部 Electron 浏览器壳提供（壳侧禁用 Web Security / 解禁 CORS）。前端无需任何适配——按 Web 方式部署即可：Electron 壳加载运行中的前端 dev 服务，LLM / 搜索 / Node API 均以普通 `fetch` 直连。
 
 ```bash
-# 1. 启动后端 + 前端（生产静态托管）+ 文档站
-cd service && bun install && bun run build && bun run start   # service :8310
-cd frontend && bun run build && bun run preview                # 静态托管 :8417（/docs 代理 → 8574）
-cd docs && bun install && bunx vitepress dev --port 8574       # 文档站 :8574
+# 1. 启动后端 + 前端 dev + 文档站
+cd service && bun install && bun run dev    # service :8310
+cd frontend && bun install && bun run dev   # 前端 :8517（/api 代理 → 8310，/docs 代理 → 8574）
+cd docs && bun install && bunx vitepress dev --port 8574   # 文档站 :8574
 
-# 2. 用 Electron 浏览器壳打开 http://localhost:8417
+# 2. 用 Electron 浏览器壳打开 http://localhost:8517
 ```
 
 ## 🛠 技术栈
@@ -221,25 +221,9 @@ bun dev        # 等价于 bun run dev
 ### 5. 桌面启动
 
 ```bash
-# 用 Electron 浏览器壳（外部项目）打开已启动的前端服务即可：
-# 开发 http://localhost:8517 ｜ 生产静态托管 http://localhost:8417
+# 用 Electron 浏览器壳（外部项目）打开已启动的前端 dev 服务即可：
+# http://localhost:8517
 ```
-
-### 6. 生产部署
-
-**构建前端**
-
-```bash
-cd frontend && bun run build
-```
-
-**启动 service**
-
-```bash
-cd service && bun run build && bun run start
-```
-
-前端构建产物在 `frontend/dist/`，可直接用 Nginx 托管，API 代理到 `http://localhost:8310`。
 
 ### 调用 Python 脚本
 

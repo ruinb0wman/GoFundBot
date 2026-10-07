@@ -15,7 +15,7 @@
    - AI：`llm.ts`（OpenAI 兼容客户端直调）+ `fundAnalyst` / `portfolioAnalyst` / `strategyDraft` / `reflection` / `chatEngine`（对话+工具调用）；分析场景统一走 `analysis/`（场景 Skill 注册表 + 共享引擎，复用 chat 工具契约）
    - 联网搜索：`searchService.ts`（Exa→Bocha→Tavily→DuckDuckGo，key 存前端 localStorage）
    - 设置：LLM/Search key 存前端；仅 Proxy URL 下发 Node
-3. **Electron 桌面壳**（外部项目，可选）— 仅解禁 CORS（壳侧禁用 Web Security）：浏览器窗口加载**运行中的前端服务** origin（dev `http://localhost:8517`，prod `http://localhost:8417` 静态托管）。前端代码与 Web 完全一致——无运行时分支，`httpClient.ts` 统一走浏览器 fetch（`/api` Vite 代理 + localhost:8310 回退）。
+3. **Electron 桌面壳**（外部项目，可选）— 仅解禁 CORS（壳侧禁用 Web Security）：浏览器窗口加载**运行中的前端 dev 服务** origin（`http://localhost:8517`）。前端代码与 Web 完全一致——无运行时分支，`httpClient.ts` 统一走浏览器 fetch（`/api` 走 Vite 代理）。
 
 **Python** is tool-only (no HTTP server). Called via `child_process.spawn()` from Express:
 ```
@@ -40,7 +40,7 @@ Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → st
 Screening enrichment: frontend sync raw /api/screening → 本地 computeRiskMetrics + classifyFundIndustry → Dexie
 Web search:       frontend chatEngine/searchService → Exa/Bocha/Tavily/DDG（key 前端本地）
 Settings:         LLM/Search key 前端 localStorage；Proxy URL → PUT /api/settings（仅 proxy 子域）
-Desktop HTTP:     浏览器 fetch（Electron 壳侧解禁 CORS），与 Web 行为一致（/api 代理 + localhost:8310 回退）
+Desktop HTTP:     浏览器 fetch（Electron 壳侧解禁 CORS），与 Web 行为一致（/api 走 Vite 代理）
 ```
 
 ## Commands
@@ -56,7 +56,6 @@ bun run dev              # tsx watch src/index.ts (port 8310)
 bun run typecheck        # tsc --noEmit
 bun run lint             # ESLint (max-lines 500)
 bun run test             # vitest run (96 tests)
-bun run build && bun run start
 
 # frontend
 cd frontend && bun install
@@ -66,9 +65,9 @@ bunx vue-tsc --noEmit    # TypeScript typecheck
 bun run test             # vitest run
 bun run build            # output in frontend/dist/
 
-# Desktop (Electron shell — external project, CORS-free). 需先启动 Node + 前端服务：
-cd frontend && bun run build && bun run preview   # prod 静态托管 localhost:8417
-# 用 Electron 浏览器壳打开 http://localhost:8417
+# Desktop (Electron shell — external project, CORS-free). 需先启动 Node + 前端 dev 服务：
+cd frontend && bun run dev    # 前端 dev 服务 :8517
+# 用 Electron 浏览器壳打开 http://localhost:8517
 
 # Python scripts (standalone, no HTTP server)
 cd python

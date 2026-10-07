@@ -1,17 +1,13 @@
 import { httpRequest, type HttpResponse } from './httpClient'
 
-const FALLBACK_API_BASE: string =
-  import.meta.env.VITE_FALLBACK_API_BASE || 'http://localhost:8310/api'
-
 interface QueryArgs {
   params?: Record<string, unknown>
   timeoutMs?: number
 }
 
 /**
- * Axios-like request helper. Resolves path via httpClient (`/api` Vite proxy),
- * and retries once against `localhost:8310/api` on network errors
- * (backend/dev-server fallback).
+ * Axios-like request helper. Paths resolve through httpClient (`/api` Vite proxy
+ * → `localhost:8310`).
  */
 async function request<T = any>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -19,28 +15,12 @@ async function request<T = any>(
   body?: unknown,
   options: QueryArgs = {},
 ): Promise<HttpResponse<T>> {
-  try {
-    return await httpRequest<T>(path, {
-      method,
-      body,
-      params: options.params,
-      timeoutMs: options.timeoutMs,
-    })
-  } catch (error) {
-    const axiosError = error as { response?: unknown; message?: string }
-    // Re-throw HTTP errors; only fall back on genuine network errors.
-    if (axiosError?.response) throw error
-    if (axiosError?.message === 'Request failed' || axiosError instanceof Error) {
-      const abs = `${FALLBACK_API_BASE}${path.startsWith('/') ? path : `/${path}`}`
-      return httpRequest<T>(abs, {
-        method,
-        body,
-        params: options.params,
-        timeoutMs: options.timeoutMs,
-      })
-    }
-    throw error
-  }
+  return httpRequest<T>(path, {
+    method,
+    body,
+    params: options.params,
+    timeoutMs: options.timeoutMs,
+  })
 }
 
 export const api = {

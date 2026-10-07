@@ -14,9 +14,9 @@ describe('docUrl', () => {
     )
   })
 
-  it('builds a canonical prod-origin docs url for directory routes', () => {
-    expect(docUrl('/docs/fund-screening/', 'http://localhost:8417')).toBe(
-      'http://localhost:8417/docs/fund-screening/',
+  it('joins an arbitrary origin', () => {
+    expect(docUrl('/docs/fund-screening/', 'http://localhost:8517')).toBe(
+      'http://localhost:8517/docs/fund-screening/',
     )
   })
 

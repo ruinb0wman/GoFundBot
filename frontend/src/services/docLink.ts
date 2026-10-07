@@ -14,7 +14,7 @@
  */
 
 /**
- * Absolute docs URL for the current deployment origin (dev 8517 / prod 8417).
+ * Absolute docs URL for the current origin (dev 8517).
  * `path` must be the canonical '/docs/...' route (caller decides trailing
  * slash per the convention above); `origin` is injectable for testability and
  * defaults to the live location origin.

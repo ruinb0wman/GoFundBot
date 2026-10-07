@@ -99,5 +99,5 @@ OpenCode Go/Zen（`https://opencode.ai/zen|/go`）要求每个请求携带**同�
 - 仅对主机 `opencode.ai` 或 `*.opencode.ai`（仅 http/https）注入；其他 LLM / 搜索 / `/api/*` 请求原样发送，不新增预检。
 - 会话上下文由 `chatStore → chatApi → chatEngine(config.conversationId) / SkillRouter → llm.ts` 显式透传。
 - **不设置也不应设置 `User-Agent`**：浏览器禁止 JS 修改该头，运行环境已全局使用自有签名标识。
-- 自定义请求头会触发 CORS 预检（OPTIONS），依赖运行环境的 origin 放行白名单（默认含 `localhost` / `127.0.0.1`；dev `http://localhost:8517`、Electron 静态托管 `http://localhost:8417`）。
+- 自定义请求头会触发 CORS 预检（OPTIONS），依赖运行环境的 origin 放行白名单（默认含 `localhost` / `127.0.0.1`；前端 dev `http://localhost:8517`）。
 - Web Storage 被禁用或 `crypto.randomUUID` 缺失时降级为内存缓存 / RFC4122 v4 兜底，同页面内 ID 仍稳定。
