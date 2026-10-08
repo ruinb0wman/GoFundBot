@@ -14,6 +14,9 @@ export function useFundWatchlist(
   const selectedFunds = ref([])
   const draggingIndex = ref(null)
   const dragOverIndex = ref(null)
+  // 拖动过程中鼠标停留过的分组（null = 未分组）；dragstart 时先置为来源分组，
+  // 这样「拖到分组外/分组之间的空白处松手」也能落到最后经过的分组，而不是被当成组内排序。
+  const dragOverGroupId = ref(null)
   const expandedGroups = ref([null])
   const isInitialLoad = ref(true)
 
@@ -177,85 +180,72 @@ export function useFundWatchlist(
     emit('add-to-compare', fund)
   }
 
+  const fundsOfGroup = (groupId) =>
+    groupId === null ? ungroupedFunds.value : getGroupFunds(groupId)
+
   const onDragStart = (event, index, groupId) => {
     draggingIndex.value = { index, groupId }
+    dragOverGroupId.value = groupId
+    dragOverIndex.value = null
     event.dataTransfer.effectAllowed = 'move'
   }
 
+  // 唯一的落点处理：drop 只负责 preventDefault，真正的移动/排序都在 dragend 里做。
+  // 这样「落在分组上」「落在分组之间的空白处」走同一条路径，不会出现两套互相打架的逻辑。
   const onDragEnd = async () => {
-    if (draggingIndex.value !== null && dragOverIndex.value !== null) {
-      const fromGroupId = draggingIndex.value.groupId
-      const toGroupId = dragOverIndex.value.groupId
-      const fromFunds = fromGroupId === null ? ungroupedFunds.value : getGroupFunds(fromGroupId)
-      if (!fromFunds) {
-        draggingIndex.value = null
-        dragOverIndex.value = null
-        return
-      }
-      if (fromGroupId === toGroupId) {
-        if (draggingIndex.value.index === dragOverIndex.value.index) {
-          draggingIndex.value = null
-          dragOverIndex.value = null
-          return
-        }
-        const funds = [...fromFunds]
-        if (draggingIndex.value.index >= 0 && draggingIndex.value.index < funds.length) {
-          const [moved] = funds.splice(draggingIndex.value.index, 1)
-          if (moved) {
-            funds.splice(dragOverIndex.value.index, 0, moved)
-            try {
-              await watchlistStore.reorder(funds.map(f => f.fund_code), fromGroupId)
-              loadWatchlist()
-            } catch (error) {
-              console.error('排序失败:', error)
-            }
-          }
-        }
-      } else {
-        const fund = fromFunds[draggingIndex.value.index]
-        if (fund) {
-          try {
-            await watchlistStore.moveFundToGroup(fund.fund_code, toGroupId)
-            loadWatchlist()
-          } catch (error) {
-            console.error('移动失败:', error)
-          }
-        }
-      }
-    }
+    const drag = draggingIndex.value
+    const over = dragOverIndex.value
+    const targetGroupId = dragOverGroupId.value
     draggingIndex.value = null
     dragOverIndex.value = null
+    dragOverGroupId.value = null
+
+    if (!drag) return
+
+    if (targetGroupId !== drag.groupId) {
+      const fund = fundsOfGroup(drag.groupId)[drag.index]
+      if (!fund) return
+      try {
+        await watchlistStore.moveFundToGroup(fund.fund_code, targetGroupId)
+        await loadWatchlist()
+      } catch (error) {
+        console.error('移动分组失败:', error)
+      }
+      return
+    }
+
+    // 同组内排序：只有真的停在同组某个条目上、且位置变了才动
+    if (!over || over.groupId !== drag.groupId || over.index === drag.index) return
+    const funds = [...fundsOfGroup(drag.groupId)]
+    if (drag.index < 0 || drag.index >= funds.length) return
+    const [moved] = funds.splice(drag.index, 1)
+    if (!moved) return
+    funds.splice(over.index, 0, moved)
+    try {
+      await watchlistStore.reorder(funds.map(f => f.fund_code), drag.groupId)
+      await loadWatchlist()
+    } catch (error) {
+      console.error('排序失败:', error)
+    }
   }
 
   const onDragOver = (event, index, groupId) => {
     event.preventDefault()
     dragOverIndex.value = { index, groupId }
+    dragOverGroupId.value = groupId
   }
 
-  const onDrop = (event, groupId) => {
+  const onDrop = (event) => {
     event.preventDefault()
   }
 
   const onGroupDragOver = (event, groupId) => {
     event.preventDefault()
+    dragOverGroupId.value = groupId
   }
 
-  const onGroupDrop = async (event, groupId) => {
+  const onGroupDrop = (event) => {
     event.preventDefault()
-    if (draggingIndex.value && draggingIndex.value.groupId !== groupId) {
-      const fromFunds = draggingIndex.value.groupId === null
-        ? ungroupedFunds.value
-        : getGroupFunds(draggingIndex.value.groupId)
-      const fund = fromFunds[draggingIndex.value.index]
-      try {
-        await watchlistStore.moveFundToGroup(fund.fund_code, groupId)
-        loadWatchlist()
-      } catch (error) {
-        console.error('移动失败:', error)
-      }
-    }
-    draggingIndex.value = null
-    dragOverIndex.value = null
   }
 
   const openAddGroupModal = () => {

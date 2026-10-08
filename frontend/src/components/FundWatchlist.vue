@@ -77,8 +77,12 @@
       <p class="empty-hint">{{ `在基金详情页点击 ${''} 添加自选` }} <LucideIcon name="Star" :size="12" /></p>
     </div>
 
-    <div v-else class="watchlist-content">
-      <div class="fund-group" v-if="ungroupedFunds.length > 0 || groups.length === 0">
+    <div v-else class="watchlist-content" @dragover.prevent @drop="onDrop">
+      <div
+        class="fund-group"
+        @dragover.prevent="onGroupDragOver($event, null)"
+        @drop="onGroupDrop($event, null)"
+      >
         <div class="group-header" @click="toggleGroup(null)">
           <span class="group-toggle"><LucideIcon :name="isGroupExpanded(null) ? 'ChevronDown' : 'ChevronRight'" :size="14" /></span>
           <span class="group-name">{{ groups.length > 0 ? '未分组' : '全部基金' }}</span>
