@@ -41,8 +41,17 @@ export function createApp() {
     max: 300,
     standardHeaders: true,
     legacyHeaders: false,
+    // pi 的一次分析可能连着调十几个工具（筛选 + 回测 + 快讯…），不吃这条 300/15min 的额度。
+    skip: (req) => req.path.startsWith('/api/agent'),
     message: { success: false, code: 'RATE_LIMITED', message: '请求过于频繁，请稍后重试' },
   }));
+  const agentRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 3000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, code: 'RATE_LIMITED', message: '工具调用过于频繁，请稍后重试' },
+  });
   app.use(requestLogger);
 
   app.use('/api/health', healthRouter);
@@ -56,7 +65,7 @@ export function createApp() {
   app.use('/api/strategies', strategiesRouter);
   app.use('/api/backtest-scripts', backtestScriptsRouter);
   app.use('/api/backtest', backtestRouter);
-  app.use('/api/agent', agentRouter);
+  app.use('/api/agent', agentRateLimit, agentRouter);
   app.use('/api/research', researchRouter);
   app.use('/api/user', userImportRouter);
   app.use('/api/user/portfolio', portfolioRouter);

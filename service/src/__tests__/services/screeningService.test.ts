@@ -73,6 +73,9 @@ async function freshDb() {
   resetDbForTests();
   const db = getDb();
   db.exec('DELETE FROM screening_funds; DELETE FROM screening_meta');
+  // 整表进程内缓存也要清（否则下一个用例读到上一个用例的数据）
+  const { resetScreeningCacheForTests } = await import('../../services/screeningService.js');
+  resetScreeningCacheForTests();
   return db;
 }
 
@@ -246,5 +249,34 @@ describe('screeningService', () => {
     expect(Object.keys(rows[0]).sort()).toEqual(
       ['code', 'max_drawdown_1y', 'name', 'nav_date', 'return_1y', 'sharpe_ratio_1y', 'type'].sort()
     );
+  });
+
+  it('caches the whole-table read and invalidates it on writes', async () => {
+    fundMocks.getFundScreeningSnapshot.mockResolvedValue(snapshot(uniformGroup('C')));
+    const svc = await import('../../services/screeningService.js');
+    await svc.syncScreening({ force: true, enrichLimit: 0 });
+
+    const first = svc.getAllScreeningFunds();
+    expect(svc.getAllScreeningFunds()).toBe(first); // 命中进程内缓存
+
+    // 直接改库不会穿过缓存（缓存只在写入口失效）
+    const { getDb } = await import('../../db/index.js');
+    getDb().prepare('UPDATE screening_funds SET fund_name = ? WHERE fund_code = ?').run('改过', 'C000');
+    expect(svc.getAllScreeningFunds().find((row) => row.fund_code === 'C000')?.fund_name).not.toBe('改过');
+
+    svc.recomputeRanks(); // 写入口 → 版本 +1、缓存失效
+    expect(svc.getAllScreeningFunds().find((row) => row.fund_code === 'C000')?.fund_name).toBe('改过');
+  });
+
+  it('caches the research dashboard until the screening data version changes', async () => {
+    fundMocks.getFundScreeningSnapshot.mockResolvedValue(snapshot(uniformGroup('D')));
+    const svc = await import('../../services/screeningService.js');
+    await svc.syncScreening({ force: true, enrichLimit: 0 });
+    const research = await import('../../services/researchService.js');
+
+    const first = await research.getResearchDashboard();
+    expect(await research.getResearchDashboard()).toBe(first); // 60s 内同一实例
+    svc.recomputeRanks();
+    expect(await research.getResearchDashboard()).not.toBe(first); // 数据版本变了就重建
   });
 });

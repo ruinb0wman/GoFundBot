@@ -12,6 +12,7 @@
 - 工具定义都在 `service/src/agent/tools{Market,Fund,Watchlist,Compute}.ts`，参数用 **Zod** 写，清单由 `z.toJSONSchema()` 派生。
 - 处理器**直接调 service 内部函数**（不走 HTTP 自调用），所以口径与页面完全一致（同一份 core 引擎、同一份 SQLite 缓存）。
 - 语义：结构错误（未知工具 / 参数不合 Schema）→ `400`；取数失败 → `200` + `{ error }`；写/执行类 → 见下节的确认流程。
+- `/api/agent/*` 有自己的限流额度（**3000/15min**），不吃全局的 300/15min —— pi 一次分析会连着调十几个工具。
 
 当前 **33 个工具**（分组）：
 

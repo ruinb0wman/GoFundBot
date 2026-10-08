@@ -66,7 +66,8 @@ export async function loadNav(codes: string[], range: { start: string; end: stri
       }
       fetched += 1
       try {
-        const points = await fetchNavHistory(code)
+        // 带上窗口：service 从 SQLite 按区间切片，不再白传整条序列（110022 全量 ≈ 300KB）。
+        const points = await fetchNavHistory(code, range.start, range.end)
         if (points.length === 0) errors[code] = '净值序列为空'
         navByCode[code] = clip(points)
       } catch (error) {

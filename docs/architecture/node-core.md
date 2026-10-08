@@ -93,7 +93,7 @@
 | 场景 | 链路 |
 |---|---|
 | 实时行情/板块/资金流 | ProviderChain → service → 前端（内存缓存，TTL 见 `/api/health`） |
-| 筛选刷新 | 前端 `/api/screening/sync` → service 拉快照写 `screening_funds` + 算行业标签 + 算 4433 排名 + 富化首批 → 前端循环 `/compute` 到 `remaining = 0` |
+| 筛选刷新 | 前端 `/api/screening/sync` → service 拉快照写 `screening_funds` + 算行业标签 + 算 4433 排名（**默认不富化，立即返回**）→ 前端/pi 循环 `/compute` 分批补指标 |
 | 筛选查询 | 前端/pi → `POST /api/screening/query`（过滤/排序/分页都在 service，语义见 [筛选](/fund-screening/)) |
 | 投研看板 | `/api/research/dashboard`（core `buildDashboard` 读 SQLite 筛选行） |
 | 用户数据 | 前端/pi → `/api/{watchlist,positions,strategies,backtest-scripts}` → SQLite |

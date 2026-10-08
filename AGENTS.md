@@ -104,7 +104,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 
 ## Key details
 
-- **Rate limiting**: `express-rate-limit` (300/15min).
+- **Rate limiting**: `express-rate-limit` (300/15min)；**`/api/agent/*` 例外**（3000/15min）—— pi 一次分析会连着调十几个工具。
 - **监听地址**: 默认 `127.0.0.1`（`HOST` 覆盖）。service 承载用户数据后不再默认暴露局域网。
 - **策略代码沙箱（3.4③，2026-10-07）**: `node:worker_threads`，与浏览器 Worker 同款全局遮蔽 + 5s 超时 `terminate()`。**不是硬沙箱**（动态 `import()` 关不掉，见 `sandbox/strategyWorker.ts` 说明），所以 `run_strategy_code` 属**执行类**工具，需确认令牌。
 - **pi 工具面（P4，2026-10-07；2026-10-08 扩到 33 个）**: service 是工具契约唯一真源 —— `GET /api/agent/tools`（**33 个工具**：市场/基金/快讯 15 + 自选 3 + 回测 3 + 筛选 3 + 投研 1 + 用户数据 8（含代码回测 3、删除 2））、`POST /api/agent/call`（Zod 校验 → 执行 → 截断 30k 字符）。写/执行类（`add_to_watchlist`/`remove_from_watchlist`/`save_strategy`/`delete_strategy`/`save_strategy_script`/`delete_strategy_script`/`run_strategy_code`）第一次只回 `CONFIRM_REQUIRED` + 令牌，参数一致才能落库（`agent/confirm.ts`）。扩展端不再抄任何映射。静态清单用 `bun run gen:tools` 重新生成。
@@ -117,7 +117,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **Security headers**: service uses `helmet` (CSP/COEP disabled).
 - **Structured logging**: JSON via `core/logger.ts` (service) with `requestId` per request. Daily files `dataservice-YYYY-MM-DD.jsonl` under `python/Data/logs`.
 - **Health check**: `GET /api/health` — includes cache stats.
-- **Cache TTLs**: fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
+- **Cache TTLs**: fund estimates 30s, market quotes 15s, history 24h, dividends 7d；**筛选整表**（进程内，写库即失效）与**投研看板**（60s + 数据版本）另算。
 - **启动自检（2026-10-08）**: `service/src/index.ts` 启动时探测 `node:sqlite`（`new DatabaseSync(':memory:')`），不可用就打印人话并 `exit(1)`。
   运行时下限 `engines: >=22.19.0`（由 `undici@8` 决定）；`node:sqlite` 自 22.13 起免 flag。
 - **净值缓存容量（2026-10-08）**: `navCacheService` 写入时裁掉 10 年以前（`NAV_RETENTION_DAYS`），全库 >300 万行按 `fetched_at` LRU 整只淘汰（`NAV_MAX_POINTS`）；
@@ -132,8 +132,8 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **搜索网关**: `POST /api/search`（Exa 免费 → DuckDuckGo 降级；`service/src/ai/search.ts`）——无 key，留给需要 HTTP 搜索的服务端调用方。
 - **AI 定位（2026-10-07）**: 前端 AI 层（chatEngine / analysis / 两位分析师 / ChatPanel / 设置里的密钥页）**已全部删除**；AI 由**终端 pi** 承担（`.pi/extensions/` + `.pi/skills/`）。service 不做任何 LLM 调用。
 - **Search chain（service）**: Bocha → Tavily → Exa（免费无 Key）→ DuckDuckGo（自动降级）；`service/src/ai/search.ts`。
-- **投研看板（P3.4）**: `GET /api/research/dashboard`（core `buildDashboard`，读 SQLite 筛选行）。payload 里**不再带全量基金行**（曾经 1.6MB），汇总口径（`pass_4433` / `risk_ready`）由 core 算好，前端与 pi 工具共用紧凑版（`compactDashboard`）。
-- **Screening（P3.3 起在 service）**: `/api/screening/sync`（快照 + 行业标签 + 4433 排名 + 首批富化）、`/compute`（分批富化风险指标，默认 300/批）、`/ranks`、`/query`（筛选/排序/分页）、`/status`、`/industry-tags`、`/screen-rows`（沙箱 `sdk.screen()` 的 7 列）。数据落 SQLite `screening_funds`；前端 `useScreeningDb` 只是薄客户端（本地 `screeningFunds` 表已删）。`/query` 的过滤语义与迁移前逐条对齐（含 `max_drawdown_*_max` 都读 `max_drawdown_1y` 这类历史口径）。
+- **投研看板（P3.4）**: `GET /api/research/dashboard`（core `buildDashboard`，读 SQLite 筛选行）。payload 里**不再带全量基金行**（曾经 1.6MB），汇总口径（`pass_4433` / `risk_ready`）由 core 算好，前端与 pi 工具共用紧凑版（`compactDashboard`）。进程内缓存 60s，key 含 `screeningDataVersion()`（同步/富化/排名后自动失效）。
+- **Screening（P3.3 起在 service）**: `/api/screening/sync`（快照 + 行业标签 + 4433 排名；**默认 `enrich_limit=0`，不再阻塞首屏**）、`/compute`（分批富化风险指标，默认 300/批）、`/ranks`、`/query`（筛选/排序/分页，读进程内整表缓存）、`/status`、`/industry-tags`、`/screen-rows`（沙箱 `sdk.screen()` 的 7 列）。数据落 SQLite `screening_funds`；前端 `useScreeningDb` 只是薄客户端（本地 `screeningFunds` 表已删），同步后**后台**分批富化并把 `syncing` 保持到追平。`/query` 的过滤语义与迁移前逐条对齐（含 `max_drawdown_*_max` 都读 `max_drawdown_1y` 这类历史口径）。
 - **Proxy**: 国内 API（东方财富）用 `proxy: 'never'` 直连；Yahoo Finance（被封）走 `proxy: 'auto'` 随代理配置。`eastmoneyRequest.ts` 统一添加 `Referer` 头防止反爬。
 - **Docs**: VitePress 构建的文档站，配置在 `docs/.vitepress/config.ts`（nav + sidebar）。模块级详细文档按功能目录组织（如 `docs/fund-screening/`），在侧边栏对应分组。文档通过 frontend `/docs/*` 代理访问。
 

@@ -44,7 +44,9 @@ screeningRouter.get(
       await syncScreening({
         since,
         force,
-        ...(Number.isFinite(enrichLimit) ? { enrichLimit } : {}),
+        // 首批富化已从 /sync 里挪出（冷启动不再阻塞首屏）：只同步快照 + 排名，
+        // 指标由前端/pi 循环 /compute 补（默认每批 300）。显式传 enrich_limit 时按传入值。
+        enrichLimit: Number.isFinite(enrichLimit) ? enrichLimit : 0,
       }),
     );
   }),

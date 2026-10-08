@@ -100,7 +100,8 @@ function setMeta(database: DatabaseSync, key: string, value: string | null): voi
 }
 
 export function getAllScreeningFunds(): ScreeningFundRow[] {
-  return getDb()
+  if (allFundsCache) return allFundsCache;
+  allFundsCache = getDb()
     .prepare(
       `SELECT fund_code, fund_name, fund_type, return_1m, return_3m, return_6m, return_1y, return_2y, return_3y,
               ytd, since_inception, fee, nav, nav_date, source, updated_time,
@@ -110,6 +111,29 @@ export function getAllScreeningFunds(): ScreeningFundRow[] {
          FROM screening_funds`
     )
     .all() as unknown as ScreeningFundRow[];
+  return allFundsCache;
+}
+
+/**
+ * 进程内整表缓存：`/api/screening/query` 原来每次读全表 + 建 3300 个对象（~79ms），
+ * 表只在同步/富化/排名时才变，所以缓存到下一次写库即可。
+ * `screeningDataVersion()` 供上层（如投研看板）做缓存失效判断。
+ */
+let allFundsCache: ScreeningFundRow[] | null = null;
+let dataVersion = 0;
+
+export function screeningDataVersion(): number {
+  return dataVersion;
+}
+
+function invalidateScreeningCache(): void {
+  allFundsCache = null;
+  dataVersion += 1;
+}
+
+/** 测试用（`:memory:` 库被重建时清掉进程内缓存）。 */
+export function resetScreeningCacheForTests(): void {
+  allFundsCache = null;
 }
 
 function count(database: DatabaseSync, where = ''): number {
@@ -202,10 +226,16 @@ export async function syncScreening(
       setMeta(db, META_RANKS_AT, null);
     });
 
+    invalidateScreeningCache();
     const ranked = recomputeRanks();
+    // enrichLimit === 0 时不要谎报 remaining=0：真实待算数从库里数（`/sync` 不再阻塞首屏）。
     const enriched =
       options.enrichLimit === 0
-        ? { enriched: 0, remaining: 0, risk_metrics_count: 0 }
+        ? {
+            enriched: 0,
+            remaining: count(database, 'WHERE sharpe_ratio_1y IS NULL AND risk_attempted = 0'),
+            risk_metrics_count: count(database, 'WHERE sharpe_ratio_1y IS NOT NULL'),
+          }
         : await enrichScreening({ limit: options.enrichLimit });
 
     return {
@@ -246,6 +276,7 @@ export function recomputeRanks(): number {
     }
     setMeta(db, META_RANKS_AT, new Date().toISOString());
   });
+  invalidateScreeningCache();
 
   return rows.length;
 }
@@ -299,6 +330,7 @@ export async function enrichScreening(
       if (metrics?.sharpe_ratio_1y != null) enriched++;
     }
   });
+  invalidateScreeningCache();
 
   return {
     enriched,

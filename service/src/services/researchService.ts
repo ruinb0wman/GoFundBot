@@ -6,7 +6,7 @@
  * （`buildResearchSectorSummary` 零调用），所以这里既不取板块、也没了那次多余的行情请求。
  */
 import { logger } from '../core/logger.js';
-import { getAllScreeningFunds } from './screeningService.js';
+import { getAllScreeningFunds, screeningDataVersion } from './screeningService.js';
 import { buildDashboard } from '../../../packages/core/src/researchComputation.js';
 
 /**
@@ -50,8 +50,20 @@ export async function getResearchDashboard(options: DashboardOptions = {}): Prom
   const limit = Math.min(Math.max(options.limit ?? 5, 1), 50);
   const etfLimit = Math.min(Math.max(options.etfLimit ?? 80, 1), 500);
 
+  // 进程内 60s 缓存：key 含筛选库的数据版本（同步/富化/排名后自动失效），
+  // 所以「同步完再请求」拿到的一定是新数据。
+  const key = `${limit}:${etfLimit}:${screeningDataVersion()}`;
+  if (dashboardCache && dashboardCache.key === key && Date.now() - dashboardCache.at < DASHBOARD_TTL_MS) {
+    return dashboardCache.value;
+  }
+
   const funds = getAllScreeningFunds();
+  const value = buildDashboard(funds, limit, etfLimit);
+  dashboardCache = { key, at: Date.now(), value };
   logger.info('research dashboard built', { funds: funds.length, limit, etfLimit });
 
-  return buildDashboard(funds, limit, etfLimit);
+  return value;
 }
+
+const DASHBOARD_TTL_MS = 60_000;
+let dashboardCache: { key: string; at: number; value: Record<string, unknown> } | null = null;

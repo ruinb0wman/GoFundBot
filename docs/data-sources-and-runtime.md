@@ -49,8 +49,9 @@ cd frontend && bun run dev   # 只起前端
 |---|---|---|
 | 内存缓存 | service（`core/cache.ts`） | 行情 15s / 基金估值 30s / 历史 24h / 分红 7d；`/api/health` 可见条数 |
 | SQLite 净值缓存 | `nav_history` + `nav_history_meta` | 覆盖度判断（窗口在过去 → 永久；窗口到今天 → 24h 内）；保留最近 10 年，全库 >300 万行按 `fetched_at` LRU 整只淘汰（`/api/health` 报 `trimmed`/`evicted`） |
-| SQLite 筛选库 | `screening_funds` | 富化结果长期保留；`risk_attempted` 防重复重试 |
-| 限流 | `express-rate-limit` | 300 请求 / 15 分钟（本地单用户足够；批量富化走单请求内的并发） |
+| SQLite 筛选库 | `screening_funds` | 富化结果长期保留；`risk_attempted` 防重复重试；整表读走**进程内缓存**（写库即失效） |
+| 投研看板 | 进程内 | 60s，key 含筛选库数据版本（同步/富化/排名后失效） |
+| 限流 | `express-rate-limit` | 300 请求 / 15 分钟（本地单用户足够；批量富化走单请求内的并发）；**`/api/agent/*` 单独 3000/15 分钟** |
 
 ## 5. 数据源与回退（要点）
 

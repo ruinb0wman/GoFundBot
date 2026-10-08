@@ -413,3 +413,41 @@ pi 一次分析可能连着调十几个工具（筛选 + 回测 + 快讯…）�
   重名仍然拒绝（`方案名「…」已存在`）；`save_strategy('__probe__')` 建 id 4 → `delete_strategy(4)` 删除；用户原有 2 条策略与 `screen-top5` 未被碰。
 - 证据（工具清单）：`bun run gen:tools` → **33 tools**，destructive = `add_to_watchlist,remove_from_watchlist,save_strategy,delete_strategy,run_strategy_code,save_strategy_script,delete_strategy_script`。
 - 文档：`docs/architecture/pi-tools.md`（工具表/确认清单）、`AGENTS.md`、`README.md`、`.pi/skills/gofund-data/SKILL.md` 同步到 33 个工具。
+
+### C1 筛选 query 不再每次读全表（2026-10-08 完成）
+- 做法：`screeningService` 给 `getAllScreeningFunds()` 加**进程内整表缓存**（3300 行），
+  只在写入口失效（`syncScreening` / `recomputeRanks` / `enrichScreening`），并导出 `screeningDataVersion()` 给上层缓存用。
+  过滤/排序/分页语义**一行未改**（比下推到 SQL 风险低）。
+- 证据（HTTP）：连打 40 次 `POST /api/screening/query`，后 20 次 `p50=9.0ms p95=10.1ms min=7.5 max=10.2`（验收要求 p95 < 20ms）。
+- 证据（对照）：同一台机子用**旧实现**（每次 SELECT 全表 + 过滤 + 排序）在独立进程里跑 25 次 → `p50=14.3ms p95=19.6ms`；
+  即现在整个 HTTP 端点比被删掉的那次 SELECT 还便宜。
+  （plan 里 P3.3 的 79ms 今日不可复现 —— 机器/数据不同，以本次实测为准。）
+- 证据（结果一致）：同参数下 total=3309、首行 `002910 / 142.68`，新旧实现逐字相同；
+  新增单测「caches the whole-table read and invalidates it on writes」。
+
+### C2 投研看板 60s 缓存（2026-10-08 完成）
+- 做法：`researchService.getResearchDashboard` 加进程内 60s 缓存，key = `limit:etfLimit:screeningDataVersion()`。
+- 证据（HTTP）：冷 `86ms` → 热 `7.6 / 7.0 / 7.6ms`（同一 payload 57456 字节）。
+- 证据（失效）：单测「caches the research dashboard until the screening data version changes」——`recomputeRanks()` 后重取到新实例。
+
+### C3 回测取净值带窗口（2026-10-08 完成）
+- 做法：`frontend/src/services/backtest/dataBroker.ts` 的 `loadNav` 把 `range` 传给 `fetchNavHistory(code, start, end)`。
+- 证据（体积）：`GET /api/funds/110022/nav-history` 全量 250444B / 2434 点 → 带窗口（2023-10-06~2026-10-06）**75070B / 728 点（30%）**；
+  且 `windowed == clip(full)` 逐条相等（客户端裁切与服务端切片同结果）。5 只组合约 1.25MB → 0.38MB。
+- 证据（数字不变）：真浏览器 `/backtest` 跑 `screen-top5` → 累计投入 **22500.00** / 最终市值 **23345.54** / 收益率 **+3.76%** /
+  TWR **+3.14%** / 最大回撤 **-0.97%** / 买入 15 次 —— 与 plan 里迁移前的基准值完全一致。
+
+### C4 冷启动 /screening 不再阻塞（2026-10-08 完成）
+- 做法：`/api/screening/sync` 默认 `enrich_limit=0`（只快照 + 行业标签 + 4433 排名，立即返回）；
+  前端 `useScreeningDb.syncFromServer` 拿到响应就返回，富化改成**后台** `enrichUntilDone()`（`syncing` 保持 true 到追平）；
+  `useFundScreening` 在 `syncing` 期间每 2s 刷一次状态条。
+  顺手修：`enrichLimit=0` 时不再谎报 `remaining: 0`，而是数出真实待算数。
+- 证据（独立空库实例，`PORT=8399 GOFUND_DB_PATH=/tmp/c4.db`）：
+  `GET /api/screening/sync?force=true` → **4.2s** 返回 `{total:3310, ranked:3310, enriched:0, remaining:3310, risk_metrics_pending:3310}`；
+  紧接着 `POST /api/screening/query` → **40ms** 返回 3310 条列表。即首屏只等一次快照（几秒），不再等 3 分钟富化。
+
+### C5 pi 工具不吃全局限流（2026-10-08 完成）
+- 做法：全局 `express-rate-limit` 加 `skip: (req) => req.path.startsWith('/api/agent')`，
+  `/api/agent` 单独挂 `3000/15min`。
+- 证据：脚本 20 并发连打 **400 次** `POST /api/agent/call`（`get_screening_status`）→ `ok=400 rate_limited=0`，用时 1.3s。
+- 文档：`docs/architecture/pi-tools.md` §1、`docs/data-sources-and-runtime.md` §4 限流行。

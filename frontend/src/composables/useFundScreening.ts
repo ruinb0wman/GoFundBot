@@ -585,6 +585,19 @@ export function useFundScreening(emit: (event: string, ...args: unknown[]) => vo
         }
     }
 
+    // 后台富化（`syncFromServer` 已不阻塞首屏）期间，让状态条上的「完整/待算」数字跟着走。
+    let enrichPollTimer: ReturnType<typeof setInterval> | null = null
+    watch(dbSyncing, (busy) => {
+        if (busy) {
+            if (enrichPollTimer) return
+            enrichPollTimer = setInterval(() => { void fetchDbStatus() }, 2000)
+        } else if (enrichPollTimer) {
+            clearInterval(enrichPollTimer)
+            enrichPollTimer = null
+            void fetchDbStatus()
+        }
+    })
+
     const openUpdateDialog = () => {
         showUpdateDialog.value = true
     }
@@ -1007,6 +1020,7 @@ export function useFundScreening(emit: (event: string, ...args: unknown[]) => vo
     })
 
     onUnmounted(() => {
+        if (enrichPollTimer) clearInterval(enrichPollTimer)
         stopStatusPoll()
         document.removeEventListener('click', closeQuickDropdown)
         document.removeEventListener('click', handleTypeDropdownClick)

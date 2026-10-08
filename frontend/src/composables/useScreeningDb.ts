@@ -38,6 +38,35 @@ const STORAGE_KEY = 'screening-last-sync'
 const syncing = ref(false)
 const lastSyncTime = ref<string | null>(localStorage.getItem(STORAGE_KEY) || null)
 const computed = ref(false)
+let enriching = false
+
+/**
+ * 后台分批富化到追平：不阻塞列表渲染，每批 300；没有进展（取不到净值）就停，避免空转。
+ * 结束后把 `syncing` 置回 false（进度条消失）。
+ */
+async function enrichUntilDone(initialPending: number): Promise<void> {
+  if (enriching) {
+    syncing.value = false
+    return
+  }
+  enriching = true
+  let pending = initialPending
+  try {
+    while (pending > 0) {
+      const batch = unwrap<{ risk_metrics_pending?: number }>(
+        await screeningAPI.compute({ limit: ENRICH_BATCH }),
+      )
+      const next = Number(batch.risk_metrics_pending ?? 0)
+      if (next >= pending) break
+      pending = next
+    }
+  } catch (error) {
+    console.error('后台富化失败:', error)
+  } finally {
+    enriching = false
+    syncing.value = false
+  }
+}
 
 function isBefore9am(time: string | null): boolean {
   if (!time) return true
@@ -78,20 +107,19 @@ export function useScreeningDb() {
       if (data.sync_time) persistSyncTime(data.sync_time)
       computed.value = Boolean(data.computed)
 
-      // 风险指标分批富化到追平；没有进展就停下，避免空转。
-      let pending = Number(data.risk_metrics_pending ?? 0)
-      while (pending > 0) {
-        const batch = unwrap<{ risk_metrics_pending?: number }>(
-          await screeningAPI.compute({ limit: ENRICH_BATCH }),
-        )
-        const next = Number(batch.risk_metrics_pending ?? 0)
-        if (next >= pending) break
-        pending = next
+      // 首批富化已从服务端 /sync 里挪出（冷启动不再阻塞首屏）：
+      // 列表拿到就渲染，风险指标在后台分批补到追平（`syncing` 保持 true，进度条继续转）。
+      const pending = Number(data.risk_metrics_pending ?? 0)
+      if (pending > 0) {
+        void enrichUntilDone(pending)
+      } else {
+        syncing.value = false
       }
 
       return Number(data.total ?? 0)
-    } finally {
+    } catch (error) {
       syncing.value = false
+      throw error
     }
   }
 

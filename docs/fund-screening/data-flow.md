@@ -10,11 +10,14 @@
         ├─ 事务写 screening_funds（保留已有富化列；删掉快照里消失的基金）
         ├─ 算行业标签（classifyFundIndustry）
         ├─ recomputeRanks()：按 fund_type 分组算百分位 → rank_pct_* + pass_4433
-        └─ 富化首批风险指标（默认 300 只）→ 返回 risk_metrics_pending
-     └─ while (pending > 0) POST /api/screening/compute { limit: 300 }
+        └─ **默认不富化**（enrich_limit=0）→ 立即返回 total + risk_metrics_pending
+     └─ 列表先渲染（POST /api/screening/query）
+     └─ 后台 while (pending > 0) POST /api/screening/compute { limit: 300 }   ← 不阻塞首屏
         └─ 每批：取净值（getFundNavBatch，SQLite 缓存优先）→ computeRiskMetricsLocal → 写回
-     └─ POST /api/screening/query  → 渲染表格
 ```
+
+- `/sync` 不再绑定首批富化：冷启动首屏从「等 3 分钟」变成「等一次快照（几秒）」；
+  富化期间 `syncing` 保持 true，状态条显示「正在计算风险指标...」且计数每 2s 刷新。
 
 - 富化是**幂等且可续**的：中断后再次 `/compute` 会接着做剩下的（`risk_metrics_pending` 减少）；
   取不到净值的基金被标记 `risk_attempted=1`，不会无限重试（循环因此会收敛）。
@@ -25,7 +28,7 @@
 ```
 POST /api/screening/query { filters, sort_by, sort_order, page, page_size }
   → screeningService.queryScreening()
-     ├─ 读全表（约 3300 行）
+     ├─ 读全表（约 3300 行，**进程内缓存**；同步/富化/排名后失效）
      ├─ 过滤（语义与迁移前的前端实现逐条对齐，见 筛选面板）
      ├─ 排序（null 恒排最后）
      └─ 分页切片
