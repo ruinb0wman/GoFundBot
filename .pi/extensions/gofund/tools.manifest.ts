@@ -537,6 +537,328 @@ export const STATIC_MANIFEST = {
       }
     },
     {
+      "name": "get_portfolio",
+      "label": "读取实时组合",
+      "description": "一次性读取实时页的组合数据：组合基金列表（funds）、分组（groups，含再平衡配置）、基金↔分组映射（fund_group_map）与**推导出来的持仓**（holdings，按基金代码索引：share/cost/total_fee/buy_date）。持仓只由已结算交易推导 —— 想让某只基金出现在持仓里，得先 add_trade。",
+      "promptSnippet": "get_portfolio(): 组合基金 + 分组 + 映射 + 推导持仓",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "add_portfolio_fund",
+      "label": "加入实时组合",
+      "description": "把一只基金加入实时页的组合列表（写 service SQLite，前端「实时估值」标签可见；已在列表里则只更新名称/类型）。注意这与自选（watchlist）是**两个不同的列表**。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "add_portfolio_fund(fund_code, group_id?): 加入实时组合（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "description": "6 位基金代码"
+          },
+          "group_id": {
+            "description": "顺带分到哪个分组（来自 get_portfolio.groups）",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "fund_name": {
+            "description": "基金名称（不填则自动从数据源补全）",
+            "type": "string"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_code"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "remove_portfolio_fund",
+      "label": "移出实时组合",
+      "description": "把一只基金移出实时页的组合列表（同时清掉它的分组映射；**不会**删交易记录/持仓）。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "remove_portfolio_fund(fund_code): 移出实时组合（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "description": "6 位基金代码"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_code"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "save_portfolio_group",
+      "label": "保存组合分组",
+      "description": "新建或更新一个组合分组（实时页的「分组」；可带再平衡配置：enabled/target/upper/lower，都是百分数）。不传 id = 新建（需 name）；传 id = 更新（只改传入的字段）。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "save_portfolio_group(name, id?, rebalance_*?): 新建/更新分组（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "要更新的分组 id（来自 get_portfolio.groups）；不填则新建",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "description": "分组名（新建必填）",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "rebalance_enabled": {
+            "description": "是否启用再平衡",
+            "type": "boolean"
+          },
+          "rebalance_target": {
+            "description": "目标仓位（%，如 60）",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "rebalance_upper": {
+            "description": "上界（%，如 70）",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "rebalance_lower": {
+            "description": "下界（%，如 50）",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "delete_portfolio_group",
+      "label": "删除组合分组",
+      "description": "删除一个组合分组（组内基金的映射随外键级联删除，基金本身回到「未分组」）。**破坏性写入**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "delete_portfolio_group(id): 删除分组（需用户确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "要删除的分组 id（来自 get_portfolio.groups）"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "assign_funds_to_group",
+      "label": "基金分组",
+      "description": "把一批基金移到某个分组（`group_id` 传 null = 取消分组）。只影响这几只基金，其余映射保持不变。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "assign_funds_to_group(fund_codes, group_id?): 基金分组（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_codes": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{6}$",
+              "description": "6 位基金代码"
+            },
+            "description": "要分组的基金代码列表"
+          },
+          "group_id": {
+            "description": "目标分组 id；null / 不传 = 取消分组",
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_codes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "add_trade",
+      "label": "记录一笔交易",
+      "description": "给实时页记录一笔交易（写 service SQLite，前端「实时估值」/基金详情的交易记录可见，并会改变推导持仓）。金额/份额可以只传一个，工具会按净值换算：`buy` 只需 amount + nav（share = amount / nav）；`sell` 只需 share + nav（amount = share × nav）；`dividend` 分红再投传 share（或 amount + nav）；`fee` 手续费传 amount。当天净值还没出来的交易传 status=\"pending\"，之后用 settle_trades 结算。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "add_trade(fund_code, type, trade_date, amount|share, nav, status?): 记一笔交易（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "description": "6 位基金代码"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell",
+              "dividend",
+              "fee"
+            ],
+            "description": "交易类型（buy 买 / sell 卖 / dividend 分红再投 / fee 手续费）"
+          },
+          "trade_date": {
+            "type": "string",
+            "description": "交易日期 YYYY-MM-DD"
+          },
+          "amount": {
+            "description": "金额（元）：buy/fee 传它；sell 不传则由 share × nav 算",
+            "type": "number",
+            "minimum": 0
+          },
+          "share": {
+            "description": "份额：sell/dividend 传它；buy 不传则由 amount / nav 算",
+            "type": "number",
+            "minimum": 0
+          },
+          "nav": {
+            "description": "成交净值（buy/sell 必需；fee 可省）",
+            "type": "number",
+            "minimum": 0
+          },
+          "status": {
+            "description": "默认 settled；当天净值未出时用 pending",
+            "type": "string",
+            "enum": [
+              "settled",
+              "pending"
+            ]
+          },
+          "txn_id": {
+            "description": "挂单号（pending 交易用它结算；不填则自动生成）",
+            "type": "string"
+          },
+          "note": {
+            "description": "备注",
+            "type": "string"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_code",
+          "type",
+          "trade_date"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "settle_trades",
+      "label": "结算挂单交易",
+      "description": "把 pending 的交易按 txn_id 结算（status → settled，写入 settled_at），结算后这些交易开始计入推导持仓。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "settle_trades(txn_ids): 结算挂单交易（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "txn_ids": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "要结算的挂单号列表（来自 get_portfolio / 交易记录的 txn_id）"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "txn_ids"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "delete_trade",
+      "label": "删除交易记录",
+      "description": "删除一条交易记录（会改变推导持仓；要清空全部请让用户在页面上操作）。**破坏性写入**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "delete_trade(id): 删除交易记录（需用户确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "交易记录 id（来自 get_portfolio 或 GET /api/user/portfolio/trades）"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "run_backtest",
       "label": "基金定投回测",
       "description": "对单只基金做定投/价值平均/均线偏离回测，返回投入、市值、收益率、年化、最大回撤、夏普与抽样净值曲线。间隔用 investment_type（daily/weekly/monthly）+ day 指定。费率、止盈止损用小数（0.2 = 20%）。不传日期默认最近三年。",
@@ -1205,13 +1527,21 @@ export const STATIC_MANIFEST = {
       }
     }
   ],
-  "count": 39,
+  "count": 48,
   "destructive": [
     "add_to_watchlist",
     "remove_from_watchlist",
     "save_alert",
     "delete_alert",
     "save_anomaly_config",
+    "add_portfolio_fund",
+    "remove_portfolio_fund",
+    "save_portfolio_group",
+    "delete_portfolio_group",
+    "assign_funds_to_group",
+    "add_trade",
+    "settle_trades",
+    "delete_trade",
     "save_strategy",
     "delete_strategy",
     "run_strategy_code",

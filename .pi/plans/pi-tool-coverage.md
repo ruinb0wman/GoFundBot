@@ -218,3 +218,20 @@ call "{\"tool\":\"<name>\",\"args\":{…,\"__confirm_token\":\"$T\"}}"
   `views/SettingsAnomalyThreshold.vue`（get/defaults）、`composables/useFundRealtime{Data,Groups,Trade}.ts`、`useFundDetail.ts` → 一律改读 `res.data.data`。
   验证：铃铛下拉、市场异动面板（大跌 创业板指/科创50）、异动阈值表单均正常；`bun run check` 全绿（frontend 256 tests）。
   **教训**：`httpClient` 不拆信封，新写调用方必须自己取 `res.data.data`（`useScreeningDb.unwrap` / `userDataApi.unwrap` 就是正确写法）。
+
+### B 实时页组合与交易工具（2026-10-08 完成）
+- 新增 `service/src/agent/toolsPortfolio.ts`（9 个）：`get_portfolio`（基金 + 分组 + 映射 + **推导持仓**，只读）、
+  `add_portfolio_fund` / `remove_portfolio_fund` / `save_portfolio_group` / `delete_portfolio_group` / `assign_funds_to_group` /
+  `add_trade` / `settle_trades` / `delete_trade`（均需确认令牌）。
+- 工具数 **39 → 48**（写类共 18）；`bun run gen:tools` + `agent.test.ts` 的 destructive 断言同步（注意 `sort()` 把 `add_portfolio_fund` 排在 `add_to_watchlist` 前面）。
+- 设计上比计划多做了两点（都是真跑暴露出来的）：
+  1. **`add_trade` 自动换算**：`buy` 只给 `amount + nav`（share = amount/nav）、`sell` 只给 `share + nav`（amount = share×nav）——
+     否则模型得自己算（也容易算错）；
+  2. **分组不存在给人话**：直接写 `group_id=99` 时 SQLite 只回 `FOREIGN KEY constraint failed` → 改为先校验分组存在。
+- 证据（真实 pi 会话）：`pi -p -t get_portfolio` → 「你的实时组合目前是空的：没有基金、没有分组、也没有推导出来的持仓」。
+- 证据（写路径两步令牌 + 页面确认 + 清理）：建分组「加固验证组」（再平衡 60%）→ `add_portfolio_fund(110022, group_id)` →
+  `add_trade(110022, buy, 2025-06-02, amount=1000, nav=10)`（只给金额，share 自动算成 100）→
+  **真浏览器 `/portfolio`「实时估值」页**显示：分组「加固验证组」/ 110022 /「持仓 1 笔 · 持有份额 100.00 · 平均成本 10.0000 · 投入本金 ¥1000.00」→
+  依次 `delete_trade` / `remove_portfolio_fund` / `delete_portfolio_group` 清回空。
+- 证据（单测）：新增 `src/__tests__/agent/toolsPortfolio.test.ts`（5 例：空组合只读、基金+分组增删、pending→settle 才计入持仓、
+  两次买入加权成本 + 清仓整只消失、不存在的分组/交易给人话）；service 210 → **215**。

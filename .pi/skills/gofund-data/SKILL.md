@@ -31,6 +31,10 @@ service 未启动时工具会明确报错 —— 如实转述，**不要据此�
   `check_alerts` 立即评估一遍（命中会写 `last_triggered` 并 6 小时冷却，避免刷屏）；
   `get_market_anomaly` 看当日指数/板块/成交额异动；`save_anomaly_config` 改判定阈值（需确认）。
   `price_*` 比的是实时估值涨跌幅，`return_*` 比的是**持仓收益率**（没有持仓的基金该规则不会触发）。
+- **实时组合与交易**：`get_portfolio` 一次拿基金/分组/映射/**推导持仓**；`add_trade` 记一笔（金额与份额只传一个就行，会按净值换算）；
+  当天净值未出就传 `status="pending"`，之后 `settle_trades(txn_ids)` 结算；`delete_trade` 删记录。
+  分组用 `save_portfolio_group` / `delete_portfolio_group` / `assign_funds_to_group`（均需确认）。
+  **持仓是推导值**（只有已结算交易计入；sell 减到 0 就整只消失），不是可以直写的字段。
 
 ## 口径与陷阱（必须遵守）
 
@@ -48,6 +52,8 @@ service 未启动时工具会明确报错 —— 如实转述，**不要据此�
 ## 写操作要确认
 
 `add_to_watchlist`、`remove_from_watchlist`、`save_alert`、`delete_alert`、`save_anomaly_config`、
+`add_portfolio_fund`、`remove_portfolio_fund`、`save_portfolio_group`、`delete_portfolio_group`、`assign_funds_to_group`、
+`add_trade`、`settle_trades`、`delete_trade`、
 `save_strategy`、`delete_strategy`、`save_strategy_script`、`delete_strategy_script`
 会改用户数据：第一次调用只返回 `confirm_required` + `__confirm_token`，
 **必须先把要写入/删除的完整内容展示给用户并拿到明确同意**，再用**完全相同的参数**加上令牌重试。
