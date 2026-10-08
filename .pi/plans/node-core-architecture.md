@@ -642,3 +642,7 @@ Dexie 已升到 v8、`screeningFunds` 表确认消失（`indexedDB` 实测）。
 
 **验证**：service 185 tests / frontend 247 tests（-7：删掉的注入函数测试）+ 两端 lint/tsc/build 绿；
 `docs` 构建绿（VitePress）；真浏览器 `/strategy`（2 条策略）与 `/screening`（3331 只 / 2704 完整）正常。
+
+**后续**：迁移虽已完成，但遗留了几项**加固**（前端监听所有网卡 + 无鉴权 service 的暴露面、`engines` 与 `node:sqlite` 不匹配、
+Dexie 死路径、`nav_history` 无容量上限、自选/筛选刷新缺工具、两个桩路由、若干便宜的性能优化与工程化收口）——
+**清单与逐条证据见 `.pi/plans/post-migration-hardening.md`**（新会话从那里接着做）。
