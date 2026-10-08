@@ -6,11 +6,13 @@ import { z } from 'zod'
 import { defineAgentTool, unwrapServiceResult, toYi } from './types.js'
 import {
   fetchGoldRealtime,
+  getAVolume7Days,
   getMarketBreadth,
   getMarketConceptSectorsFromAkshare,
   getMarketIndices,
   getMarketKline,
   getMarketMoneyFlow,
+  getMarketSectorConstituents,
   getMarketSectorsFromAkshare,
   getNorthFlow,
 } from '../services/marketService.js'
@@ -35,7 +37,8 @@ export const marketTools = [
       '获取指数历史 K 线（日/周/月），用于分析历史走势、回撤幅度与修复时间。'
       + 'A 股用 sh/sz 前缀：sh000001（上证）、sz399001（深证）、sh000300（沪深300）、sz399006（创业板）、sh000688（科创50）；'
       + '海外指数用代码且不加 ^：DJI（道琼斯）、SPX（标普500）、NDX（纳斯达克100）、HSI（恒生）、N225、FTSE、GDAXI、FCHI、SENSEX。'
-      + '海外指数走 Yahoo，可能较慢；其 date 字段为 YYYYMMDD。起始与结束日期必须同时提供。',
+      + '海外指数走 Yahoo，可能较慢；其 date 字段为 YYYYMMDD。起始与结束日期必须同时提供。'
+      + '**A 股个股请用 `get_stock_kline`**（本工具按指数口径包装，个股也能传但不推荐）。',
     promptSnippet: 'get_index_kline(code, start_date, end_date, period?): 指数历史K线（A股 sh/sz 或海外 DJI/HSI）',
     params: z.object({
       code: z
@@ -47,12 +50,15 @@ export const marketTools = [
     }),
     readOnly: true,
     async handler(args) {
-      const data = (await getMarketKline(args.code, {
-        startDate: args.start_date,
-        endDate: args.end_date,
-        period: args.period ?? 'daily',
-      })) as { items?: unknown[] } | unknown[]
-      const items = Array.isArray(data) ? data : (data?.items ?? [])
+      // `getMarketKline` 返回 ServiceResult<KlineDto[]> —— 必须走 unwrapServiceResult，
+      // 否则拿到的是信封对象，`data?.items` 恒为 undefined（曾经返回空 K 线）。
+      const items = unwrapServiceResult(
+        await getMarketKline(args.code, {
+          startDate: args.start_date,
+          endDate: args.end_date,
+          period: args.period ?? 'daily',
+        })
+      )
       return {
         code: args.code,
         start_date: args.start_date,
@@ -190,5 +196,89 @@ export const marketTools = [
     params: z.object({}),
     readOnly: true,
     handler: async () => fetchGoldRealtime(),
+  }),
+
+  defineAgentTool({
+    name: 'get_stock_kline',
+    label: '个股K线',
+    description:
+      '获取 A 股个股历史 K 线（日/周/月，可选前/后复权）：涨跌幅、开高低收、成交量额。'
+      + '代码写 `sh600519` / `sz000001`，或直接写 6 位代码（自动补前缀）。'
+      + '指数走势用 `get_index_kline`；海外/加密标的也能传，但本工具按 A 股口径描述。',
+    promptSnippet: 'get_stock_kline(code, start_date, end_date, period?, adjust?): 个股K线',
+    params: z.object({
+      code: z.string().describe('A 股代码：sh600519 / sz000001 / 600519'),
+      start_date: z.string().describe('起始日期 YYYY-MM-DD（必填）'),
+      end_date: z.string().describe('结束日期 YYYY-MM-DD（必填）'),
+      period: z.enum(['daily', 'weekly', 'monthly']).optional().describe('K 线周期，默认 daily'),
+      adjust: z.enum(['none', 'qfq', 'hfq']).optional().describe('复权：none 不复权 / qfq 前复权 / hfq 后复权（默认 none）'),
+    }),
+    readOnly: true,
+    async handler(args) {
+      const items = unwrapServiceResult(
+        await getMarketKline(args.code, {
+          startDate: args.start_date,
+          endDate: args.end_date,
+          period: args.period ?? 'daily',
+          adjust: args.adjust ?? 'none',
+        })
+      )
+      return {
+        code: args.code,
+        start_date: args.start_date,
+        end_date: args.end_date,
+        adjust: args.adjust ?? 'none',
+        kline: items,
+        count: items.length,
+      }
+    },
+  }),
+
+  defineAgentTool({
+    name: 'get_a_volume_7days',
+    label: '近7日A股成交量',
+    description:
+      '获取沪深两市最近 7 个交易日的成交额（亿元）。**必须看 `success`**：取不到数据时 `success: false` 且 `data: []`，'
+      + '不要把它当成「成交额 0」。指数 K 线失败也会导致这里为空。',
+    promptSnippet: 'get_a_volume_7days(): 近7日A股成交额',
+    params: z.object({}),
+    readOnly: true,
+    async handler() {
+      const result = await getAVolume7Days()
+      return {
+        data_status: result.success && result.data.length > 0 ? 'available' : 'unavailable',
+        update_time: result.update_time,
+        note: result.data.length === 0 ? '未取到成交量数据（不是 0）' : undefined,
+        data: result.data,
+      }
+    },
+  }),
+
+  defineAgentTool({
+    name: 'get_sector_constituents',
+    label: '板块成分股',
+    description:
+      '获取某个行业板块的成分股列表（代码、名称、涨跌幅、成交额等）。`sector_code` 来自 `get_hot_sectors`。'
+      + '**两个已知限制**：① 行业板块走同花顺降级时 `code` 是空串，此时无法使用；'
+      + '② 上游是 eastmoney 的板块成分股接口，被反爬封锁时整条链路不可用（返回 `PROVIDER_UNAVAILABLE`）——'
+      + '遇到这两种情况就如实告知用户，**不要编造成分股**。',
+    promptSnippet: 'get_sector_constituents(sector_code): 板块成分股',
+    params: z.object({
+      sector_code: z.string().min(1).describe('板块代码（来自 get_hot_sectors 的 code；空串表示该数据源不支持）'),
+    }),
+    readOnly: true,
+    async handler(args) {
+      if (!args.sector_code.trim()) {
+        return { data_status: 'unavailable', note: '板块 code 为空（同花顺降级数据没有 code），无法查成分股。' }
+      }
+      const data = unwrapServiceResult(await getMarketSectorConstituents(args.sector_code))
+      return {
+        data_status: data.items.length > 0 ? 'available' : 'unavailable',
+        sector_code: data.sectorCode,
+        sector_name: data.sectorName,
+        count: data.items.length,
+        items: data.items,
+      }
+    },
   }),
 ]

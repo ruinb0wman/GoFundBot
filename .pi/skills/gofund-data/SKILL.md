@@ -23,7 +23,11 @@ service 未启动时工具会明确报错 —— 如实转述，**不要据此�
 - **自由代码回测**：`list_strategy_scripts` 看已保存方案 → `run_strategy_code(script_name=...)` 直接跑；
   或自己写代码（`prepare(sdk)` 用 `sdk.screen()` 从本地基金库选池、`onDay(s)` 按基金代码逐日决策），
   想留档就 `save_strategy_script`。这三者都走 service 的隔离 worker（5s 超时），**执行/写入类需要确认令牌**。
-- **看指数历史**：`get_index_kline(code, start_date, end_date)`，两个日期必填。
+- **看指数历史**：`get_index_kline(code, start_date, end_date)`（A 股 `sh/sz` 前缀 + 海外 DJI/HSI），两个日期必填。
+- **看个股**：`get_stock_kline(code, start_date, end_date, adjust?)`（`sh600519` / `sz000001` / 直接 6 位代码；adjust 可前/后复权）。
+- **看成交额/成分股**：`get_a_volume_7days()`（沪深近 7 个交易日成交额；`data_status: unavailable` 不是 0）、
+  `get_sector_constituents(sector_code)`（code 来自 `get_hot_sectors`；同花顺降级时 code 为空串、eastmoney 被反爬时不可用 —— 失败就如实说）。
+- **看一批基金估值**：`get_fund_estimates(fund_codes)`（比逐只调 `get_fund_estimate` 快很多）。
 - **看资讯**：`get_flash_news(count)`。
 - **用户自己的东西**：`list_strategies`（策略记忆）/ `get_positions`（持仓）/ `get_watchlist`（自选）—— 分析时先读，再结合行情给建议。
   写自选用 `add_to_watchlist(fund_code)` / `remove_from_watchlist(fund_codes)`（会改用户真实数据，需确认）。

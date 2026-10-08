@@ -5,10 +5,11 @@
  * （rank_history 等），原样塞给模型会挤掉其它所有字段。
  */
 import { z } from 'zod'
-import { defineAgentTool, clampInt } from './types.js'
+import { defineAgentTool, clampInt, unwrapServiceResult } from './types.js'
 import { composeFundDetailLegacy } from '../services/fundService.js'
 import {
   getFundEstimate,
+  getFundEstimates,
   getFundHoldings,
   getFundManagers,
   getFundNavHistory,
@@ -131,5 +132,31 @@ export const fundTools = [
     params: z.object({ count: z.number().int().min(1).max(300).optional().describe('新闻条数，默认 20，最大 300') }),
     readOnly: true,
     handler: async (args) => getFlashNews(clampInt(args.count, 20, 1, 300), 1),
+  }),
+
+  defineAgentTool({
+    name: 'get_fund_estimates',
+    label: '批量基金估值',
+    description:
+      '一次拿多只基金的盘中实时估值（估算净值/估算涨跌幅/最近公布净值与日期）。'
+      + '逐只查 `get_fund_estimate` 很慢（每只一次网络请求），看一批自选/持仓时用这个。'
+      + '取不到的单只会带 `success: false` 与错误信息，不要当成净值 0。',
+    promptSnippet: 'get_fund_estimates(fund_codes): 批量盘中估值（≤50 只）',
+    params: z.object({
+      fund_codes: z
+        .array(fundCode)
+        .min(1)
+        .max(50)
+        .describe('基金代码列表（≤50 只；逐只并发取数，列表越长越慢）'),
+    }),
+    readOnly: true,
+    async handler(args) {
+      const batch = unwrapServiceResult(await getFundEstimates(args.fund_codes.join(',')))
+      return {
+        summary: batch.summary,
+        items: batch.items.map((item) => item.data),
+        failed: batch.failed,
+      }
+    },
   }),
 ]

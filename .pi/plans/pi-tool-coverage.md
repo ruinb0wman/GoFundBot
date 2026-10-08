@@ -251,3 +251,19 @@ call "{\"tool\":\"<name>\",\"args\":{…,\"__confirm_token\":\"$T\"}}"
 - 证据（单测）：新增 `toolsPositions.test.ts`（2 例）+ `toolsWatchlist.test.ts`（2 例）；service 215 → **219**。
 - **验证教训**：`browser_navigate` 到只有 hash 变化的 URL **不会重新加载页面**（SPA 内存里的旧数据会假装还在）。
   验证写入类工具必须用 `browser_reload`（或先跳到别的路由再回）—— 我一度以为 B 阶段的测试数据没清干净。
+
+### D 行情细节（2026-10-08 完成）
+- `toolsMarket.ts` +3：`get_stock_kline`（个股 K 线，支持 `sh600519`/`sz000001`/6 位代码 + adjust）、
+  `get_a_volume_7days`、`get_sector_constituents`；`toolsFund.ts` +1：`get_fund_estimates`（批量估值，≤50 只）。
+  工具数 **55 → 59**（全是只读，destructive 不变）；`toolsMarket.ts` 282 行 / `toolsFund.ts` 162 行。
+- **顺手修了一个真 bug**：`get_index_kline` 一直返回**空 K 线** —— 它把 `ServiceResult<KlineDto[]>` 当成 `{items}` 解，
+  实际载荷在 `.data`，所以 `items` 恒为 `[]`。改成 `unwrapServiceResult` 后：`sh000001` 2026-09-01~10-08 → **22 条**（修前 0 条）。
+  两个 K 线工具都改了，并在 description 里互相指路（指数 vs 个股）。
+- 证据（真实 pi 会话）：`pi -p -t get_a_volume_7days,get_stock_kline` → 正确读出「9/24 16533.57 亿 … 10/8 16821.27 亿（只有 5 个交易日，10/1–10/7 长假）」
+  与「平安银行 sz000001 当日开 11.57 收 11.78 +1.82%」。
+- 证据（curl）：`get_stock_kline(sz000001)` → 4 条（含 amount/turnoverRate）；`get_a_volume_7days` → `available` 5 行；
+  `get_fund_estimates([110022,161725])` → `summary {total:2,success:2,failed:0}` + 两只的估算涨跌幅。
+- 证据（单测）：新增 `toolsMarket.test.ts`（4 例，含一条**回归守卫**：mock ServiceResult 后断言 K 线不为空）；service 219 → **223**。
+- **未能验证的一点（如实记）**：`get_sector_constituents` 只用真实 code 跑不成功 —— 当时上游整体不可用：
+  `/api/market/sectors` → `所有板块数据源均不可用`，`/api/market/sectors/BK0475/constituents` → `PROVIDER_UNAVAILABLE（eastmoney fetch failed）`（就是 AGENTS 里记的 push2 反爬）。
+  只验证了「空 code 给提示」那条分支；工具 description 已写明两种失败情况并要求**不得编造成分股**。

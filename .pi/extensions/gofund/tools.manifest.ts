@@ -20,7 +20,7 @@ export const STATIC_MANIFEST = {
     {
       "name": "get_index_kline",
       "label": "获取指数K线",
-      "description": "获取指数历史 K 线（日/周/月），用于分析历史走势、回撤幅度与修复时间。A 股用 sh/sz 前缀：sh000001（上证）、sz399001（深证）、sh000300（沪深300）、sz399006（创业板）、sh000688（科创50）；海外指数用代码且不加 ^：DJI（道琼斯）、SPX（标普500）、NDX（纳斯达克100）、HSI（恒生）、N225、FTSE、GDAXI、FCHI、SENSEX。海外指数走 Yahoo，可能较慢；其 date 字段为 YYYYMMDD。起始与结束日期必须同时提供。",
+      "description": "获取指数历史 K 线（日/周/月），用于分析历史走势、回撤幅度与修复时间。A 股用 sh/sz 前缀：sh000001（上证）、sz399001（深证）、sh000300（沪深300）、sz399006（创业板）、sh000688（科创50）；海外指数用代码且不加 ^：DJI（道琼斯）、SPX（标普500）、NDX（纳斯达克100）、HSI（恒生）、N225、FTSE、GDAXI、FCHI、SENSEX。海外指数走 Yahoo，可能较慢；其 date 字段为 YYYYMMDD。起始与结束日期必须同时提供。**A 股个股请用 `get_stock_kline`**（本工具按指数口径包装，个股也能传但不推荐）。",
       "promptSnippet": "get_index_kline(code, start_date, end_date, period?): 指数历史K线（A股 sh/sz 或海外 DJI/HSI）",
       "readOnly": true,
       "parameters": {
@@ -139,6 +139,87 @@ export const STATIC_MANIFEST = {
       "parameters": {
         "type": "object",
         "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_stock_kline",
+      "label": "个股K线",
+      "description": "获取 A 股个股历史 K 线（日/周/月，可选前/后复权）：涨跌幅、开高低收、成交量额。代码写 `sh600519` / `sz000001`，或直接写 6 位代码（自动补前缀）。指数走势用 `get_index_kline`；海外/加密标的也能传，但本工具按 A 股口径描述。",
+      "promptSnippet": "get_stock_kline(code, start_date, end_date, period?, adjust?): 个股K线",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "A 股代码：sh600519 / sz000001 / 600519"
+          },
+          "start_date": {
+            "type": "string",
+            "description": "起始日期 YYYY-MM-DD（必填）"
+          },
+          "end_date": {
+            "type": "string",
+            "description": "结束日期 YYYY-MM-DD（必填）"
+          },
+          "period": {
+            "description": "K 线周期，默认 daily",
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          },
+          "adjust": {
+            "description": "复权：none 不复权 / qfq 前复权 / hfq 后复权（默认 none）",
+            "type": "string",
+            "enum": [
+              "none",
+              "qfq",
+              "hfq"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "start_date",
+          "end_date"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_a_volume_7days",
+      "label": "近7日A股成交量",
+      "description": "获取沪深两市最近 7 个交易日的成交额（亿元）。**必须看 `success`**：取不到数据时 `success: false` 且 `data: []`，不要把它当成「成交额 0」。指数 K 线失败也会导致这里为空。",
+      "promptSnippet": "get_a_volume_7days(): 近7日A股成交额",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_sector_constituents",
+      "label": "板块成分股",
+      "description": "获取某个行业板块的成分股列表（代码、名称、涨跌幅、成交额等）。`sector_code` 来自 `get_hot_sectors`。**两个已知限制**：① 行业板块走同花顺降级时 `code` 是空串，此时无法使用；② 上游是 eastmoney 的板块成分股接口，被反爬封锁时整条链路不可用（返回 `PROVIDER_UNAVAILABLE`）——遇到这两种情况就如实告知用户，**不要编造成分股**。",
+      "promptSnippet": "get_sector_constituents(sector_code): 板块成分股",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sector_code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "板块代码（来自 get_hot_sectors 的 code；空串表示该数据源不支持）"
+          }
+        },
+        "required": [
+          "sector_code"
+        ],
         "additionalProperties": false
       }
     },
@@ -291,6 +372,33 @@ export const STATIC_MANIFEST = {
             "maximum": 300
           }
         },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_fund_estimates",
+      "label": "批量基金估值",
+      "description": "一次拿多只基金的盘中实时估值（估算净值/估算涨跌幅/最近公布净值与日期）。逐只查 `get_fund_estimate` 很慢（每只一次网络请求），看一批自选/持仓时用这个。取不到的单只会带 `success: false` 与错误信息，不要当成净值 0。",
+      "promptSnippet": "get_fund_estimates(fund_codes): 批量盘中估值（≤50 只）",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_codes": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{6}$",
+              "description": "6 位基金代码，例如 110022"
+            },
+            "description": "基金代码列表（≤50 只；逐只并发取数，列表越长越慢）"
+          }
+        },
+        "required": [
+          "fund_codes"
+        ],
         "additionalProperties": false
       }
     },
@@ -1787,7 +1895,7 @@ export const STATIC_MANIFEST = {
       }
     }
   ],
-  "count": 55,
+  "count": 59,
   "destructive": [
     "add_to_watchlist",
     "remove_from_watchlist",

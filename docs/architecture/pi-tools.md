@@ -14,12 +14,12 @@
 - 语义：结构错误（未知工具 / 参数不合 Schema）→ `400`；取数失败 → `200` + `{ error }`；写/执行类 → 见下节的确认流程。
 - `/api/agent/*` 有自己的限流额度（**3000/15min**），不吃全局的 300/15min —— pi 一次分析会连着调十几个工具。
 
-当前 **55 个工具**（分组）：
+当前 **59 个工具**（分组）：
 
 | 组 | 工具 |
 |---|---|
-| 市场 | `get_market_indices` `get_index_kline` `get_hot_sectors` `get_concept_sectors` `get_north_flow` `get_market_breadth` `get_main_flow` `get_gold_realtime` |
-| 基金 | `search_funds` `get_fund_detail` `get_fund_estimate` `get_fund_nav_history` `get_fund_holdings` `get_fund_managers` `get_flash_news` |
+| 市场 | `get_market_indices` `get_index_kline` `get_stock_kline` `get_hot_sectors` `get_concept_sectors` `get_sector_constituents` `get_north_flow` `get_market_breadth` `get_main_flow` `get_a_volume_7days` `get_gold_realtime` |
+| 基金 | `search_funds` `get_fund_detail` `get_fund_estimate` `get_fund_estimates` `get_fund_nav_history` `get_fund_holdings` `get_fund_managers` `get_flash_news` |
 | 自选 | `get_watchlist` `add_to_watchlist` `remove_from_watchlist` `save_watchlist_group` `delete_watchlist_group` `assign_watchlist_group` `reorder_watchlist` |
 | 告警 | `get_alerts` `save_alert` `delete_alert` `check_alerts` `get_market_anomaly` `save_anomaly_config` |
 | 实时组合 | `get_portfolio` `add_portfolio_fund` `remove_portfolio_fund` `save_portfolio_group` `delete_portfolio_group` `assign_funds_to_group` `add_trade` `settle_trades` `delete_trade` |
@@ -30,6 +30,12 @@
 返回后看 `risk_metrics_pending`，>0 就再调一次；`retry: true` 会重试上次取不到净值的基金。
 
 `check_alerts` 也是只读的，但有**副作用**：命中的规则会写 `last_triggered` 并进入 6 小时冷却（通知去抖）。
+
+两个**有上游限制**的只读工具（遇到失败要如实说，不要编造）：
+
+- `get_sector_constituents`：`sector_code` 来自 `get_hot_sectors`；行业板块走同花顺降级时 `code` 是空串，
+  且上游 eastmoney 成分股接口被反爬封锁时会直接 `PROVIDER_UNAVAILABLE`。
+- `get_a_volume_7days`：取不到时 `data_status: unavailable` + `data: []`（**不是成交额 0**）。
 
 ## 2. 写 / 执行类要用户确认
 
