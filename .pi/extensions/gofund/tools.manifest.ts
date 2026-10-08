@@ -1741,7 +1741,7 @@ export const STATIC_MANIFEST = {
             }
           },
           "active": {
-            "description": "是否启用（启用的策略会注入 AI 提示词），默认 true",
+            "description": "是否启用（仅影响列表排序与页面「启用」标记，没有自动注入链路），默认 true",
             "type": "boolean"
           },
           "__confirm_token": {

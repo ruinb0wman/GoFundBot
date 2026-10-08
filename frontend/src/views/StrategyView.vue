@@ -3,7 +3,7 @@
     <div class="page-header">
       <div class="page-title">
         <h1><LucideIcon name="NotebookPen" :size="22" /> {{ '策略研究' }}</h1>
-        <p>{{ '在这里维护你的投资策略；pi（终端 AI）会读取启用的策略作为分析背景。' }}</p>
+        <p>{{ '在这里维护你的投资策略；pi（终端 AI）可以读到全部策略，「启用」标记出你当前在用的那几条。' }}</p>
       </div>
       <div class="page-stats">
         <span class="stat-chip">
@@ -94,7 +94,7 @@
           </div>
           <div class="editor-row">
             <label class="toggle-label">
-              <input type="checkbox" v-model="form.active" /> {{ '启用（供 AI 参考）' }}
+              <input type="checkbox" v-model="form.active" /> {{ '启用' }}
             </label>
           </div>
         </div>

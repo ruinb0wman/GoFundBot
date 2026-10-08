@@ -241,7 +241,7 @@ export const computeTools = [
       title: z.string().min(1).max(40).describe('策略标题（≤40 字）'),
       content: z.string().min(1).describe('策略正文：投资目标、资金分配、买卖纪律、风险管理'),
       tags: z.array(z.string()).optional().describe('标签，例如 ["定投", "长期持有"]'),
-      active: z.boolean().optional().describe('是否启用（启用的策略会注入 AI 提示词），默认 true'),
+      active: z.boolean().optional().describe('是否启用（仅影响列表排序与页面「启用」标记，没有自动注入链路），默认 true'),
       __confirm_token: z.string().optional().describe('服务端下发的确认令牌（第一次调用后获得）'),
     }),
     readOnly: false,

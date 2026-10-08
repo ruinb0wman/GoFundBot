@@ -14,7 +14,7 @@ import {
   updateStrategyScript,
 } from '../services/userDataService.js';
 
-/** 策略记忆（`/strategy` 页）——pi 的 dev 桥写的就是这批数据。 */
+/** 策略记忆（`/strategy` 页）——写入方：页面表单与 pi 的 agent 工具（`/api/agent/call`）。 */
 export const strategiesRouter = Router();
 
 /** 已保存的回测方案（`/backtest` 页）。 */
