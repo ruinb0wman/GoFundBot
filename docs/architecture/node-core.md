@@ -49,10 +49,14 @@
 | `002_user_data` | `positions` / `strategies` / `strategy_scripts` / `watchlist` / `watchlist_groups` | 用户数据 |
 | `003_screening_cache` | `screening_funds` / `screening_meta` | 基金筛选库（含富化结果） |
 | `004_nav_cache` | `nav_history` / `nav_history_meta` | 净值序列 + 覆盖度 |
+| `005_alerts` | `alerts` | 告警规则（前端 `AlertSettings`/`AlertBadge`） |
+| `006_portfolio` | `portfolio_funds` / `portfolio_groups` / `portfolio_fund_groups` / `portfolio_holdings` / `portfolio_trades` | 实时页的组合基金/分组/映射/交易；持仓由已结算交易推导 |
+
+> 表清单以 `service/src/db/migrations/` 为准（只追加、不改已发布迁移）。
 
 约定：
 
-- 所有用户数据、设置、缓存都在这里；**前端 IndexedDB 只剩 `migrateToServer.ts` 的一次性导入路径**。
+- 所有用户数据、设置、缓存都在这里；**前端已无 Dexie/IndexedDB**（旧数据留在浏览器里但不再读）。
 - 路径可用 `GOFUND_DB_PATH` 覆盖（测试用 `:memory:`），默认 `service/data/gofund.db`（`data/` 已 gitignore）。
 - 净值缓存按**实体**存整条序列，查询区间只做读取过滤 —— 把区间写进缓存 key 会让「换个窗口」变成一次全量重拉。
 - 净值缓存有**容量策略**（`navCacheService`）：写入时裁掉 10 年以前（`NAV_RETENTION_DAYS`）的点位，
@@ -80,7 +84,7 @@
 ## 4. AI：终端 pi（service 不做 LLM）
 
 - service **没有任何 LLM 客户端、不持有密钥**；唯一「AI 相关」能力是无需 key 的搜索 `POST /api/search`（Exa → DuckDuckGo）。
-- pi 的工具清单由 service 给出：`GET /api/agent/tools`（27 个），调用 `POST /api/agent/call`。
+- pi 的工具清单由 service 给出：`GET /api/agent/tools`（33 个），调用 `POST /api/agent/call`。
   详见 [pi 工具面](/architecture/pi-tools)。
 - 页面上已没有聊天/AI 入口（原来的 `chatEngine`、两位分析师、分析场景框架等约 40 个文件已删除）。
 
@@ -93,6 +97,7 @@
 | 筛选查询 | 前端/pi → `POST /api/screening/query`（过滤/排序/分页都在 service，语义见 [筛选](/fund-screening/)) |
 | 投研看板 | `/api/research/dashboard`（core `buildDashboard` 读 SQLite 筛选行） |
 | 用户数据 | 前端/pi → `/api/{watchlist,positions,strategies,backtest-scripts}` → SQLite |
+| 实时页组合/告警 | 前端 → `/api/user/portfolio/*`、`/api/alerts` → SQLite（迁移 005/006）；持仓由已结算交易推导 |
 | 单基金/组合回测 | 两条路同一份 core 引擎：页面在浏览器算（净值取自 `/api/funds/:code/nav-history`）；service 侧 `/api/backtest/*` |
 | 自由代码回测 | service `node:worker_threads` 沙箱（pi 工具 `run_strategy_code`）／浏览器 Worker（`/backtest` 页面） |
 | 净值 | service `nav_history`：命中就按窗口切片，未命中才向 provider 全量拉一次并落库 |

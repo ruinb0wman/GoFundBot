@@ -11,15 +11,17 @@ import {
   runFixedInvestmentBacktest,
   runPortfolioBacktestForArgs,
 } from '../services/backtestService.js'
-import { getScreeningStatus, queryScreening } from '../services/screeningService.js'
+import { getScreeningStatus, queryScreening, enrichScreening, syncScreening } from '../services/screeningService.js'
 import { compactDashboard, getResearchDashboard } from '../services/researchService.js'
 import {
   addStrategy,
   createStrategyScript,
+  deleteStrategyScript,
   listPositions,
   listStrategies,
   listStrategyScripts,
   recordScriptRun,
+  removeStrategy,
   updateStrategy,
 } from '../services/userDataService.js'
 import { runStrategyCodeSampled } from '../sandbox/runStrategyCode.js'
@@ -165,6 +167,34 @@ export const computeTools = [
   }),
 
   defineAgentTool({
+    name: 'refresh_screening',
+    label: '刷新筛选库',
+    description:
+      '刷新本地基金筛选库：拉最新快照 + 重算 4433 排名，并可选跑一批风险指标富化（夏普/回撤等）。'
+      + '会联网刷新（只写缓存，不动用户数据），冷启动全量约 3 分钟，所以默认只做一批（enrich_limit，300 只）；'
+      + '返回后看 risk_metrics_pending，>0 就再调一次。retry=true 会把上次取数失败的基金重新标记为待算。',
+    promptSnippet: 'refresh_screening(force?, enrich_limit?, retry?): 刷新筛选库/富化风险指标',
+    params: z.object({
+      force: z.boolean().optional().describe('true = 忽略快照时间，强制重新同步（默认 false，快照没变就跳过）'),
+      enrich_limit: z
+        .number()
+        .int()
+        .min(0)
+        .max(2000)
+        .optional()
+        .describe('本批富化多少只基金，默认 300；0 = 只同步排名不富化'),
+      retry: z.boolean().optional().describe('true = 重试上次取不到净值的基金（risk_attempted 归零）'),
+    }),
+    readOnly: true,
+    async handler(args) {
+      const sync = await syncScreening({ force: args.force, enrichLimit: 0 });
+      const enrich =
+        args.enrich_limit === 0 ? null : await enrichScreening({ limit: args.enrich_limit, retry: args.retry });
+      return { sync, enrich, status: getScreeningStatus() };
+    },
+  }),
+
+  defineAgentTool({
     name: 'get_research_dashboard',
     label: '投研看板',
     description:
@@ -225,6 +255,27 @@ export const computeTools = [
         return { saved: updated }
       }
       return { saved: addStrategy({ ...patch, source: 'ai-draft' }) }
+    },
+  }),
+
+  defineAgentTool({
+    name: 'delete_strategy',
+    label: '删除策略记忆',
+    description:
+      '删除一条策略记忆（前端 /strategy 页面同步消失）。**破坏性写入**：'
+      + '第一次调用只返回 CONFIRM_REQUIRED 与令牌，必须先把要删的标题给用户看过并取得明确同意，再带 __confirm_token 重调。',
+    promptSnippet: 'delete_strategy(id): 删除策略记忆（需用户确认）',
+    params: z.object({
+      id: z.number().int().positive().describe('要删除的策略 id（来自 list_strategies）'),
+      __confirm_token: z.string().optional().describe('服务端下发的确认令牌（第一次调用后获得）'),
+    }),
+    readOnly: false,
+    handler: async (args) => {
+      const { __confirm_token: _token, id } = args;
+      const target = listStrategies().find((strategy) => strategy.id === id);
+      if (!target) return { error: `策略 ${id} 不存在（用 list_strategies 查 id）` };
+      removeStrategy(id);
+      return { deleted: { id, title: target.title }, strategies: listStrategies() };
     },
   }),
 
@@ -302,6 +353,27 @@ export const computeTools = [
         return { error: `方案名「${name}」已存在，换一个名字（或让用户在页面上改）` };
       }
       return { saved: createStrategyScript({ name, code, source: 'ai' }) };
+    },
+  }),
+
+  defineAgentTool({
+    name: 'delete_strategy_script',
+    label: '删除回测方案',
+    description:
+      '删除一个已保存的回测方案（前端 /backtest 页面下拉里同步消失）。**破坏性写入**：'
+      + '第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。',
+    promptSnippet: 'delete_strategy_script(id): 删除回测方案（需用户确认）',
+    params: z.object({
+      id: z.number().int().positive().describe('要删除的方案 id（来自 list_strategy_scripts）'),
+      __confirm_token: z.string().optional().describe('服务端下发的确认令牌（第一次调用后获得）'),
+    }),
+    readOnly: false,
+    handler: async (args) => {
+      const { __confirm_token: _token, id } = args;
+      const target = listStrategyScripts().find((script) => script.id === id);
+      if (!target) return { error: `方案 ${id} 不存在（用 list_strategy_scripts 查 id）` };
+      deleteStrategyScript(id);
+      return { deleted: { id, name: target.name }, scripts: listStrategyScripts() };
     },
   }),
 

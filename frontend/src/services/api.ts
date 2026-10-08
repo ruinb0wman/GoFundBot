@@ -51,9 +51,6 @@ export const fundAPI = {
   getFundCompareData(fundCode: string, forceRefresh = false) {
     return api.get(`/fund/${fundCode}/compare-data${forceRefresh ? '?refresh=true' : ''}`)
   },
-  getDailyMarket(forceRefresh = false) {
-    return api.get(`/market/daily${forceRefresh ? '?refresh=true' : ''}`)
-  },
   getEstimates(codes: string[]) { return api.get(`/funds/estimates?codes=${codes.join(',')}`) },
   getNavBatch(codes: string[]) { return api.post('/funds/nav-batch', { codes }) },
 }

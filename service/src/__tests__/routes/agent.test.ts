@@ -63,7 +63,15 @@ describe('GET /api/agent/tools', () => {
     }
 
     // 写/执行类都需要确认令牌（顺序按清单出现顺序）
-    expect(destructive.sort()).toEqual(['run_strategy_code', 'save_strategy', 'save_strategy_script']);
+    expect(destructive.sort()).toEqual([
+      'add_to_watchlist',
+      'delete_strategy',
+      'delete_strategy_script',
+      'remove_from_watchlist',
+      'run_strategy_code',
+      'save_strategy',
+      'save_strategy_script',
+    ]);
     const save = tools.find((tool: { name: string }) => tool.name === 'save_strategy');
     expect(save.readOnly).toBe(false);
     expect(save.parameters.required).toContain('title');

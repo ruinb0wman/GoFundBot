@@ -375,3 +375,41 @@ pi 一次分析可能连着调十几个工具（筛选 + 回测 + 快讯…）�
   110022 实测被裁到 `first_date=2016-10-10`（正好 10 年）、2434 点（原 3897 点，裁掉 1463）；
   `/api/funds/110022/nav-history` 首次 486ms（回源）→ 命中 **13~15ms**（<100ms）。
 - 文档：`docs/architecture/node-core.md` §2 与 `docs/data-sources-and-runtime.md` §4 补容量策略。
+
+### B1 自选（watchlist）工具（2026-10-08 完成）
+- 新增 `service/src/agent/toolsWatchlist.ts`：`get_watchlist`（只读）、`add_to_watchlist`（写，确认令牌）、`remove_from_watchlist`（破坏性，确认令牌）；
+  加自选时用 `getFundBasic` 补全名称/类型（取不到就存 null，不阻断）。
+- 证据（真实 pi 会话）：`pi -p --no-session --no-builtin-tools -t get_watchlist "列出我的自选…"` → 「你的自选基金列表和分组目前都是空的」。
+- 证据（写路径完整往返，两步令牌）：`add_to_watchlist(110022)` → `confirm_required` + 令牌 → 带令牌重调成功 →
+  `GET /api/watchlist` 返回 `[('110022','易方达消费行业股票')]`（名称已自动补全）→ `remove_from_watchlist` 两步 → 回到 `[]`。
+- 证据（令牌门）：用假令牌调 `delete_strategy_script` → `400 INVALID_ARGUMENT` + `confirm_invalid: true`。
+
+### B2 pi 能刷新筛选库（2026-10-08 完成）
+- 新增工具 `refresh_screening({ force?, enrich_limit?, retry? })`：`syncScreening({enrichLimit:0})` + 一批 `enrichScreening()`，返回 `{sync, enrich, status}`。
+  它是 `readOnly: true`（只写缓存、不动用户数据），所以**不给确认令牌**；description 写清「会联网、默认一批 300 只、冷启动约 3 分钟」。
+- 证据（真实 pi 会话）：`pi -p -t refresh_screening "用 enrich_limit=5 刷新…"` → pi 报告：快照 `unchanged:false` 3309 只、富化 5 只（都取数失败）、
+  `risk_metrics_pending` 24 → 19；随后 `GET /api/screening/status` 确认 `basic_count: 3309 / complete_count: 2704 / risk_metrics_pending: 19`。
+- 备注：前端「重试未算出的基金」按钮（可选）未做 —— `/api/screening/compute {retry:true}` 已可由 pi 触发（`refresh_screening(retry=true)`），缺口已闭合。
+
+### B3 桩路由 → 真 SQLite（2026-10-08 完成 —— 用户选方案 a）
+- 新增迁移 `005_alerts`（`alerts`）与 `006_portfolio`（`portfolio_funds` / `portfolio_groups` / `portfolio_fund_groups` / `portfolio_holdings` / `portfolio_trades`）；
+  新增 `services/alertService.ts`（规则 CRUD + **真评估**（price_up/down 看估值涨跌、return_above/below 看持仓收益率、命中后 6h 冷却）+ 异动配置/检测）
+  与 `services/portfolioService.ts`（组合基金/分组/映射/交易 CRUD + **持仓由已结算交易推导** + 导入恢复）。
+- 路由：删 `routes/userData.routes.ts`，换成 `routes/alert.routes.ts` + `routes/portfolio.routes.ts`（顺带完成 D4 的改名）。
+- 证据（持久化真跑）：写入告警规则 + 分组 + 组合基金 + 交易 + 异动阀值 → **重启 service** → 全部还在：
+  `alerts:[{id:1,fund_code:'000000',threshold:4.2}]`、`funds:[000000]`、`groups:[{name:'加固验证组'}]`、
+  `holdings:{'000000':{share:250,cost:2,...}}`（由交易推导）、`anomaly index_surge_threshold=4.5`；验证后已清空测试数据。
+- 证据（异动不再是空壳）：`GET /api/alerts/market-anomaly` → 3 条真实异动（科创50 -4.10% / 蓄电池 +5.24% / 锂电设备 +5.01%），0.4s。
+- 证据（测试）：新增 `portfolioService.test.ts`（5 例）+ `alertService.test.ts`（4 例）+ 重写 `routes/portfolio.test.ts`（4 例）；service 全量 **196 passed**。
+- 证据（真浏览器）：`/portfolio`「实时估值」标签渲染正常（无渲染异常）。
+
+### B4 删死 UI（2026-10-08 完成）
+- 删 `frontend/src/components/DailyMarketSummary.vue` + `.css` + `fundAPI.getDailyMarket`（service 根本没有 `/market/daily` 路由）。
+- 证据：`grep -rn "market/daily\|DailyMarketSummary" frontend/src` → 空；frontend `lint` + `vue-tsc` + `test`（247 passed）+ `build` 全绿。
+
+### B5 删除策略/方案工具（2026-10-08 完成）
+- 新增 `delete_strategy(id)` / `delete_strategy_script(id)`（均 `readOnly: false`，走确认令牌）。
+- 证据（真跑往返）：`save_strategy_script('__hardening_probe__')` 两步建 id 3 → `delete_strategy_script(3)` 两步删除；
+  重名仍然拒绝（`方案名「…」已存在`）；`save_strategy('__probe__')` 建 id 4 → `delete_strategy(4)` 删除；用户原有 2 条策略与 `screen-top5` 未被碰。
+- 证据（工具清单）：`bun run gen:tools` → **33 tools**，destructive = `add_to_watchlist,remove_from_watchlist,save_strategy,delete_strategy,run_strategy_code,save_strategy_script,delete_strategy_script`。
+- 文档：`docs/architecture/pi-tools.md`（工具表/确认清单）、`AGENTS.md`、`README.md`、`.pi/skills/gofund-data/SKILL.md` 同步到 33 个工具。

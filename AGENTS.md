@@ -107,7 +107,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **Rate limiting**: `express-rate-limit` (300/15min).
 - **监听地址**: 默认 `127.0.0.1`（`HOST` 覆盖）。service 承载用户数据后不再默认暴露局域网。
 - **策略代码沙箱（3.4③，2026-10-07）**: `node:worker_threads`，与浏览器 Worker 同款全局遮蔽 + 5s 超时 `terminate()`。**不是硬沙箱**（动态 `import()` 关不掉，见 `sandbox/strategyWorker.ts` 说明），所以 `run_strategy_code` 属**执行类**工具，需确认令牌。
-- **pi 工具面（P4，2026-10-07）**: service 是工具契约唯一真源 —— `GET /api/agent/tools`（**27 个工具**：市场/基金/快讯 15 + 回测 3 + 筛选 2 + 投研 1 + 用户数据 6（含代码回测 3））、`POST /api/agent/call`（Zod 校验 → 执行 → 截断 30k 字符）。写操作（`save_strategy`）第一次只回 `CONFIRM_REQUIRED` + 令牌，参数一致才能落库（`agent/confirm.ts`）。扩展端不再抄任何映射。静态清单用 `bun run gen:tools` 重新生成。
+- **pi 工具面（P4，2026-10-07；2026-10-08 扩到 33 个）**: service 是工具契约唯一真源 —— `GET /api/agent/tools`（**33 个工具**：市场/基金/快讯 15 + 自选 3 + 回测 3 + 筛选 3 + 投研 1 + 用户数据 8（含代码回测 3、删除 2））、`POST /api/agent/call`（Zod 校验 → 执行 → 截断 30k 字符）。写/执行类（`add_to_watchlist`/`remove_from_watchlist`/`save_strategy`/`delete_strategy`/`save_strategy_script`/`delete_strategy_script`/`run_strategy_code`）第一次只回 `CONFIRM_REQUIRED` + 令牌，参数一致才能落库（`agent/confirm.ts`）。扩展端不再抄任何映射。静态清单用 `bun run gen:tools` 重新生成。
 - **服务端计算（P3.2，2026-10-07）**: `POST /api/backtest/fixed-investment` · `/portfolio` · `/compare-strategies` ——
   用 `packages/core` 的引擎（与前端同源同值），参数沿用**聊天时代的 snake_case**（`toolArgs.ts` 映射），
   净值走 `/api/funds/:code/nav-history` 的 provider 链 + 24h 缓存。语义：结构错误 → 400，取数/数据不足 → 200 + `data.error`。
@@ -123,11 +123,11 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **净值缓存容量（2026-10-08）**: `navCacheService` 写入时裁掉 10 年以前（`NAV_RETENTION_DAYS`），全库 >300 万行按 `fetched_at` LRU 整只淘汰（`NAV_MAX_POINTS`）；
   `/api/health` 的 `nav_cache` 报 `maxPoints` / `retentionDays` / `trimmed` / `evicted`。
 - **Vite proxy**: `frontend/vite.config.ts` proxies `/api` → `localhost:8310`, `/docs` → `localhost:8574`.
-- **用户数据/缓存都在 service**：`service/src/db/`（SQLite，迁移 001~004）+ `services/{userDataService,screeningService,navCacheService,researchService,backtestService}.ts` +
-  `routes/{watchlist,positions,strategies,backtest,research}.routes.ts`；前端 `db/*.ts` 只是 HTTP 薄封装（导出签名不变）。
+- **用户数据/缓存都在 service**：`service/src/db/`（SQLite，迁移 001~006）+ `services/{userDataService,screeningService,navCacheService,researchService,backtestService,alertService,portfolioService}.ts` +
+  `routes/{watchlist,positions,strategies,backtest,research,alert,portfolio}.routes.ts`；前端 `db/*.ts` 只是 HTTP 薄封装（导出签名不变）。
   **Dexie 依赖与 `db/index.ts` / `db/migrateToServer.ts` 已删除**（2026-10-08），旧 IndexedDB 数据留在浏览器里但不再被读。
-- **已知缺口**：`/api/alerts` 仍是桩（前端 `AlertSettings/AlertBadge` 在调，但 service 不落库）；
-  `/api/user/portfolio/*` 的桩与前端 `portfolioApi.ts`（被 `useFundRealtime*` 用）也在，改动「分组/交易记录」不会保存。
+- **实时页组合/告警（2026-10-08）**：`/api/user/portfolio/*`（组合基金/分组/映射/交易）与 `/api/alerts`（规则 CRUD + 真评估 + 异动配置）**已从桩换成真 SQLite CRUD**（迁移 005/006）。持仓（share/cost）不落表，由已结算交易推导。
+- **已知缺口**：实时页的「清除持仓」只改前端内存（不调接口）；异动检测的 `north_*` 阈值无数据可判（北向净流入已停止披露）。
 - **Settings endpoint**: `GET/PUT /api/settings` — **仅 proxy 子域**（落 SQLite）。应用不持有 LLM/搜索密钥（pi 是唯一 AI）。
 - **搜索网关**: `POST /api/search`（Exa 免费 → DuckDuckGo 降级；`service/src/ai/search.ts`）——无 key，留给需要 HTTP 搜索的服务端调用方。
 - **AI 定位（2026-10-07）**: 前端 AI 层（chatEngine / analysis / 两位分析师 / ChatPanel / 设置里的密钥页）**已全部删除**；AI 由**终端 pi** 承担（`.pi/extensions/` + `.pi/skills/`）。service 不做任何 LLM 调用。
@@ -166,10 +166,10 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `frontend/src/stores/` | Pinia stores (watchlistStore 内部走 `/api/watchlist`) |
 | `frontend/src/services/` | API client（api.ts 基于 httpClient 环境路由、portfolioApi.ts、docLink.ts） |
 | `docs/` | VitePress 文档站（`docs/.vitepress/config.ts` 导航/侧边栏配置） |
-| `service/src/agent/` | **工具注册表（工具契约的唯一真源）**：`tools.ts`（清单组装）+ `toolsMarket/toolsFund/toolsCompute.ts`（23 个工具，Zod 参数 + 直接调 service 内部函数）+ `confirm.ts`（写操作确认令牌）。参数用 **Zod**，`z.toJSONSchema()` 派生成 pi/OpenAI 的 JSON Schema |
+| `service/src/agent/` | **工具注册表（工具契约的唯一真源）**：`tools.ts`（清单组装）+ `toolsMarket/toolsFund/toolsWatchlist/toolsCompute.ts`（33 个工具，Zod 参数 + 直接调 service 内部函数）+ `confirm.ts`（写操作确认令牌）。参数用 **Zod**，`z.toJSONSchema()` 派生成 pi/OpenAI 的 JSON Schema |
 | `service/src/routes/agent.routes.ts` | `GET /api/agent/tools`（清单）、`POST /api/agent/call`（校验 + 执行 + 结果截断 + 写操作确认门） |
 | `service/src/sandbox/` | **策略代码沙箱（Node）**：`strategyWorker.ts`（worker 入口，抹掉宿主全局）+ `runStrategyCode.ts`（宿主：plan → 取净值 → portfolio，5s 超时 `terminate()`）。隔离是 **best-effort**：`new Function` 里关不掉动态 `import()`（浏览器里是语法错误，Node 不是）→ 真正边界是「用户确认令牌」。worker 文件后缀按当前模块推断（dev `.ts` / dist `.js`） |
-| `.pi/extensions/gofund/` | **pi 通用桥**（不再定义具体工具）：启动时拉 `/api/agent/tools`（**27 个工具**）逐个 `registerTool`；服务离线 → 用 `tools.manifest.ts`（`bun run gen:tools` 生成）；都没有 → 只注册 `gofund_call(tool, args)`。配套 skill `.pi/skills/gofund-data/SKILL.md` |
+| `.pi/extensions/gofund/` | **pi 通用桥**（不再定义具体工具）：启动时拉 `/api/agent/tools`（**33 个工具**）逐个 `registerTool`；服务离线 → 用 `tools.manifest.ts`（`bun run gen:tools` 生成）；都没有 → 只注册 `gofund_call(tool, args)`。配套 skill `.pi/skills/gofund-data/SKILL.md` |
 | `.pi/skills/gofund-strategy/SKILL.md` | 策略读写工作流（`list_strategies` / `save_strategy` + 确认门），以及「给用户看页面就调 bow 的 `browser_*`」 |
 | `packages/core/` | **共享计算内核 `@gofund/core`**（纯 TS，仅依赖 decimal.js）：回测引擎、组合引擎、策略沙箱、CPython 兼容、风险指标（`computeRiskMetricsLocal`）、行业分类、投研聚合。**前端与 service 同源同值**（前端走 vite alias/vitest alias 直连 src；service 用相对路径引 `packages/core/src`，不做 dist）；core 内相对 import 必须带 `.js` 后缀。黄金 fixtures 两侧各跑一次（`frontend/src/__tests__` + `service/src/__tests__/services/core-golden.test.ts`）。见 `packages/core/README.md` |
 | `packages/ui/` | **UI 组件库 `@gofund/ui`** — B* 系列表单控件与浮层/反馈组件、设计 token（明暗双主题）、composables；Vite lib mode 构建（组件级 chunk + dts）；frontend 经 vite/tsconfig 别名直连 `packages/ui/src/index.ts`（`@gofund/ui`），开发 HMR 与构建均从源；`file:../packages/ui` 仅为发布用依赖声明 |

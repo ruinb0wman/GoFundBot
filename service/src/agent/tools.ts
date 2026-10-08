@@ -6,9 +6,15 @@
 import { computeTools } from './toolsCompute.js'
 import { fundTools } from './toolsFund.js'
 import { marketTools } from './toolsMarket.js'
+import { watchlistTools } from './toolsWatchlist.js'
 import { manifestItem, type AgentTool, type AgentToolManifestItem } from './types.js'
 
-export const AGENT_TOOLS = [...marketTools, ...fundTools, ...computeTools] as unknown as AgentTool<never>[]
+export const AGENT_TOOLS = [
+  ...marketTools,
+  ...fundTools,
+  ...watchlistTools,
+  ...computeTools,
+] as unknown as AgentTool<never>[]
 
 export function findAgentTool(name: string): AgentTool<never> | undefined {
   return AGENT_TOOLS.find((tool) => tool.name === name)

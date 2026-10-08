@@ -9,22 +9,27 @@
 | `GET /api/agent/tools` | 工具清单：`name` / `label` / `description` / `promptSnippet` / `readOnly` / JSON Schema |
 | `POST /api/agent/call` | `{ tool, args }` → 校验参数 → 执行 → 返回结果（超 30k 字符自动转「预览 + 缩小范围」提示） |
 
-- 工具定义都在 `service/src/agent/tools{Market,Fund,Compute}.ts`，参数用 **Zod** 写，清单由 `z.toJSONSchema()` 派生。
+- 工具定义都在 `service/src/agent/tools{Market,Fund,Watchlist,Compute}.ts`，参数用 **Zod** 写，清单由 `z.toJSONSchema()` 派生。
 - 处理器**直接调 service 内部函数**（不走 HTTP 自调用），所以口径与页面完全一致（同一份 core 引擎、同一份 SQLite 缓存）。
 - 语义：结构错误（未知工具 / 参数不合 Schema）→ `400`；取数失败 → `200` + `{ error }`；写/执行类 → 见下节的确认流程。
 
-当前 **27 个工具**（分组）：
+当前 **33 个工具**（分组）：
 
 | 组 | 工具 |
 |---|---|
 | 市场 | `get_market_indices` `get_index_kline` `get_hot_sectors` `get_concept_sectors` `get_north_flow` `get_market_breadth` `get_main_flow` `get_gold_realtime` |
 | 基金 | `search_funds` `get_fund_detail` `get_fund_estimate` `get_fund_nav_history` `get_fund_holdings` `get_fund_managers` `get_flash_news` |
-| 计算 | `run_backtest` `run_portfolio_backtest` `compare_backtest_strategies` `screen_funds` `get_screening_status` `get_research_dashboard` |
-| 用户数据 | `list_strategies` `save_strategy` `get_positions` `list_strategy_scripts` `run_strategy_code` `save_strategy_script` |
+| 自选 | `get_watchlist` `add_to_watchlist` `remove_from_watchlist` |
+| 计算 | `run_backtest` `run_portfolio_backtest` `compare_backtest_strategies` `screen_funds` `get_screening_status` `refresh_screening` `get_research_dashboard` |
+| 用户数据 | `list_strategies` `save_strategy` `delete_strategy` `get_positions` `list_strategy_scripts` `run_strategy_code` `save_strategy_script` `delete_strategy_script` |
+
+`refresh_screening` 是只读的（不动用户数据）但**会联网刷新缓存**：默认只跑一批 300 只富化（冷启动全量约 3 分钟），
+返回后看 `risk_metrics_pending`，>0 就再调一次；`retry: true` 会重试上次取不到净值的基金。
 
 ## 2. 写 / 执行类要用户确认
 
-`save_strategy`、`save_strategy_script`、`run_strategy_code` 标记为 `readOnly: false`：
+`add_to_watchlist`、`remove_from_watchlist`、`save_strategy`、`delete_strategy`、`save_strategy_script`、`delete_strategy_script`、
+`run_strategy_code` 标记为 `readOnly: false`：
 
 1. 第一次调用**不执行**，返回 `{ confirm_required: true, token, message }`；
 2. 调用方（pi）要把「将要写入/执行的内容」展示给用户并取得明确同意；

@@ -295,6 +295,83 @@ export const STATIC_MANIFEST = {
       }
     },
     {
+      "name": "get_watchlist",
+      "label": "读取自选",
+      "description": "读取用户的自选基金列表与分组（service SQLite，前端「我的自选」页同源）。返回 items（fundCode/fundName/fundType/groupId/sortOrder）与 groups。",
+      "promptSnippet": "get_watchlist(): 用户自选基金与分组",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "add_to_watchlist",
+      "label": "加入自选",
+      "description": "把一只基金加入用户自选（写 service SQLite，前端「我的自选」页可见；已存在则更新名称/分组）。**这是写操作，会改用户的真实自选**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，必须先把要加的基金给用户看过并取得同意，再带上 __confirm_token 重调。",
+      "promptSnippet": "add_to_watchlist(fund_code, group_id?): 加入自选（需用户确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "description": "6 位基金代码"
+          },
+          "group_id": {
+            "description": "自选分组 id（来自 get_watchlist）；不填则未分组",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "fund_name": {
+            "description": "基金名称（不填则自动从数据源补全）",
+            "type": "string"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_code"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "remove_from_watchlist",
+      "label": "移出自选",
+      "description": "把一只或多只基金移出用户自选（破坏性写入，前端「我的自选」页同步消失）。**这是写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "remove_from_watchlist(fund_codes): 移出自选（需用户确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_codes": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{6}$",
+              "description": "6 位基金代码"
+            },
+            "description": "要移出的基金代码列表"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_codes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "run_backtest",
       "label": "基金定投回测",
       "description": "对单只基金做定投/价值平均/均线偏离回测，返回投入、市值、收益率、年化、最大回撤、夏普与抽样净值曲线。间隔用 investment_type（daily/weekly/monthly）+ day 指定。费率、止盈止损用小数（0.2 = 20%）。不传日期默认最近三年。",
@@ -696,6 +773,33 @@ export const STATIC_MANIFEST = {
       }
     },
     {
+      "name": "refresh_screening",
+      "label": "刷新筛选库",
+      "description": "刷新本地基金筛选库：拉最新快照 + 重算 4433 排名，并可选跑一批风险指标富化（夏普/回撤等）。会联网刷新（只写缓存，不动用户数据），冷启动全量约 3 分钟，所以默认只做一批（enrich_limit，300 只）；返回后看 risk_metrics_pending，>0 就再调一次。retry=true 会把上次取数失败的基金重新标记为待算。",
+      "promptSnippet": "refresh_screening(force?, enrich_limit?, retry?): 刷新筛选库/富化风险指标",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "force": {
+            "description": "true = 忽略快照时间，强制重新同步（默认 false，快照没变就跳过）",
+            "type": "boolean"
+          },
+          "enrich_limit": {
+            "description": "本批富化多少只基金，默认 300；0 = 只同步排名不富化",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2000
+          },
+          "retry": {
+            "description": "true = 重试上次取不到净值的基金（risk_attempted 归零）",
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "get_research_dashboard",
       "label": "投研看板",
       "description": "一次性拿到投研看板的四个板块：基金市场统计（总数/风险指标覆盖/4433 通过率/收益中位数）、基金看板（各类型数量与中位收益）、ETF 每日跟踪、行业表现。比自己去 screen_funds 逐项统计更省事，数字与前端 /research 页面一致。",
@@ -781,6 +885,32 @@ export const STATIC_MANIFEST = {
         "required": [
           "title",
           "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "delete_strategy",
+      "label": "删除策略记忆",
+      "description": "删除一条策略记忆（前端 /strategy 页面同步消失）。**破坏性写入**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，必须先把要删的标题给用户看过并取得明确同意，再带 __confirm_token 重调。",
+      "promptSnippet": "delete_strategy(id): 删除策略记忆（需用户确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "要删除的策略 id（来自 list_strategies）"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
         ],
         "additionalProperties": false
       }
@@ -872,6 +1002,32 @@ export const STATIC_MANIFEST = {
       }
     },
     {
+      "name": "delete_strategy_script",
+      "label": "删除回测方案",
+      "description": "删除一个已保存的回测方案（前端 /backtest 页面下拉里同步消失）。**破坏性写入**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "delete_strategy_script(id): 删除回测方案（需用户确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "要删除的方案 id（来自 list_strategy_scripts）"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "get_positions",
       "label": "读取持仓",
       "description": "读取用户记录的实际持仓（基金代码、份额、成本、买入日期），用于持仓诊断与收益核对。",
@@ -884,10 +1040,14 @@ export const STATIC_MANIFEST = {
       }
     }
   ],
-  "count": 27,
+  "count": 33,
   "destructive": [
+    "add_to_watchlist",
+    "remove_from_watchlist",
     "save_strategy",
+    "delete_strategy",
     "run_strategy_code",
-    "save_strategy_script"
+    "save_strategy_script",
+    "delete_strategy_script"
   ]
 } as const;
