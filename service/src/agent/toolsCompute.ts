@@ -17,7 +17,6 @@ import {
   addStrategy,
   createStrategyScript,
   deleteStrategyScript,
-  listPositions,
   listStrategies,
   listStrategyScripts,
   recordScriptRun,
@@ -375,15 +374,5 @@ export const computeTools = [
       deleteStrategyScript(id);
       return { deleted: { id, name: target.name }, scripts: listStrategyScripts() };
     },
-  }),
-
-  defineAgentTool({
-    name: 'get_positions',
-    label: '读取持仓',
-    description: '读取用户记录的实际持仓（基金代码、份额、成本、买入日期），用于持仓诊断与收益核对。',
-    promptSnippet: 'get_positions(): 用户持仓列表',
-    params: z.object({}),
-    readOnly: true,
-    handler: async () => ({ positions: listPositions() }),
   }),
 ]

@@ -35,6 +35,10 @@ service 未启动时工具会明确报错 —— 如实转述，**不要据此�
   当天净值未出就传 `status="pending"`，之后 `settle_trades(txn_ids)` 结算；`delete_trade` 删记录。
   分组用 `save_portfolio_group` / `delete_portfolio_group` / `assign_funds_to_group`（均需确认）。
   **持仓是推导值**（只有已结算交易计入；sell 减到 0 就整只消失），不是可以直写的字段。
+- **手工持仓（另一个东西）**：`get_positions` 读「持仓管理」页手工录入的持仓；写用 `add_position` / `update_position` / `delete_position`（均需确认）。
+  实时页那份推导持仓用 `get_portfolio`，两者不同源。
+- **自选分组与排序**：`save_watchlist_group(name, id?)`（建/改名）、`delete_watchlist_group(id)`、
+  `assign_watchlist_group(fund_codes, group_id?)`、`reorder_watchlist(fund_codes)`（均需确认）。
 
 ## 口径与陷阱（必须遵守）
 
@@ -51,9 +55,10 @@ service 未启动时工具会明确报错 —— 如实转述，**不要据此�
 
 ## 写操作要确认
 
-`add_to_watchlist`、`remove_from_watchlist`、`save_alert`、`delete_alert`、`save_anomaly_config`、
+`add_to_watchlist`、`remove_from_watchlist`、`save_watchlist_group`、`delete_watchlist_group`、`assign_watchlist_group`、`reorder_watchlist`、
+`save_alert`、`delete_alert`、`save_anomaly_config`、
 `add_portfolio_fund`、`remove_portfolio_fund`、`save_portfolio_group`、`delete_portfolio_group`、`assign_funds_to_group`、
-`add_trade`、`settle_trades`、`delete_trade`、
+`add_trade`、`settle_trades`、`delete_trade`、`add_position`、`update_position`、`delete_position`、
 `save_strategy`、`delete_strategy`、`save_strategy_script`、`delete_strategy_script`
 会改用户数据：第一次调用只返回 `confirm_required` + `__confirm_token`，
 **必须先把要写入/删除的完整内容展示给用户并拿到明确同意**，再用**完全相同的参数**加上令牌重试。

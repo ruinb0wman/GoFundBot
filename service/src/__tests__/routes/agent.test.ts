@@ -62,27 +62,41 @@ describe('GET /api/agent/tools', () => {
       expect(typeof tool.readOnly).toBe('boolean');
     }
 
-    // 写/执行类都需要确认令牌（顺序按清单出现顺序）
-    expect(destructive.sort()).toEqual([
-      'add_portfolio_fund',
-      'add_to_watchlist',
-      'add_trade',
-      'assign_funds_to_group',
-      'delete_alert',
-      'delete_portfolio_group',
-      'delete_strategy',
-      'delete_strategy_script',
-      'delete_trade',
-      'remove_from_watchlist',
-      'remove_portfolio_fund',
-      'run_strategy_code',
-      'save_alert',
-      'save_anomaly_config',
-      'save_portfolio_group',
-      'save_strategy',
-      'save_strategy_script',
-      'settle_trades',
-    ]);
+    // 写/执行类都需要确认令牌（用 Set 比，不依赖顺序 —— 免得每次加工具都要手排一次）
+    expect(new Set(destructive)).toEqual(
+      new Set([
+        // 自选
+        'add_to_watchlist',
+        'remove_from_watchlist',
+        'save_watchlist_group',
+        'delete_watchlist_group',
+        'assign_watchlist_group',
+        'reorder_watchlist',
+        // 告警
+        'save_alert',
+        'delete_alert',
+        'save_anomaly_config',
+        // 实时组合与交易
+        'add_portfolio_fund',
+        'remove_portfolio_fund',
+        'save_portfolio_group',
+        'delete_portfolio_group',
+        'assign_funds_to_group',
+        'add_trade',
+        'settle_trades',
+        'delete_trade',
+        // 持仓
+        'add_position',
+        'update_position',
+        'delete_position',
+        // 策略 / 方案 / 代码回测
+        'save_strategy',
+        'delete_strategy',
+        'save_strategy_script',
+        'delete_strategy_script',
+        'run_strategy_code',
+      ]),
+    );
     const save = tools.find((tool: { name: string }) => tool.name === 'save_strategy');
     expect(save.readOnly).toBe(false);
     expect(save.parameters.required).toContain('title');

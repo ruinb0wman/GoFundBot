@@ -14,17 +14,17 @@
 - 语义：结构错误（未知工具 / 参数不合 Schema）→ `400`；取数失败 → `200` + `{ error }`；写/执行类 → 见下节的确认流程。
 - `/api/agent/*` 有自己的限流额度（**3000/15min**），不吃全局的 300/15min —— pi 一次分析会连着调十几个工具。
 
-当前 **48 个工具**（分组）：
+当前 **55 个工具**（分组）：
 
 | 组 | 工具 |
 |---|---|
 | 市场 | `get_market_indices` `get_index_kline` `get_hot_sectors` `get_concept_sectors` `get_north_flow` `get_market_breadth` `get_main_flow` `get_gold_realtime` |
 | 基金 | `search_funds` `get_fund_detail` `get_fund_estimate` `get_fund_nav_history` `get_fund_holdings` `get_fund_managers` `get_flash_news` |
-| 自选 | `get_watchlist` `add_to_watchlist` `remove_from_watchlist` |
+| 自选 | `get_watchlist` `add_to_watchlist` `remove_from_watchlist` `save_watchlist_group` `delete_watchlist_group` `assign_watchlist_group` `reorder_watchlist` |
 | 告警 | `get_alerts` `save_alert` `delete_alert` `check_alerts` `get_market_anomaly` `save_anomaly_config` |
 | 实时组合 | `get_portfolio` `add_portfolio_fund` `remove_portfolio_fund` `save_portfolio_group` `delete_portfolio_group` `assign_funds_to_group` `add_trade` `settle_trades` `delete_trade` |
 | 计算 | `run_backtest` `run_portfolio_backtest` `compare_backtest_strategies` `screen_funds` `get_screening_status` `refresh_screening` `get_research_dashboard` |
-| 用户数据 | `list_strategies` `save_strategy` `delete_strategy` `get_positions` `list_strategy_scripts` `run_strategy_code` `save_strategy_script` `delete_strategy_script` |
+| 用户数据 | `list_strategies` `save_strategy` `delete_strategy` `get_positions` `add_position` `update_position` `delete_position` `list_strategy_scripts` `run_strategy_code` `save_strategy_script` `delete_strategy_script` |
 
 `refresh_screening` 是只读的（不动用户数据）但**会联网刷新缓存**：默认只跑一批 300 只富化（冷启动全量约 3 分钟），
 返回后看 `risk_metrics_pending`，>0 就再调一次；`retry: true` 会重试上次取不到净值的基金。
@@ -33,9 +33,11 @@
 
 ## 2. 写 / 执行类要用户确认
 
-`add_to_watchlist`、`remove_from_watchlist`、`save_alert`、`delete_alert`、`save_anomaly_config`、
+`add_to_watchlist`、`remove_from_watchlist`、`save_watchlist_group`、`delete_watchlist_group`、`assign_watchlist_group`、`reorder_watchlist`、
+`save_alert`、`delete_alert`、`save_anomaly_config`、
 `add_portfolio_fund`、`remove_portfolio_fund`、`save_portfolio_group`、`delete_portfolio_group`、`assign_funds_to_group`、
-`add_trade`、`settle_trades`、`delete_trade`、`save_strategy`、`delete_strategy`、`save_strategy_script`、`delete_strategy_script`、
+`add_trade`、`settle_trades`、`delete_trade`、`add_position`、`update_position`、`delete_position`、
+`save_strategy`、`delete_strategy`、`save_strategy_script`、`delete_strategy_script`、
 `run_strategy_code` 标记为 `readOnly: false`：
 
 1. 第一次调用**不执行**，返回 `{ confirm_required: true, token, message }`；

@@ -8,6 +8,7 @@ import { computeTools } from './toolsCompute.js'
 import { fundTools } from './toolsFund.js'
 import { marketTools } from './toolsMarket.js'
 import { portfolioTools } from './toolsPortfolio.js'
+import { positionTools } from './toolsPositions.js'
 import { watchlistTools } from './toolsWatchlist.js'
 import { manifestItem, type AgentTool, type AgentToolManifestItem } from './types.js'
 
@@ -17,6 +18,7 @@ export const AGENT_TOOLS = [
   ...watchlistTools,
   ...alertTools,
   ...portfolioTools,
+  ...positionTools,
   ...computeTools,
 ] as unknown as AgentTool<never>[]
 

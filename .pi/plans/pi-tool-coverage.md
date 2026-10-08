@@ -235,3 +235,19 @@ call "{\"tool\":\"<name>\",\"args\":{…,\"__confirm_token\":\"$T\"}}"
   依次 `delete_trade` / `remove_portfolio_fund` / `delete_portfolio_group` 清回空。
 - 证据（单测）：新增 `src/__tests__/agent/toolsPortfolio.test.ts`（5 例：空组合只读、基金+分组增删、pending→settle 才计入持仓、
   两次买入加权成本 + 清仓整只消失、不存在的分组/交易给人话）；service 210 → **215**。
+
+### C 持仓与自选写入（2026-10-08 完成）
+- 新增 `service/src/agent/toolsPositions.ts`（4 个）：`get_positions`（从 `toolsCompute.ts` **搬家**，契约不变）+ `add_position` / `update_position` / `delete_position`（需确认）。
+- `toolsWatchlist.ts` 追加 4 个：`save_watchlist_group`（建/改名）、`delete_watchlist_group`、`assign_watchlist_group`、`reorder_watchlist`（需确认）。
+- 工具数 **48 → 55**（写类共 25）；`toolsCompute.ts` 从 389 → 378 行（腾出空间，不碰 500 上限）。
+- 顺手改进：`agent.test.ts` 的 destructive 断言从 `sort()+toEqual(array)` 改成 **`new Set(...)` 比对** ——
+  顺序无关，以后加工具不用再手排一次（B 阶段就在这上面错过一次顺序）。
+- 证据（真实 pi 会话）：`pi -p -t get_positions` → 「你手工录入的持仓是空的（一条也没有）」。
+- 证据（写路径 + 页面确认 + 清理）：
+  - `add_position(110022, shares=100, cost=1.5, purchase_date=2025-06-02)`（名称自动补成「易方达消费行业股票」）→
+    **真浏览器 `/portfolio`「持仓管理」页**显示：110022 / 持有份额 100 / 成本净值 1.5 / 总成本 ¥150.00 / 总市值 ¥279.00 / 盈亏 +129.00；
+  - `save_watchlist_group(加固验证组)` + `add_to_watchlist(110022, group_id)` → **仪表盘「我的自选」**显示「加固验证组 / 易方达消费行业股票 110022 +1.34%」；
+  - 依次 `delete_position` / `remove_from_watchlist` / `delete_watchlist_group` 清回空（`/api/positions` 与 `/api/watchlist` 均空）。
+- 证据（单测）：新增 `toolsPositions.test.ts`（2 例）+ `toolsWatchlist.test.ts`（2 例）；service 215 → **219**。
+- **验证教训**：`browser_navigate` 到只有 hash 变化的 URL **不会重新加载页面**（SPA 内存里的旧数据会假装还在）。
+  验证写入类工具必须用 `browser_reload`（或先跳到别的路由再回）—— 我一度以为 B 阶段的测试数据没清干净。

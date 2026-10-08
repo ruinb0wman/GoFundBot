@@ -372,6 +372,137 @@ export const STATIC_MANIFEST = {
       }
     },
     {
+      "name": "save_watchlist_group",
+      "label": "新建/重命名自选分组",
+      "description": "新建一个自选分组，或重命名已有的（写 service SQLite，前端「我的自选」页可见）。不传 id = 新建（需 name）；传 id = 重命名。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "save_watchlist_group(name, id?): 新建/重命名自选分组（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "要重命名的分组 id（来自 get_watchlist）；不填则新建",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30,
+            "description": "分组名"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "delete_watchlist_group",
+      "label": "删除自选分组",
+      "description": "删除一个自选分组（组内基金回到「未分组」，不会被删掉）。**破坏性写入**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "delete_watchlist_group(id): 删除自选分组（需用户确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "要删除的分组 id（来自 get_watchlist）"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "assign_watchlist_group",
+      "label": "自选基金分组",
+      "description": "把一批自选基金移到某个分组（`group_id` 传 null = 取消分组）。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "assign_watchlist_group(fund_codes, group_id?): 自选基金分组（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_codes": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{6}$",
+              "description": "6 位基金代码"
+            },
+            "description": "要分组的自选基金代码"
+          },
+          "group_id": {
+            "description": "目标分组 id；null / 不填 = 取消分组",
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_codes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "reorder_watchlist",
+      "label": "自选排序",
+      "description": "按给定顺序重排自选列表（传入的代码顺序就是新的显示顺序；未列出的基金排在后面）。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "reorder_watchlist(fund_codes): 自选排序（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_codes": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{6}$",
+              "description": "6 位基金代码"
+            },
+            "description": "新的顺序（代码列表）"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_codes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "get_alerts",
       "label": "读取告警规则",
       "description": "读取用户的基金告警规则（fund_code/alert_type/threshold/enabled/last_triggered）与市场异动阈值配置。`price_*` 比的是实时估算涨跌幅，`return_*` 比的是**持仓收益率**（持仓由已结算交易推导，没持仓的基金不会触发）。",
@@ -846,6 +977,147 @@ export const STATIC_MANIFEST = {
             "exclusiveMinimum": 0,
             "maximum": 9007199254740991,
             "description": "交易记录 id（来自 get_portfolio 或 GET /api/user/portfolio/trades）"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_positions",
+      "label": "读取持仓",
+      "description": "读取用户在「持仓管理」里录入的实际持仓（基金代码、份额、成本、买入日期），用于持仓诊断与收益核对。这是**手工录入**的持仓；实时页那份由已结算交易推导的持仓见 `get_portfolio`。",
+      "promptSnippet": "get_positions(): 用户手工录入的持仓列表",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "add_position",
+      "label": "新增持仓",
+      "description": "新增一条持仓记录（写 service SQLite，前端「持仓管理」页可见）。份额 share 与成本价 cost 都是必填；基金名称不填会自动补全。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，必须先把要记的持仓给用户看过并取得同意，再带上 __confirm_token 重调。",
+      "promptSnippet": "add_position(fund_code, shares, cost, purchase_date?): 新增持仓（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fund_code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "description": "6 位基金代码"
+          },
+          "shares": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "持有份额"
+          },
+          "cost": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "成本单价（每份成本，元）"
+          },
+          "fund_name": {
+            "description": "基金名称（不填则自动补全）",
+            "type": "string"
+          },
+          "purchase_date": {
+            "description": "买入日期 YYYY-MM-DD",
+            "type": "string"
+          },
+          "purchase_time": {
+            "description": "买入时间 HH:MM",
+            "type": "string"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fund_code",
+          "shares",
+          "cost"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "update_position",
+      "label": "修改持仓",
+      "description": "修改一条持仓记录（只改传入的字段，其余不动）。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "update_position(id, shares?, cost?, fund_name?, purchase_date?): 修改持仓（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "持仓 id（来自 get_positions）"
+          },
+          "shares": {
+            "description": "新的持有份额",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "cost": {
+            "description": "新的成本单价",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "fund_name": {
+            "description": "基金名称",
+            "type": "string"
+          },
+          "purchase_date": {
+            "description": "买入日期 YYYY-MM-DD（null 清空）",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purchase_time": {
+            "description": "买入时间 HH:MM（null 清空）",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "delete_position",
+      "label": "删除持仓",
+      "description": "删除一条持仓记录（破坏性写入，前端「持仓管理」页同步消失）。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "delete_position(id): 删除持仓（需用户确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "持仓 id（来自 get_positions）"
           },
           "__confirm_token": {
             "description": "服务端下发的确认令牌（第一次调用后获得）",
@@ -1513,24 +1785,16 @@ export const STATIC_MANIFEST = {
         ],
         "additionalProperties": false
       }
-    },
-    {
-      "name": "get_positions",
-      "label": "读取持仓",
-      "description": "读取用户记录的实际持仓（基金代码、份额、成本、买入日期），用于持仓诊断与收益核对。",
-      "promptSnippet": "get_positions(): 用户持仓列表",
-      "readOnly": true,
-      "parameters": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      }
     }
   ],
-  "count": 48,
+  "count": 55,
   "destructive": [
     "add_to_watchlist",
     "remove_from_watchlist",
+    "save_watchlist_group",
+    "delete_watchlist_group",
+    "assign_watchlist_group",
+    "reorder_watchlist",
     "save_alert",
     "delete_alert",
     "save_anomaly_config",
@@ -1542,6 +1806,9 @@ export const STATIC_MANIFEST = {
     "add_trade",
     "settle_trades",
     "delete_trade",
+    "add_position",
+    "update_position",
+    "delete_position",
     "save_strategy",
     "delete_strategy",
     "run_strategy_code",
