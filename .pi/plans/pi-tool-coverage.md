@@ -197,7 +197,11 @@ call "{\"tool\":\"<name>\",\"args\":{…,\"__confirm_token\":\"$T\"}}"
 
 ---
 
-## G. 执行记录（新会话在这里追加）
+## G. 执行记录（A–D 全部完成，2026-10-08）
+
+> 四个 commit：`0fbafd7`(A 告警) / `46eeb83`(B 组合交易) / `5884224`(C 持仓+自选分组) / `dbdce64`(D 行情细节)。
+> 工具 **33 → 59**；写/执行类 25（全走确认令牌）；service 205 → **223** tests、frontend 256、`bun run check` 全绿。
+> 额外收获：修了 **前端信封解包**（告警/异动/实时页一直显示不出来）与 **`get_index_kline` 恒返回空 K 线** 两个真 bug。
 
 ### A 告警工具（2026-10-08 完成）
 - 新增 `service/src/agent/toolsAlert.ts`（6 个）：`get_alerts`、`save_alert`（新建/更新，确认令牌）、`delete_alert`（确认令牌）、
