@@ -372,6 +372,171 @@ export const STATIC_MANIFEST = {
       }
     },
     {
+      "name": "get_alerts",
+      "label": "读取告警规则",
+      "description": "读取用户的基金告警规则（fund_code/alert_type/threshold/enabled/last_triggered）与市场异动阈值配置。`price_*` 比的是实时估算涨跌幅，`return_*` 比的是**持仓收益率**（持仓由已结算交易推导，没持仓的基金不会触发）。",
+      "promptSnippet": "get_alerts(): 告警规则 + 异动阈值",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "save_alert",
+      "label": "保存告警规则",
+      "description": "新建或更新一条基金告警规则（写 service SQLite，前端「告警设置」里可见）。不传 id = 新建（需要 fund_code + alert_type）；传 id = 更新（改 threshold / enabled）。**这是写操作，会改用户的真实告警**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，必须先把要写的规则给用户看过并取得同意，再带上 __confirm_token 重调。",
+      "promptSnippet": "save_alert(fund_code, alert_type, threshold, id?, enabled?): 新建/更新告警（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "要更新的规则 id（来自 get_alerts）；不填则新建",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "fund_code": {
+            "description": "基金代码（新建时必填，更新时忽略）",
+            "type": "string",
+            "pattern": "^\\d{6}$"
+          },
+          "alert_type": {
+            "description": "告警类型（新建时必填，更新时忽略）",
+            "type": "string",
+            "enum": [
+              "price_up",
+              "price_down",
+              "return_above",
+              "return_below"
+            ]
+          },
+          "threshold": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "阈值，百分数（5 = 5%）。price_down 用正数表示跌幅（3 = 跌超 3%）"
+          },
+          "enabled": {
+            "description": "是否启用（更新时用；新建默认启用）",
+            "type": "boolean"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "threshold"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "delete_alert",
+      "label": "删除告警规则",
+      "description": "删除一条基金告警规则（破坏性写入，前端「告警设置」里同步消失）。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "delete_alert(id): 删除告警规则（需用户确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "要删除的规则 id（来自 get_alerts）"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "check_alerts",
+      "label": "立即检查告警",
+      "description": "立刻评估一遍所有启用的告警规则，返回命中的规则（含当前值与阈值）。**副作用**：命中的规则会写 last_triggered 并进入 **6 小时冷却**（冷却期内不再重复报）—— 这是通知去抖，不是数据修改。",
+      "promptSnippet": "check_alerts(): 立即评估告警规则（命中后 6h 冷却）",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_market_anomaly",
+      "label": "市场异动",
+      "description": "按当前异动阈值检测当日市场异动：指数大涨/大跌、板块大涨/大跌、两市成交额放量/缩量。返回 anomalies（type/name/value）、indices 行情与当前阈值。注意：`north_*` 阈值没有数据可判（北向净流入自 2024-08 起停止披露）。",
+      "promptSnippet": "get_market_anomaly(): 当日市场异动（指数/板块/成交额）",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "save_anomaly_config",
+      "label": "保存异动阈值",
+      "description": "更新市场异动的判定阈值（前端「设置 → 异动阈值」同一份配置，落 SQLite）。只传要改的字段，其余保持不动。**写操作**：第一次调用只返回 CONFIRM_REQUIRED 与令牌，取得用户同意后带 __confirm_token 重调。",
+      "promptSnippet": "save_anomaly_config(index_surge_threshold?, …): 改异动阈值（需确认）",
+      "readOnly": false,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "index_surge_threshold": {
+            "description": "指数大涨阈值（%，默认 3）",
+            "type": "number"
+          },
+          "index_plunge_threshold": {
+            "description": "指数大跌阈值（%，默认 -3）",
+            "type": "number"
+          },
+          "volume_surge_ratio": {
+            "description": "成交额放量倍数（默认 1.5）",
+            "type": "number"
+          },
+          "volume_shrink_ratio": {
+            "description": "成交额缩量倍数（默认 0.5）",
+            "type": "number"
+          },
+          "sector_surge_threshold": {
+            "description": "板块大涨阈值（%，默认 5）",
+            "type": "number"
+          },
+          "sector_plunge_threshold": {
+            "description": "板块大跌阈值（%，默认 -5）",
+            "type": "number"
+          },
+          "sector_inflow_threshold": {
+            "description": "板块主力净流入阈值（亿元，默认 10）",
+            "type": "number"
+          },
+          "north_inflow_threshold": {
+            "description": "北向流入阈值（暂无数据可判）",
+            "type": "number"
+          },
+          "north_outflow_threshold": {
+            "description": "北向流出阈值（暂无数据可判）",
+            "type": "number"
+          },
+          "__confirm_token": {
+            "description": "服务端下发的确认令牌（第一次调用后获得）",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "run_backtest",
       "label": "基金定投回测",
       "description": "对单只基金做定投/价值平均/均线偏离回测，返回投入、市值、收益率、年化、最大回撤、夏普与抽样净值曲线。间隔用 investment_type（daily/weekly/monthly）+ day 指定。费率、止盈止损用小数（0.2 = 20%）。不传日期默认最近三年。",
@@ -1040,10 +1205,13 @@ export const STATIC_MANIFEST = {
       }
     }
   ],
-  "count": 33,
+  "count": 39,
   "destructive": [
     "add_to_watchlist",
     "remove_from_watchlist",
+    "save_alert",
+    "delete_alert",
+    "save_anomaly_config",
     "save_strategy",
     "delete_strategy",
     "run_strategy_code",

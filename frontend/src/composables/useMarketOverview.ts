@@ -413,7 +413,7 @@ export function useMarketOverview(props: any) {
     anomaliesLoading.value = true
     try {
       const res = await alertAPI.marketAnomaly()
-      anomalies.value = (res.data || {}).anomalies || []
+      anomalies.value = (res.data as { data?: { anomalies?: unknown[] } } | undefined)?.data?.anomalies ?? []
     } catch { anomalies.value = [] }
     finally { anomaliesLoading.value = false }
   }

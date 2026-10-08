@@ -65,10 +65,13 @@ describe('GET /api/agent/tools', () => {
     // 写/执行类都需要确认令牌（顺序按清单出现顺序）
     expect(destructive.sort()).toEqual([
       'add_to_watchlist',
+      'delete_alert',
       'delete_strategy',
       'delete_strategy_script',
       'remove_from_watchlist',
       'run_strategy_code',
+      'save_alert',
+      'save_anomaly_config',
       'save_strategy',
       'save_strategy_script',
     ]);

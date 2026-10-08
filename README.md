@@ -9,7 +9,7 @@ GoFundBot 是一个本机跑的基金分析与可视化工具：Node 后端负�
 ## 🚀 功能特性
 
 ### 🤖 AI 由终端 pi 承担
-*   **工具面单一真源**：`GET /api/agent/tools` 提供 **33 个工具**（行情/板块/资金流/基金/快讯 + 自选 + 回测 + 筛选 + 投研看板 + 策略/方案/持仓），pi 扩展启动时拉清单动态注册。
+*   **工具面单一真源**：`GET /api/agent/tools` 提供 **39 个工具**（行情/板块/资金流/基金/快讯 + 自选 + 告警 + 回测 + 筛选 + 投研看板 + 策略/方案/持仓），pi 扩展启动时拉清单动态注册。
 *   **同源同值**：工具处理器直接调 service 内部函数（同一份 core 引擎、同一份 SQLite 缓存），所以模型看到的数字与页面一致。
 *   **执行/写入要确认**：`save_strategy`、`run_strategy_code`、`save_strategy_script` 第一次调用只返回确认令牌，用户确认并原样重调才真正执行。
 *   **自由代码回测**：pi 可以写策略代码（`prepare(sdk)` 声明池、`onDay(s)` 逐日决策）并直接跑出结果；在 `node:worker_threads` 沙箱里执行，5s 超时强制终止。
@@ -117,7 +117,7 @@ cd docs && bun install && bunx vitepress dev --port 8574   # 文档站 :8574
 *   **数据源编排**: ProviderChain (行情 stock-sdk → eastmoney；基金 joinquant → tencent → stock-sdk → eastmoney)，失败落 Python/akshare
 *   **存储**: SQLite (`node:sqlite`) — 用户数据 / 筛选库 / 净值缓存 / 设置，见 `src/db/migrations/`
 *   **计算**: 调 `packages/core`（回测 / 组合 / 风险指标 / 行业分类 / 4433 / 投研聚合）
-*   **工具面**: `/api/agent/tools`（33 个工具，Zod → JSON Schema）+ `/api/agent/call`（写/执行类需确认令牌）
+*   **工具面**: `/api/agent/tools`（39 个工具，Zod → JSON Schema）+ `/api/agent/call`（写/执行类需确认令牌）
 *   **代码沙箱**: `node:worker_threads`（5s 超时 terminate）
 *   **缓存**: 内存 LRU (30s ~ 7d) + SQLite 净值缓存（带覆盖度判断）
 *   **限流**: express-rate-limit (300/15min)
@@ -251,7 +251,7 @@ GoFundBot/
 │   │   ├── app.ts               # 应用入口 — 路由注册 + 中间件
 │   │   ├── routes/              # API 路由（fund/market/screening/backtest/research/agent/...）
 │   │   ├── services/            # 数据与计算服务（fundService, screeningService, backtestService, navCacheService, userDataService...）
-│   │   ├── agent/               # pi 工具注册表（33 个工具 + 确认令牌）
+│   │   ├── agent/               # pi 工具注册表（39 个工具 + 确认令牌）
 │   │   ├── sandbox/             # 策略代码沙箱（node:worker_threads）
 │   │   ├── db/                  # SQLite 连接 + 迁移（001~006）
 │   │   ├── providers/           # 数据源（eastmoney, stock-sdk, tencent, yahoo, joinquant）

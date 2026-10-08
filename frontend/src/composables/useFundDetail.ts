@@ -214,7 +214,7 @@ export function useFundDetail(props: any, emit: any) {
     if (!fundCode) { tradeRecords.value = []; return }
     try {
       const response = await portfolioAPI.getTrades(fundCode)
-      const data = response?.data
+      const data = response?.data?.data
       if (Array.isArray(data)) {
         tradeRecords.value = data.map(r => ({
           id: r.id,

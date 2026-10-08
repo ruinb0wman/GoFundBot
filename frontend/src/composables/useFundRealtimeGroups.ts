@@ -22,8 +22,8 @@ export function useFundRealtimeGroups() {
         portfolioAPI.getGroups(),
         portfolioAPI.getGroupMap(),
       ])
-      if (Array.isArray(groupsRes?.data)) portfolioGroups.value = groupsRes.data
-      if (mapRes?.data && typeof mapRes.data === 'object') fundGroupMap.value = mapRes.data
+      if (Array.isArray(groupsRes?.data?.data)) portfolioGroups.value = groupsRes.data.data
+      if (mapRes?.data?.data && typeof mapRes.data.data === 'object') fundGroupMap.value = mapRes.data.data
     } catch { /* API not available */ }
   })
 
@@ -102,7 +102,7 @@ export function useFundRealtimeGroups() {
           rebalance_upper: rebalanceForm.value.upper,
           rebalance_lower: rebalanceForm.value.lower,
         })
-        if (res?.data?.id) newGroup.id = res.data.id
+        if (res?.data?.data?.id) newGroup.id = res.data.data.id
       } catch { /* fallback */ }
     }
     closeGroupModal()

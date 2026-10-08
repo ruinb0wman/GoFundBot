@@ -252,7 +252,7 @@ export function useFundRealtimeData(emit, extra = {}) {
   onMounted(async () => {
     try {
       const res = await portfolioAPI.getFunds()
-      const data = res?.data
+      const data = res?.data?.data
       if (Array.isArray(data) && data.length) {
         const apiFunds = data.map(f => ({ code: f.fund_code, name: f.fund_name, type: f.fund_type })).filter(f => f.code)
         fundOrder.value = data.map(f => f.fund_code)
@@ -262,7 +262,7 @@ export function useFundRealtimeData(emit, extra = {}) {
 
     try {
       const res = await portfolioAPI.getHoldings()
-      const data = res?.data
+      const data = res?.data?.data
       if (data && typeof data === 'object') holdings.value = data
     } catch { console.warn('加载持仓数据失败') }
 
@@ -283,7 +283,7 @@ export function useFundRealtimeData(emit, extra = {}) {
   const refreshHoldings = async () => {
     try {
       const res = await portfolioAPI.getHoldings()
-      const data = res?.data
+      const data = res?.data?.data
       if (data && typeof data === 'object') holdings.value = data
     } catch { console.warn('刷新持仓失败') }
   }

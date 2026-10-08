@@ -5,7 +5,7 @@
  */
 import { z } from 'zod'
 import { defineAgentTool } from './types.js'
-import { getFundBasic } from '../services/fundService.js'
+import { resolveFund } from './fundLookup.js'
 import {
   listWatchlist,
   listWatchlistGroups,
@@ -15,16 +15,6 @@ import {
 } from '../services/userDataService.js'
 
 const fundCode = z.string().regex(/^\d{6}$/).describe('6 位基金代码')
-
-/** 尽量补全名称/类型（eastmoney，带缓存）；取不到就存 null，不影响自选本身。 */
-async function resolveFund(code: string): Promise<{ fundName: string | null; fundType: string | null }> {
-  try {
-    const basic = await getFundBasic(code)
-    return { fundName: basic.data?.name ?? null, fundType: basic.data?.type ?? null }
-  } catch {
-    return { fundName: null, fundType: null }
-  }
-}
 
 export const watchlistTools = [
   defineAgentTool({

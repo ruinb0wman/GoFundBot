@@ -199,4 +199,22 @@ call "{\"tool\":\"<name>\",\"args\":{…,\"__confirm_token\":\"$T\"}}"
 
 ## G. 执行记录（新会话在这里追加）
 
-（尚未开始）
+### A 告警工具（2026-10-08 完成）
+- 新增 `service/src/agent/toolsAlert.ts`（6 个）：`get_alerts`、`save_alert`（新建/更新，确认令牌）、`delete_alert`（确认令牌）、
+  `check_alerts`（只读，但命中会写 `last_triggered` + 6h 冷却）、`get_market_anomaly`、`save_anomaly_config`（确认令牌）。
+  顺手把「按代码补基金名」抽成 `service/src/agent/fundLookup.ts`（自选/告警共用）。
+- 工具数 **33 → 39**；`bun run gen:tools` 后 destructive = `add_to_watchlist,remove_from_watchlist,save_alert,delete_alert,save_anomaly_config,save_strategy,delete_strategy,run_strategy_code,save_strategy_script,delete_strategy_script`；
+  同步改了 `src/__tests__/routes/agent.test.ts` 里写死的 destructive 断言。
+- 证据（真实 pi 会话）：
+  - `pi -p -t get_alerts` → 「你目前一条告警规则都没设，异动阈值全是默认值（…北向 ±100/-50 亿那条因数据停披露实际无效）」。
+  - `pi -p -t get_market_anomaly,check_alerts` → 「创业板指 -3.15%、科创50 -4.82%；告警检查了 1 条规则，未命中」。
+- 证据（写路径两步令牌 + 页面确认 + 清理）：
+  - `save_alert(110022, price_up, 9.9)` → 建 id 2（名称自动补成「易方达消费行业股票」）→ 页面头部铃铛下拉显示「110022 涨超 9.9%」→ `delete_alert(2)` 删掉。
+  - `save_anomaly_config(index_surge_threshold=4.5)` → `/settings/anomaly` 页面的「大涨阈值」输入框真的显示 4.5 → 改回 3。
+- 证据（单测）：新增 `src/__tests__/agent/toolsAlert.test.ts`（5 例：确认令牌往返建/改/删、缺参数报错、只读工具不卡令牌、异动阈值部分更新）；service 205 → **210**。
+- **顺手修的真 bug（重要）**：前端 `httpClient` 返回的是**整个信封**（`{success,data,meta}`），
+  但一批旧调用点把 `res.data` 当载荷用 → **告警/异动/实时页的数据一直显示不出来**（不是「不保存」，是「看不见」）。
+  修了 7 个文件共 13 处：`stores/alertStore.ts`（rules/check）、`composables/useMarketOverview.ts`（anomalies）、
+  `views/SettingsAnomalyThreshold.vue`（get/defaults）、`composables/useFundRealtime{Data,Groups,Trade}.ts`、`useFundDetail.ts` → 一律改读 `res.data.data`。
+  验证：铃铛下拉、市场异动面板（大跌 创业板指/科创50）、异动阈值表单均正常；`bun run check` 全绿（frontend 256 tests）。
+  **教训**：`httpClient` 不拆信封，新写调用方必须自己取 `res.data.data`（`useScreeningDb.unwrap` / `userDataApi.unwrap` 就是正确写法）。

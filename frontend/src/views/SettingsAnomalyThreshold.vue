@@ -111,7 +111,7 @@ const loadConfig = async () => {
   loading.value = true
   try {
     const res = await anomalyConfigAPI.get()
-    const data = res.data as Partial<AnomalyForm>
+    const data = (res.data as { data?: Partial<AnomalyForm> } | undefined)?.data ?? {}
     for (const key of Object.keys(defaults) as (keyof AnomalyForm)[]) {
       if (data[key] !== undefined && typeof data[key] === 'number') {
         form.value[key] = data[key]!
@@ -144,7 +144,7 @@ const resetDefaults = async () => {
   saving.value = true
   try {
     const res = await anomalyConfigAPI.getDefaults()
-    const data = res.data as Partial<AnomalyForm>
+    const data = (res.data as { data?: Partial<AnomalyForm> } | undefined)?.data ?? {}
     for (const key of Object.keys(defaults) as (keyof AnomalyForm)[]) {
       if (data[key] !== undefined && typeof data[key] === 'number') {
         form.value[key] = data[key]!

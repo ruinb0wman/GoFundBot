@@ -3,6 +3,7 @@
  *
  * 处理器直接调 service 内部函数（不走 HTTP 自调用），所以口径只有一份。
  */
+import { alertTools } from './toolsAlert.js'
 import { computeTools } from './toolsCompute.js'
 import { fundTools } from './toolsFund.js'
 import { marketTools } from './toolsMarket.js'
@@ -13,6 +14,7 @@ export const AGENT_TOOLS = [
   ...marketTools,
   ...fundTools,
   ...watchlistTools,
+  ...alertTools,
   ...computeTools,
 ] as unknown as AgentTool<never>[]
 

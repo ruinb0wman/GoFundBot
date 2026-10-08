@@ -27,6 +27,10 @@ service 未启动时工具会明确报错 —— 如实转述，**不要据此�
 - **看资讯**：`get_flash_news(count)`。
 - **用户自己的东西**：`list_strategies`（策略记忆）/ `get_positions`（持仓）/ `get_watchlist`（自选）—— 分析时先读，再结合行情给建议。
   写自选用 `add_to_watchlist(fund_code)` / `remove_from_watchlist(fund_codes)`（会改用户真实数据，需确认）。
+- **告警与异动**：`get_alerts` 看用户设的规则与阈值；`save_alert` / `delete_alert` 改规则（需确认）；
+  `check_alerts` 立即评估一遍（命中会写 `last_triggered` 并 6 小时冷却，避免刷屏）；
+  `get_market_anomaly` 看当日指数/板块/成交额异动；`save_anomaly_config` 改判定阈值（需确认）。
+  `price_*` 比的是实时估值涨跌幅，`return_*` 比的是**持仓收益率**（没有持仓的基金该规则不会触发）。
 
 ## 口径与陷阱（必须遵守）
 
@@ -43,7 +47,8 @@ service 未启动时工具会明确报错 —— 如实转述，**不要据此�
 
 ## 写操作要确认
 
-`add_to_watchlist`、`remove_from_watchlist`、`save_strategy`、`delete_strategy`、`save_strategy_script`、`delete_strategy_script`
+`add_to_watchlist`、`remove_from_watchlist`、`save_alert`、`delete_alert`、`save_anomaly_config`、
+`save_strategy`、`delete_strategy`、`save_strategy_script`、`delete_strategy_script`
 会改用户数据：第一次调用只返回 `confirm_required` + `__confirm_token`，
 **必须先把要写入/删除的完整内容展示给用户并拿到明确同意**，再用**完全相同的参数**加上令牌重试。
 令牌一次有效、参数改过就失效。

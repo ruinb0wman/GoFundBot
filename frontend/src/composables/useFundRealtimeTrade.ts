@@ -46,7 +46,7 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs, extr
         txn_id: record.txnId || record.id || '',
         settled_at: record.settledAt || '',
       }).then(res => {
-        if (res?.data?.id) record.dbId = res.data.id
+        if (res?.data?.data?.id) record.dbId = res.data.data.id
       }).catch(() => {})
     }
   }
@@ -310,7 +310,7 @@ export function useFundRealtimeTrade(funds, holdings, todayDate, refreshMs, extr
   onMounted(async () => {
     try {
       const res = await portfolioAPI.getTrades()
-      const data = res?.data
+      const data = res?.data?.data
       if (Array.isArray(data) && data.length) {
         const settled = data.filter(r => r.status === 'settled' || r.status !== 'pending')
         const pending = data.filter(r => r.status === 'pending')

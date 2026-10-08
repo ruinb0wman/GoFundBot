@@ -27,7 +27,8 @@ export const useAlertStore = defineStore('alert', {
       this.loading = true
       try {
         const response = await alertAPI.list()
-        this.rules = (response.data as AlertRule[]) || []
+        // httpRequest 返回 `{ data: <整个信封> }` → 真正的数组在 `data.data`
+        this.rules = (response.data as { data?: AlertRule[] } | undefined)?.data ?? []
       } finally {
         this.loading = false
       }
@@ -48,10 +49,10 @@ export const useAlertStore = defineStore('alert', {
       this.loading = true
       try {
         const response = await alertAPI.check()
-        const result = response.data as { triggered: unknown[]; checked_count: number }
-        this.triggeredCount = (result.triggered || []).length
+        const result = (response.data as { data?: { triggered: unknown[]; checked_count: number } } | undefined)?.data
+        this.triggeredCount = (result?.triggered || []).length
         this.lastCheck = Date.now()
-        return result.triggered || []
+        return result?.triggered || []
       } catch {
         return []
       } finally {
