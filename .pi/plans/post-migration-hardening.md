@@ -451,3 +451,37 @@ pi 一次分析可能连着调十几个工具（筛选 + 回测 + 快讯…）�
   `/api/agent` 单独挂 `3000/15min`。
 - 证据：脚本 20 并发连打 **400 次** `POST /api/agent/call`（`get_screening_status`）→ `ok=400 rate_limited=0`，用时 1.3s。
 - 文档：`docs/architecture/pi-tools.md` §1、`docs/data-sources-and-runtime.md` §4 限流行。
+
+### D1 一条命令跑完校验（2026-10-08 完成）
+- 根 `package.json` 加 `"check": "cd service && … && cd ../frontend && … && cd ../docs && bun run build"`；
+  `AGENTS.md`「本地校验」与 `README.md` 都改成「改完跑 `bun run check`」。
+- 证据：`bun run check` → **exit=0 / 36s**；service **205 tests**（30 文件）、frontend **256 tests**（21 文件）+ build、docs build 全绿。
+
+### D2 `gen:tools` 漂移守卫（2026-10-08 完成）
+- 做法（选「测试拦住」而不是 pre-commit，简单且随 `bun run check` 跑）：
+  抽出 `service/scripts/renderToolsManifest.ts`（纯渲染）+ 新增 `src/__tests__/agent/toolsManifest.test.ts`
+  比对提交的 `tools.manifest.ts` 与 `src/agent/` 注册表。
+- 证据：临时把 `run_backtest` 的 label 改成「基金定投回测(漂移探针)」且不跑 gen:tools → 单测 **1 failed**；恢复 → **1 passed**。
+
+### D3 alias 单一真源（2026-10-08 完成）
+- 做法：`frontend/vite.config.ts` 定义 `alias` 数组并导出，`vitest.config.js` 改成 `resolve.alias: viteConfig.resolve.alias`
+  （原来手抄一份）；顺手把 `@` 也补进 vite（原来只有 vitest/tsconfig 有）。tsconfig `paths` 仍需同步（TS 不走 Vite），已在注释里写明。
+- 证据：把 `@gofund/core/` 指向不存在的目录（只改 vite.config.ts）→ 19 个测试文件 **12 failed**（说明 vitest 真的在读 vite 的别名表）；恢复后全绿。
+
+### D4 命名与职责（2026-10-08 完成，随 A3/B3）
+- `service/src/routes/userData.routes.ts` → `alert.routes.ts` + `portfolio.routes.ts`（B3）；`frontend/src/db/index.ts` 已删（A3）。
+- 证据：`grep -rn "userData.routes" service/src` = **0**；`frontend/src/db/index.ts` 不存在；`grep -rn dexie frontend/src frontend/package.json` = **0**。
+
+### D5 文档双源收敛（2026-10-08 完成）
+- `AGENTS.md` 瘦身：架构/数据流改成「指针 + agent 必须知道的不变量」，删掉已失效的旧数据流块
+  （它还在提已删的 `db/migrateToServer.ts`、「Node /api/backtest 已删」），测试数不再写死。
+- `docs/architecture/node-core.md` §2 加「表清单以 `service/src/db/migrations/` 为准」。
+- 顺手修 `README.md` 里已删的 `python/cli/backtest.py` 示例。
+
+### D6 补测试（2026-10-08 完成）
+- 前端薄客户端：`composables/useScreeningDb.test.ts`（5 例：信封解包 + 参数映射 + 畸形信封 + C4 的「sync 先返回、富化在后台」+ 无进展收敛）、
+  `services/userDataApi.test.ts`（4 例：items 解包 / 失败信封抛服务端消息 / 建方案参数映射 / 缺失返回 null）。
+- service：`services/fundNavHistoryCache.test.ts`（2 例：miss → 取一次 + 落整条序列 + 返回窗口；hit → 换窗口不重拉）、
+  `routes/agentTruncate.test.ts`（2 例：>30k 转 preview / 未知工具 400）、
+  `sandbox/runStrategyCode.test.ts` 补 2 例（标的超限、净值取数失败）。
+- 证据：service **199 → 205**（+6，30 文件）；frontend **247 → 256**（+9，21 文件）。

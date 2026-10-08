@@ -226,14 +226,20 @@ bun dev        # 等价于 bun run dev
 ### 调用 Python 脚本
 
 ```bash
-# 回测（统一使用 python/.venv/bin/python 前缀）
-echo '{"fundCode":"019667","navHistory":[...]}' | python/.venv/bin/python python/cli/backtest.py
-
 # 获取基金详情
 python/.venv/bin/python python/cli/fetch_fund.py --code 019667
 
 # 数据补全（akshare/eastmoney 拉取）
 python/.venv/bin/python python/cli/data_complete.py --source akshare --type stocks
+```
+
+### 本地校验（无 CI）
+
+改完代码跑一条命令（service + frontend + docs，约 1 分钟）：
+
+```bash
+bun run check        # lint / typecheck / test / build 全跑一遍
+bun run gen:tools    # 改了 service/src/agent/ 必须重跑（静态工具清单，漂移会被单测拦住）
 ```
 
 ## 📂 项目结构

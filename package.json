@@ -11,7 +11,8 @@
     "docs:dev": "cd docs && bunx vitepress dev --port 8574",
     "dev:service": "cd service && bun run dev",
     "dev:frontend": "cd frontend && bun run dev --host",
-    "gen:tools": "cd service && bunx tsx scripts/gen-tools-manifest.ts"
+    "gen:tools": "cd service && bunx tsx scripts/gen-tools-manifest.ts",
+    "check": "cd service && bun run lint && bun run typecheck && bun run test && cd ../frontend && bun run lint && bunx vue-tsc --noEmit && bun run test && bun run build && cd ../docs && bun run build"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

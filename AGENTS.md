@@ -2,24 +2,13 @@
 
 ## Architecture
 
-**Two services**, start in order:
+> **权威说明看文档**：`docs/architecture/node-core.md`（分层 / 存储 / 共享内核 / 数据流 / 踩坑）与
+> `docs/architecture/pi-tools.md`（工具面）。这里只留 agent 动手前必须知道的事实。
 
-1. **service** (port 8310) — Node.js/Express/TypeScript 后端（**数据 + 计算 + 用户数据 + 工具面**）
-   - All API routes (`/api/fund/*`, `/api/market/*`, `/api/screening/*`, `/api/backtest/*`, `/api/agent/*`, etc.) — 纯计算在共享内核 `packages/core`，**service 不做任何 LLM 调用**
-   - ProviderChain (stock-sdk → eastmoney → baidu/cls) for real-time financial data
-   - PythonRunner: spawns Python scripts for data completion (akshare)；回测已迁 `packages/core`（service 侧 `/api/backtest/*`，前端页面同源同值）
-   - 反爬(Referer)、Yahoo 走代理、速率/校验/日志；最小代理配置接口（仅 Proxy URL）
-2. **frontend** (port 8517) — Vue 3 + Vite，proxies `/api` → service。**只做展示与工作台**（计算已归 service / `packages/core`）：
-   - 筛选与投研看板：全部调 `/api/screening/*`（SQLite 真源），本地只调 `researchComputation` 聚合展示
-   - 回测工作台：代码在浏览器 Worker 里跑（引擎来自 `packages/core`），净值与方案走 service
-   - 搜索：`POST /api/search`（Exa 免费 → DuckDuckGo，无需 key；`service/src/ai/search.ts`）
-   - 设置：仅 Proxy URL（落 SQLite）；**应用不持有任何 LLM/搜索密钥**
-3. **Electron 桌面壳**（外部项目，可选）— 仅解禁 CORS（壳侧禁用 Web Security）：浏览器窗口加载**运行中的前端 dev 服务** origin（`http://localhost:8517`）。前端代码与 Web 完全一致——无运行时分支，`httpClient.ts` 统一走浏览器 fetch（`/api` 走 Vite 代理）。
-
-**Python** is tool-only (no HTTP server). Called via `child_process.spawn()` from Express:
-```
-stdin: JSON → Python compute → stdout: JSON
-```
+1. **service**（8310）— Node/Express/TS：数据获取（ProviderChain）+ SQLite 存储 + 计算（`packages/core`）+ 工具面 `/api/agent/*` + 策略代码沙箱。**不做 LLM、不持密钥**，只绑 `127.0.0.1`。
+2. **frontend**（8517）— Vue 3 + Vite，只做展示与工作台（计算归 service / `packages/core`）；`/api` 走 Vite 代理。dev 服务**故意绑所有网卡**（用户要求保留局域网访问，见 node-core §7「有意接受的风险」）。
+3. **Electron 桌面壳**（外部项目，可选）— 解禁 CORS 的浏览器窗口，加载运行中的前端 dev 服务；前端同一份代码、无运行时分支。
+4. **Python**（`python/`）— 只做数据补全（akshare/eastmoney），无 HTTP 服务，由 service `child_process.spawn()` 调（stdin/stdout JSON）。
 
 **User data lives in the service's SQLite**（P2，2026-10-07）；前端**已无 Dexie/IndexedDB**（2026-10-08 加固删掉）：
 - 用户数据（归 service）：watchlist(+groups)、positions、strategies、strategy_scripts（`service/src/db/migrations/002_user_data.ts`）
@@ -28,24 +17,14 @@ stdin: JSON → Python compute → stdout: JSON
 
 ## Data flow
 
-```
-Real-time data:   ProviderChain → Express → frontend（+ service 内存缓存）
-User data CRUD:   frontend → /api/{watchlist,positions,strategies,backtest-scripts} → SQLite（一次性导入见 db/migrateToServer.ts）
-Backtest:         共享内核 packages/core 本地计算（NAV 取自 /api/funds/:code/nav-history）→ /backtest 工作台（代码编辑器 + 图表）
-Backtest(server): POST /api/backtest/{fixed-investment,portfolio,compare-strategies} → backtestService 取净值（同一 provider 链/缓存）+ core 引擎（pi 与脚本用）
-                  方案 = 代码（prepare 声明固定池 + onDay 逐日决策，按基金代码寻址）存 **service SQLite**（/api/backtest-scripts）
-                  净值缓存：service SQLite（`nav_history` + 覆盖度判断），任何窗口都从缓存切片；前端不再自己判断过期
-                  组合引擎：portfolioBacktest.ts（多资产权重 + 日历/阈值再平衡 + 注水 + cash 腿）→ run_portfolio_backtest 工具
-Code backtest:    service 与页面两条路，同一份 core 引擎：服务端 node:worker_threads 沙箱（/api/agent/call: run_strategy_code，5s 超时 terminate）／浏览器 Worker（/backtest 页面）
-                  Python backtest.py 与 Node /api/backtest 已于 2026-09-29 删除（黄金 fixtures 冻结在 frontend/src/services/backtest/__fixtures__/）
-pi tools:         pi(.pi/extensions/gofund 通用桥) → GET /api/agent/tools（清单）→ POST /api/agent/call → service 内部函数
-                  写操作（save_strategy）第一次只回 CONFIRM_REQUIRED + 令牌，参数一致才落库
-Data completion:  Python scripts via CLI → fetch from akshare/eastmoney → stdout JSON → Express
-Screening enrich:  frontend sync raw /api/screening/sync → service 算风险指标+行业+4433 → SQLite；前端只调 /query /compute /status
-Web search:       `POST /api/search`（Exa→DDG，无 key）；pi 侧另有自带 `web_search`
-Settings:         Proxy URL → PUT /api/settings（SQLite 持久化）；无任何 API 密钥
-Desktop HTTP:     浏览器 fetch（Electron 壳侧解禁 CORS），与 Web 行为一致（/api 走 Vite 代理）
-```
+> 完整链路见 `docs/architecture/node-core.md` §5 与 `docs/architecture/data-flow.md`。
+
+- 实时行情/板块/资金流：ProviderChain → service → 前端（内存缓存，TTL 见 `/api/health`）。
+- 用户数据与缓存**都在 service SQLite**（迁移 001~006）；前端只走 HTTP，**没有 IndexedDB**。
+- 回测：页面在浏览器 Worker 跑、pi 走 `/api/agent/call` 的服务端沙箱，**同一份 `packages/core` 引擎**；净值都从 `/api/funds/:code/nav-history`（SQLite 切片）取。
+- 筛选：`/api/screening/sync`（快照 + 4433 排名，**立即返回**）→ 前端/pi 循环 `/api/screening/compute` 分批富化风险指标。
+- pi 工具面：`.pi/extensions/gofund` 通用桥 → `GET /api/agent/tools` → `POST /api/agent/call`；写/执行类要确认令牌。
+- 搜索：`POST /api/search`（Exa → DuckDuckGo，无 key）；**AI 只在终端 pi**，service 不做 LLM。
 
 ## Commands
 
@@ -59,7 +38,7 @@ cd service && bun install
 bun run dev              # tsx watch src/index.ts (port 8310)
 bun run typecheck        # tsc --noEmit
 bun run lint             # ESLint (max-lines 500)
-bun run test             # vitest run (96 tests)
+bun run test             # vitest run
 
 # frontend
 cd frontend && bun install
@@ -87,17 +66,20 @@ bun run build            # output in docs/.vitepress/dist/
 
 ## 本地校验（无 CI）
 
-GitHub Actions 已移除（`.github/workflows/ci.yml` 已删），改动后请在本地跑对应检查。
-两者都强制单文件 ≤500 行（超限直接 lint 失败）：
+GitHub Actions 已移除（`.github/workflows/ci.yml` 已删）。**改完直接跑一条命令**（含 docs 构建，约 1 分钟）：
 
 ```bash
-# service
+bun run check            # service lint/typecheck/test + frontend lint/vue-tsc/test/build + docs build
+bun run gen:tools        # 改了 service/src/agent/ 必须重跑（否则漂移单测会失败）
+```
+
+单文件 ≤500 行（超限直接 lint 失败）；python 侧单独跑（ruff 配置在 `python/pyproject.toml`）：
+
+```bash
+# 分步（需要定位时）
 cd service && bun run lint && bun run typecheck && bun run test
-
-# frontend
 cd frontend && bun run lint && bunx vue-tsc --noEmit && bun run test && bun run build
-
-# python（ruff 配置在 python/pyproject.toml）
+cd docs && bun run build
 python/.venv/bin/ruff check python/ && python/.venv/bin/ruff format python/ --check
 python/.venv/bin/python python/cli/check_file_length.py
 ```

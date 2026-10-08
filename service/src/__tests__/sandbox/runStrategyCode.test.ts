@@ -70,4 +70,23 @@ describe('runStrategyCode (node:worker_threads sandbox)', () => {
     const outcome = await runStrategyCodeRaw('const x = 1');
     expect('error' in outcome && outcome.error).toContain('onDay');
   });
+
+  it('rejects a plan declaring more assets than the limit (core 先按 40 只拦下)', async () => {
+    const { runStrategyCodeRaw } = await import('../../sandbox/runStrategyCode.js');
+    const codes = Array.from({ length: 61 }, (_, i) => String(i + 1).padStart(6, '0'));
+    const source = `function prepare() { return { start: '2025-01-01', end: '2025-12-31', assets: ${JSON.stringify(codes)} } }\nfunction onDay() { return {} }`;
+
+    const outcome = await runStrategyCodeRaw(source);
+    // core 的 plan 校验（40 只）比这里的取数预算（60 只）更早生效
+    expect('error' in outcome && outcome.error).toContain('上限');
+    expect(navMocks.fetchNavPoints).not.toHaveBeenCalled();
+  });
+
+  it('surfaces NAV fetch failures instead of running on empty series', async () => {
+    navMocks.fetchNavPoints.mockRejectedValue(new Error('provider down'));
+    const { runStrategyCodeRaw } = await import('../../sandbox/runStrategyCode.js');
+
+    const outcome = await runStrategyCodeRaw(BUY_MONTHLY);
+    expect('error' in outcome && outcome.error).toContain('净值获取失败');
+  });
 });

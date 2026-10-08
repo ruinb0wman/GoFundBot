@@ -10,7 +10,7 @@ import {
   type PositionInput,
 } from '../services/userDataService.js';
 
-/** 持仓（SQLite；`userData.routes.ts` 的桩曾被前端绕过）。 */
+/** 持仓（SQLite）。注意：这是「我的持仓」页的真实持仓；实时页的持仓由已结算交易推导（`portfolioService`）。 */
 export const positionsRouter = Router();
 
 function body(raw: unknown): Record<string, unknown> {
