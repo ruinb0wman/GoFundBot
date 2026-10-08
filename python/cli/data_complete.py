@@ -238,35 +238,41 @@ def complete_sector_spot():
     """
     Fetch real-time sector/industry board spot data from akshare (THS source).
     Returns dict with keys:
-      - date: 数据对应的最近交易日 (YYYY-MM-DD), 无法获取时为空串
+      - date: 数据对应的最近交易日 (YYYY-MM-DD)
       - items: 板块列表, sorted by change percent descending
+
+    失败时**抛异常**而不是返回空结果：@file_cache 只在正常返回时落盘，返回空会被
+    当成成功结果缓存 1 小时，让一次瞬时故障变成一小时的「暂无数据」（2026-10-08 踩过）。
+    抛异常 → 本文件不落盘 + run_script 以非零退出 → service 立即看到错误并可重试。
     """
     if not ak:
-        return {"date": "", "items": []}
+        raise RuntimeError("akshare is not installed")
     try:
         df = ak.stock_board_industry_summary_ths()
-        rows = []
-        for _, row in df.iterrows():
-            chg = row.get("涨跌幅")
-            if chg is None:
-                continue
-            inflow = row.get("净流入") or 0
-            raw_inflow = float(inflow) * 1e8  # convert 亿 to raw yuan
-            raw_chg = float(chg)
-            rows.append(
-                {
-                    "name": str(row.get("板块", "")),
-                    "code": "",
-                    "change_pct": f"{'+' if raw_chg >= 0 else ''}{raw_chg:.2f}%",
-                    "main_inflow": f"{'+' if raw_inflow >= 0 else ''}{float(inflow):.2f}亿",
-                    "raw_change": raw_chg,
-                    "raw_main_inflow": raw_inflow,
-                }
-            )
-        return {"date": _latest_trade_date(), "items": rows}
     except Exception as e:
-        print(f"akshare sector spot failed: {e}", file=sys.stderr)
-    return {"date": "", "items": []}
+        raise RuntimeError(f"akshare sector spot failed: {e}") from e
+    if df is None or df.empty:
+        raise RuntimeError("akshare sector spot returned no rows")
+
+    rows = []
+    for _, row in df.iterrows():
+        chg = row.get("涨跌幅")
+        if chg is None:
+            continue
+        inflow = row.get("净流入") or 0
+        raw_inflow = float(inflow) * 1e8  # convert 亿 to raw yuan
+        raw_chg = float(chg)
+        rows.append(
+            {
+                "name": str(row.get("板块", "")),
+                "code": "",
+                "change_pct": f"{'+' if raw_chg >= 0 else ''}{raw_chg:.2f}%",
+                "main_inflow": f"{'+' if raw_inflow >= 0 else ''}{float(inflow):.2f}亿",
+                "raw_change": raw_chg,
+                "raw_main_inflow": raw_inflow,
+            }
+        )
+    return {"date": _latest_trade_date(), "items": rows}
 
 
 def _match_concept_event(events: dict, name: str) -> dict:
@@ -287,15 +293,17 @@ def _concept_events():
     """
     同花顺概念简介 → {概念名: {date, event}}（对话框里的「驱动事件」来源）。
     这个接口逐页抓取（约 10s），驱动事件本身变化很慢，所以单独缓存 24h，
-    让概念行情（快、要求盘中新鲜）可以不被它拖慢。失败就返回空表，不影响行情主表。
+    让概念行情（快、要求盘中新鲜）可以不被它拖慢。
+
+    失败时抛异常（而不是返回空表）：@file_cache 只在正常返回时落盘，返回空表会被缓存
+    24 小时。调用方 complete_concept_spot 负责把失败降级成空事件表，不影响行情主表。
     """
     try:
         df = ak.stock_board_concept_summary_ths()
     except Exception as e:
-        print(f"akshare concept summary failed: {e}", file=sys.stderr)
-        return {}
+        raise RuntimeError(f"akshare concept summary failed: {e}") from e
     if df is None or df.empty:
-        return {}
+        raise RuntimeError("akshare concept summary returned no rows")
 
     events = {}
     for _, row in df.iterrows():
@@ -325,16 +333,21 @@ def complete_concept_spot():
           / event / event_date (event 缺失时为空串)
     """
     if not ak:
-        return {"date": "", "items": []}
+        raise RuntimeError("akshare is not installed")
 
-    events = _concept_events()
+    # 驱动事件失败只降级成空事件表，不影响行情主表（它没有 file_cache，本来就不会被缓存）。
+    try:
+        events = _concept_events()
+    except Exception as e:
+        print(f"akshare concept summary failed: {e}", file=sys.stderr)
+        events = {}
+
     try:
         df = ak.stock_fund_flow_concept(symbol="即时")
     except Exception as e:
-        print(f"akshare concept spot failed: {e}", file=sys.stderr)
-        return {"date": "", "items": []}
+        raise RuntimeError(f"akshare concept spot failed: {e}") from e
     if df is None or df.empty:
-        return {"date": "", "items": []}
+        raise RuntimeError("akshare concept spot returned no rows")
 
     rows = []
     for _, row in df.iterrows():

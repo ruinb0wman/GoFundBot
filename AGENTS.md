@@ -210,8 +210,9 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 ### 板块数据 (market sectors)
 
 - **`push2.eastmoney.com/api/qt/clist/get`（行业+概念板块列表）被反爬切断**：直连/代理、IPv4/IPv6、curl/undici 全部 `SSL_read: unexpected eof`（`other side closed`）；同一 host 的 `ulist.np/get`（涨跌家数）与 `push2ex`/`datacenter-web` 正常（`push2his` 的 kline 接口后来也被切断，见「K 线 / 近7日A股成交量」）。实测 2026-09-29 是当日唯一持续报错的调用（26/26）。**行业板块因此长期走 akshare 同花顺降级**（`source: 'akshare_ths'`），代价是 `code` 为空串（→ `/market/sectors/:code/constituents` 对该批数据不可用），**不打算再绕网络**。
-- **概念板块只有 API/pi 工具，没有页面**：`GET /api/market/concept-sectors`（`getMarketConceptSectorsFromAkshare`）→ `data_complete.py --type concept_spot` = 同花顺 `stock_fund_flow_concept('即时')` 行情主表（387 个概念，按涨跌幅降序，每次现取 ~2s）+ `stock_board_concept_summary_ths()` 驱动事件（约 10s，单独 `file_cache` 24h，失败即忽略）。**不走 EastMoney**。
+- **概念板块只有 API/pi 工具，没有页面**：`GET /api/market/concept-sectors`（`getMarketConceptSectorsFromAkshare`）→ `data_complete.py --type concept_spot` = 同花顺 `stock_fund_flow_concept('即时')` 行情主表（387 个概念，按涨跌幅降序，每次现取 ~2s）+ `stock_board_concept_summary_ths()` 驱动事件（约 10s，单独 `file_cache` 24h；失败不落盘，降级为空事件表，不牵连行情主表）。**不走 EastMoney**。
 - **踩过的坑（2026-09-29 修复）**：`toolHandlers.get_concept_sectors` 曾误按 `unpack(res)?.data?.items` 解析，而该路由的 `data` 是**扁平数组**（和 `/market/sectors` 同款信封），所以恒返回空 `items`；并且它早期直接复用了**行业**板块端点（`m:90+t:2`），契约里写的「驱动事件/成分股数量」从未接通。
+- **踩过的坑（2026-10-08 修复）——「空结果被当成成功缓存」**：`complete_sector_spot` 曾 `except → return {"date":"","items":[]}`，而 `cli/shared/file_cache.py` 对返回值**没有门槛**，空结果照样落盘 → 一次瞬时故障（当天 15:17 同一分钟 kline/money_flow 也全挂）变成**整整 1 小时的「所有板块数据源均不可用」**；页面「暂无数据」但上游其实一直正常。修法：**失败时 `raise`（含空 DataFrame）而不是 return 空** —— `file_cache` 只在正常返回时落盘，所以抛异常天然不写缓存，service 端立刻看到错误并可重试（顺带让被 `runPython` 丢弃的 python stderr/traceback 进了 service 日志）。同一模式已修 `_concept_events` / `complete_concept_spot`。**排查口诀**：板块为空先看 `python/Data/cache/sector_spot.json` 是不是 `{"date":"","items":[]}`，是就删掉它再试（别再怀疑上游）。遗留同类：`complete_market_money_flow` 也是 `except → return {}`，只是它没有 `@file_cache`。
 
 ### K 线 / 近7日A股成交量 (market kline & volume)
 

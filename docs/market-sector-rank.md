@@ -121,7 +121,7 @@ GET /api/market/concept-sectors?limit=20
   → market.routes.ts → getMarketConceptSectorsFromAkshare()
     → data_complete.py --source akshare --type concept_spot
       ├── ak.stock_fund_flow_concept(symbol="即时")   # 行情主表：387 个概念，按涨跌幅降序（每次现取 ~2s）
-      └── ak.stock_board_concept_summary_ths()        # 驱动事件（约 10s，单独 file_cache 24h，失败即忽略）
+      └── ak.stock_board_concept_summary_ths()        # 驱动事件（约 10s，单独 file_cache 24h；失败不落盘、降级为空事件表）
     → {success, data: [...], total_count, data_date, source}
   → 消费方（服务端工具 `service/src/agent/toolsMarket.ts` 的 get_concept_sectors、前端概念板块面板）
     注意：该路由的 `data` 是**扁平数组**（不是 `{items}`），按数组解析
