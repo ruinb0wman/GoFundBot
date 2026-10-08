@@ -88,11 +88,40 @@ describe('navCacheService', () => {
     const { saveNav, navCacheStats, clearNavCache } = await import('../../services/navCacheService.js');
     saveNav('110022', series('2025-01-01', 10));
     saveNav('161725', series('2025-01-01', 5));
-    expect(navCacheStats()).toEqual({ funds: 2, points: 15 });
+    expect(navCacheStats()).toMatchObject({ funds: 2, points: 15, maxPoints: 3_000_000, retentionDays: 3650 });
 
     clearNavCache('110022');
-    expect(navCacheStats()).toEqual({ funds: 1, points: 5 });
+    expect(navCacheStats()).toMatchObject({ funds: 1, points: 5 });
     clearNavCache();
-    expect(navCacheStats()).toEqual({ funds: 0, points: 0 });
+    expect(navCacheStats()).toMatchObject({ funds: 0, points: 0 });
+  });
+
+  it('trims points older than the retention window and keeps meta in sync', async () => {
+    const { saveNav, getNavMeta, readNavItems, navCacheStats, NAV_RETENTION_DAYS } = await import(
+      '../../services/navCacheService.js'
+    );
+    const cutoff = new Date(Date.now() - NAV_RETENTION_DAYS * 86_400_000).toISOString().slice(0, 10);
+    saveNav('110022', series('2005-01-01', 7300));
+
+    const meta = getNavMeta('110022')!;
+    expect(meta.firstDate >= cutoff).toBe(true);
+    expect(readNavItems('110022').length).toBeLessThan(7300);
+    expect(navCacheStats().trimmed).toBeGreaterThan(0);
+  });
+
+  it('evicts whole funds (LRU by fetched_at) when the global cap is exceeded', async () => {
+    const { saveNav, readNavItems, navCacheStats } = await import('../../services/navCacheService.js');
+    process.env.GOFUND_NAV_MAX_POINTS = '10';
+    try {
+      saveNav('110022', series('2025-01-01', 10));
+      saveNav('161725', series('2025-01-01', 10));
+      saveNav('000001', series('2025-01-01', 10));
+
+      expect(navCacheStats()).toMatchObject({ funds: 1, points: 10 });
+      expect(readNavItems('110022')).toHaveLength(0); // 最久未用，先被整只淘汰
+      expect(readNavItems('000001')).toHaveLength(10);
+    } finally {
+      delete process.env.GOFUND_NAV_MAX_POINTS;
+    }
   });
 });

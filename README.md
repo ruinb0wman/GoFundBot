@@ -138,7 +138,7 @@ cd docs && bun install && bunx vitepress dev --port 8574   # 文档站 :8574
 *   **框架**: Vue 3 (Composition API + TypeScript, 全部 `<script setup lang="ts">`)
 *   **构建工具**: Vite + vue-tsc (TypeScript typecheck)
 *   **状态管理**: Pinia
-*   **持久化**: 用户数据/缓存都在 service SQLite；本地 IndexedDB 只剩一次性导入旧数据的路径（`db/migrateToServer.ts`）
+*   **持久化**: 用户数据/缓存都在 service SQLite；前端已无 Dexie/IndexedDB（旧数据仍在浏览器里，但不再读）
 *   **业务计算**: 来自 `@gofund/core`（与 service 共用同一份源码）；页面只做展示与交互
 *   **AI / 搜索客户端**: 无 —— 前端没有聊天或 AI 入口，AI 交互在终端 pi
 *   **环境适配**: `httpClient.ts`（统一浏览器 fetch；Electron 壳侧解禁 CORS）
@@ -254,7 +254,8 @@ GoFundBot/
 │   └── package.json
 ├── frontend/                    # Vue 3 + TypeScript 前端（展示与工作台）
 │   ├── src/
-│   │   ├── db/                  # 仅用于一次性导入旧 IndexedDB 数据
+│   │   ├── db/                  # 服务端数据客户端的薄封装（无 Dexie）
+│   │   ├── types/               # 记录形状（records.ts）
 │   │   ├── components/          # Vue 组件
 │   │   ├── composables/         # 组合式函数（useFundScreening, useResearchDashboard...）
 │   │   ├── stores/              # Pinia 状态管理

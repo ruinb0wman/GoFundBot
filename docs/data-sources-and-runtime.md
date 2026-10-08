@@ -27,6 +27,9 @@ cd frontend && bun run dev   # 只起前端
 
 ## 3. 环境变量
 
+> 运行时下限：**Node ≥ 22.19**（`engines`，由 `undici@8` 决定）；内置 `node:sqlite` 自 22.13 起免 flag。
+> 启动时会探测 `node:sqlite` 可用性，不满足直接报人话退出（`service/src/index.ts`）。
+
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `PORT` | `8310` | service 端口（前端 Vite 代理指向它） |
@@ -45,7 +48,7 @@ cd frontend && bun run dev   # 只起前端
 | 层 | 位置 | TTL / 行为 |
 |---|---|---|
 | 内存缓存 | service（`core/cache.ts`） | 行情 15s / 基金估值 30s / 历史 24h / 分红 7d；`/api/health` 可见条数 |
-| SQLite 净值缓存 | `nav_history` + `nav_history_meta` | 覆盖度判断（窗口在过去 → 永久；窗口到今天 → 24h 内） |
+| SQLite 净值缓存 | `nav_history` + `nav_history_meta` | 覆盖度判断（窗口在过去 → 永久；窗口到今天 → 24h 内）；保留最近 10 年，全库 >300 万行按 `fetched_at` LRU 整只淘汰（`/api/health` 报 `trimmed`/`evicted`） |
 | SQLite 筛选库 | `screening_funds` | 富化结果长期保留；`risk_attempted` 防重复重试 |
 | 限流 | `express-rate-limit` | 300 请求 / 15 分钟（本地单用户足够；批量富化走单请求内的并发） |
 

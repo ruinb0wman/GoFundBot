@@ -12,7 +12,7 @@ import type {
   UserPosition,
   WatchlistGroup as DbWatchlistGroup,
   WatchlistItem,
-} from '../db'
+} from '../types/records'
 
 interface Envelope<T> {
   success?: boolean

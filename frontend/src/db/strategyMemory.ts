@@ -10,7 +10,7 @@
  * 写入后派发 `gofund:strategies-changed`，`StrategyView` 监听并刷新
  * （写者无关：UI 表单与 HTTP 客户端都触发同一个信号）。
  */
-import type { StrategyRecord } from './index'
+import type { StrategyRecord } from '../types/records'
 import {
   addStrategyApi,
   listStrategiesApi,

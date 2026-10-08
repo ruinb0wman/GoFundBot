@@ -333,4 +333,45 @@ pi 一次分析可能连着调十几个工具（筛选 + 回测 + 快讯…）�
 - 备注：跨机器可达性请用户确认
 -->
 
-（尚未开始）
+### A1 前端 dev 服务监听所有网卡（2026-10-08 完成 —— 用户选择「保留」）
+- 做法（曾实施后回滚）：`frontend/vite.config.ts` 的 `server` 加 `host: '127.0.0.1'`，根 `package.json` 的 `dev:frontend` 去掉硬编码的 `--host`。
+- 证据（回滚前的实测）：`ss -ltn | grep 8517` → `127.0.0.1:8517`；`curl 127.0.0.1:8517` 200；
+  非 loopback IP（`10.255.255.254` / `192.168.1.20`）连 8517 均 `Connection refused`。
+- **用户明确选择保留局域网访问** → 两处改动已回滚，前端恢复 `*:8517`（`bun run dev --host`）。
+- 收尾：`docs/architecture/node-core.md` §7 记下这是**有意接受的风险**（局域网设备可经 Vite 代理读写用户数据、跑策略代码沙箱）；
+  要收紧就删掉 `--host`，让前端也只绑 loopback。
+- 备注：本项从「必修」转为「已知并接受的风险」，不引入鉴权（§E 明确不做）。
+
+### A2 engines 与 node:sqlite 要求不一致（2026-10-08 完成）
+- 核实：`node:sqlite` 自 **v22.13.0 / v23.4.0 起免 `--experimental-sqlite`**（Node 官方文档）；
+  本仓库 `engines: >=22.19.0`（由 `undici@8` 决定，README 也这么写）**已在其上**，所以「按声明装 Node 22 会崩」的前提不成立。
+- 改动：`service/src/index.ts` 改为先 `await assertSqliteAvailable()`（动态 `import('node:sqlite')` + `new DatabaseSync(':memory:')`），
+  再动态 import `./app.js` / `./db/index.js` —— 不可用时打印人话并 `exit(1)`，而不是抛栈。
+- 证据（负向真跑）：`NODE_OPTIONS=--no-experimental-sqlite PORT=8399 ... bunx tsx src/index.ts`
+  → `{"level":"error",...,"message":"当前 Node 没有内置 SQLite（node:sqlite）..."}` + `EXIT=1`（不是栈）。
+- 证据（正向）：8310 正常启动（日志 `gofund data service started`），`/api/health` 200。
+- 文档：`docs/architecture/node-core.md` §2 把「Node ≥22.5」更正为「≥22.13 免 flag」+ 启动自检说明；
+  `docs/data-sources-and-runtime.md` §3 补运行时下限。
+
+### A3 Dexie 只剩死路径（2026-10-08 完成 —— 方案 b）
+- 实测（bow，页面上下文）：`indexedDB.databases()` → `GoFundBot` **v80**；14 张表中用户数据表全为 0 行
+  （`watchlist/watchlistGroups/positions/strategies/strategyScripts/alertRules/portfolio/tradeRecords` = 0），
+  只剩已删功能的 `chatMessages` 104 / `chatSessions` 25 与旧缓存 `navHistory` 12。→ 迁移是成功的，删代码安全。
+- 改动：删 `frontend/src/db/index.ts` + `db/migrateToServer.ts`；类型搬到 `frontend/src/types/records.ts`；
+  改 6 处 import（userDataApi / StrategyView / db/strategyMemory / db/strategyScripts / useFundScreening / useScreeningDb）；
+  `main.ts` 去掉一次性导入调用；`package.json` 删 `dexie` 依赖（`bun install` 后 `Removed: 1`）。
+- 证据：`grep -rn dexie frontend/src frontend/package.json` → 空；
+  `bun run lint` + `bunx vue-tsc --noEmit` + `bun run test`（**247 passed**）+ `bun run build` 全绿。
+- 证据（真浏览器）：`/strategy` → 「2 个启用 · 2 个总计」、无渲染异常；`/screening` → 「3331 只基金 / 2704 完整」。
+- 备注：**没有删浏览器里的 IndexedDB**（原始数据仍在，只是不再被读）；用户已确认其它浏览器没有未迁移数据。
+
+### A4 nav_history 无容量策略（2026-10-08 完成）
+- 改动（`service/src/services/navCacheService.ts`）：写入时裁掉 10 年以前（`NAV_RETENTION_DAYS=3650`）；
+  全库 >300 万行（`NAV_MAX_POINTS=3_000_000`）时按 `fetched_at` 升序**整只淘汰**基金（LRU，刚写入的那只受保护）；
+  两个阀值可用 `GOFUND_NAV_RETENTION_DAYS` / `GOFUND_NAV_MAX_POINTS` 覆盖；`navCacheStats()` 增 `maxPoints/retentionDays/trimmed/evicted`。
+  meta 的 `first_date/last_date` 改为从表里重算，保证与裁剪后的数据一致。
+- 证据（单测）：`navCacheService.test.ts` **7 passed**（新增「裁剪」与「LRU 淘汰」各 1 例）；service 全量 **187 passed**（基线 185）。
+- 证据（真跑）：`/api/health` → `nav_cache: {funds:32, points:13742, maxPoints:3000000, retentionDays:3650, trimmed:1463, evicted:0}`；
+  110022 实测被裁到 `first_date=2016-10-10`（正好 10 年）、2434 点（原 3897 点，裁掉 1463）；
+  `/api/funds/110022/nav-history` 首次 486ms（回源）→ 命中 **13~15ms**（<100ms）。
+- 文档：`docs/architecture/node-core.md` §2 与 `docs/data-sources-and-runtime.md` §4 补容量策略。

@@ -6,7 +6,7 @@
  *
  * 一条记录 = 一个可重放策略：代码本身就是全部配置（池/窗口/金额都写在 `prepare()` 里）。
  */
-import type { StrategyScriptRecord } from './index'
+import type { StrategyScriptRecord } from '../types/records'
 import type { BacktestSummary, PortfolioSummary } from '@gofund/core/backtest/backtestTypes'
 import {
   createScriptApi,

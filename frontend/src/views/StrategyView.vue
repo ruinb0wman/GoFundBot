@@ -141,7 +141,7 @@ import {
   STRATEGIES_CHANGED_EVENT,
   type StrategyInput,
 } from '../db/strategyMemory'
-import type { StrategyRecord } from '../db'
+import type { StrategyRecord } from '../types/records'
 
 defineOptions({ name: 'StrategyView' })
 

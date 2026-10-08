@@ -5,7 +5,7 @@ import { screeningAPI, fundAPI } from '../services/api'
 import { useScreeningDb, type ScreeningStatus } from './useScreeningDb'
 import { useWatchlistStore } from '../stores/watchlistStore'
 import { fmtNumber, returnClass as calcReturnClass } from '../utils/number'
-import type { ScreeningFund } from '../db'
+import type { ScreeningFund } from '../types/records'
 
 interface ScreeningSearchItem {
   CODE: string

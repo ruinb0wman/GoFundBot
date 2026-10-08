@@ -10,7 +10,7 @@
 import { ref } from 'vue'
 import { screeningAPI } from '../services/api'
 import { check4433Rule } from '@gofund/core/screeningEnrich'
-import type { ScreeningFund } from '../db'
+import type { ScreeningFund } from '../types/records'
 
 export interface QueryResult {
   funds: ScreeningFund[]

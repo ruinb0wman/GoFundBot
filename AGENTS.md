@@ -21,9 +21,10 @@
 stdin: JSON → Python compute → stdout: JSON
 ```
 
-**User data lives in the service's SQLite**（P2，2026-10-07）；前端 Dexie 只留缓存：
+**User data lives in the service's SQLite**（P2，2026-10-07）；前端**已无 Dexie/IndexedDB**（2026-10-08 加固删掉）：
 - 用户数据（归 service）：watchlist(+groups)、positions、strategies、strategy_scripts（`service/src/db/migrations/002_user_data.ts`）
-- 缓存（**P3.4 起都在 service SQLite**）：净值序列（`nav_history`，带覆盖度判断）、筛选库（`screening_funds`）；Dexie 只剩一次性导入用的历史表（见 `db/migrateToServer.ts`）
+- 缓存（**P3.4 起都在 service SQLite**）：净值序列（`nav_history`，覆盖度判断 + 10 年保留 / 300 万行上限）、筛选库（`screening_funds`）
+- 记录形状（原 Dexie 接口）在 `frontend/src/types/records.ts`
 
 ## Data flow
 
@@ -117,11 +118,14 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **Structured logging**: JSON via `core/logger.ts` (service) with `requestId` per request. Daily files `dataservice-YYYY-MM-DD.jsonl` under `python/Data/logs`.
 - **Health check**: `GET /api/health` — includes cache stats.
 - **Cache TTLs**: fund estimates 30s, market quotes 15s, history 24h, dividends 7d.
-- **Graceful shutdown**: service handles `SIGTERM`/`SIGINT` — 10s wait, then force exit.
+- **启动自检（2026-10-08）**: `service/src/index.ts` 启动时探测 `node:sqlite`（`new DatabaseSync(':memory:')`），不可用就打印人话并 `exit(1)`。
+  运行时下限 `engines: >=22.19.0`（由 `undici@8` 决定）；`node:sqlite` 自 22.13 起免 flag。
+- **净值缓存容量（2026-10-08）**: `navCacheService` 写入时裁掉 10 年以前（`NAV_RETENTION_DAYS`），全库 >300 万行按 `fetched_at` LRU 整只淘汰（`NAV_MAX_POINTS`）；
+  `/api/health` 的 `nav_cache` 报 `maxPoints` / `retentionDays` / `trimmed` / `evicted`。
 - **Vite proxy**: `frontend/vite.config.ts` proxies `/api` → `localhost:8310`, `/docs` → `localhost:8574`.
 - **用户数据/缓存都在 service**：`service/src/db/`（SQLite，迁移 001~004）+ `services/{userDataService,screeningService,navCacheService,researchService,backtestService}.ts` +
   `routes/{watchlist,positions,strategies,backtest,research}.routes.ts`；前端 `db/*.ts` 只是 HTTP 薄封装（导出签名不变）。
-  Dexie 只剩一次性导入路径（`db/migrateToServer.ts`，幂等），其余表已在 P6 掉掉。
+  **Dexie 依赖与 `db/index.ts` / `db/migrateToServer.ts` 已删除**（2026-10-08），旧 IndexedDB 数据留在浏览器里但不再被读。
 - **已知缺口**：`/api/alerts` 仍是桩（前端 `AlertSettings/AlertBadge` 在调，但 service 不落库）；
   `/api/user/portfolio/*` 的桩与前端 `portfolioApi.ts`（被 `useFundRealtime*` 用）也在，改动「分组/交易记录」不会保存。
 - **Settings endpoint**: `GET/PUT /api/settings` — **仅 proxy 子域**（落 SQLite）。应用不持有 LLM/搜索密钥（pi 是唯一 AI）。
@@ -155,7 +159,8 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `frontend/src/services/screeningRows.ts` | 沙箱 `screen()` 的基金池（`GET /api/screening/screen-rows`，进程内缓存 10min） |
 | `frontend/src/services/researchComputation.ts` | 投研看板聚合计算（市场统计/基金看板/ETF/板块/行业表现） |
 | `frontend/src/services/httpClient.ts` | HTTP 适配器（统一浏览器 fetch；Electron 壳侧解禁 CORS，无运行时分支） |
-| `frontend/src/db/` | Dexie schema (index.ts) + **服务端数据客户端的薄封装**：`positions.ts` / `strategyMemory.ts` / `strategyScripts.ts` 内部转发到 `services/userDataApi.ts`（保留原签名）；`migrateToServer.ts` 做一次性导入 |
+| `frontend/src/db/` | **服务端数据客户端的薄封装**：`positions.ts` / `strategyMemory.ts` / `strategyScripts.ts` 内部转发到 `services/userDataApi.ts`（保留原签名）。Dexie schema 与一次性导入已删除（2026-10-08） |
+| `frontend/src/types/records.ts` | 用户数据 / 筛选结果的记录形状（原 `db/index.ts` 的类型定义） |
 | `frontend/src/db/positions.ts` | 持仓 CRUD（**内部走 `/api/positions`**）：`useMyPositions` 使用 |
 | `frontend/src/composables/` | Vue composables (useFundScreening, useResearchDashboard, useFundDetail, useAppSettings, etc.) |
 | `frontend/src/stores/` | Pinia stores (watchlistStore 内部走 `/api/watchlist`) |

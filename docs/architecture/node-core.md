@@ -37,7 +37,11 @@
 
 ## 2. 存储：service SQLite
 
-`node:sqlite`（Node ≥22.5 内置，零依赖）+ 手写迁移器（`service/src/db/migrations/`，`schema_version` 记录版本，启动时幂等执行）。
+`node:sqlite`（Node ≥22.13 起免 flag，零依赖）+ 手写迁移器（`service/src/db/migrations/`，`schema_version` 记录版本，启动时幂等执行）。
+
+> 运行时下限以各 `package.json` 的 `engines`（`>=22.19.0`，由 `undici@8` 决定）为准；
+> `node:sqlite` 本身只要求 ≥22.13（22.5~22.12 需 `--experimental-sqlite`）。
+> `service/src/index.ts` 启动时会探测一次 `node:sqlite`，不可用就打印人话并退出，而不是抛栈。
 
 | 迁移 | 表 | 用途 |
 |---|---|---|
@@ -51,6 +55,10 @@
 - 所有用户数据、设置、缓存都在这里；**前端 IndexedDB 只剩 `migrateToServer.ts` 的一次性导入路径**。
 - 路径可用 `GOFUND_DB_PATH` 覆盖（测试用 `:memory:`），默认 `service/data/gofund.db`（`data/` 已 gitignore）。
 - 净值缓存按**实体**存整条序列，查询区间只做读取过滤 —— 把区间写进缓存 key 会让「换个窗口」变成一次全量重拉。
+- 净值缓存有**容量策略**（`navCacheService`）：写入时裁掉 10 年以前（`NAV_RETENTION_DAYS`）的点位，
+  全库超过 300 万行（`NAV_MAX_POINTS`）时按 `fetched_at` 升序**整只淘汰**基金（LRU）。
+  两个阀值可用 `GOFUND_NAV_RETENTION_DAYS` / `GOFUND_NAV_MAX_POINTS` 覆盖；
+  `/api/health` 的 `nav_cache` 会报 `trimmed` / `evicted` 累计数。
 
 ## 3. 共享计算内核 `packages/core`
 
@@ -101,6 +109,9 @@
 ## 7. 关键决策与踩坑
 
 - **service 绑 `127.0.0.1`**（`HOST` 可覆盖），单机单用户、无鉴权。
+- **前端 dev 服务故意监听所有网卡**（`bun run dev --host`，2026-10-08 用户确认要保留局域网访问）：
+  于是局域网里任何设备都能经 Vite 的 `/api` 代理读写用户数据、跑策略代码沙箱。
+  这是**有意接受的风险**（本机个人工具，不引入鉴权）；要收紧就删掉 `--host`，让前端也只绑 loopback。
 - **计算归 core，缓存归 SQLite，前端只展示** —— 迁移前「业务逻辑全在前端」的决策已撤销。
 - 筛选富化**分批**（默认 300/只基金一批）：全量一次性要 3 分钟（3331 只 × ~49ms），分批才不超时、能报进度。
 - `screening_funds.risk_attempted`：取不到净值的基金不再重试，前端循环因此必然收敛。

@@ -1,8 +1,29 @@
 import 'dotenv/config';
 import { createServer, type Server } from 'node:http';
-import { createApp } from './app.js';
 import { logger } from './core/logger.js';
-import { closeDb } from './db/index.js';
+
+/**
+ * 启动自检：`node:sqlite` 是硬依赖（用户数据/缓存的唯一真源）。
+ * Node < 22.13（含 22.5~22.12 未加 `--experimental-sqlite`）上这个内置模块不存在，
+ * 静态 import 会直接抛栈；这里先探一次，给出人话再退出。
+ */
+async function assertSqliteAvailable(): Promise<void> {
+  try {
+    const { DatabaseSync } = await import('node:sqlite');
+    new DatabaseSync(':memory:').close();
+  } catch (error) {
+    logger.error(
+      '当前 Node 没有内置 SQLite（node:sqlite）。请升级到 Node >= 22.13（本仓库 engines 要求 >= 22.19）后重试。',
+      { node: process.version, error: error instanceof Error ? error.message : String(error) },
+    );
+    process.exit(1);
+  }
+}
+
+await assertSqliteAvailable();
+
+const { createApp } = await import('./app.js');
+const { closeDb } = await import('./db/index.js');
 
 const port = Number(process.env.PORT ?? 8310);
 /**
