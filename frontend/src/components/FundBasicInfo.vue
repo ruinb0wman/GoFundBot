@@ -36,7 +36,7 @@
           <div class="risk-item">
             <span class="risk-label">{{ '最大回撤(1年)' }}</span>
             <span class="risk-value negative">
-              {{ riskMetrics.max_drawdown_1y != null ? '-' + fmtNumber(riskMetrics.max_drawdown_1y, 2) + '%' : '--' }}
+              {{ formatDrawdown(riskMetrics.max_drawdown_1y) }}
             </span>
           </div>
           <div class="risk-item">
@@ -49,27 +49,42 @@
       </div>
 
       <div class="header-right">
-        <div class="change-box">
-          <div class="label">{{ isEstimateFresh ? '估算涨幅' : '涨跌幅' }}</div>
-          <div class="value" :class="getChangeClass(isEstimateFresh ? fundInfo.gszzl : fundInfo.actualChange)">
-            {{ displayChange }}
+        <!-- 货币基金：单位净值恒为 1，收益按「每万份收益」日结，没有盘中估值 -->
+        <template v-if="fundInfo.isMoneyFund">
+          <div class="change-box">
+            <div class="label">{{ '7日年化' }}</div>
+            <div class="value">{{ formatYield(fundInfo.sevenDayYield) }}</div>
+            <div class="date">{{ formatDate(fundInfo.jzrq) }}</div>
           </div>
-          <div v-if="!isEstimateFresh && fundInfo.jzrq" class="date">{{ formatDate(fundInfo.jzrq) }}</div>
-        </div>
-
-        <div class="net-worth-box">
-          <div class="label">{{ '单位净值' }}{{ isEstimateFresh ? '（最新）' : '' }}</div>
-          <div class="value">{{ fundInfo.dwjz || '--' }}</div>
-          <div class="date">{{ formatDate(fundInfo.jzrq) }}</div>
-        </div>
-
-        <div v-if="isEstimateFresh" class="estimate-box">
-          <div class="label">{{ '估算净值' }}</div>
-          <div class="value" :class="getChangeClass(fundInfo.gszzl)">
-            {{ fundInfo.gsz || '--' }}
+          <div class="net-worth-box">
+            <div class="label">{{ '每万份收益' }}</div>
+            <div class="value">{{ formatUnitIncome(fundInfo.unitIncome) }}</div>
+            <div class="date">{{ formatDate(fundInfo.jzrq) }}</div>
           </div>
-          <div class="time">{{ formatTime(fundInfo.gztime) }}</div>
-        </div>
+        </template>
+        <template v-else>
+          <div class="change-box">
+            <div class="label">{{ isEstimateFresh ? '估算涨幅' : '涨跌幅' }}</div>
+            <div class="value" :class="getChangeClass(isEstimateFresh ? fundInfo.gszzl : fundInfo.actualChange)">
+              {{ displayChange }}
+            </div>
+            <div v-if="!isEstimateFresh && fundInfo.jzrq" class="date">{{ formatDate(fundInfo.jzrq) }}</div>
+          </div>
+
+          <div class="net-worth-box">
+            <div class="label">{{ '单位净值' }}{{ isEstimateFresh ? '（最新）' : '' }}</div>
+            <div class="value">{{ fundInfo.dwjz || '--' }}</div>
+            <div class="date">{{ formatDate(fundInfo.jzrq) }}</div>
+          </div>
+
+          <div v-if="isEstimateFresh" class="estimate-box">
+            <div class="label">{{ '估算净值' }}</div>
+            <div class="value" :class="getChangeClass(fundInfo.gszzl)">
+              {{ fundInfo.gsz || '--' }}
+            </div>
+            <div class="time">{{ formatTime(fundInfo.gztime) }}</div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -247,6 +262,10 @@ function processFundData(data: Record<string, any>): void {
   const navDate = extractDate(officialNavDate)
   const estimateNav = parseFloat(realtime.estimate_value)
   const officialNav = parseFloat(officialNavValue)
+  // 货币基金：无盘中估值、单位净值恒为 1，展示口径换成 7 日年化 / 每万份收益
+  const isMoneyFund = realtime.is_money_fund === true
+    || data.basic_info?.is_hb === true
+    || String(data.fund_type || '').startsWith('货币')
   let estimateChange = realtime.estimate_change
   if (estimateDate && navDate && estimateDate > navDate && estimateNav > 0 && officialNav > 0) {
     estimateChange = new Decimal(estimateNav).minus(officialNav).div(officialNav).mul(100).toNumber()
@@ -263,12 +282,15 @@ function processFundData(data: Record<string, any>): void {
     syl_3y: data.performance?.['3_month_return'],
     syl_6y: data.performance?.['6_month_return'],
     syl_1n: data.performance?.['1_year_return'],
-    dwjz: officialNavValue,
+    dwjz: isMoneyFund ? '1' : officialNavValue,
     jzrq: officialNavDate,
     gsz: realtime.estimate_value,
     gszzl: estimateChange,
     gztime: realtime.estimate_time,
     actualChange: actualChange,
+    isMoneyFund,
+    sevenDayYield: realtime.seven_day_yield ?? null,
+    unitIncome: realtime.unit_income ?? null,
   }
 }
 
@@ -306,6 +328,28 @@ function formatRate(value: unknown): string {
   if (value === null || value === undefined || value === '') return '--'
   const num = parseFloat(String(value))
   return isNaN(num) ? '--' : new Decimal(num).toFixed(2) + '%'
+}
+
+/** 7 日年化（不带正号，它永远是正数）。 */
+function formatYield(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '--'
+  const num = parseFloat(String(value))
+  return isNaN(num) ? '--' : new Decimal(num).toFixed(2) + '%'
+}
+
+function formatUnitIncome(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '--'
+  const num = parseFloat(String(value))
+  return isNaN(num) ? '--' : new Decimal(num).toFixed(4)
+}
+
+/** 最大回撤是负数或 0；0 不要显示成 "-0.00%"（货币基金常态）。 */
+function formatDrawdown(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '--'
+  const num = parseFloat(String(value))
+  if (isNaN(num)) return '--'
+  if (num === 0) return '0.00%'
+  return (num > 0 ? '-' : '') + fmtNumber(Math.abs(num), 2) + '%'
 }
 
 function formatMinSubscription(value: unknown): string {

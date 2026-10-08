@@ -194,4 +194,43 @@ describe('watchlistStore', () => {
     expect(store.funds[0].estimate_value).toBe(1.24)
     expect(store.funds[0].estimate_time).toBe('2024-01-15 14:30')
   })
+
+  it('refreshEstimates 对货币基金透传 7 日年化 / 每万份收益', async () => {
+    mockGetEstimates.mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          items: [
+            {
+              code: '000682',
+              success: true,
+              data: {
+                code: '000682',
+                name: '信澳慧管家货币C',
+                navDate: '2026-10-07',
+                nav: 1,
+                estimatedNav: null,
+                estimatedChangePercent: null,
+                estimateTime: null,
+                isMoneyFund: true,
+                sevenDayYield: 1.324,
+                unitIncome: 0.3604,
+              },
+            },
+          ],
+          failed: [],
+          summary: { total: 1, success: 1, failed: 0 },
+        },
+      },
+    })
+    const { useWatchlistStore } = await import('../../stores/watchlistStore')
+    const store = useWatchlistStore()
+    store.funds = [{ fund_code: '000682', fund_name: '信澳慧管家货币C' }]
+    await store.refreshEstimates()
+
+    expect(store.funds[0].is_money_fund).toBe(true)
+    expect(store.funds[0].unit_income).toBe(0.3604)
+    // 涨跌位列用 7 日年化占位（组件会改标签）
+    expect(store.funds[0].estimate_change).toBe(1.324)
+  })
 })

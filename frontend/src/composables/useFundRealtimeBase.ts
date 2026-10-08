@@ -225,6 +225,12 @@ export function mapFundDetailToRealtime(detail, fallbackCode) {
   const basic = detail?.basic_info || {}
   const changeNum = Number(realtime.estimate_change)
   const trend = Array.isArray(detail?.net_worth_trend) ? detail.net_worth_trend : []
+  // 货币基金：没有盘中估值，收益按「每万份收益」日结（单位净值恒为 1）。
+  // 注意 net_worth_trend 对货币基金是**累计收益指数**（起点 ≈ 1），只能用来画走势 / 算指标，
+  // 不能当单位净值：持仓估值 = 份额 × 1，否则会按成立以来的累计涨幅放大。
+  const isMoneyFund = realtime.is_money_fund === true || basic.is_hb === true || String(detail?.fund_type || '').startsWith('货币')
+  const sevenDayYield = Number(realtime.seven_day_yield)
+  const unitIncome = Number(realtime.unit_income)
   const trendNavPoints = trend
     .map(item => {
       const nav = Number(item?.net_worth ?? item?.y ?? item?.value)
@@ -257,19 +263,28 @@ export function mapFundDetailToRealtime(detail, fallbackCode) {
   const officialChange = latestOfficialNav && previousTrendNav?.nav
     ? new Decimal(latestOfficialNav.nav).minus(previousTrendNav.nav).div(previousTrendNav.nav).mul(100).toNumber()
     : null
+  const change = shouldUseEstimateChange
+    ? (Number.isFinite(estimateChangeFromNav) ? estimateChangeFromNav : (Number.isFinite(changeNum) ? changeNum : 0))
+    : (latestOfficialNav && Number.isFinite(officialChange)
+      ? officialChange
+      : (Number.isFinite(changeNum) ? changeNum : 0))
+  const hasUnitIncome = Number.isFinite(unitIncome) && unitIncome > 0
   return {
     code: realtime.fund_code || basic.fund_code || fallbackCode,
     name: realtime.name || basic.fund_name || fallbackCode,
-    dwjz: latestOfficialNav ? String(latestOfficialNav.nav) : realtime.net_worth,
-    prevDwjz: previousTrendNav?.nav ? String(previousTrendNav.nav) : realtime.net_worth,
-    gsz: realtime.estimate_value,
-    gztime: realtime.estimate_time,
+    dwjz: isMoneyFund ? '1' : (latestOfficialNav ? String(latestOfficialNav.nav) : realtime.net_worth),
+    // 让「今日盈亏 = 份额 × 每万份收益 / 10000」成立（getHoldingProfitToday 用 gsz - prevDwjz）。
+    prevDwjz: isMoneyFund
+      ? (hasUnitIncome ? String(1 - unitIncome / 10000) : '1')
+      : (previousTrendNav?.nav ? String(previousTrendNav.nav) : realtime.net_worth),
+    gsz: isMoneyFund ? null : realtime.estimate_value,
+    gztime: isMoneyFund ? null : realtime.estimate_time,
     jzrq: latestOfficialNav ? latestOfficialNav.date : realtime.net_worth_date,
-    gszzl: shouldUseEstimateChange
-      ? (Number.isFinite(estimateChangeFromNav) ? estimateChangeFromNav : (Number.isFinite(changeNum) ? changeNum : 0))
-      : (latestOfficialNav && Number.isFinite(officialChange)
-        ? officialChange
-        : (Number.isFinite(changeNum) ? changeNum : 0)),
+    // 货币基金没有涨跌幅，用 7 日年化占位（组件会改标签）；没取到就退回 0。
+    gszzl: isMoneyFund ? (Number.isFinite(sevenDayYield) ? sevenDayYield : 0) : change,
+    isMoneyFund,
+    sevenDayYield: Number.isFinite(sevenDayYield) ? sevenDayYield : null,
+    unitIncome: hasUnitIncome ? unitIncome : null,
     holdings: mapPortfolioHoldings(detail?.portfolio),
     netWorthTrend: trend,
     totalReturnTrend: Array.isArray(detail?.total_return_trend) ? detail.total_return_trend : []
@@ -304,6 +319,8 @@ export function getFundTrendSeries(fund) {
 }
 
 export function getFundNavByDate(fund, dateStr) {
+  // 货币基金净值恒为 1：`netWorthTrend` 是累计收益指数，不能拿来当成交净值。
+  if (fund?.isMoneyFund) return 1
   const trend = getFundTrendSeries(fund)
   if (!trend.length) return parseFloat(fund?.dwjz) || 0
   const target = String(dateStr || '').slice(0, 10)

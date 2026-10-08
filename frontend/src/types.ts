@@ -96,6 +96,10 @@ export interface RealtimeFund {
   gztime?: string
   jzrq?: string
   gszzl?: number
+  /** 货币基金：无盘中估值，展示口径换成 7 日年化 / 每万份收益。 */
+  isMoneyFund?: boolean
+  sevenDayYield?: number | null
+  unitIncome?: number | null
   holdings?: unknown[]
   netWorthTrend?: unknown[]
   totalReturnTrend?: unknown[]

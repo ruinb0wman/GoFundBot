@@ -149,6 +149,12 @@ describe('calcSharpe', () => {
   it('returns null for near-zero volatility', () => {
     expect(calcSharpe(10, 1e-13)).toBeNull()
   })
+  it('货币基金量级的波动（年化 0.01%）不产出「除以 ~0」的假夏普', () => {
+    expect(calcSharpe(1.46, 0.0082)).toBeNull()
+    expect(calcSharpe(1.46, 0.0415)).toBeNull()
+    // 真正的低波动品种（如中短债 ~0.3%）仍照算
+    expect(calcSharpe(3, 0.3)).not.toBeNull()
+  })
   it('returns null for null inputs', () => {
     expect(calcSharpe(null, 10)).toBeNull()
     expect(calcSharpe(10, null)).toBeNull()

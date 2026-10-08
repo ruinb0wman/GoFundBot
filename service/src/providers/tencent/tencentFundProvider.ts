@@ -25,6 +25,9 @@ export class TencentFundProvider implements FundProvider {
       estimatedNav: toNullableNum(info.estimate ?? info.gsz),
       estimatedChangePercent: toNullableNum(info.estimate_change ?? info.gszzl),
       estimateTime: toNullableStr(info.estimate_time ?? info.gztime),
+      isMoneyFund: false,
+      sevenDayYield: null,
+      unitIncome: null,
     };
   }
 

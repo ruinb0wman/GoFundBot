@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { asyncHandler } from '../core/errors.js';
 import { AppError } from '../core/errors.js';
 import { sendSuccess, sendFailure } from '../core/response.js';
-import { composeFundDetailLegacy, getFundDetail, getFundBasic, getFundNavHistory, getFundHoldings, searchFunds } from '../services/fundService.js';
+import { composeFundDetailLegacy, toLegacyRealtimeEstimate, getFundDetail, getFundBasic, getFundNavHistory, getFundHoldings, searchFunds } from '../services/fundService.js';
 import type { FundNavPointDto } from '../types/fund.js';
 import { logger } from '../core/logger.js';
 
@@ -115,14 +115,7 @@ fundLegacyRouter.get(
       fund_type: detail.sections.basic.data?.type ?? '',
       net_worth_trend: trend,
       accumulated_net_worth: accumulated,
-      realtime_estimate: {
-        estimate_value: estimateData?.estimatedNav ?? null,
-        estimate_change: estimateData?.estimatedChangePercent ?? null,
-        estimate_time: estimateData?.estimateTime ?? null,
-        net_worth: estimateData?.nav ?? null,
-        net_worth_date: estimateData?.navDate ?? null,
-        name: estimateData?.name ?? null,
-      },
+      realtime_estimate: toLegacyRealtimeEstimate(estimateData),
       risk_metrics: {},
       ranking: {},
       industry_tag: '',

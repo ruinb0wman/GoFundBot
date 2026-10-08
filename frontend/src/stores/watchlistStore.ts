@@ -158,6 +158,10 @@ export const useWatchlistStore = defineStore('watchlist', {
             fund.net_worth_date = est.navDate
             fund.estimate_value = est.estimatedNav
             fund.estimate_change = est.estimatedChangePercent
+            // 货币基金：无盘中估值，用 7 日年化 / 每万份收益展示
+            fund.is_money_fund = est.isMoneyFund === true
+            fund.seven_day_yield = est.sevenDayYield ?? null
+            fund.unit_income = est.unitIncome ?? null
             if (fund.estimate_change == null) {
               const estimateNav = Number(est.estimatedNav)
               const officialNav = Number(est.nav)
@@ -166,6 +170,10 @@ export const useWatchlistStore = defineStore('watchlist', {
               }
             }
             fund.estimate_time = est.estimateTime
+            // 货币基金没有涨跌幅，用 7 日年化占位列（组件会改标签）
+            if (fund.is_money_fund && fund.estimate_change == null && est.sevenDayYield != null) {
+              fund.estimate_change = est.sevenDayYield
+            }
           }
         }
       } catch (error) {

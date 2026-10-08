@@ -91,12 +91,14 @@ export function useFundRealtimeData(emit, extra = {}) {
     searchTimeoutRef.value = setTimeout(() => performSearch(), 150)
   })
 
+  // 注意两层解包：`httpRequest` 返回 `{ data: <响应体> }`，而响应体本身是
+  // `{ success, data: <载荷> }` —— 少一层就会把信封当载荷，卡片只剩代码当名字、净值全 `-`。
   const fetchFundData = async (code) => {
-    try { return mapFundDetailToRealtime((await fundAPI.getFundCompareData(code, true))?.data || {}, code)
+    try { return mapFundDetailToRealtime((await fundAPI.getFundCompareData(code, true))?.data?.data || {}, code)
     } catch (e) {
       try { return mapFundDetailToRealtime((await useFundStore().fetchFund(code)) || {}, code)
       } catch {
-        try { return mapFundDetailToRealtime((await fundAPI.getFundCompareData(code))?.data || {}, code)
+        try { return mapFundDetailToRealtime((await fundAPI.getFundCompareData(code))?.data?.data || {}, code)
         } catch { return null }
       }
     }

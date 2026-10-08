@@ -93,14 +93,20 @@
         </div>
         <div class="c-hero">
           <div class="hero-metric">
-            <div class="hero-chip" :class="getChangeClass(fund.gszzl)">{{ formatChange(fund.gszzl) }}</div>
-            <div class="hero-label">{{ getPriceStatusLabel(fund) }}涨跌</div>
-            <div class="hero-sub">单位净值 {{ fund.dwjz || '-' }}</div>
+            <div class="hero-chip" :class="isMoneyFund(fund) ? '' : getChangeClass(fund.gszzl)">
+              {{ isMoneyFund(fund) ? formatYield(fund.sevenDayYield) : formatChange(fund.gszzl) }}
+            </div>
+            <div class="hero-label">{{ isMoneyFund(fund) ? '7日年化' : getPriceStatusLabel(fund) + '涨跌' }}</div>
+            <div class="hero-sub">
+              {{ isMoneyFund(fund) ? '每万份收益 ' + formatUnitIncome(fund.unitIncome) : '单位净值 ' + (fund.dwjz || '-') }}
+            </div>
           </div>
           <div class="hero-metric" v-if="holdings[fund.code]">
             <div class="hero-chip" :class="getHoldingProfitTodayClass(fund)">{{ getHoldingProfitToday(fund) >= 0 ? '+' : '' }}¥{{ fmtMoney(getHoldingProfitToday(fund)) }}</div>
-            <div class="hero-label">{{ getPriceStatusLabel(fund) }}盈亏</div>
-            <div class="hero-sub">{{ hasFreshEstimate(fund) ? '估算值' : '最新净值' }} {{ formatGsz(fund) }}</div>
+            <div class="hero-label">{{ isMoneyFund(fund) ? '今日收益' : getPriceStatusLabel(fund) + '盈亏' }}</div>
+            <div class="hero-sub">
+              {{ isMoneyFund(fund) ? '每万份收益 ' + formatUnitIncome(fund.unitIncome) : (hasFreshEstimate(fund) ? '估算值' : '最新净值') + ' ' + formatGsz(fund) }}
+            </div>
           </div>
         </div>
         <div class="c-holdings-area">
@@ -253,6 +259,21 @@ const {
 
 function onImport(files: FileList | null) {
   importData({ target: { files } })
+}
+
+/** 货币基金：没有盘中估值，卡片改显示 7 日年化 / 每万份收益。 */
+function isMoneyFund(fund: any): boolean {
+  return fund?.isMoneyFund === true
+}
+
+function formatYield(value: unknown): string {
+  const num = parseFloat(String(value))
+  return Number.isFinite(num) ? `${num.toFixed(2)}%` : '--'
+}
+
+function formatUnitIncome(value: unknown): string {
+  const num = parseFloat(String(value))
+  return Number.isFinite(num) ? num.toFixed(4) : '--'
 }
 
 const searched = computed(() => funds.value.length > 0)

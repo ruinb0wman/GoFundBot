@@ -117,6 +117,9 @@ export class EastMoneyFundProvider implements FundProvider {
           estimatedNav: toNullableNumber(fund.gsz),
           estimatedChangePercent: parsePercent(fund.gszzl),
           estimateTime: toNullableString(fund.gxrq),
+          isMoneyFund: false,
+          sevenDayYield: null,
+          unitIncome: null,
         };
       }
     } catch {
@@ -125,23 +128,52 @@ export class EastMoneyFundProvider implements FundProvider {
     return this.estimateFromPingZhongData(code);
   }
 
+  /**
+   * 估值兜底：直接读 pingzhongdata（不再经过 navHistory，避免二次取脚本）。
+   *
+   * 货币基金没有盘中估值：单位净值恒为 1，收益按「每万份收益」日结，所以这里返回
+   * `nav = 1` + 7 日年化 / 每万份收益，而不是让整条链路报 `Missing Data_netWorthTrend`。
+   */
   private async estimateFromPingZhongData(code: string): Promise<FundEstimateDto> {
-    const navData = await this.navHistory(code, {});
-    const items = navData.items;
-    const latest = items.length > 0 ? items[items.length - 1] : null;
-    const prev = items.length > 1 ? items[items.length - 2] : null;
+    const script = await this.fetchFundDetailScript(code);
+    const name = parseJsString(script, 'fS_name');
+
+    const moneyStats = parseMoneyFundStats(script);
+    if (moneyStats) {
+      return {
+        code,
+        name,
+        navDate: moneyStats.date,
+        nav: 1,
+        estimatedNav: null,
+        estimatedChangePercent: null,
+        estimateTime: null,
+        isMoneyFund: true,
+        sevenDayYield: moneyStats.sevenDayYield,
+        unitIncome: moneyStats.unitIncome,
+      };
+    }
+
+    const navTrend = safeParseJsJson<EastMoneyNavPoint[]>(script, 'Data_netWorthTrend', []);
+    const latest = navTrend.length > 0 ? navTrend[navTrend.length - 1] : null;
+    const prev = navTrend.length > 1 ? navTrend[navTrend.length - 2] : null;
+    const latestNav = latest ? toNullableNumber(latest.y) : null;
+    const prevNav = prev ? toNullableNumber(prev.y) : null;
     let change: number | null = null;
-    if (latest && prev && latest.nav > 0 && prev.nav > 0) {
-      change = ((latest.nav - prev.nav) / prev.nav) * 100;
+    if (latestNav != null && prevNav != null && latestNav > 0 && prevNav > 0) {
+      change = ((latestNav - prevNav) / prevNav) * 100;
     }
     return {
       code,
-      name: navData.name,
-      navDate: latest?.date ?? null,
-      nav: latest?.nav ?? null,
+      name,
+      navDate: latest?.x ? formatChinaDate(latest.x) : null,
+      nav: latestNav,
       estimatedNav: null,
       estimatedChangePercent: change,
       estimateTime: null,
+      isMoneyFund: false,
+      sevenDayYield: null,
+      unitIncome: null,
     };
   }
 
@@ -168,8 +200,20 @@ export class EastMoneyFundProvider implements FundProvider {
     const script = await fetchText(url);
     const name = parseJsString(script, 'fS_name');
     const parsedCode = parseJsString(script, 'fS_code') || code;
-    const navTrend = parseJsJson<EastMoneyNavPoint[]>(script, 'Data_netWorthTrend');
-    const accTrend = parseJsJson<EastMoneyAccNavPoint[]>(script, 'Data_ACWorthTrend');
+    const navTrend = safeParseJsJson<EastMoneyNavPoint[]>(script, 'Data_netWorthTrend', []);
+
+    // 货币基金没有净值走势（只有每万份收益 / 7 日年化），用前者合成累计收益指数。
+    // 这样图表 / 回撤 / 风险指标 / 回测 / 筛选富化拿到的都是可用序列。
+    if (navTrend.length === 0) {
+      const items = buildMoneyFundNavPoints(script);
+      if (items.length === 0) {
+        throw new AppError('PROVIDER_UNAVAILABLE', 'Missing EastMoney variable Data_netWorthTrend', 502);
+      }
+      return filterNavHistory({ code: parsedCode, name, items }, options);
+    }
+
+    // 累计净值缺失不该拖垮整条净值序列：此时 accNav 为 null，nav 仍然可用。
+    const accTrend = safeParseJsJson<EastMoneyAccNavPoint[]>(script, 'Data_ACWorthTrend', []);
     const accByTimestamp = new Map<number, number | null>(
       accTrend.map((item) => [Number(item[0]), toNullableNumber(item[1])])
     );
@@ -946,6 +990,68 @@ function mapMoneyFundRow(row: string, updatedAt: string): FundScreeningSnapshotI
     source: 'eastmoney.rankhandler.moneyfund',
     updatedAt,
   };
+}
+
+interface MoneyFundStats {
+  date: string | null;
+  unitIncome: number | null;
+  sevenDayYield: number | null;
+}
+
+/**
+ * 货币基金识别与最新统计。`Data_millionCopiesIncome`（每万份收益）**只有货币基金才有**，
+ * 所以它的存在本身就是判定依据（`ishb` 更直白但个别基金缺这个变量）。
+ *
+ * 数据形状：`[[timestamp, 每万份收益(元)], ...]`、`[[timestamp, 7日年化(%)], ...]`。
+ */
+function parseMoneyFundStats(script: string): MoneyFundStats | null {
+  const income = safeParseJsJson<Array<[number, number]>>(script, 'Data_millionCopiesIncome', []);
+  if (!Array.isArray(income) || income.length === 0) return null;
+
+  const latestIncome = income[income.length - 1];
+  const seven = safeParseJsJson<Array<[number, number]>>(script, 'Data_sevenDaysYearIncome', []);
+  const latestSeven = Array.isArray(seven) && seven.length > 0 ? seven[seven.length - 1] : null;
+  const timestamp = Number(latestIncome?.[0]);
+
+  return {
+    date: Number.isFinite(timestamp) && timestamp > 0 ? formatChinaDate(timestamp) : null,
+    unitIncome: toNullableNumber(latestIncome?.[1]),
+    sevenDayYield: latestSeven ? toNullableNumber(latestSeven[1]) : null,
+  };
+}
+
+/**
+ * 货币基金净值序列合成：把每日「每万份收益」复利累乘成**累计收益指数**（起点 ≈ 1）。
+ *
+ * 口径说明：货币基金单位净值恒为 1，真实收益体现在份额结转上，所以这里的 `nav` 是
+ * **累计收益指数**（等价于东财 `Data_grandTotal`）。000682 实算 37.26% vs 官方 37.24%。
+ * 展示层（前端 `isMoneyFund` 分支）会把单位净值覆写成 1，不暴露这条指数。
+ */
+function buildMoneyFundNavPoints(script: string): FundNavPointDto[] {
+  const income = safeParseJsJson<Array<[number, number]>>(script, 'Data_millionCopiesIncome', []);
+  if (!Array.isArray(income) || income.length === 0) return [];
+
+  const items: FundNavPointDto[] = [];
+  let nav = 1;
+  for (const entry of income) {
+    if (!Array.isArray(entry) || entry.length < 2) continue;
+    const timestamp = Number(entry[0]);
+    const per10k = Number(entry[1]);
+    if (!Number.isFinite(timestamp) || !Number.isFinite(per10k)) continue;
+
+    nav *= 1 + per10k / 10000;
+    const rounded = Math.round(nav * 1e8) / 1e8;
+    items.push({
+      date: formatChinaDate(timestamp),
+      timestamp,
+      nav: rounded,
+      accNav: rounded,
+      // 每万份收益 1 元 = 当日万分之一 = 0.01% 收益
+      dailyReturn: Math.round((per10k / 100) * 1e6) / 1e6,
+      unitMoney: '元',
+    });
+  }
+  return items;
 }
 
 interface NavReturnPoint {

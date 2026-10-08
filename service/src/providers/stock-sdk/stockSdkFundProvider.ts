@@ -86,6 +86,9 @@ function mapFundEstimate(raw: unknown): FundEstimateDto {
     estimatedNav: toNullableNumber(item.estimatedNav),
     estimatedChangePercent: toNullableNumber(item.estimatedChangePercent),
     estimateTime: toNullableString(item.estimateTime),
+    isMoneyFund: false,
+    sevenDayYield: null,
+    unitIncome: null,
   };
 }
 

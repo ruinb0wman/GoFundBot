@@ -53,7 +53,7 @@
                 <span class="legend-box pink"></span>
                 <span class="label">{{ '最大回撤修复天数' }}</span>
              </div>
-             <div class="value-row">{{ maxDrawdownInfo.days ? maxDrawdownInfo.days + '天' : '正在修复中...' }}</div>
+             <div class="value-row">{{ drawdownRecoveryText }}</div>
         </div>
     </div>
 
@@ -86,6 +86,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { MA_PRESETS } from '../utils/ma'
 import { useFundChart } from '../composables/useFundChart'
 
@@ -110,6 +111,12 @@ const {
   activeMAs,
   toggleMA,
 } = useFundChart(props)
+
+// 没有回撤时不叫「正在修复中」（货币基金等单调上涨的净值序列最大回撤恒为 0）。
+const drawdownRecoveryText = computed(() => {
+  if (!(parseFloat(maxDrawdownInfo.value?.val) > 0)) return '无回撤'
+  return maxDrawdownInfo.value.days ? `${maxDrawdownInfo.value.days}天` : '正在修复中...'
+})
 </script>
 
 <style scoped>

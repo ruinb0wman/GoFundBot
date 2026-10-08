@@ -41,8 +41,24 @@ EastMoneyFundProvider.estimate(code):
   1. fetchFundGuZhiBatch() — 批量实时估值 API（缓存 30s）
      → 成功 → 从 batch 中查找该基金
   2.  batch 失败或未找到 → estimateFromPingZhongData()
-     → navHistory() pingzhongdata JS → 用昨日涨跌幅估算
+     → 直接读一次 pingzhongdata JS（不经过 navHistory，避免二次取脚本）
+     → 普通基金：用 `Data_netWorthTrend` 最后两点的涨跌幅估算
+     → 货币基金：`nav = 1` + 7 日年化 / 每万份收益（货币基金没有盘中估值）
 ```
+
+### 货币基金（`ishb = true`）没有净值走势
+
+东财 pingzhongdata 对货币基金**不输出 `Data_netWorthTrend` / `Data_ACWorthTrend`**，只有
+`Data_millionCopiesIncome`（每万份收益）、`Data_sevenDaysYearIncome`（7 日年化）、
+`Data_grandTotal`（累计收益率 %）。而业绩走势 / 回撤 / 风险指标 / 回测 / 筛选富化全走净值序列，
+所以 `EastMoneyFundProvider.navHistory()` 在净值走势缺失时会用**每万份收益复利累乘**合成一条
+**累计收益指数**（起点 ≈ 1，`nav_i = ∏(1 + 收益_i/10000)`）：
+
+- 与官方 `Data_grandTotal` 一致（000682：实算 37.26% vs 官方 37.24%；近 1 年 1.465% vs 排行 1.46%）。
+- 货币基金真实单位净值恒为 **1**：前端映射层（`isMoneyFund` 分支）把 `dwjz` 覆写成 1、
+  `prevDwjz = 1 - 每万份收益/10000`，展示改成「7 日年化 / 每万份收益」，**不能**把这条指数当净值用。
+- 最大回撤恒为 0（序列单调上行）；年化波动 ~0.01%，此时夏普是「除以 ~0」的假象，
+  `calcSharpe` 对年化波动 < 0.1% 的品种直接返回 null。
 
 ## Python 外部回退
 

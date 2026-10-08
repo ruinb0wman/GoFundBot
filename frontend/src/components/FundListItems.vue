@@ -39,12 +39,22 @@
       </div>
 
       <div class="col-nav">
-        <div class="nav-value">{{ fund.estimate_value || fund.net_worth || '--' }}</div>
-        <div class="nav-date">{{ fund.estimate_time || fund.net_worth_date || '' }}</div>
+        <template v-if="isMoneyFund(fund)">
+          <div class="nav-value">{{ formatUnitIncome(fund.unit_income) }}</div>
+          <div class="nav-date">{{ '每万份收益' }}</div>
+        </template>
+        <template v-else>
+          <div class="nav-value">{{ fund.estimate_value || fund.net_worth || '--' }}</div>
+          <div class="nav-date">{{ fund.estimate_time || fund.net_worth_date || '' }}</div>
+        </template>
       </div>
 
-      <div class="col-change" :class="getChangeClass(fund.estimate_change)">
-        {{ formatChange(fund.estimate_change) }}
+      <div
+        class="col-change"
+        :class="isMoneyFund(fund) ? '' : getChangeClass(fund.estimate_change)"
+        :title="isMoneyFund(fund) ? '7日年化' : ''"
+      >
+        {{ isMoneyFund(fund) ? formatYield(fund.estimate_change) : formatChange(fund.estimate_change) }}
       </div>
 
       <div class="col-action" v-if="!editMode && !compareMode">
@@ -116,12 +126,27 @@ function isInCompare(fundCode: string): boolean {
   return !!(props.compareFunds && props.compareFunds.some(f => f.code === fundCode))
 }
 
+function isMoneyFund(fund: any): boolean {
+  return fund?.is_money_fund === true || String(fund?.fund_type || '').startsWith('货币')
+}
+
 function formatChange(change: unknown): string {
   if (!change && change !== 0) return '--'
   const num = parseFloat(String(change))
   if (isNaN(num)) return String(change)
   const sign = num > 0 ? '+' : ''
   return `${sign}${num.toFixed(2)}%`
+}
+
+/** 7 日年化不写正号（它永远是正数，带 + 反而像涨跌幅）。 */
+function formatYield(value: unknown): string {
+  const num = parseFloat(String(value))
+  return Number.isFinite(num) ? `${num.toFixed(2)}%` : '--'
+}
+
+function formatUnitIncome(value: unknown): string {
+  const num = parseFloat(String(value))
+  return Number.isFinite(num) ? num.toFixed(4) : '--'
 }
 
 function getChangeClass(change: unknown): string {

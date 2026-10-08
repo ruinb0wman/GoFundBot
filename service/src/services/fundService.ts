@@ -650,6 +650,28 @@ async function getFundTotalReturnTrend(code: string): Promise<ServiceResult<unkn
   return toServiceResult(result);
 }
 
+/**
+ * 旧版基金详情里的 `realtime_estimate` 载荷（`/api/fund/:code` 与 `/:code/compare-data` 共用）。
+ *
+ * 货币基金没有盘中估值：`estimate_value/estimate_change` 为 null，但 `net_worth` 是真实的 1，
+ * 并额外带上 7 日年化 / 每万份收益，供前端切换展示口径。
+ */
+export function toLegacyRealtimeEstimate(
+  estimateData: FundEstimateDto | null | undefined
+): Record<string, unknown> {
+  return {
+    estimate_value: estimateData?.estimatedNav ?? null,
+    estimate_change: estimateData?.estimatedChangePercent ?? null,
+    estimate_time: estimateData?.estimateTime ?? null,
+    net_worth: estimateData?.nav ?? null,
+    net_worth_date: estimateData?.navDate ?? null,
+    name: estimateData?.name ?? null,
+    is_money_fund: estimateData?.isMoneyFund ?? false,
+    seven_day_yield: estimateData?.sevenDayYield ?? null,
+    unit_income: estimateData?.unitIncome ?? null,
+  };
+}
+
 function toServiceResult<T>(lookup: {
   value: ProviderChainResult<T>;
   cached: boolean;
@@ -698,15 +720,11 @@ export async function composeFundDetailLegacy(code: string): Promise<Record<stri
       fund_type: basicData?.type ?? '',
       current_rate: basicData?.currentRate ?? null,
       min_subscription_amount: basicData?.minSubscriptionAmount ?? null,
+      // 货币基金标记（pingzhongdata `ishb`）：前端据此把「涨跌幅/单位净值」换成
+      // 「7 日年化 / 每万份收益」。
+      is_hb: basicData?.isHB ?? null,
     },
-    realtime_estimate: {
-      estimate_value: estimateData?.estimatedNav ?? null,
-      estimate_change: estimateData?.estimatedChangePercent ?? null,
-      estimate_time: estimateData?.estimateTime ?? null,
-      net_worth: estimateData?.nav ?? null,
-      net_worth_date: estimateData?.navDate ?? null,
-      name: estimateData?.name ?? null,
-    },
+    realtime_estimate: toLegacyRealtimeEstimate(estimateData),
     performance: {
       '1_month_return': perfData?.return1m ?? null,
       '3_month_return': perfData?.return3m ?? null,

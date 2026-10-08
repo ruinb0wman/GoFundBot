@@ -6,6 +6,12 @@ export interface FundEstimateDto {
   estimatedNav: number | null;
   estimatedChangePercent: number | null;
   estimateTime: string | null;
+  /** 货币基金：没有盘中估值，收益按「每万份收益」日结。 */
+  isMoneyFund: boolean;
+  /** 7 日年化收益率（%），仅货币基金。 */
+  sevenDayYield: number | null;
+  /** 每万份收益（元/万份），仅货币基金。 */
+  unitIncome: number | null;
 }
 
 export interface FundEstimateBatchSuccessDto {

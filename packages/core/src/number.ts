@@ -8,6 +8,8 @@ import { Decimal } from 'decimal.js'
 
 export const DEFAULT_RISK_FREE_RATE = 2.0
 export const DEFAULT_EPSILON = 1e-12
+/** 年化波动率低于这个值（%）时不计算夏普：分母趋零，结果无经济含义。 */
+export const MIN_MEANINGFUL_VOLATILITY = 0.1
 
 export function isZero(val: number, epsilon = DEFAULT_EPSILON): boolean {
   return Math.abs(val) < epsilon
@@ -93,6 +95,10 @@ export function calcSharpe(
 ): number | null {
   if (!isFiniteNumber(annualReturn) || !isFiniteNumber(volatility)) return null
   if (isZero(volatility)) return null
+  // σ → 0 时夏普没有意义：(R-Rf)/σ 会被极小的分母放大成任意大的数。
+  // 货币基金年化波动只有 ~0.01%，会算出 -120 这种值（是一个「除以 ~0」的假象，不是业绩差）；
+  // 这类现金等价物一律判为不可用，与 `vol > 500` 的荒谬值保护对称。
+  if (Math.abs(volatility) < MIN_MEANINGFUL_VOLATILITY) return null
   return new Decimal(annualReturn as number).minus(riskFreeRate).div(volatility as number).toNumber()
 }
 
