@@ -15,8 +15,8 @@
 | Provider | 实现文件 | 数据来源 | 提供的能力 |
 |----------|----------|---------|-----------|
 | **tencent** | `service/src/providers/tencent/tencentMarketProvider.ts` | `qt.gtimg.cn` `proxy.finance.qq.com` | `quotes`, `kline`（腾讯 newfqkline，含成交额；**含海外指数** `DJI/SPX/NDX/HSI/HSCEI`）, `globalIndices`（美股+港股指数，国内直连） |
-| **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts` | npm `stock-sdk` 包 | `quotes`, `kline`（`push2his`，当前被反爬切断）, `indices` |
-| **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `push2.eastmoney.com` `push2his.eastmoney.com` `push2ex.eastmoney.com` `datacenter-web.eastmoney.com` | `quotes`, `kline`, `sectors`, `sectorConstituents`, `indices`, `moneyFlow`, `marketMoneyFlow`, `breadth`（`marketBreadth.ts`）, `northFlow`（`marketNorthFlow.ts`，走 datacenter）, `globalIndices`（push2 已全挂，仅留作恢复即命中的一跳） |
+| **stock-sdk** (主) | `service/src/providers/stock-sdk/stockSdkMarketProvider.ts` | npm `stock-sdk` 包 | `quotes`, `kline`（`push2his`）, `indices` |
+| **eastmoney** (备) | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `push2.eastmoney.com` `push2his.eastmoney.com` `push2ex.eastmoney.com` `datacenter-web.eastmoney.com` | `quotes`, `kline`, `sectors`, `sectorConstituents`, `indices`, `moneyFlow`, `marketMoneyFlow`, `breadth`（`marketBreadth.ts`）, `northFlow`（`marketNorthFlow.ts`，走 datacenter）, `globalIndices`。全部经 `eastmoneyRequest.ts`（**真直连 + 端点级熔断**，2026-10-09） |
 | **yahoo** (兜底) | `service/src/providers/yahoo/yahooMarketProvider.ts` | Yahoo Finance API（**直连与代理都不通**） | 全球指数行情/K 线的兜底，仅覆盖腾讯未收录的日经/欧股/印度等（3.5s 预算） |
 | **binance** | `service/src/providers/binance/binanceClient.ts` | `api.binance.com`（**国内直连可用**） | 加密货币行情（`ticker/24hr`）与 K 线（`klines`） |
 

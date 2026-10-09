@@ -116,7 +116,9 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **Search chain（service）**: Bocha → Tavily → Exa（免费无 Key）→ DuckDuckGo（自动降级）；`service/src/ai/search.ts`。
 - **投研看板（P3.4）**: `GET /api/research/dashboard`（core `buildDashboard`，读 SQLite 筛选行）。payload 里**不再带全量基金行**（曾经 1.6MB），汇总口径（`pass_4433` / `risk_ready`）由 core 算好，前端与 pi 工具共用紧凑版（`compactDashboard`）。进程内缓存 60s，key 含 `screeningDataVersion()`（同步/富化/排名后自动失效）。
 - **Screening（P3.3 起在 service）**: `/api/screening/sync`（快照 + 行业标签 + 4433 排名；**默认 `enrich_limit=0`，不再阻塞首屏**）、`/compute`（分批富化风险指标，默认 300/批）、`/ranks`、`/query`（筛选/排序/分页，读进程内整表缓存）、`/status`、`/industry-tags`、`/screen-rows`（沙箱 `sdk.screen()` 的 7 列）。数据落 SQLite `screening_funds`；前端 `useScreeningDb` 只是薄客户端（本地 `screeningFunds` 表已删），同步后**后台**分批富化并把 `syncing` 保持到追平。`/query` 的过滤语义与迁移前逐条对齐（含 `max_drawdown_*_max` 都读 `max_drawdown_1y` 这类历史口径）。
-- **Proxy**: 国内 API（东方财富）用 `proxy: 'never'` 直连；Binance 也是**直连优先**（被墙时退一次代理）；只有 Yahoo 兜底走 `proxy: 'auto'` 随代理配置。`eastmoneyRequest.ts` 统一添加 `Referer` 头防止反爬。
+- **Proxy（2026-10-09 修正）**: 东财全系、腾讯、Binance、黄金（`api.jijinhao.com`）一律 `proxy: 'never'` = **真直连**；只有 Yahoo 兜底与搜索网关走 `proxy: 'auto'`。
+  ⚠️ 以前 `never` 返回 `undefined`（= 随全局 `EnvHttpProxyAgent`）→ **标了直连其实仍然过代理**，这才是「push2 被反爬切断」的真正成因（09-29 的结论是在带代理的环境下测的）。实测：过代理时 push2 七个路径 0/3 全 RST，真直连时 `stock/get`、`clist/get`、`91.push2`、`push2his fflow` 都 3/3 通。详见 `.pi/plans/push2-resilience.md`。
+- **东财端点熔断**: `eastmoneyRequest.ts` 按 `host + pathname` 计数，连续 3 次失败 → 冷却 60s（快速失败，让上层立刻降级，而不是等满超时）。日志里出现 `eastmoney breaker open` 就说明该端点正被限流。粒度必须按端点：`ulist.np` 挂了不能连累 `clist/get`。
 - **海外行情源（2026-10-09）**: 全球指数主源是**腾讯** `qt.gtimg.cn`（覆盖 `usNDX/usDJI/usINX/hkHSI/hkHSCEI`），海外 K 线走腾讯 `newfqkline`，加密货币走 **Binance** `api.binance.com`；Yahoo 从主源降为「腾讯未收录标的」的兜底（本机实测直连与代理都不通）。标的真源在 `service/src/providers/globalIndexDefs.ts`，别在别处再抄一份代码表。详见 `.pi/plans/global-market-sources.md` 与 `docs/market-global.md`。
 - **Docs**: VitePress 构建的文档站，配置在 `docs/.vitepress/config.ts`（nav + sidebar）。模块级详细文档按功能目录组织（如 `docs/fund-screening/`），在侧边栏对应分组。文档通过 frontend `/docs/*` 代理访问。
 
@@ -180,6 +182,11 @@ cd frontend && bunx vue-tsc --noEmit && bun run test
 EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反爬封锁（SSL EOF），
 无法获取分订单规模（主力/超大单/大单/中单/小单）的沪深合计资金流数据。
 
+> **2026-10-09 更正**：所谓「反爬封锁」多半是**我们自己经代理访问**导致的（见 `AGENTS.md` 的 Proxy 条与
+> `.pi/plans/push2-resilience.md`）。真直连后 `push2his .../fflow/daykline` 实测 3/3 有数据
+> （`/api/market/money-flow` 现在 provider=eastmoney）；个股口径的 `push2 .../fflow/daykline` 直连下仍返回
+> `rc:100, data:null`（且**全仓库无调用方**，计划里建议直接删）。
+
 **现状**：
 - EastMoney push2 不可用后自动走 Akshare 回退（`data_complete.py --source akshare --type money_flow`）
 - Akshare 返回格式与 EastMoney 一致（`MarketMoneyFlowDto`），覆盖 5 个字段
@@ -232,9 +239,20 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 （`yahoo-global-budget` 断言「同一波次发出」+「总耗时 ≈ 单次超时」，专门拦住退回串行分批）。
 **仍未覆盖**：日经/韩国/英德法/印度指数当前拿不到（akshare 的 `index_global_*` 也走东财 push2，同样死）。
 
+### 涨跌家数 (market breadth)
+
+`/api/market/breadth` 的 `MarketBreadthDto` **带 `data_status: 'available' | 'unavailable'`**（2026-10-09 新增）：
+上游取不到时三个家数仍是 `0`，那是**占位不是数据**，`unavailable` 时才附 `error` 说明原因（上游限流 / 半截数据 / 非交易日）。
+
+- 规则：HTTP 仍 `200`（与 `get_north_flow` 的 `data_status` 同一约定），但 **`unavailable` 结果不进 15s 缓存**
+  —— 否则一次瞬时失败会把「0 家上涨」钉住 15s。
+- 消费方：pi 工具 `get_market_breadth` 直接读 DTO 的 `data_status`（不再用 `total > 0` 反推）；前端无 breadth UI。
+- 排查：`upCount/downCount` 全 0 时先看 `data_status`/`error`，**不要**读成「今天 0 家上涨」。
+
 ### 板块数据 (market sectors)
 
 - **`push2.eastmoney.com/api/qt/clist/get`（行业+概念板块列表）被反爬切断**：直连/代理、IPv4/IPv6、curl/undici 全部 `SSL_read: unexpected eof`（`other side closed`）；同一 host 的 `ulist.np/get`（涨跌家数）与 `push2ex`/`datacenter-web` 正常（`push2his` 的 kline 接口后来也被切断，见「K 线 / 近7日A股成交量」）。实测 2026-09-29 是当日唯一持续报错的调用（26/26）。**行业板块因此长期走 akshare 同花顺降级**（`source: 'akshare_ths'`），代价是 `code` 为空串（→ `/market/sectors/:code/constituents` 对该批数据不可用），**不打算再绕网络**。
+  > **2026-10-09 更正**：上述「直连/代理都不通」实际测的是**经代理**的路径（`eastmoneyRequest.ts` 当时写的是 `proxy: 'auto'`）。修正后（`never` 真直连 + 端点熔断）实测 `clist/get` **直连可用**（`main_inflow`/`code` 都有值，如 `种子 BK1518`），行业板块应回到 `source: 'eastmoney'`；但 push2 是**限流式**的（密集请求后整段 RST），所以 akshare 降级必须继续留着，靠 `eastmoney breaker open` 观测。
 - **概念板块只有 API/pi 工具，没有页面**：`GET /api/market/concept-sectors`（`getMarketConceptSectorsFromAkshare`）→ `data_complete.py --type concept_spot` = 同花顺 `stock_fund_flow_concept('即时')` 行情主表（387 个概念，按涨跌幅降序，每次现取 ~2s）+ `stock_board_concept_summary_ths()` 驱动事件（约 10s，单独 `file_cache` 24h；失败不落盘，降级为空事件表，不牵连行情主表）。**不走 EastMoney**。
 - **踩过的坑（2026-09-29 修复）**：`toolHandlers.get_concept_sectors` 曾误按 `unpack(res)?.data?.items` 解析，而该路由的 `data` 是**扁平数组**（和 `/market/sectors` 同款信封），所以恒返回空 `items`；并且它早期直接复用了**行业**板块端点（`m:90+t:2`），契约里写的「驱动事件/成分股数量」从未接通。
 - **踩过的坑（2026-10-08 修复）——「空结果被当成成功缓存」**：`complete_sector_spot` 曾 `except → return {"date":"","items":[]}`，而 `cli/shared/file_cache.py` 对返回值**没有门槛**，空结果照样落盘 → 一次瞬时故障（当天 15:17 同一分钟 kline/money_flow 也全挂）变成**整整 1 小时的「所有板块数据源均不可用」**；页面「暂无数据」但上游其实一直正常。修法：**失败时 `raise`（含空 DataFrame）而不是 return 空** —— `file_cache` 只在正常返回时落盘，所以抛异常天然不写缓存，service 端立刻看到错误并可重试（顺带让被 `runPython` 丢弃的 python stderr/traceback 进了 service 日志）。同一模式已修 `_concept_events` / `complete_concept_spot`。**排查口诀**：板块为空先看 `python/Data/cache/sector_spot.json` 是不是 `{"date":"","items":[]}`，是就删掉它再试（别再怀疑上游）。遗留同类：`complete_market_money_flow` 也是 `except → return {}`，只是它没有 `@file_cache`。

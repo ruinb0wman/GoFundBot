@@ -31,10 +31,14 @@ GET /api/market/volume/7days
 
 ## 三、API 数据源 — 腾讯新格式 K 线（主）
 
-> EastMoney `push2his.eastmoney.com`（stock-sdk 与 eastmoney provider 的 K 线来源）已被反爬切断
+> EastMoney `push2his.eastmoney.com`（stock-sdk 与 eastmoney provider 的 K 线来源）在 2026-09 被切断
 > （`RemoteDisconnected`/`ERR_EMPTY_RESPONSE`），旧的腾讯 `web.ifzq.gtimg.cn/app/app/kline/kline`
 > 端点亦失效（返回 `code:11`）。`TencentMarketProvider.kline()` 改用下面的腾讯新接口，
 > ProviderChain 顺序为 `[joinquant → tencent → stock-sdk → eastmoney]`，全部失败才落到 Python。
+>
+> **2026-10-09 补充**：那次「切断」绝大多数是**经代理**访问造成的（`eastmoneyRequest` 当时是 `proxy: 'auto'`）；
+> 但 K 线另有一层真问题 —— 真直连下 `push2his .../stock/kline/get` 返回 `rc:102, data:null`，
+> 也就是该端点对 A 股 K 线**确实取不到数据**（所以它作为兜底没用，腾讯才是主源）。
 
 ### 3.1 端点
 

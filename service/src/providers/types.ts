@@ -141,7 +141,7 @@ export interface MarketBreadthDto {
   upCount: number;
   downCount: number;
   flatCount: number;
-  /** 涨停家数；涨跌停池取不到时为 null（不再填假值） */
+  /** 涨停家数；涨跌停池取不到时为 null（不填假值） */
   limitUp: number | null;
   /** 跌停家数；涨跌停池取不到时为 null */
   limitDown: number | null;
@@ -150,6 +150,13 @@ export interface MarketBreadthDto {
   scope: string;
   /** 数据日期 YYYY-MM-DD（来自指数行情 f124） */
   date: string;
+  /**
+   * 取数状态。`unavailable` 时上面三个家数都是 0，**不代表「今天 0 家上涨」**。
+   * 与 `get_north_flow` 的 `data_status` 同一约定（`.pi/plans/push2-resilience.md` §3 P0-3）。
+   */
+  data_status: 'available' | 'unavailable';
+  /** `unavailable` 时的原因（上游异常 / 半截数据 / 非交易日） */
+  error?: string;
 }
 
 export interface LimitUpStockDto {

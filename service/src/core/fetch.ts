@@ -1,4 +1,4 @@
-import { ProxyAgent } from 'undici';
+import { Agent, ProxyAgent } from 'undici';
 import { AppError } from './errors.js';
 
 export type ProxyMode = 'auto' | 'always' | 'never';
@@ -14,6 +14,19 @@ export interface FetchOptions {
 }
 
 let _proxyDispatcher: any | undefined;
+let _directDispatcher: Agent | undefined;
+
+/**
+ * 显式直连的 dispatcher（`proxy: 'never'` 用）。
+ *
+ * **不能返回 `undefined`**：本机环境有 `NODE_USE_ENV_PROXY=1` + `HTTPS_PROXY`，Node 会把全局
+ * dispatcher 换成 `EnvHttpProxyAgent`，「不传 dispatcher」等于「随全局」→ `never` 形同虚设。
+ * 实测：通过代理时 `push2.eastmoney.com` 七个路径全 RST，而真正直连时绝大多数可用
+ * （见 `.pi/plans/push2-resilience.md` §1.1）。
+ */
+function directDispatcher(): Agent {
+  return (_directDispatcher ??= new Agent());
+}
 
 export function setGlobalProxyUrl(url: string | null): void {
   if (_proxyDispatcher && typeof _proxyDispatcher.close === 'function') {
@@ -32,7 +45,7 @@ export function setGlobalProxyUrl(url: string | null): void {
 function getDispatcher(proxy: ProxyMode): any | undefined {
   switch (proxy) {
     case 'never':
-      return undefined;
+      return directDispatcher();
     case 'always':
       if (_proxyDispatcher) return _proxyDispatcher;
       {

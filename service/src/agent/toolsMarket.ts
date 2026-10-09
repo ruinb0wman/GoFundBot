@@ -146,9 +146,16 @@ export const marketTools = [
     async handler() {
       const d = (unwrapServiceResult(await getMarketBreadth()) ?? {}) as unknown as Record<string, unknown>
       const hasLimitCounts = d.limitUp != null || d.limitDown != null
+      // service 是权威（DTO 自带 data_status），这里只保留一个兼容回退
       const total = Number(d.total ?? 0)
+      const dataStatus =
+        d.data_status === 'available' || d.data_status === 'unavailable'
+          ? d.data_status
+          : total > 0
+            ? 'available'
+            : 'unavailable'
       return {
-        data_status: total > 0 ? 'available' : 'unavailable',
+        data_status: dataStatus,
         scope: d.scope ?? '沪深两市',
         date: d.date ?? '',
         up_count: d.upCount,
@@ -158,11 +165,13 @@ export const marketTools = [
         limit_down: d.limitDown ?? null,
         total: d.total,
         note:
-          total > 0
+          dataStatus === 'available'
             ? hasLimitCounts
               ? undefined
               : '涨停/跌停家数本次未取到，仅涨跌家数有效'
-            : '涨跌家数本次未取到（数据源异常或尚未更新），请勿据此判断市场涨跌结构',
+            : d.error
+              ? `涨跌家数本次未取到：${String(d.error)}`
+              : '涨跌家数本次未取到（数据源异常或尚未更新），请勿据此判断市场涨跌结构',
       }
     },
   }),

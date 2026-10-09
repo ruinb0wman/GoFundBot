@@ -40,6 +40,7 @@ export async function fetchMarketBreadth(): Promise<MarketBreadthDto> {
     total: 0,
     scope: '沪深两市',
     date: '',
+    data_status: 'unavailable',
   };
 
   try {
@@ -58,7 +59,7 @@ export async function fetchMarketBreadth(): Promise<MarketBreadthDto> {
 
     const shRow = findMarketRow(rows, '000001');
     const szRow = findMarketRow(rows, '399001');
-    if (!shRow || !szRow) return empty;
+    if (!shRow || !szRow) return { ...empty, error: '涨跌家数只回了一个市场（上游半截数据）' };
 
     const sh = toCounts(shRow);
     const sz = toCounts(szRow);
@@ -69,7 +70,7 @@ export async function fetchMarketBreadth(): Promise<MarketBreadthDto> {
 
     // 半截数据（只回一个市场、或字段缺失）宁可报不可用，也不报局部数字
     if (total < MIN_TOTAL || total > MAX_TOTAL || (upCount === 0 && downCount === 0)) {
-      return empty;
+      return { ...empty, error: `涨跌家数异常（合计 ${total}，疑似上游限流或非交易日）` };
     }
 
     const date = toShanghaiDate(shRow.f124);
@@ -79,9 +80,22 @@ export async function fetchMarketBreadth(): Promise<MarketBreadthDto> {
       fetchPoolCount(DT_POOL_URL, 'fund:asc', dateCompact),
     ]);
 
-    return { upCount, downCount, flatCount, limitUp, limitDown, total, scope: '沪深两市', date };
-  } catch {
-    return empty;
+    return {
+      upCount,
+      downCount,
+      flatCount,
+      limitUp,
+      limitDown,
+      total,
+      scope: '沪深两市',
+      date,
+      data_status: 'available',
+    };
+  } catch (error) {
+    return {
+      ...empty,
+      error: `涨跌家数抓取失败：${error instanceof Error ? error.message : String(error)}`,
+    };
   }
 }
 

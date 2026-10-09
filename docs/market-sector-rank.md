@@ -82,6 +82,10 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type sec
 回退数据来源为同花顺（ths），返回格式与 `SectorSpotItem` 一致，`source` 标记为 `akshare_ths`。
 
 > 自 push2 `.../qt/clist/get` 被反爬切断起，这条回退就是**实际生效**的数据源（`akshare_thailand` 这个历史拼写已改为 `akshare_ths`）。
+>
+> **2026-10-09 更正**：「被反爬切断」实为**经代理**访问所致（`eastmoneyRequest.ts` 当时是 `proxy: 'auto'`）。
+> 改 `never` 真直连后 `clist/get` 可用（`source: 'eastmoney'`，且 `code`/`main_inflow` 都有值），
+> 但上游会限流，akshare 降级依旧是常态兑底（见 `.pi/plans/push2-resilience.md`）。
 
 ## 五、前端渲染
 

@@ -34,7 +34,7 @@
 两个**有上游限制**的只读工具（遇到失败要如实说，不要编造）：
 
 - `get_sector_constituents`：`sector_code` 来自 `get_hot_sectors`；行业板块走同花顺降级时 `code` 是空串，
-  且上游 eastmoney 成分股接口被反爬封锁时会直接 `PROVIDER_UNAVAILABLE`。
+  且上游 eastmoney（push2）在限流窗口内会 `PROVIDER_UNAVAILABLE`（可从日志 `eastmoney breaker open` 看出来）。
 - `get_a_volume_7days`：取不到时 `data_status: unavailable` + `data: []`（**不是成交额 0**）。
 
 ## 2. 写 / 执行类要用户确认

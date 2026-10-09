@@ -36,7 +36,7 @@ cd frontend && bun run dev   # 只起前端
 | `HOST` | `127.0.0.1` | 监听地址；**改它等于把用户数据暴露到局域网** |
 | `GOFUND_DB_PATH` | `service/data/gofund.db` | SQLite 路径；测试用 `:memory:` |
 | `CORS_ORIGINS` | 前端 dev 源 | 允许的跨域来源（Electron 壳不需要） |
-| `HTTP_PROXY` / `HTTPS_PROXY` | 空 | 代理；**只有明确要走的调用**用它（如 Yahoo 兜底、Binance 直连失败后的重试）；国内接口一律 `proxy: never` |
+| `HTTP_PROXY` / `HTTPS_PROXY` | 空 | 代理；**只有明确要走的调用**用它（Yahoo 兜底、搜索结果、Binance 直连失败后的重试）。东财/腾讯/黄金/币安主路径一律 `proxy: 'never'` = 真直连（2026-10-09 修正：以前 `never` 会落到全局 `EnvHttpProxyAgent`，等同仍过代理） |
 | `LOG_DIR` | `python/Data/logs` | 结构化日志目录（`dataservice-YYYY-MM-DD.jsonl`） |
 | `CACHE_MAX_ENTRIES` | `2000` | 内存缓存条数上限 |
 | `GOFUND_API_BASE` | `http://localhost:8310` | **pi 扩展**用的 service 地址 |
@@ -56,7 +56,11 @@ cd frontend && bun run dev   # 只起前端
 ## 5. 数据源与回退（要点）
 
 - **市场行情**：stock-sdk → eastmoney；**基金**：joinquant → tencent → stock-sdk → eastmoney。
-- **被反爬切断的接口**（行业/概念板块列表、部分 K 线）走同花顺/腾讯的新端点或 Python（akshare）—— 见 [回退策略](/architecture/fallback-strategy) 与
+- **代理与直连（2026-10-09 修正）**：`proxy: 'never'` 现在是**真直连**（以前返回 `undefined` = 随全局
+  `EnvHttpProxyAgent`，标了直连其实仍过代理）；东财/腾讯/币安/黄金 一律直连，只有 Yahoo 兜底与搜索走代理。
+  东财请求另有**端点级熔断**（连续 3 次失败 → 冷却 60s，日志 `eastmoney breaker open`）——见 [回退策略](/architecture/fallback-strategy)。
+- **曾被认为「被反爬切断」的接口**（行业板块列表、大盘资金流）在真直连下多数可用，但仍会限流；
+  同花顺/腾讯/Python（akshare）的回退链继续保留 —— 见 [回退策略](/architecture/fallback-strategy) 与
   [数据源](/architecture/data-sources) 里的「已知问题」。
 - **口径陷阱**（北向净流入恒为 null、涨跌停家数可能为 null、概念板块 `event_date` 不是行情日期）在
   [pi 工具面](/architecture/pi-tools) 与技能文档里都有说明；工具返回的 `data_status: unavailable` **不要当 0**。

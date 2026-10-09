@@ -109,5 +109,8 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type mon
 ## 六、已知问题
 
 1. **EastMoney push2his 接口反爬**：`push2.eastmoney.com` SSL EOF 问题，若 `marketMoneyFlow()` 返回空数据则自动走 Akshare 回退。
+   > **2026-10-09 更正**：上面的「反爬」主要是**经代理**访问造成的。真直连后
+   > `push2his .../fflow/daykline` 实测可用（`/api/market/money-flow` 现在 provider=eastmoney）；
+   > push2 会限流，所以 akshare 回退仍保留（连续 3 次失败会触发 `eastmoney breaker open`）。
 2. **数据延迟**：东方财富的资金流数据通常在收盘后 30 分钟左右才完整，盘中数据可能不完整或为 0。
 3. **Tushare 替代方案**：`moneyflow` 接口需 2,000 积分（当前积分不足），详见 `docs/tushare.md`。

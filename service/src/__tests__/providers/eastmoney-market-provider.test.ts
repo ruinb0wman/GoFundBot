@@ -63,6 +63,7 @@ describe('EastMoneyMarketProvider.breadth', () => {
       limitDown: 0,
       scope: '沪深两市',
       date: '2026-09-22',
+      data_status: 'available',
     });
   });
 
@@ -74,6 +75,9 @@ describe('EastMoneyMarketProvider.breadth', () => {
     expect(result.upCount).toBe(0);
     expect(result.limitUp).toBeNull();
     expect(result.date).toBe('');
+    // 关键：半截数据必须标 unavailable，不能让消费方看到「0 家上涨」就当真
+    expect(result.data_status).toBe('unavailable');
+    expect(result.error).toMatch(/只回了一个市场/);
   });
 
   it('keeps counts but nulls limit counts when the limit pools are unavailable', async () => {
@@ -83,6 +87,7 @@ describe('EastMoneyMarketProvider.breadth', () => {
     expect(result.total).toBe(5286);
     expect(result.limitUp).toBeNull();
     expect(result.limitDown).toBeNull();
+    expect(result.data_status).toBe('available');
   });
 
   it('does not use f168/f169/f170 (the old wrong fields)', async () => {
@@ -103,12 +108,31 @@ describe('EastMoneyMarketProvider.breadth', () => {
     expect(result.downCount).toBe(2365);
   });
 
-  it('returns empty breadth when the quote endpoint fails', async () => {
+  it('marks the result unavailable when the quote endpoint fails', async () => {
     fetchJsonMock.mockRejectedValue(new Error('boom'));
     const result = await new EastMoneyMarketProvider().breadth();
 
     expect(result.total).toBe(0);
     expect(result.scope).toBe('沪深两市');
+    expect(result.data_status).toBe('unavailable');
+    expect(result.error).toMatch(/boom/);
+  });
+
+  it('marks out-of-range totals unavailable (upstream throttling / non-trading day)', async () => {
+    installMock({
+      ulist: {
+        data: {
+          diff: [
+            { f12: '000001', f104: 11, f105: 3, f106: 1, f124: 1790049273 },
+            { f12: '399001', f104: 5, f105: 2, f106: 0, f124: 1790049270 },
+          ],
+        },
+      },
+    });
+    const result = await new EastMoneyMarketProvider().breadth();
+
+    expect(result.data_status).toBe('unavailable');
+    expect(result.error).toMatch(/合计 22/);
   });
 });
 

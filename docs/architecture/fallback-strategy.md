@@ -64,6 +64,12 @@ EastMoneyFundProvider.estimate(code):
 
 当 EastMoney push2 API 被反爬封锁时（SSL EOF），自动降级到 Python 脚本：
 
+> **2026-10-09 更正**：大部分「SSL EOF / 被反爬切断」是**经代理**访问导致的（`eastmoneyRequest.ts`
+> 当时写的是 `proxy: 'auto'`）。改成 `never` 真直连后，`clist/get`（板块）、`stock/get`（个股/板块名）、
+> `push2his fflow`（大盘资金流）实测都可用；但 push2 会限流，所以下面的回退链仍必须保留。
+> 另外 `eastmoneyRequest.ts` 加了**端点级熔断**（连续 3 次失败 → 冷却 60s 快速失败），
+> 日志关键字 `eastmoney breaker open`。见 `.pi/plans/push2-resilience.md`。
+
 ```
 MarketMoneyFlow:
   1. eastmoney push2his API (主)

@@ -670,17 +670,24 @@ export async function getMarketMoneyFlow(): Promise<ServiceResult<MarketMoneyFlo
 }
 
 export async function getMarketBreadth(): Promise<ServiceResult<MarketBreadthDto>> {
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
-  const result = await cacheThrough('market:breadth', ttl.marketBreadth, () =>
-    chain.run('market.breadth', (provider) => {
-      if (!provider.breadth) {
-        throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement breadth`, 501);
-      }
-      return provider.breadth();
-    })
-  );
+  const key = 'market:breadth';
+  const cached = cache.get<ProviderChainResult<MarketBreadthDto>>(key);
+  if (cached) return toServiceResult(cached);
 
-  return toServiceResult(result);
+  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
+  const result = await chain.run('market.breadth', (provider) => {
+    if (!provider.breadth) {
+      throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement breadth`, 501);
+    }
+    return provider.breadth();
+  });
+
+  // 只有真的取到才缓存：`unavailable` 一旦进 15s 缓存，一次瞬时失败就会把「0 家上涨」钉住。
+  // （负峰由 `eastmoneyRequest` 的端点级熔断负责，见 .pi/plans/push2-resilience.md）
+  if (result.data.data_status === 'available') {
+    return toServiceResult(cache.set(key, result, ttl.marketBreadth));
+  }
+  return toServiceResult({ value: result, cached: false, updatedAt: new Date() });
 }
 
 export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {
