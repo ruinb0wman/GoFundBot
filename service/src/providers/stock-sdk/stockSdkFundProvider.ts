@@ -104,9 +104,10 @@ function mapFundNavHistory(raw: unknown): FundNavHistoryDto {
 
 function mapFundNavPoint(raw: unknown): FundNavPointDto {
   const item = asRecord(raw);
+  const timestamp = toNullableNumber(item.timestamp);
   return {
-    date: toStringValue(item.date),
-    timestamp: toNullableNumber(item.timestamp),
+    date: chinaDateFromTimestamp(timestamp) ?? toStringValue(item.date),
+    timestamp,
     nav: toNumberValue(item.nav),
     accNav: toNullableNumber(item.accNav),
     dailyReturn: toNullableNumber(item.dailyReturn),
@@ -126,9 +127,10 @@ function mapFundRankHistory(raw: unknown): FundRankHistoryDto {
 
 function mapFundRankPoint(raw: unknown): FundRankPointDto {
   const item = asRecord(raw);
+  const timestamp = toNullableNumber(item.timestamp);
   return {
-    date: toStringValue(item.date),
-    timestamp: toNullableNumber(item.timestamp),
+    date: chinaDateFromTimestamp(timestamp) ?? toStringValue(item.date),
+    timestamp,
     rank: toNullableNumber(item.rank),
     total: toNullableNumber(item.total),
     percentile: toNullableNumber(item.percentile),
@@ -157,6 +159,22 @@ function mapFundDividend(raw: unknown): FundDividendDto {
     payDate: toNullableString(item.payDate),
     dividendType: toNullableString(item.dividendType),
   };
+}
+
+/**
+ * stock-sdk 的 `date` 字段是 `new Date(x).toISOString().slice(0,10)`（见其 dist 的 `Nr`），
+ * 而东财 pingzhongdata 的 `x` 是「北京时间零点」（= UTC 前一天 16:00）→ 整条序列早一天，
+ * 连周日的净值都会冒出来（实测 2026-09-27 是周日）。有 timestamp 时按 Asia/Shanghai 重算，
+ * 与 `eastmoneyFundProvider` 的 `formatChinaDate` 对齐。
+ */
+function chinaDateFromTimestamp(timestamp: number | null): string | null {
+  if (timestamp == null) return null;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(timestamp));
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

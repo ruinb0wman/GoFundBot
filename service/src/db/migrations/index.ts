@@ -4,6 +4,7 @@ import { migration003 } from './003_screening_cache.js';
 import { migration004 } from './004_nav_cache.js';
 import { migration005 } from './005_alerts.js';
 import { migration006 } from './006_portfolio.js';
+import { migration007 } from './007_purge_nav_cache.js';
 import type { Migration } from './types.js';
 
 export type { Migration } from './types.js';
@@ -16,4 +17,5 @@ export const MIGRATIONS: Migration[] = [
   migration004,
   migration005,
   migration006,
+  migration007,
 ];
