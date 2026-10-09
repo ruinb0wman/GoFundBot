@@ -8,6 +8,7 @@
 
 import api from '../api';
 import { runBacktest } from '@gofund/core/backtest/backtestEngine';
+import { toReturnNavPoints } from '@gofund/core/backtest/navSeries';
 import type { BacktestFailure, BacktestResult, BacktestSpec, NavPoint } from './backtestTypes';
 
 export interface BacktestRequest extends BacktestSpec {
@@ -20,6 +21,8 @@ export interface BacktestRequest extends BacktestSpec {
 interface NavItem {
   date?: string;
   nav?: number | string;
+  /** 累计净值（东财）；见 `@gofund/core/backtest/navSeries`。 */
+  accNav?: number | string | null;
 }
 
 /** Tolerant unwrap: the service wraps payloads as { success, data: {...} }. */
@@ -34,10 +37,7 @@ export async function fetchNavHistory(fundCode: string, startDate?: string, endD
   if (startDate) params.startDate = startDate;
   if (endDate) params.endDate = endDate;
   const res = await api.get(`/funds/${fundCode}/nav-history`, { params });
-  return unwrapItems((res as { data?: unknown })?.data)
-    .filter((item): item is { date: string; nav: number | string } => Boolean(item?.date) && item?.nav != null)
-    .map((item) => ({ date: String(item.date).slice(0, 10), nav: Number(item.nav) }))
-    .filter((item) => Number.isFinite(item.nav) && item.nav > 0);
+  return toReturnNavPoints(unwrapItems((res as { data?: unknown })?.data));
 }
 
 function inRange(dates: { startDate?: string; endDate?: string }, date: string): boolean {

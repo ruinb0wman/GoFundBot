@@ -91,6 +91,33 @@ function onDay(s) {
   return { buy: s.codes.map((code) => ({ code, amount: 300 })) };
 }`,
   },
+  {
+    key: 'core-permanent',
+    label: '核心·永久投资组合',
+    hint: '股/债/黄金/现金各 25%（股腿沪深300+标普500），每年拉回目标权重',
+    code: `/* 只有核心：永久投资组合 = 股 / 债 / 黄金 / 现金 各 25%，每年拉回目标权重，不含卫星 */
+/* 股腿拆两只：沪深300 12.5% + 标普500 12.5%；现金腿用货基；start/end 可自行改 */
+var CORE = ['000961', '513500', '004102', '000216', '000682'];
+var REL = { '000961': 0.125, '513500': 0.125, '004102': 0.25, '000216': 0.25, '000682': 0.25 };
+
+function prepare(sdk) {
+  return { start: '2020-02-19', end: '2026-10-08', assets: CORE, initialAmount: 100000, feeRate: 0.0015 };
+}
+
+var ready = false, yr = null;
+function target() {
+  var w = {}, i;
+  for (i = 0; i < CORE.length; i++) w[CORE[i]] = REL[CORE[i]];
+  return { rebalance: w };
+}
+
+function onDay(s) {
+  var y = s.date.slice(0, 4);
+  if (!ready) { ready = true; yr = y; return target(); }   // 第 0 天：按目标权重建仓
+  if (y !== yr) { yr = y; return target(); }               // 每年首个交易日：拉回四资产各 25%
+  return {};
+}`,
+  },
 ]
 
 /** New-scheme default so the editor is immediately runnable. */

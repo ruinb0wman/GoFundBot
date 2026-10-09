@@ -14,6 +14,7 @@ import { getFundNavHistory } from './fundService.js';
 import { runBacktest } from '../../../packages/core/src/backtest/backtestEngine.js';
 import { runPortfolioBacktest } from '../../../packages/core/src/backtest/portfolioBacktest.js';
 import { compareStrategies } from '../../../packages/core/src/backtest/strategyCompare.js';
+import { toReturnNavPoints } from '../../../packages/core/src/backtest/navSeries.js';
 import { sampleBacktest } from '../../../packages/core/src/backtest/timelineSample.js';
 import { samplePortfolioBacktest } from '../../../packages/core/src/backtest/portfolioSample.js';
 import {
@@ -29,15 +30,8 @@ import {
   type NavPoint,
 } from '../../../packages/core/src/backtest/backtestTypes.js';
 
-/** 净值条目：日期 `YYYY-MM-DD`、净值 > 0。 */
-function toNavPoints(items: unknown): NavPoint[] {
-  if (!Array.isArray(items)) return [];
-  return items
-    .map((raw) => raw as { date?: unknown; nav?: unknown })
-    .filter((item) => Boolean(item?.date) && item?.nav != null)
-    .map((item) => ({ date: String(item.date).slice(0, 10), nav: Number(item.nav) }))
-    .filter((point) => Number.isFinite(point.nav) && point.nav > 0);
-}
+/** 净值条目：日期 `YYYY-MM-DD`、净值 > 0。口径（累计净值优先，避免份额拆分假跳水）在 core。 */
+const toNavPoints = toReturnNavPoints;
 
 /** 取某只基金在窗口内的净值（走 service 的 24h 缓存）。 */
 export async function fetchNavPoints(

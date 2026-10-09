@@ -235,3 +235,23 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 **注意**：`market:kline:*` TTL 1h 且为内存缓存，改完需重启 service 才能即时看到新数据。
 
 **仍存在**：`python/cli/data_complete.py` 的 akshare kline 只支持指数且无 `amount`（`stock_zh_index_daily`），个股 Python 回退会返回空；baostock 分支当前也无输出。
+
+### 回测净值口径：份额拆分 / 分红（2026-10-08 修复）
+
+**现象**：一只有过**份额拆分**的 ETF，整条回测都是错的 —— 512010 六年「−80.6%」（实际 −22.3%）、
+513500 六年「+10.2%」（实际 +120.5%）、159928「−78.8%」（实际 −15.0%）。带止损的策略更惨：
+拆分当天被读成 −75% 的暴跌，直接触发清仓。
+
+**根因**：取数时只用了 `items[].nav`（**单位净值**）。份额拆分当天单位净值本身就是腰斩的
+（512010 在 2021-06-24 由 3.206 → 0.8207，1:4；513500 在 2022-03-28 由 2.7551 → 1.3924，1:2；
+515220 在 2024-04-10、512800 在 2025-07-03、515000 在 2025-09-04、512480 在 2021-03-25 与 2026-07-01），
+而 `nav_history.acc_nav`（**累计净值**）在拆分当天是连续的、且已把分红累计进来（004102 债券六年
+单位净值 +9.8% / 累计净值 +23.6%）—— 数据一直在库里，只是没有消费方。
+
+**修复**：新增 `packages/core/src/backtest/navSeries.ts` 的 `toReturnNavPoints()`：**优先 `accNav`**，
+累计净值覆盖 <95% 的点时才退回 `nav`（货币基金两者相同）。三个取数点全部接上：
+`service/src/services/backtestService.ts`（pi 工具 + 代码沙箱）、
+`service/src/services/fundService.ts:getFundNavBatch`（筛选库风险指标）、
+`frontend/src/services/backtest/runBacktestForFund.ts`（页面）。
+**别把两者混用**：展示口径（实时估值、持仓成本、净值曲线）仍读单位净值 `nav`。
+排查口诀：回测里某个 ETF 出现 −50%/−75% 的单日跳变或「长期巨亏」，先去 `nav_history` 对一下 `acc_nav/nav` 的比值有没有跳台阶。

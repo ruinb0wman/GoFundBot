@@ -8,6 +8,7 @@ import {
 } from './navCacheService.js';
 import { AppError, assertCode } from '../core/errors.js';
 import { ProviderChain } from '../core/providerChain.js';
+import { toReturnNavPoints } from '../../../packages/core/src/backtest/navSeries.js';
 import { logger } from '../core/logger.js';
 import type { ServiceResult } from '../types/common.js';
 import type {
@@ -257,7 +258,7 @@ export async function getFundNavBatch(
       chunk.map(async (code) => {
         try {
           const nav = await getFundNavHistory(code, {});
-          result[code] = (nav.data?.items ?? []).map(p => ({ date: p.date, nav: p.nav }));
+          result[code] = toReturnNavPoints(nav.data?.items);
         } catch {
           // 单只基金 NAV 获取失败不影响其他
         }
