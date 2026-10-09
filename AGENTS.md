@@ -116,7 +116,8 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **Search chain（service）**: Bocha → Tavily → Exa（免费无 Key）→ DuckDuckGo（自动降级）；`service/src/ai/search.ts`。
 - **投研看板（P3.4）**: `GET /api/research/dashboard`（core `buildDashboard`，读 SQLite 筛选行）。payload 里**不再带全量基金行**（曾经 1.6MB），汇总口径（`pass_4433` / `risk_ready`）由 core 算好，前端与 pi 工具共用紧凑版（`compactDashboard`）。进程内缓存 60s，key 含 `screeningDataVersion()`（同步/富化/排名后自动失效）。
 - **Screening（P3.3 起在 service）**: `/api/screening/sync`（快照 + 行业标签 + 4433 排名；**默认 `enrich_limit=0`，不再阻塞首屏**）、`/compute`（分批富化风险指标，默认 300/批）、`/ranks`、`/query`（筛选/排序/分页，读进程内整表缓存）、`/status`、`/industry-tags`、`/screen-rows`（沙箱 `sdk.screen()` 的 7 列）。数据落 SQLite `screening_funds`；前端 `useScreeningDb` 只是薄客户端（本地 `screeningFunds` 表已删），同步后**后台**分批富化并把 `syncing` 保持到追平。`/query` 的过滤语义与迁移前逐条对齐（含 `max_drawdown_*_max` 都读 `max_drawdown_1y` 这类历史口径）。
-- **Proxy**: 国内 API（东方财富）用 `proxy: 'never'` 直连；Yahoo Finance（被封）走 `proxy: 'auto'` 随代理配置。`eastmoneyRequest.ts` 统一添加 `Referer` 头防止反爬。
+- **Proxy**: 国内 API（东方财富）用 `proxy: 'never'` 直连；Binance 也是**直连优先**（被墙时退一次代理）；只有 Yahoo 兜底走 `proxy: 'auto'` 随代理配置。`eastmoneyRequest.ts` 统一添加 `Referer` 头防止反爬。
+- **海外行情源（2026-10-09）**: 全球指数主源是**腾讯** `qt.gtimg.cn`（覆盖 `usNDX/usDJI/usINX/hkHSI/hkHSCEI`），海外 K 线走腾讯 `newfqkline`，加密货币走 **Binance** `api.binance.com`；Yahoo 从主源降为「腾讯未收录标的」的兜底（本机实测直连与代理都不通）。标的真源在 `service/src/providers/globalIndexDefs.ts`，别在别处再抄一份代码表。详见 `.pi/plans/global-market-sources.md` 与 `docs/market-global.md`。
 - **Docs**: VitePress 构建的文档站，配置在 `docs/.vitepress/config.ts`（nav + sidebar）。模块级详细文档按功能目录组织（如 `docs/fund-screening/`），在侧边栏对应分组。文档通过 frontend `/docs/*` 代理访问。
 
 > 模块级详细文档见 `docs/` 目录（VitePress 构建），每个功能模块对应独立的 `.md` 文件或目录，侧边栏分组见 `docs/.vitepress/config.ts`。
@@ -130,7 +131,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `service/src/routes/` | All Express route handlers (fund, market, screening, backtest, research, agent, settings, etc.) |
 | `service/src/services/` | 数据层与计算服务（fundService, marketService, pythonRunner, settingsService（SQLite）, **userDataService**（用户数据 CRUD）, **backtestService**（core 回测引擎）, **screeningService**（筛选存储+富化+查询）, **navCacheService**（净值缓存 + 覆盖度）, **researchService**（投研看板聚合））|
 | `service/src/ai/` | 搜索网关（`search.ts`，Exa→DDG，无 key）。service **不做 LLM 调用** |
-| `service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo)；eastmoney 的涨跌家数/北向资金实现在 `eastmoney/marketBreadth.ts`、`eastmoney/marketNorthFlow.ts` |
+| `service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo, binance)；海外标的真源 `globalIndexDefs.ts`；eastmoney 的涨跌家数/北向资金实现在 `eastmoney/marketBreadth.ts`、`eastmoney/marketNorthFlow.ts` |
 | `service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
 | `service/src/db/` | **SQLite 连接与迁移**（Node 内置 `node:sqlite`，零依赖）。用户数据/设置/缓存的唯一真源；文件路径由 `core/dbPaths.ts` 决定（`GOFUND_DB_PATH`，默认 `service/data/gofund.db`，测试用 `:memory:`）。迁移只追加不改，`schema_version` 记版本 |
 | `service/src/types/` | DTO interfaces (fund.ts, common.ts) |
@@ -206,6 +207,30 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 
 **历史修复**：
 - **2026-09-22** — 涨跌家数口径修复：`breadth()` 原来读 `f168/f169/f170`（实测是上证指数的**换手率/涨跌额/涨跌幅**，未传 `fltt=2` 时放大 100 倍），返回「68/873/22、合计 963」这种半截数据；改为 `ulist.np/get` 的 `f104/f105/f106`（上证指数=沪市全体、深证成指=深市全体），沪深合计约 5286 只，新增 `scope`/`date` 字段。涨跌停家数原来取 `f292/f293`（实测与涨跌停无关，指数与个股都返回 `3`/`-1|0`），改为 push2ex 涨/跌停池的 `tc`。详见 `service/src/providers/eastmoney/marketBreadth.ts`
+
+### 海外行情 (global indices & crypto)
+
+**2026-10-09 换源**：`/api/market/indices/combined` 一天出现 **15 次 ≈84.0s**、`/api/market/crypto` **30 次 = 30.00s**
+（日志 `dataservice-2026-10-08.jsonl`）。根因**不是「Yahoo 慢」而是「Yahoo 不可达 + 代码把 11 个代码按 2 并发串行等 15s」**：
+`fetchYahooGlobalIndices` 的 `concurrency = 2` → 6 批 × 15s ≈ 84s（crypto 4 个代码 = 2 批 = 30.00s，与日志分秒不差）；
+`getGlobalIndices` 调 `chain.run()` 时**没传 `timeoutMs`**（对比 `getMarketQuotes` 传了 5000）；
+`getCombinedIndices` 又把全球分支的 rejection 静默丢弃 → 白天空卡片、日志里一条错误都没有。
+
+**实测（2026-10-09）**：Yahoo 直连 16.1s 超时、**走代理 7890 也 15.8s 超时**（同一代理访问 google 204 @0.88s、binance 200 @0.75s）→
+是 Yahoo 被封；东财 push2 也已全挂（连 A 股 `ulist.np/get` 都 0.17s 失败）。
+
+**修复**：
+- 全球指数主源 → 腾讯 `qt.gtimg.cn`（`usNDX/usDJI/usINX/hkHSI/hkHSCEI`，国内直连 0.2s）；加密 → **Binance** `api.binance.com`（直连 0.75s）；
+  Yahoo 降为腾讯未收录标的（日经/韩国/英德法/印度）的兜底，单请求预算 **3500ms**、11 个代码**一次性并发**。
+- 海外指数 K 线 chain 改 `[tencent, yahoo]` + `validate: length > 0`（腾讯对未收录代码返回 `[]`，没有 validate 就会被当成成功、不再降级）。
+- `getGlobalIndices` 加 `timeoutMs: 6000`；`getCombinedIndices` 的全球分支失败改成 `logger.warn`。
+- 港股（HSI/HSCEI）在腾讯 provider 里标 `market: '港股'`，前端才会归到「中国市场（A股/港股）」栏；标成「全球」会因 `chinaNames` 与 globalNames 同时命中而两栏重复。
+- 标的真源 `service/src/providers/globalIndexDefs.ts`（含 `tencentSymbol`/`yahooSymbol`/`binanceSymbol`），**别在别处再抄一份代码表**。
+
+**验收**：`/indices/combined` 0.20s（原先 84s）、`/crypto` 0.76s、`GET /api/market/kline/global/DJI` 0.22s、`/api/market/index/BTC/detail` 0.14s。
+**回归测试**：`service/src/__tests__/providers/{tencent-global-indices,yahoo-global-budget,binance-client}.test.ts`
+（`yahoo-global-budget` 断言「同一波次发出」+「总耗时 ≈ 单次超时」，专门拦住退回串行分批）。
+**仍未覆盖**：日经/韩国/英德法/印度指数当前拿不到（akshare 的 `index_global_*` 也走东财 push2，同样死）。
 
 ### 板块数据 (market sectors)
 

@@ -1,6 +1,7 @@
 import type { GlobalIndexListDto, KlineDto, KlineOptions, MarketProvider, MarketQuoteDto } from '../types.js';
 import { AppError } from '../../core/errors.js';
-import { fetchYahooChart, fetchYahooGlobalIndices, isGlobalIndexSymbol } from './yahooClient.js';
+import { fetchYahooChart, fetchYahooGlobalIndices } from './yahooClient.js';
+import { isGlobalIndexSymbol } from '../globalIndexDefs.js';
 
 export class YahooMarketProvider implements MarketProvider {
   readonly name = 'yahoo';

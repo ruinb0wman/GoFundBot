@@ -11,7 +11,7 @@
 ```
 
 - ProviderChain 逐个尝试（`service/src/providers/`），第一个通过校验的结果胜出；失败信息记在响应的 `meta.provider/fallback`。
-- 反爬要点：东方财富系要带 `Referer`（`eastmoneyRequest.ts`），Yahoo 走代理，国内接口直连。
+- 反爬要点：东方财富系要带 `Referer`（`eastmoneyRequest.ts`），国内接口一律直连（腾讯 `qt.gtimg.cn`、Binance `api.binance.com`）；Yahoo 兜底走代理（`proxy: 'auto'`，当前网络下不可达）。
 - 前端不再持有这些数据的持久缓存：页面每次进来重新拉（内存里按需缓存）。
 
 ## 基金数据（详情 / 净值 / 持仓 / 经理）

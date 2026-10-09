@@ -199,7 +199,9 @@ cp service/.env.example service/.env
 ```
 
 - **AI 配置**：没有。AI 在终端 pi 侧（用你自己的 pi 配置与密钥），应用不接入 LLM。
-- **代理设置**：页面 **设置 → 代理设置** 填写 Proxy URL（下发给 Node，供 Yahoo Finance 抓取；国内接口一律直连）。
+- **代理设置**：页面 **设置 → 代理设置** 填写 Proxy URL（下发给 Node，供 Yahoo 兜底抓取；国内接口一律直连）。
+  > 海外行情主源已不依赖代理：全球指数走腾讯 `qt.gtimg.cn`、加密货币走 Binance `api.binance.com`（国内直连可用）。
+  > Yahoo 仅作日经/欧股等腾讯未收录标的的兜底，见 `.pi/plans/global-market-sources.md`。
 
 > `service/.env` 仅按需配置 `HTTP_PROXY` / `HTTPS_PROXY`、`HOST`、`GOFUND_DB_PATH` 等（见 `service/.env.example`）。
 
@@ -254,7 +256,7 @@ GoFundBot/
 │   │   ├── agent/               # pi 工具注册表（59 个工具 + 确认令牌）
 │   │   ├── sandbox/             # 策略代码沙箱（node:worker_threads）
 │   │   ├── db/                  # SQLite 连接 + 迁移（001~006）
-│   │   ├── providers/           # 数据源（eastmoney, stock-sdk, tencent, yahoo, joinquant）
+│   │   ├── providers/           # 数据源（eastmoney, stock-sdk, tencent, yahoo, binance, joinquant）
 │   │   ├── core/                # 基础设施（logger, cache, errors, response, providerChain）
 │   │   └── __tests__/           # 单元测试
 │   └── package.json
@@ -310,16 +312,19 @@ GoFundBot/
 
 ## ⚠️ 已知限制
 
-### Yahoo Finance API 需要代理
+### 海外行情数据源（2026-10-09 换源）
 
-service 的全球指数历史 K 线通过 Yahoo Finance v8 API 获取。由于 Yahoo Finance 屏蔽中国大陆 IP，
-需要配置 `HTTP_PROXY` / `HTTPS_PROXY` 代理环境变量才能正常访问。
+**全球指数与加密货币不再以 Yahoo 为主源**（本机实测 Yahoo 直连与代理均不可达，且旧实现按
+2 并发串行分批 + 15s 超时 → `/api/market/indices/combined` 每次卡满 84s、`/api/market/crypto` 卡满 30s）：
 
-配置方式（见 `service/.env.example`）：
-```bash
-HTTP_PROXY=http://127.0.0.1:7890
-HTTPS_PROXY=http://127.0.0.1:7890
-```
+| 标的 | 主源 | 兜底 |
+|------|------|------|
+| 美股指数 NDX/DJI/SPX、港股 HSI/HSCEI | 腾讯 `qt.gtimg.cn`（`proxy: 'never'`） | 东财 push2（已全挂） → Yahoo |
+| 海外指数历史 K 线 | 腾讯 `proxy.finance.qq.com/.../newfqkline/get` | Yahoo（3.5s 预算） |
+| 加密货币 BTC/ETH/SOL/BNB（行情+K线） | Binance `api.binance.com`（直连） | 同端点走一次代理 |
+| 日经/韩国/英德法/印度指数 | —（腾讯未收录） | Yahoo（当前网络下常取不到） |
+
+`HTTP_PROXY` / `HTTPS_PROXY` 现在只对 Yahoo 兜底、Binance 代理重试生效，不再影响主路径。
 
 ### Push2 A 股全市场列表（clist/get 全市场 filter）不可用
 
@@ -336,8 +341,8 @@ HTTPS_PROXY=http://127.0.0.1:7890
 
 ### 全球指数历史 K 线
 
-全球指数（美股/港股/日经/欧股等）的历史 K 线通过 Yahoo Finance v8 API 获取，
-而非 EastMoney push2his（push2his 不支持全球指数 secid）。
+美股/港股指数（DJI/SPX/NDX/HSI/HSCEI）的历史 K 线走**腾讯** `newfqkline/get`（国内直连，`date` 为 `YYYY-MM-DD`）；
+腾讯未收录的日经/欧股/印度等走 Yahoo 兜底（3.5s 预算，当前网络下常返回空）。详见 `.pi/plans/global-market-sources.md`。
 
 ### 今日资金流向（market money flow）
 

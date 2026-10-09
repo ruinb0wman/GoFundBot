@@ -20,7 +20,7 @@ export const STATIC_MANIFEST = {
     {
       "name": "get_index_kline",
       "label": "获取指数K线",
-      "description": "获取指数历史 K 线（日/周/月），用于分析历史走势、回撤幅度与修复时间。A 股用 sh/sz 前缀：sh000001（上证）、sz399001（深证）、sh000300（沪深300）、sz399006（创业板）、sh000688（科创50）；海外指数用代码且不加 ^：DJI（道琼斯）、SPX（标普500）、NDX（纳斯达克100）、HSI（恒生）、N225、FTSE、GDAXI、FCHI、SENSEX。海外指数走 Yahoo，可能较慢；其 date 字段为 YYYYMMDD。起始与结束日期必须同时提供。**A 股个股请用 `get_stock_kline`**（本工具按指数口径包装，个股也能传但不推荐）。",
+      "description": "获取指数历史 K 线（日/周/月），用于分析历史走势、回撤幅度与修复时间。A 股用 sh/sz 前缀：sh000001（上证）、sz399001（深证）、sh000300（沪深300）、sz399006（创业板）、sh000688（科创50）；海外指数用代码且不加 ^：DJI（道琼斯）、SPX（标普500）、NDX（纳斯达克100）、HSI（恒生）、N225、FTSE、GDAXI、FCHI、SENSEX；加密货币用 BTC / ETH / SOL / BNB。美股/港股指数走腾讯源，秒回；日经/欧股/印度等腾讯未收录的走 Yahoo 兜底，当前网络下常取不到（返回空 kline，不是 0）。其 date 字段为 YYYYMMDD。起始与结束日期必须同时提供。**A 股个股请用 `get_stock_kline`**（本工具按指数口径包装，个股也能传但不推荐）。",
       "promptSnippet": "get_index_kline(code, start_date, end_date, period?): 指数历史K线（A股 sh/sz 或海外 DJI/HSI）",
       "readOnly": true,
       "parameters": {

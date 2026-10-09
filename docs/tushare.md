@@ -39,7 +39,7 @@
 |------|------|---------|
 | 实时行情/盘口 | Tushare 仅 T+1 数据 | tencent / stock-sdk |
 | 基金实时估值 | 无对应接口 | stock-sdk / eastmoney |
-| 全球指数 | 仅 A 股 | eastmoney / yahoo |
+| 全球指数 | 仅 A 股 | tencent（美股/港股主力）+ yahoo（日经/欧股兜底） |
 | 黄金/白银价格 | 无贵金属数据 | jijinhao.com |
 | 快讯新闻 | 需单独购买（1000元/年） | eastmoney / baidu / cls |
 | 大盘资金流向汇总 | 需遍历个股自行聚合 | — |

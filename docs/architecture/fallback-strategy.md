@@ -73,8 +73,13 @@ MarketMoneyFlow:
   3. 全部失败 → 返回空数据，前端显示"暂无数据"
 
 GlobalIndexKline:
-  1. eastmoney push2 API (100.NDX 等 secid)
-  2. 失败 → yahoo finance API
+  1. tencent newfqkline（`param=usDJI|hkHSI,...`，国内直连，覆盖美股/港股指数）
+  2. 失败/未收录 → yahoo finance API（3.5s 预算）
+
+Crypto（行情 + K 线）:
+  1. binance `api.binance.com`（直连 0.75s）
+  2. 直连失败 → 同端点走一次代理 → 再失败 503
+  （原 Yahoo 路径已删除：本机直连与代理均不通，4 个代码 2 批 × 15s = 30s）
 
 NorthFlow（北向资金）:
   1. eastmoney datacenter RPT_MUTUAL_DEAL_HISTORY (主，取 DEAL_AMT，单位百万元)

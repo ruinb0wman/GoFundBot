@@ -1,6 +1,14 @@
-import type { KlineDto, KlineOptions, MarketProvider, MarketQuoteDto } from '../types.js';
+import type {
+  GlobalIndexDto,
+  GlobalIndexListDto,
+  KlineDto,
+  KlineOptions,
+  MarketProvider,
+  MarketQuoteDto,
+} from '../types.js';
 import { AppError } from '../../core/errors.js';
 import { fetchUrl } from '../../core/fetch.js';
+import { GLOBAL_INDEX_DEFS, findGlobalIndexDef } from '../globalIndexDefs.js';
 
 const QT_URL = 'https://qt.gtimg.cn/';
 // 腾讯新格式 K 线：每行含成交额（万元）。旧的 `app/app/kline/kline` 已失效（返回 code:11）。
@@ -28,76 +36,184 @@ export class TencentMarketProvider implements MarketProvider {
     return parseQtQuotes(text, valid, symbols);
   }
 
+  /**
+   * 全球指数实时行情（`qt.gtimg.cn` 一次批量，国内直连）。
+   *
+   * 只覆盖腾讯收录的代码（`def.tencentSymbol`：美股 NDX/DJI/SPX + 港股 HSI/HSCEI），
+   * 未收录的（日经/欧股/印度）直接跳过，由 ProviderChain 继续降级到 Yahoo。
+   *
+   * `market` 用「港股」标记 hk*：前端 `useMarketOverview.indices` 把恒生系归在
+   * 「中国市场（A股/港股）」栏，若标成「全球」，「恒生指数」会同时命中 chinaNames 与
+   * globalNames 两套名字匹配，同一张卡片在两栏重复出现。
+   *
+   * 为什么不用 `[31]/[32]` 的涨跌字段：港股那行 `[35]` 是现价而不是币种，字段位置在
+   * 美/港之间有漂移，统一由 `[3]` 现价 / `[4]` 昨收自算（与 A 股 `parseQtQuotes` 同口径）。
+   */
+  async globalIndices(): Promise<GlobalIndexListDto> {
+    const defs = GLOBAL_INDEX_DEFS.filter((def) => def.tencentSymbol);
+    if (defs.length === 0) return { items: [] };
+
+    const text = await fetchUrl(`${QT_URL}?q=${defs.map((def) => def.tencentSymbol).join(',')}`, {
+      timeoutMs: 5000,
+      proxy: 'never',
+      encoding: 'gbk',
+      headers: { Referer: 'https://gu.qq.com/' },
+    });
+
+    return { items: parseTencentGlobalQuotes(text, defs) };
+  }
+
   async kline(symbol: string, options: KlineOptions): Promise<KlineDto[]> {
+    const globalDef = findGlobalIndexDef(symbol);
+    if (globalDef) {
+      // 腾讯未收录 → 返回空数组（不抛），让 `getGlobalIndexKline` 的 validate 触发降级。
+      if (!globalDef.tencentSymbol) return [];
+      return fetchKlineFromTencent(globalDef.tencentSymbol, globalDef.code, options);
+    }
+
     const qtCode = toQtCode(symbol);
     if (!qtCode) {
       throw new AppError('PROVIDER_UNAVAILABLE', `Tencent does not support symbol ${symbol}`, 502, { symbol });
     }
 
-    const periodMap: Record<string, string> = { daily: 'day', weekly: 'week', monthly: 'month' };
-    const period = periodMap[options.period] || 'day';
-    const fq = options.adjust === 'hfq' ? 'hfq' : options.adjust === 'qfq' ? 'qfq' : '';
+    return fetchKlineFromTencent(qtCode, qtCode.replace(/^(sh|sz|bj)/i, ''), options);
+  }
+}
 
-    const start = toDashedDate(options.startDate);
-    const end = toDashedDate(options.endDate);
-    // 腾讯用 count 决定返回条数（start 只是下限钳制），先取足量再按 [startDate, endDate] 过滤。
-    const count = start && end
-      ? Math.min(640, Math.max(20, calendarDays(start, end) + 10))
-      : period === 'day' ? 320 : 200;
+/**
+ * 腾讯新格式 K 线（A 股个股/指数 + 海外指数共用）。
+ *
+ * 行结构：`[date, open, close, high, low, volume, {}, turnover, amount(万元), ...]`。
+ * 指数返回 `day/week/month`，个股复权返回 `qfqday/hfqday`。
+ */
+async function fetchKlineFromTencent(qtCode: string, code: string, options: KlineOptions): Promise<KlineDto[]> {
+  const periodMap: Record<string, string> = { daily: 'day', weekly: 'week', monthly: 'month' };
+  const period = periodMap[options.period] || 'day';
+  const fq = options.adjust === 'hfq' ? 'hfq' : options.adjust === 'qfq' ? 'qfq' : '';
 
-    let node: Record<string, unknown> | null = null;
-    for (const baseUrl of [KLINE_URL, KLINE_FALLBACK_URL]) {
-      try {
-        node = await fetchKlineNode(baseUrl, qtCode, period, start, end, count, fq);
-      } catch {
-        node = null;
-      }
-      if (node) break;
+  const start = toDashedDate(options.startDate);
+  const end = toDashedDate(options.endDate);
+  // 腾讯用 count 决定返回条数（start 只是下限钳制），先取足量再按 [startDate, endDate] 过滤。
+  const count = start && end
+    ? Math.min(640, Math.max(20, calendarDays(start, end) + 10))
+    : period === 'day' ? 320 : 200;
+
+  let node: Record<string, unknown> | null = null;
+  for (const baseUrl of [KLINE_URL, KLINE_FALLBACK_URL]) {
+    try {
+      node = await fetchKlineNode(baseUrl, qtCode, period, start, end, count, fq);
+    } catch {
+      node = null;
     }
-    if (!node) return [];
+    if (node) break;
+  }
+  if (!node) return [];
 
-    const rows = pickKlineRows(node, period, fq);
-    if (!Array.isArray(rows)) return [];
+  const rows = pickKlineRows(node, period, fq);
+  if (!Array.isArray(rows)) return [];
 
-    const cleanCode = qtCode.replace(/^(sh|sz|bj)/i, '');
-    let prevClose: number | null = null;
-    const mapped: KlineDto[] = [];
+  let prevClose: number | null = null;
+  const mapped: KlineDto[] = [];
 
-    for (const row of rows) {
-      if (!Array.isArray(row)) continue;
-      const date = String(row[0] ?? '');
-      if (!date) continue;
+  for (const row of rows) {
+    if (!Array.isArray(row)) continue;
+    const date = String(row[0] ?? '');
+    if (!date) continue;
 
-      const close = toNullableNum(row[2]);
-      const change = prevClose != null && close != null ? close - prevClose : null;
-      const changePercent =
-        change != null && prevClose != null && prevClose !== 0 ? (change / prevClose) * 100 : null;
-      // row[8] = 成交额（万元），与 EastMoney/akshare 的「元」对齐需 ×1e4。
-      const amountWan = toNullableNum(row[8]);
-      const timestamp = date ? new Date(date).getTime() : NaN;
+    const close = toNullableNum(row[2]);
+    const change = prevClose != null && close != null ? close - prevClose : null;
+    const changePercent =
+      change != null && prevClose != null && prevClose !== 0 ? (change / prevClose) * 100 : null;
+    // row[8] = 成交额（万元），与 EastMoney/akshare 的「元」对齐需 ×1e4。
+    const amountWan = toNullableNum(row[8]);
+    const timestamp = date ? new Date(date).getTime() : NaN;
 
-      mapped.push({
-        code: cleanCode,
-        date,
-        timestamp: Number.isFinite(timestamp) ? timestamp : null,
-        open: toNullableNum(row[1]),
-        close,
-        high: toNullableNum(row[3]),
-        low: toNullableNum(row[4]),
-        volume: toNullableNum(row[5]),
-        amount: amountWan != null ? amountWan * 1e4 : null,
-        change,
-        changePercent,
-        turnoverRate: toNullableNum(row[7]),
-      });
-      prevClose = close;
-    }
+    mapped.push({
+      code,
+      date,
+      timestamp: Number.isFinite(timestamp) ? timestamp : null,
+      open: toNullableNum(row[1]),
+      close,
+      high: toNullableNum(row[3]),
+      low: toNullableNum(row[4]),
+      volume: toNullableNum(row[5]),
+      amount: amountWan != null ? amountWan * 1e4 : null,
+      change,
+      changePercent,
+      turnoverRate: toNullableNum(row[7]),
+    });
+    prevClose = close;
+  }
 
-    return mapped.filter((item) => {
-      const d = item.date?.replace(/-/g, '') ?? '';
-      return (!options.startDate || d >= options.startDate) && (!options.endDate || d <= options.endDate);
+  return mapped.filter((item) => {
+    const d = item.date?.replace(/-/g, '') ?? '';
+    return (!options.startDate || d >= options.startDate) && (!options.endDate || d <= options.endDate);
+  });
+}
+
+/**
+ * 解析 `qt.gtimg.cn` 的全球指数行。
+ *
+ * 字段位置（2026-10 实测，美/港一致）：
+ * `[1]` 名称、`[2]` 代码、`[3]` 现价、`[4]` 昨收、`[5]` 今开、`[6]` 成交量、
+ * `[30]` 时间、`[33]` 最高、`[34]` 最低。
+ */
+function parseTencentGlobalQuotes(
+  text: string,
+  defs: Array<{ code: string; name: string; tencentSymbol?: string }>,
+): GlobalIndexDto[] {
+  const byTencentSymbol = new Map(defs.map((def) => [def.tencentSymbol as string, def]));
+  const pattern = /v_(\w+)="([^"]*)"/g;
+  const items: GlobalIndexDto[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    const def = byTencentSymbol.get(match[1]);
+    if (!def) continue;
+
+    const parts = match[2].split('~');
+    if (parts.length < 35) continue;
+
+    const price = toNullableNum(parts[3]);
+    if (price == null) continue;
+
+    const prevClose = toNullableNum(parts[4]);
+    const change = prevClose != null ? round2(price - prevClose) : null;
+    const changePercent =
+      prevClose != null && prevClose !== 0 ? round2(((price - prevClose) / prevClose) * 100) : null;
+    const { date, updateTime } = parseTencentGlobalTime(parts[30] ?? '');
+
+    items.push({
+      code: def.code,
+      name: def.name,
+      price,
+      changePercent,
+      changeAmount: change,
+      open: toNullableNum(parts[5]),
+      high: toNullableNum(parts[33]),
+      low: toNullableNum(parts[34]),
+      prevClose,
+      market: (def.tencentSymbol as string).toLowerCase().startsWith('hk') ? '港股' : '全球',
+      date,
+      updateTime,
     });
   }
+
+  return items;
+}
+
+/** `2026-10-08 12:54:59`（美）与 `2026/10/08 18:31:15`（港）两种分隔符都吃。 */
+function parseTencentGlobalTime(raw: string): { date: string; updateTime: string } {
+  const match = raw.trim().match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (!match) return { date: '', updateTime: '' };
+  const [, y, mo, d, h, mi, s] = match;
+  const date = `${y}-${mo}-${d}`;
+  const parsed = new Date(`${date}T${h}:${mi}:${s}+08:00`);
+  return { date, updateTime: Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString() };
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 interface TencentKlineResponse {

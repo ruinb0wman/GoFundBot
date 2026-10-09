@@ -1,6 +1,11 @@
 import { AppError } from '../../core/errors.js';
 import { fetchUrl } from '../../core/fetch.js';
 import type { GlobalIndexDto, GlobalIndexListDto } from '../types.js';
+import {
+  CODE_TO_YAHOO_MAP,
+  GLOBAL_INDEX_DEFS,
+  LEGACY_GLOBAL_SYMBOL_MAP,
+} from '../globalIndexDefs.js';
 
 const YAHOO_BASE = 'https://query1.finance.yahoo.com';
 
@@ -12,45 +17,6 @@ interface ChartPoint {
   volume: number | null;
   timestamp: number | null;
 }
-
-export const YAHOO_SYMBOL_MAP: Record<string, string> = {
-  gb_ixic: '^IXIC',
-  gb_dji: '^DJI',
-  gb_inx: '^GSPC',
-  hkhsi: '^HSI',
-  hkhscei: '^HSCE',
-  b_nky: '^N225',
-  b_ks11: '^KS11',
-  b_ukx: '^FTSE',
-  b_dax: '^GDAXI',
-  b_cac: '^FCHI',
-  b_sensex: '^BSESN',
-};
-
-export const GLOBAL_INDEX_DEFS: Array<{ code: string; name: string; yahooSymbol: string }> = [
-  { code: 'NDX', name: '纳斯达克100', yahooSymbol: '^NDX' },
-  { code: 'DJI', name: '道琼斯指数', yahooSymbol: '^DJI' },
-  { code: 'SPX', name: '标普500', yahooSymbol: '^GSPC' },
-  { code: 'HSI', name: '恒生指数', yahooSymbol: '^HSI' },
-  { code: 'HSCEI', name: '国企指数', yahooSymbol: '^HSCE' },
-  { code: 'N225', name: '日经225', yahooSymbol: '^N225' },
-  { code: 'KS11', name: '韩国综合指数', yahooSymbol: '^KS11' },
-  { code: 'FTSE', name: '英国富时100', yahooSymbol: '^FTSE' },
-  { code: 'GDAXI', name: '德国DAX', yahooSymbol: '^GDAXI' },
-  { code: 'FCHI', name: '法国CAC40', yahooSymbol: '^FCHI' },
-  { code: 'SENSEX', name: '印度SENSEX', yahooSymbol: '^BSESN' },
-];
-
-export const CRYPTO_DEFS: Array<{ code: string; name: string; yahooSymbol: string; icon: string }> = [
-  { code: 'BTC', name: '比特币', yahooSymbol: 'BTC-USD', icon: '₿' },
-  { code: 'ETH', name: '以太坊', yahooSymbol: 'ETH-USD', icon: 'Ξ' },
-  { code: 'SOL', name: 'Solana', yahooSymbol: 'SOL-USD', icon: '◎' },
-  { code: 'BNB', name: '币安币', yahooSymbol: 'BNB-USD', icon: '◆' },
-];
-
-export const CODE_TO_YAHOO_MAP: Record<string, string> = Object.fromEntries(
-  GLOBAL_INDEX_DEFS.map(d => [d.code.toLowerCase(), d.yahooSymbol])
-);
 
 const RANGE_MAP: Record<string, string> = {
   daily: '1y',
@@ -66,12 +32,7 @@ const INTERVAL_MAP: Record<string, string> = {
 
 function toYahooSymbol(symbol: string): string | null {
   const lower = symbol.replace(/^(sh|sz|bj)/i, '').toLowerCase();
-  return YAHOO_SYMBOL_MAP[lower] ?? CODE_TO_YAHOO_MAP[lower] ?? null;
-}
-
-export function isGlobalIndexSymbol(symbol: string): boolean {
-  const lower = symbol.replace(/^(sh|sz|bj)/i, '').toLowerCase();
-  return lower in YAHOO_SYMBOL_MAP || lower in CODE_TO_YAHOO_MAP;
+  return LEGACY_GLOBAL_SYMBOL_MAP[lower] ?? CODE_TO_YAHOO_MAP[lower] ?? null;
 }
 
 function getRangeForYears(years: number): string {
@@ -146,8 +107,10 @@ async function fetchYahooChartBySymbol(
 
   const url = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=${range}&interval=${interval}`;
 
+  // 同 `fetchSingleGlobalQuote`：3500ms（曾经 15000）。这条路径现在只服务
+  // 「腾讯未收录的海外指数」兜底（如 N225），超时拉长只会把「拿不到」变成「卡 15s」。
   const text = await fetchUrl(url, {
-    timeoutMs: 15000,
+    timeoutMs: 3500,
     proxy: 'auto',
     headers: { 'Referer': 'https://finance.yahoo.com/' },
   });
@@ -191,22 +154,32 @@ async function fetchYahooChartBySymbol(
   return points;
 }
 
-async function fetchSingleGlobalQuote(def: { code: string; name: string; yahooSymbol: string }): Promise<GlobalIndexDto | null> {
-  const maxRetries = 3;
+/**
+ * 单只 Yahoo 报价。
+ *
+ * `timeoutMs` 默认 **3500ms**（曾经 15000）：Yahoo 在本机直连与代理都不通（见
+ * `.pi/plans/global-market-sources.md` §1.2），15s 超时会把「拿不到」放大成「页面挂死」。
+ * 重试只有 429 一次，且首尾总耗时仍由 `fetchYahooGlobalIndices` 的预算兜住。
+ */
+async function fetchSingleGlobalQuote(
+  def: { code: string; name: string; yahooSymbol: string },
+  timeoutMs = 3500,
+): Promise<GlobalIndexDto | null> {
   const url = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(def.yahooSymbol)}?range=1d&interval=1d`;
+  const maxAttempts = 2;
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       let text: string;
       try {
         text = await fetchUrl(url, {
-          timeoutMs: 15000,
+          timeoutMs,
           proxy: 'auto',
           headers: { 'Referer': 'https://finance.yahoo.com/' },
         });
       } catch (error: any) {
-        if (error?.message?.includes('429')) {
-          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        if (error?.message?.includes('429') && attempt < maxAttempts - 1) {
+          await sleep(500);
           continue;
         }
         return null;
@@ -248,67 +221,38 @@ async function fetchSingleGlobalQuote(def: { code: string; name: string; yahooSy
         updateTime: toQuoteTime(meta.regularMarketTime),
       };
     } catch {
-      if (attempt < maxRetries - 1) {
-        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
-      }
+      if (attempt < maxAttempts - 1) await sleep(500);
     }
   }
   return null;
 }
 
-export async function fetchYahooGlobalIndices(): Promise<GlobalIndexListDto> {
-  const results: GlobalIndexDto[] = [];
-  const concurrency = 2;
+/**
+ * 全球指数批量报价（Yahoo 仅作兜底，主源是腾讯）。
+ *
+ * **11 个代码一次性并发**（曾经 `concurrency = 2` 串行分批：6 批 × 15s ≈ 84s，
+ * 就是首屏卡死的根因）。每个请求各自带超时，谁先回来算谁；慢的不阻塞已拿到的，
+ * 所以整体耗时 ≈ `timeoutMs`，而不是「批次数 × timeoutMs」。
+ */
+export async function fetchYahooGlobalIndices(timeoutMs = 3500): Promise<GlobalIndexListDto> {
+  const items: GlobalIndexDto[] = [];
 
-  for (let i = 0; i < GLOBAL_INDEX_DEFS.length; i += concurrency) {
-    const batch = GLOBAL_INDEX_DEFS.slice(i, i + concurrency);
-    const batchResults = await Promise.allSettled(batch.map((def) => fetchSingleGlobalQuote(def)));
-    for (const r of batchResults) {
-      if (r.status === 'fulfilled' && r.value) {
-        results.push(r.value);
-      }
-    }
-  }
+  await Promise.allSettled(
+    GLOBAL_INDEX_DEFS.map(async (def) => {
+      const quote = await fetchSingleGlobalQuote(def, timeoutMs);
+      if (quote) items.push(quote);
+    }),
+  );
 
-  return { items: results };
+  return { items };
 }
 
-export async function fetchGlobalIndexQuoteByCode(code: string): Promise<GlobalIndexDto | null> {
-  const def = GLOBAL_INDEX_DEFS.find(d => d.code === code.toUpperCase());
-  if (!def) return null;
-  return fetchSingleGlobalQuote(def);
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function fetchCryptoQuotes(): Promise<GlobalIndexListDto> {
-  const results: GlobalIndexDto[] = [];
-  const concurrency = 2;
-
-  for (let i = 0; i < CRYPTO_DEFS.length; i += concurrency) {
-    const batch = CRYPTO_DEFS.slice(i, i + concurrency);
-    const batchResults = await Promise.allSettled(
-      batch.map((def) => fetchSingleGlobalQuote({ code: def.code, name: def.name, yahooSymbol: def.yahooSymbol }))
-    );
-    for (const r of batchResults) {
-      if (r.status === 'fulfilled' && r.value) {
-        results.push({
-          ...r.value,
-          market: '加密货币',
-        });
-      }
-    }
-  }
-
-  return { items: results };
-}
-
-export async function fetchCryptoKline(symbol: string, period: string = 'daily'): Promise<ChartPoint[]> {
-  const def = CRYPTO_DEFS.find(d => d.code === symbol.toUpperCase());
-  if (!def) {
-    throw new AppError('INVALID_ARGUMENT', `Unsupported crypto symbol: ${symbol}`, 400, { symbol });
-  }
-  return fetchYahooChartBySymbol(def.yahooSymbol, def.code, period);
-}
-
-export function isCryptoSymbol(symbol: string): boolean {
-  return CRYPTO_DEFS.some(d => d.code === symbol.toUpperCase());
-}
+/**
+ * 加密货币报价/K 线已迁到 Binance（`providers/binance/binanceClient.ts`）：
+ * Yahoo 在本机直连与代理都不通，4 个代码 2 批 × 15s = 30s 曾让 `/api/market/crypto`
+ * 每次轮询都卡满 30s。这里只保留全球指数的兜底能力。
+ */

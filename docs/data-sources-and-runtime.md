@@ -36,7 +36,7 @@ cd frontend && bun run dev   # 只起前端
 | `HOST` | `127.0.0.1` | 监听地址；**改它等于把用户数据暴露到局域网** |
 | `GOFUND_DB_PATH` | `service/data/gofund.db` | SQLite 路径；测试用 `:memory:` |
 | `CORS_ORIGINS` | 前端 dev 源 | 允许的跨域来源（Electron 壳不需要） |
-| `HTTP_PROXY` / `HTTPS_PROXY` | 空 | 代理；**只有明确要走的调用**用它（Yahoo）；国内接口一律 `proxy: never` |
+| `HTTP_PROXY` / `HTTPS_PROXY` | 空 | 代理；**只有明确要走的调用**用它（如 Yahoo 兜底、Binance 直连失败后的重试）；国内接口一律 `proxy: never` |
 | `LOG_DIR` | `python/Data/logs` | 结构化日志目录（`dataservice-YYYY-MM-DD.jsonl`） |
 | `CACHE_MAX_ENTRIES` | `2000` | 内存缓存条数上限 |
 | `GOFUND_API_BASE` | `http://localhost:8310` | **pi 扩展**用的 service 地址 |

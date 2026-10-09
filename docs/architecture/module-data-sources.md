@@ -27,7 +27,7 @@
 |------|---------|--------------|-----------|
 | `GET /api/market/overview` | `getMarketOverview` | 混合 | 15s~1h |
 | `GET /api/market/indices` | `getMarketIndices` | [tencent → stock-sdk → eastmoney] | 15s |
-| `GET /api/market/indices/combined` | `getCombinedIndices` | [tencent → stock-sdk → eastmoney] + [eastmoney → yahoo] | 15s |
+| `GET /api/market/indices/combined` | `getCombinedIndices` | [tencent → stock-sdk → eastmoney] + [tencent → eastmoney → yahoo] | 15s |
 | `GET /api/market/sectors` | `getMarketSectorsFromAkshare` | eastmoney（`push2 .../clist/get`，当前被反爬切断）→ akshare python fallback（同花顺行业） | 15s |
 | `GET /api/market/concept-sectors` | `getMarketConceptSectorsFromAkshare` | akshare python only（同花顺概念资金流 + 概念简介） | 行情每次现取（~2s）；驱动事件 24h file_cache |
 | `GET /api/market/kline/:code` | `getMarketKline` | [joinquant → tencent → stock-sdk → eastmoney]（现命中 tencent newfqkline） | 1h |
@@ -36,7 +36,8 @@
 | `GET /api/market/north-flow` | `getNorthFlow` | eastmoney datacenter → akshare python fallback | 5min |
 | `GET /api/market/gold/realtime` | `getGoldRealtime` | eastmoney → akshare python | 60s |
 | `GET /api/market/gold/history` | `getGoldHistory` | eastmoney → akshare python | 1h |
-| `GET /api/market/kline/global/:symbol` | `getGlobalIndexKline` | [yahoo] | 1h |
+| `GET /api/market/kline/global/:symbol` | `getGlobalIndexKline` | [tencent → yahoo] | 1h |
+| `GET /api/market/crypto` | `getCryptoQuotes` | [binance]（Yahoo 已弃） | 15s |
 
 ## 筛选模块
 

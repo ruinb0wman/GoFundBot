@@ -11,7 +11,14 @@ import { EastMoneyMarketProvider } from '../providers/eastmoney/eastmoneyMarketP
 import { YahooMarketProvider } from '../providers/yahoo/yahooMarketProvider.js';
 import { TencentMarketProvider } from '../providers/tencent/tencentMarketProvider.js';
 import { JoinQuantMarketProvider } from '../providers/joinquant/joinquantMarketProvider.js';
-import { isGlobalIndexSymbol, GLOBAL_INDEX_DEFS, fetchGlobalIndexQuoteByCode, fetchCryptoQuotes, isCryptoSymbol } from '../providers/yahoo/yahooClient.js';
+import { fetchBinanceCryptoKline, fetchBinanceCryptoQuotes } from '../providers/binance/binanceClient.js';
+import {
+  GLOBAL_INDEX_DEFS,
+  findCryptoDef,
+  findGlobalIndexDef,
+  isCryptoSymbol,
+  isGlobalIndexSymbol,
+} from '../providers/globalIndexDefs.js';
 import type {
   ConstituentListDto,
   GlobalIndexDto,
@@ -208,9 +215,14 @@ export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Pr
   const globalSymbol = assertGlobalIndexSymbol(symbol);
   const options = parseGlobalKlineOptions(query);
   const key = `market:kline:global:${globalSymbol}:${JSON.stringify(options)}`;
-  const chain = new ProviderChain<MarketProvider>([yahooMarketProvider], dataSourceScorer);
+  // 腾讯覆盖美股/港股指数（秒回），Yahoo 只做未收录标的（日经/欧股/印度）的兜底。
+  // validate 必须有：腾讯对未收录代码返回空数组，否则会被当成成功、不再降级。
+  const chain = new ProviderChain<MarketProvider>([tencentMarketProvider, yahooMarketProvider], dataSourceScorer);
   const result = await cacheThrough(key, ttl.marketGlobalKline, () =>
-    chain.run('market.kline', (provider) => provider.kline(globalSymbol, options))
+    chain.run('market.kline', (provider) => provider.kline(globalSymbol, options), {
+      timeoutMs: 6000,
+      validate: (data) => Array.isArray(data) && data.length > 0,
+    })
   );
 
   return toServiceResult(result);
@@ -225,8 +237,12 @@ export async function getCryptoKline(symbol: string, query: KlineQuery): Promise
   if (cached) return toServiceResult(cached);
 
   try {
-    const { fetchCryptoKline } = await import('../providers/yahoo/yahooClient.js');
-    const points = await fetchCryptoKline(cryptoSymbol, options.period);
+    // Binance 直接支持 startTime/endTime —— 顺手补上原 Yahoo 路径把 startDate/endDate 丢掉的问题。
+    const points = await fetchBinanceCryptoKline(cryptoSymbol, {
+      period: options.period,
+      startDate: options.startDate,
+      endDate: options.endDate,
+    });
 
     const data: KlineDto[] = points.map(point => ({
       code: cryptoSymbol,
@@ -255,7 +271,7 @@ export async function getCryptoKline(symbol: string, query: KlineQuery): Promise
 
     const result: ProviderChainResult<KlineDto[]> = {
       data,
-      provider: 'yahoo',
+      provider: 'binance',
       fallback: false,
       stale: false,
       providerErrors: [],
@@ -270,9 +286,10 @@ export async function getCryptoKline(symbol: string, query: KlineQuery): Promise
   }
 }
 
-async function getGlobalIndexDetail(def: { code: string; name: string; yahooSymbol: string }): Promise<ServiceResult<IndexDetailDto>> {
+async function getGlobalIndexDetail(def: { code: string; name: string }): Promise<ServiceResult<IndexDetailDto>> {
+  // 报价直接复用批量结果（15s 缓存、腾讯一次请求拿 5 只），不再单独打 Yahoo 单只接口。
   const [quoteResult, klineResult] = await Promise.allSettled([
-    fetchGlobalIndexQuoteByCode(def.code),
+    getGlobalIndices(),
     getGlobalIndexKline(def.code, { period: 'daily' }),
   ]);
 
@@ -289,15 +306,20 @@ async function getGlobalIndexDetail(def: { code: string; name: string; yahooSymb
   let amount: number | null = null;
   let market = '全球';
 
-  if (quoteResult.status === 'fulfilled' && quoteResult.value) {
-    const q = quoteResult.value;
-    price = q.price;
-    changeAmt = q.changeAmount;
-    changePct = q.changePercent;
-    open = q.open;
-    high = q.high;
-    low = q.low;
-    prevClose = q.prevClose;
+  if (quoteResult.status === 'fulfilled') {
+    const q = (quoteResult.value.data.items ?? []).find(
+      (item) => item.code.toUpperCase() === def.code.toUpperCase()
+    );
+    if (q) {
+      price = q.price;
+      changeAmt = q.changeAmount;
+      changePct = q.changePercent;
+      open = q.open;
+      high = q.high;
+      low = q.low;
+      prevClose = q.prevClose;
+      if (q.market) market = q.market;
+    }
   }
 
   if (klineResult.status === 'fulfilled' && klineResult.value.data?.length) {
@@ -331,7 +353,7 @@ async function getGlobalIndexDetail(def: { code: string; name: string; yahooSymb
 
   return {
     data,
-    provider: quoteResult.status === 'fulfilled' ? 'yahoo' : (klineResult.status === 'fulfilled' ? 'yahoo' : 'none'),
+    provider: quoteResult.status === 'fulfilled' ? quoteResult.value.provider : 'none',
     fallback: quoteResult.status !== 'fulfilled' || klineResult.status !== 'fulfilled',
     cached: false,
     stale: false,
@@ -701,14 +723,24 @@ export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {
 }
 
 export async function getGlobalIndices(): Promise<ServiceResult<GlobalIndexListDto>> {
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider, yahooMarketProvider], dataSourceScorer);
+  // 主源腾讯（国内直连，覆盖 NDX/DJI/SPX/HSI/HSCEI）；eastmoney 的 push2 已全挂，
+  // 留作免费一跳；Yahoo 末位兜底（只有腾讯完全拿不到时才会被问到）。
+  // timeoutMs 是总预算：没有它时 Yahoo 会让请求挂满「批次数 × 15s」。
+  const chain = new ProviderChain<MarketProvider>(
+    [tencentMarketProvider, eastMoneyMarketProvider, yahooMarketProvider],
+    dataSourceScorer
+  );
   const result = await cacheThrough('market:global-indices', ttl.marketGlobalIndices, () =>
-    chain.run('market.globalIndices', (provider) => {
-      if (!provider.globalIndices) {
-        throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement globalIndices`, 501);
-      }
-      return provider.globalIndices();
-    })
+    chain.run(
+      'market.globalIndices',
+      (provider) => {
+        if (!provider.globalIndices) {
+          throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement globalIndices`, 501);
+        }
+        return provider.globalIndices();
+      },
+      { timeoutMs: 6000, validate: (data) => (data.items ?? []).length > 0 }
+    )
   );
 
   return toServiceResult(result);
@@ -720,10 +752,10 @@ export async function getCryptoQuotes(): Promise<ServiceResult<GlobalIndexListDt
   if (cached) return toServiceResult(cached);
 
   try {
-    const data = await fetchCryptoQuotes();
+    const data = await fetchBinanceCryptoQuotes();
     const result: ProviderChainResult<GlobalIndexListDto> = {
       data,
-      provider: 'yahoo',
+      provider: 'binance',
       fallback: false,
       stale: false,
       providerErrors: [],
@@ -731,6 +763,7 @@ export async function getCryptoQuotes(): Promise<ServiceResult<GlobalIndexListDt
     return toServiceResult(cache.set(key, result, ttl.marketGlobalIndices));
   } catch (err) {
     logger.error('Crypto quotes fetch failed', {
+      provider: 'binance',
       error: err instanceof Error ? err.message : String(err),
     });
     throw new AppError('PROVIDER_UNAVAILABLE', 'Failed to fetch crypto quotes', 503);
@@ -738,13 +771,13 @@ export async function getCryptoQuotes(): Promise<ServiceResult<GlobalIndexListDt
 }
 
 export async function getCryptoIndexDetail(symbol: string): Promise<ServiceResult<IndexDetailDto>> {
-  const cryptoDef = (await import('../providers/yahoo/yahooClient.js')).CRYPTO_DEFS.find(d => d.code === symbol.toUpperCase());
+  const cryptoDef = findCryptoDef(symbol);
   if (!cryptoDef) {
     throw new AppError('INVALID_ARGUMENT', `Unsupported crypto symbol: ${symbol}`, 400, { symbol });
   }
 
   const [quoteResult, klineResult] = await Promise.allSettled([
-    fetchCryptoQuotes(),
+    fetchBinanceCryptoQuotes(),
     getMarketKline(cryptoDef.code, { period: 'daily' }),
   ]);
 
@@ -805,7 +838,7 @@ export async function getCryptoIndexDetail(symbol: string): Promise<ServiceResul
 
   return {
     data,
-    provider: 'yahoo',
+    provider: 'binance',
     fallback: quoteResult.status !== 'fulfilled' || klineResult.status !== 'fulfilled',
     cached: false,
     stale: false,
@@ -1292,6 +1325,12 @@ function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** `global`/空 → `全球`；`港股` 原样透传（恒生系归前端「A股/港股」栏）。 */
+function normalizeGlobalMarket(market: string | null | undefined): string {
+  if (!market || market === 'global') return '全球';
+  return market;
+}
+
 const A_SHARE_INDICES: Array<{ symbol: string; name: string; market: string }> = [
   { symbol: 'sh000001', name: '上证指数', market: 'A股' },
   { symbol: 'sz399001', name: '深证成指', market: 'A股' },
@@ -1353,10 +1392,17 @@ export async function getCombinedIndices(): Promise<Record<string, unknown>> {
       price: item.price ?? null,
       change_pct: item.changePercent ?? null,
       change_amount: item.changeAmount ?? null,
-      market: '全球',
+      // 恒生系带 '港股'（前端「中国市场 A股/港股」栏），其余归一为 '全球'。
+      market: normalizeGlobalMarket(item.market),
       date: item.date ?? '',
     }));
     indices.push(...globalItems);
+  } else {
+    // 以前这里静默丢弃：全球指数整天拿不到，日志里却一条都没有，无法排查。
+    logger.warn('combined indices: global branch failed', {
+      error: globalResult.reason instanceof Error ? globalResult.reason.message : String(globalResult.reason),
+      providerErrors: (globalResult.reason as { details?: { providerErrors?: unknown } })?.details?.providerErrors,
+    });
   }
 
   return {
@@ -1417,7 +1463,7 @@ export async function getMarketOverview(): Promise<Record<string, unknown>> {
       price: item.price ?? null,
       change_pct: item.changePercent ?? null,
       change_amount: item.changeAmount ?? null,
-      market: '全球',
+      market: normalizeGlobalMarket(item.market),
     }));
     indices.push(...globalItems);
   }
