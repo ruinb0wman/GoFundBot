@@ -224,7 +224,7 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 `getCombinedIndices` 又把全球分支的 rejection 静默丢弃 → 白天空卡片、日志里一条错误都没有。
 
 **实测（2026-10-09）**：Yahoo 直连 16.1s 超时、**走代理 7890 也 15.8s 超时**（同一代理访问 google 204 @0.88s、binance 200 @0.75s）→
-是 Yahoo 被封；东财 push2 也已全挂（连 A 股 `ulist.np/get` 都 0.17s 失败）。
+是 Yahoo 被封；东财 push2 的「全挂」**后来查明是经代理访问所致**（`eastmoneyRequest` 当时写 `proxy: 'auto'`，改成真直连后 `ulist.np`/`clist/get`/`stock/get` 都能用）——见 AGENTS「Known issues」与 `.pi/plans/push2-resilience.md`。
 
 **修复**：
 - 全球指数主源 → 腾讯 `qt.gtimg.cn`（`usNDX/usDJI/usINX/hkHSI/hkHSCEI`，国内直连 0.2s）；加密 → **Binance** `api.binance.com`（直连 0.75s）；

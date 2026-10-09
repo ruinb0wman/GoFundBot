@@ -25,7 +25,7 @@ GET /api/market/indices/combined
                            validate: items.length > 0)
             → tencent `qt.gtimg.cn`（主，国内直连，覆盖 usNDX/usDJI/usINX/hkHSI/hkHSCEI）
               → 成功 → 返回 + 缓存 15s
-              → 失败/未收录 → eastmoney push2（已全挂，0.17s 快速失败）→ yahoo（3.5s 预算）
+              → 失败/未收录 → eastmoney push2（直连可用但会限流，180ms 级失败）→ yahoo（3.5s 预算）
     → 前端 MarketOverview → marketIndex → indices.china + indices.global
 
 GET /api/market/crypto
@@ -108,7 +108,7 @@ GET https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=&
 | `FTSE` / `GDAXI` / `FCHI` / `SENSEX` | 英/德/法/印度 | — | 各自 | Yahoo（当前网络取不到） |
 | `BTC` / `ETH` / `SOL` / `BNB` | 加密货币 | — | — | Binance ✅ |
 
-> akshare 的 `index_global_*` 同样走东财 push2（已全挂），不能作为这几只的替代源。
+> akshare 的 `index_global_*` 同样走东财 push2（受限流影响），不能作为这几只的替代源。
 
 ## 四、回退方案
 
@@ -156,7 +156,7 @@ Binance 直连 → 代理重试 → 503。没有 Yahoo 分支。
 2. **不要退回串行分批**：`fetchYahooGlobalIndices` 曾经是 `concurrency = 2` + 15s 超时，
    11 个代码 6 批 ≈ **84s**，`/indices/combined` 一天出现 15 次 84.0s。
    回归测试见 `service/src/__tests__/providers/yahoo-global-budget.test.ts`（断言同一波次发出 + 总耗时 ≈ 单次超时）。
-3. **东财 push2 已全挂**：连 A 股 `ulist.np/get` 都是 0.17s 连接失败；`globalIndices()` 保留只是
+3. **东财 push2 会限流**（2026-10-09 更正：此前说的「已全挂」其实是经代理访问所致，真直连下可用）；`globalIndices()` 保留只是
    「如果哪天恢复就能命中」的免费一跳。
 4. **数据 15 秒缓存**：实时性不高，适合仪表盘概览。
 5. **A 股指数依赖正常交易时间**：非交易时段返回最后收盘价。

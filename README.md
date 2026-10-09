@@ -319,7 +319,7 @@ GoFundBot/
 
 | 标的 | 主源 | 兜底 |
 |------|------|------|
-| 美股指数 NDX/DJI/SPX、港股 HSI/HSCEI | 腾讯 `qt.gtimg.cn`（`proxy: 'never'`） | 东财 push2（已全挂） → Yahoo |
+| 美股指数 NDX/DJI/SPX、港股 HSI/HSCEI | 腾讯 `qt.gtimg.cn`（`proxy: 'never'`） | 东财 push2（直连可用但会限流） → Yahoo |
 | 海外指数历史 K 线 | 腾讯 `proxy.finance.qq.com/.../newfqkline/get` | Yahoo（3.5s 预算） |
 | 加密货币 BTC/ETH/SOL/BNB（行情+K线） | Binance `api.binance.com`（直连） | 同端点走一次代理 |
 | 日经/韩国/英德法/印度指数 | —（腾讯未收录） | Yahoo（当前网络下常取不到） |
