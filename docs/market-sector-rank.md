@@ -111,7 +111,7 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type sec
 ## 七、已知问题
 
 1. **只取第一页 100 个板块（真实缺口）**：东财 `clist/get` 单页硬上限 **100**（`pz` 传 200/500 都只回 100，要 `pn` 翻页），而 `EastMoneyMarketProvider.sectors()` 固定 `pn=1&pz=100` → 只能拿到「按涨跌幅降序的**前 100 名**」。实测 `fs=m:90+t:2` 的 `total=496`（含 Ⅱ/Ⅲ 级细分行业），其余 396 个要翻 5 页才拿得到。同花顺回退固定 90 个。
-2. **`limit` 上限**：route 与 service 都 clamp 到 1..`MARKET_SECTOR_MAX_LIMIT`（=120），比上面两个真实天花板都大，所以调大 `limit` 不会拿到更多；`MarketDashboard.vue`（当前**无人引用的旧组件**）原先传 `:limit="500"` 是无效值，已改 120。
+2. **`limit` 上限**：route 与 service 都 clamp 到 1..`MARKET_SECTOR_MAX_LIMIT`（=120），比上面两个真实天花板都大，所以调大 `limit` 不会拿到更多（原先有个传 `:limit="500"` 的旧组件 `MarketDashboard.vue`，无人引用，2026-10-13 已删）。
 3. **Python 回退较慢**：akshare 数据通常在 10-30 秒内返回，超时 60s。
 4. **数据日期标记**：非交易日返回最后交易日数据，前端标记 `stale`。
 5. **退化的 `code`**：同花顺回退不提供板块代码，`code` 为空串，因此 `/api/market/sectors/:code/constituents` 对该批数据不可用。
