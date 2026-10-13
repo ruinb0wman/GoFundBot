@@ -28,6 +28,19 @@ export function fmtPercent(
   return `${formatted}%`
 }
 
+/**
+ * 涨跌幅展示：优先用数值原始值格式化，数值缺失时才退回上游已格式化的字符串。
+ *
+ * 板块接口（`/api/market/sectors`、`/concept-sectors`）同时给 `change_pct`（字符串 `"+11.94%"`）
+ * 与 `raw_change`（数值 `11.94`）；把字符串直接喂给 `fmtPercent` 会因 `isFiniteNumber` 的类型检查
+ * 落到 `--`（2026-10-13 前端右侧涨跌幅整列显示 `--` 的原因）。
+ */
+export function fmtPercentPreferNumber(raw: unknown, text?: unknown, fallback = '--'): string {
+  if (isFiniteNumber(raw)) return fmtPercent(raw)
+  const preformatted = typeof text === 'string' ? text.trim() : ''
+  return preformatted || fallback
+}
+
 export function fmtNumber(
   val: unknown,
   decimals = 2

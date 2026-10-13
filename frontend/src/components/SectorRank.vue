@@ -82,7 +82,7 @@
             </div>
           </div>
           <div class="sector-change" :class="{ 'up': sector.raw_change > 0, 'down': sector.raw_change < 0 }">
-            {{ fmtPercent(sector.change_pct) }}
+            {{ fmtPercentPreferNumber(sector.raw_change, sector.change_pct) }}
           </div>
         </div>
       </div>
@@ -179,7 +179,7 @@
                 </div>
               </div>
               <div class="modal-sector-change" :class="{ up: sector.raw_change > 0, down: sector.raw_change < 0 }">
-                {{ fmtPercent(sector.change_pct) }}
+                {{ fmtPercentPreferNumber(sector.raw_change, sector.change_pct) }}
               </div>
             </div>
           </div>
@@ -196,7 +196,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 import { marketAPI } from '../services/api'
 import { useAdaptiveRefresh } from '../composables/useAdaptiveRefresh'
-import { fmtPercent } from '../utils/number'
+import { fmtPercentPreferNumber } from '../utils/number'
 
 function formatUpdateTime(isoStr: string) {
   try {

@@ -3,7 +3,7 @@ import {
   isZero, isFiniteNumber, safeDiv,
   calcReturn, calcAnnualReturn, calcMaxDrawdown,
   calcDailyReturns, calcVolatility, calcSharpe,
-  fmtPercent, fmtNumber, fmtMoney, fmtAmountYi,
+  fmtPercent, fmtPercentPreferNumber, fmtNumber, fmtMoney, fmtAmountYi,
   fmtChange, fmtRatio, fmtDrawdown,
   returnClass, sharpeClass, scoreClass,
   DEFAULT_RISK_FREE_RATE
@@ -180,6 +180,32 @@ describe('fmtPercent', () => {
   it('returns fallback for Infinity', () => { expect(fmtPercent(Infinity)).toBe('--') })
   it('supports sign=false option', () => { expect(fmtPercent(5, { sign: false })).toBe('5.00%') })
   it('supports custom fallback', () => { expect(fmtPercent(null, { fallback: '-' })).toBe('-') })
+})
+
+describe('fmtPercentPreferNumber', () => {
+  it('prefers the raw number over the preformatted string', () => {
+    expect(fmtPercentPreferNumber(11.94, '+11.94%')).toBe('+11.94%')
+  })
+  it('treats 0 as a valid number', () => {
+    expect(fmtPercentPreferNumber(0, '+0.00%')).toBe('+0.00%')
+  })
+  it('falls back to the preformatted string when the raw value is missing', () => {
+    expect(fmtPercentPreferNumber(null, '+11.94%')).toBe('+11.94%')
+    expect(fmtPercentPreferNumber(undefined, '-5.68%')).toBe('-5.68%')
+  })
+  it('trims the preformatted string', () => {
+    expect(fmtPercentPreferNumber(null, '  +1.23%  ')).toBe('+1.23%')
+  })
+  it('returns fallback for blank text', () => {
+    expect(fmtPercentPreferNumber(null, '   ')).toBe('--')
+    expect(fmtPercentPreferNumber(NaN, '')).toBe('--')
+  })
+  it('returns fallback for non-string text', () => {
+    expect(fmtPercentPreferNumber(undefined, 11.94)).toBe('--')
+  })
+  it('supports custom fallback', () => {
+    expect(fmtPercentPreferNumber(null, undefined, '-')).toBe('-')
+  })
 })
 
 describe('fmtNumber', () => {
