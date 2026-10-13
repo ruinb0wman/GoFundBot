@@ -430,6 +430,18 @@ export class EastMoneyFundProvider implements FundProvider {
   // -----------------------------------------------------------------------
 
   async holdings(code: string): Promise<FundHoldingsDto> {
+    // 主源：东财移动 F10 —— 一次请求就带 代码/名称/占净值比/行业。
+    // 2026-10 起 pingzhongdata 已删掉 Data_InverstPositionDetail（脚本里只剩 stockCodes），
+    // 旧解析只能拿到代码，名称/占比全丢。
+    const mobile = await fetchMobileFundHoldings(code);
+    if (mobile) {
+      return mobile;
+    }
+    return this.fetchPingzhongdataHoldings(code);
+  }
+
+  /** pingzhongdata 回退：只有代码，名称/行业再用 push2 批量补。 */
+  private async fetchPingzhongdataHoldings(code: string): Promise<FundHoldingsDto> {
     const script = await this.fetchFundDetailScript(code);
     const reportDate = safeParseJsString(script, 'fundSharesPositionDate');
 
@@ -462,21 +474,9 @@ export class EastMoneyFundProvider implements FundProvider {
       }
     }
 
-    // Parse detail info: names, ratios, shares, market values
-    const detail = safeParseJsJson<Record<string, unknown> | null>(script, 'Data_InverstPositionDetail', null);
-    const detailMap: Record<string, Record<string, unknown>> = {};
-    if (detail && typeof detail === 'object') {
-      for (const [key, val] of Object.entries(detail)) {
-        if (val && typeof val === 'object') {
-          detailMap[key] = val as Record<string, unknown>;
-        }
-      }
-    }
-
-    const items: FundHoldingItemDto[] = stockCodesRaw.map((rawCode, idx) => {
+    const base = stockCodesRaw.map((rawCode) => {
       const originalCode = String(rawCode);
       const marketInfo = marketByOriginal[originalCode] || { market: null, cleanCode: normalizeStockCode(originalCode) };
-      const detailInfo = detailMap[originalCode] || {};
 
       // Look up by clean code in marketMap
       let market = marketInfo.market;
@@ -485,20 +485,26 @@ export class EastMoneyFundProvider implements FundProvider {
         const mm = marketMap[cleanCode];
         if (mm) { market = mm.market; cleanCode = mm.cleanCode; }
       }
+      return { cleanCode, market };
+    });
 
-      const name = toNullableString(detailInfo.name || detailInfo.stockName || detailInfo.stockGPName) || cleanCode;
-      const ratio = toNullableNumber(detailInfo.zhanbijjzc || detailInfo.ratio || detailInfo.zjl);
-      const shares = toNullableNumber(detailInfo.share || detailInfo.chicang);
-      const marketValue = toNullableNumber(detailInfo.marketValue || detailInfo.marketvalue || detailInfo.shizhi);
+    // 名称 / 行业：pingzhongdata 已不再提供，改用 push2 一次批量查询。
+    const secids = base
+      .map((item) => toSecid(item.market, item.cleanCode))
+      .filter((value): value is string => Boolean(value));
+    const profiles = await fetchStockProfiles(secids);
 
+    const items: FundHoldingItemDto[] = base.map(({ cleanCode, market }) => {
+      const profile = profiles.get(cleanCode);
       return {
         stockCode: cleanCode,
-        stockName: name,
+        stockName: profile?.name || cleanCode,
         market,
         symbol: market ? (market === '上海' ? `sh${cleanCode}` : `sz${cleanCode}`) : null,
-        ratio: ratio !== null ? Number((ratio / 100).toFixed(4)) : (idx === 0 ? 0 : null),
-        shares,
-        marketValue,
+        ratio: null, // pingzhongdata 已无占比字段，不猜
+        shares: null,
+        marketValue: null,
+        industry: profile?.industry ?? null,
       };
     });
 
@@ -800,6 +806,130 @@ function normalizeStockCode(rawCode: string): string {
     return rawCode.slice(0, -1).padStart(6, '0');
   }
   return rawCode.padStart(6, '0');
+}
+
+interface StockProfile {
+  name: string | null;
+  industry: string | null;
+}
+
+/** 东财移动 F10 只认非桌面浏览器 UA；用 App 自己的 okhttp。 */
+const MOBILE_UA = 'okhttp/4.9.0';
+
+/**
+ * 东财移动 F10 持仓接口：一次请求同时给 代码/名称/占净值比(TEXCH 标市场)/行业。
+ * 拿不到（接口挂了 / 返回结构不对）返回 null，交给 pingzhongdata 回退。
+ *
+ * 注意：`fundStocks: []` 是合法结果（ETF 联接、FOF 没有直接持股），不能当失败。
+ *
+ * UA 必须显式指定：带上 `DEFAULT_HEADERS` 里的桌面 Chrome UA 会被该接口回
+ * `ErrCode 61136403 网络繁忙`（实测：chrome=false，okhttp/android/mobile-chrome/curl 都=true）。
+ */
+async function fetchMobileFundHoldings(code: string): Promise<FundHoldingsDto | null> {
+  const url = `https://fundmobapi.eastmoney.com/FundMNewApi/FundMNInverstPosition?FCODE=${code}&deviceid=1&plat=Android&product=EFund&version=6.2.8`;
+  let payload: Record<string, unknown>;
+  try {
+    const text = await fetchUrl<string>(url, {
+      timeoutMs: 10000,
+      proxy: 'never',
+      headers: { 'User-Agent': MOBILE_UA, Referer: 'https://fund.eastmoney.com/' },
+    });
+    payload = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  const datas = payload.Datas as Record<string, unknown> | undefined;
+  const rawStocks = datas?.fundStocks;
+  if (!Array.isArray(rawStocks)) {
+    return null;
+  }
+
+  const items: FundHoldingItemDto[] = [];
+  for (const row of rawStocks) {
+    if (!row || typeof row !== 'object') continue;
+    const record = row as Record<string, unknown>;
+    const stockCode = toNullableString(record.GPDM);
+    if (!stockCode) continue;
+    const market = mobileMarketToLabel(record.TEXCH);
+    // `JZBL` 本身就是百分数（"9.77" = 9.77%），不要再 /100
+    const ratio = toNullableNumber(record.JZBL);
+    items.push({
+      stockCode,
+      stockName: toNullableString(record.GPJC) || stockCode,
+      market,
+      symbol: market ? `${market === '上海' ? 'sh' : 'sz'}${stockCode}` : null,
+      ratio,
+      shares: null,
+      marketValue: null,
+      industry: normalizeIndustryName(record.INDEXNAME),
+    });
+  }
+
+  return {
+    items,
+    bondCodes: extractMobileBondCodes(datas?.fundboods),
+    bondCodesNew: [],
+    reportDate: toNullableString(payload.Expansion),
+  };
+}
+
+function mobileMarketToLabel(value: unknown): string | null {
+  const raw = String(value ?? '').trim();
+  if (raw === '1') return '上海';
+  if (raw === '2') return '深圳';
+  return null;
+}
+
+/** 东财债券持仓的代码（`fundboods[].ZQDM`），沿用 pingzhongdata 的 `bondCodes` 契约。 */
+function extractMobileBondCodes(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((row) => (row && typeof row === 'object' ? toNullableString((row as Record<string, unknown>).ZQDM) : null))
+    .filter((value): value is string => Boolean(value));
+}
+
+function normalizeIndustryName(value: unknown): string | null {
+  const text = toNullableString(value);
+  return !text || text === '--' ? null : text;
+}
+
+function toSecid(market: string | null, stockCode: string): string | null {
+  if (market === '上海') return `1.${stockCode}`;
+  if (market === '深圳') return `0.${stockCode}`;
+  if (/^\d{6}$/.test(stockCode)) return /^[69]/.test(stockCode) ? `1.${stockCode}` : `0.${stockCode}`;
+  return null;
+}
+
+/**
+ * push2 `ulist.np/get` 批量取名称 + 所属行业（`f14` / `f100`）。
+ * 取不到就返回空表（调用方退回代码 / 空行业），不抛 —— 名称行业是补充项，不牵联持仓主表。
+ */
+async function fetchStockProfiles(secids: string[]): Promise<Map<string, StockProfile>> {
+  const profiles = new Map<string, StockProfile>();
+  if (secids.length === 0) return profiles;
+
+  const url = `https://push2.eastmoney.com/api/qt/ulist.np/get?fields=f12,f13,f14,f100&secids=${secids.join(',')}`;
+  try {
+    const text = await fetchText(url, 8000, 'https://quote.eastmoney.com/');
+    const payload = JSON.parse(text) as Record<string, unknown>;
+    const data = payload.data as Record<string, unknown> | undefined;
+    const diff = data?.diff;
+    if (!Array.isArray(diff)) return profiles;
+    for (const row of diff) {
+      if (!row || typeof row !== 'object') continue;
+      const record = row as Record<string, unknown>;
+      const stockCode = toNullableString(record.f12);
+      if (!stockCode) continue;
+      profiles.set(stockCode, {
+        name: toNullableString(record.f14),
+        industry: normalizeIndustryName(record.f100),
+      });
+    }
+  } catch {
+    // 见上：批量补名称/行业失败不抛
+  }
+  return profiles;
 }
 
 

@@ -298,3 +298,32 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 `frontend/src/services/backtest/runBacktestForFund.ts`（页面）。
 **别把两者混用**：展示口径（实时估值、持仓成本、净值曲线）仍读单位净值 `nav`。
 排查口诀：回测里某个 ETF 出现 −50%/−75% 的单日跳变或「长期巨亏」，先去 `nav_history` 对一下 `acc_nav/nav` 的比值有没有跳台阶。
+
+### 基金重仓股（持仓明细）数据源（2026-10-13 修复）
+
+**现象**：基金详情页「持仓明细」的**名称列显示成代码**、「占比」整列消失、「行业」恒空。
+
+**根因（两层）**：
+1. 东财已从 `fund.eastmoney.com/pingzhongdata/<code>.js` **删掉 `Data_InverstPositionDetail`**（现在只剩
+   `var stockCodes` / `stockCodesNew` / `zqCodes`，全脚本无任何股票名/占比字段）。`EastMoneyFundProvider.holdings()`
+   仍按旧变量解析 → `detailMap` 恒空 → 名称回退成 `cleanCode`、占比全 `null`。
+2. holdings DTO（`FundHoldingItemDto`）与 `fundService` 的 `portfolio.stock_codes_new` **根本没有行业字段**，
+   前端 `FundPortfolio.vue` 的 `displayIndustry()` 永远取不到 → 行业列恒空。
+
+**修复**：`holdings()` 主源改成**东财移动 F10**
+`https://fundmobapi.eastmoney.com/FundMNewApi/FundMNInverstPosition?FCODE=<code>&deviceid=1&plat=Android&product=EFund&version=6.2.8`
+一次请求给 `GPDM`(代码)/`GPJC`(名称)/`JZBL`(占净值比)/`TEXCH`(1=上海,2=深圳,其余=海外)/`INDEXNAME`(行业)。
+失败才回退 pingzhongdata 的代码 + `push2 .../ulist.np/get?fields=f12,f13,f14,f100` 一次批量补名称/行业
+（占比在回退路径拿不到，老实给 null，**不再编造 0**）。DTO 加 `industry`；`fundService` 的 `stock_codes_new` 带上它。
+
+**两个必须记住的坑**：
+- **UA 必须是非桌面浏览器**：带上 `core/fetch.ts` 默认的桌面 Chrome UA 会被 fundmobapi 回
+  `{"Datas":null,"ErrCode":61136403,"ErrMsg":"网络繁忙，请稍后重试！"}`（实测 chrome=false；
+  okhttp/android/mobile-chrome/curl/空 UA 都=true）→ provider 里显式用 `okhttp/4.9.0`。
+- **占比口径是百分数**（`JZBL:"9.77"` = 9.77%）。旧代码对 `zhanbijjzc` 做 `ratio/100` 存小数、而前端
+  `formatRatio`/`useFundRealtimeBase` 都按 `${num}%` 渲染 —— 修数据源时**不要**再 /100，否则差 100 倍。
+- 边界：`fundStocks: []` 是合法结果（ETF 联接/FOF 没有直接持股），不能当失败去回退；QDII 代码是美股 ticker
+  （`TEXCH=7`、`INDEXNAME="--"`）→ market/symbol/industry 全 null。
+
+**回归测试**：`service/src/__tests__/providers/eastmoney-fund-provider.test.ts` 的 `holdings` 组
+（主源映射 / 空列表合法 / 回退补名称行业 / push2 失败仍返回代码）。

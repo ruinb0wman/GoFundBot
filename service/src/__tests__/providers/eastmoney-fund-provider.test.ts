@@ -166,3 +166,124 @@ describe('EastMoneyFundProvider money funds', () => {
     expect(estimate.estimatedChangePercent).toBeCloseTo(((3.1 - 3.3) / 3.3) * 100, 6);
   });
 });
+
+// ---------------------------------------------------------------------------
+// holdings：主源走东财移动 F10（名称/占比/行业），失败才回退 pingzhongdata + push2
+// ---------------------------------------------------------------------------
+
+const MOBILE_POSITION_PAYLOAD = {
+  Datas: {
+    fundStocks: [
+      { GPDM: '600519', GPJC: '贵州茅台', JZBL: '9.77', TEXCH: '1', INDEXNAME: '食品饮料' },
+      { GPDM: '000333', GPJC: '美的集团', JZBL: '9.31', TEXCH: '2', INDEXNAME: '家用电器' },
+      { GPDM: 'NVDA', GPJC: '英伟达', JZBL: '7.25', TEXCH: '7', INDEXNAME: '--' },
+    ],
+    fundboods: [{ ZQDM: '127045', ZQMC: '某转债' }],
+  },
+  Expansion: '2026-06-30',
+};
+
+const POSITION_SCRIPT =
+  'var stockCodes = ["6005191","0003330"];' +
+  'var stockCodesNew = ["1.600519","0.000333"];' +
+  'var zqCodes = "127045";' +
+  'var fundSharesPositionDate = "2026-06-30";';
+
+const ULIST_PAYLOAD = {
+  data: {
+    diff: [
+      { f12: '600519', f13: 1, f14: '贵州茅台', f100: '白酒Ⅱ' },
+      { f12: '000333', f13: 0, f14: '美的集团', f100: '白色家电' },
+    ],
+  },
+};
+
+describe('EastMoneyFundProvider holdings', () => {
+  beforeEach(() => {
+    fetchTextMock.mockReset();
+    fetchUrlMock.mockReset();
+  });
+
+  it('prefers the mobile F10 source: name + industry + percent ratio', async () => {
+    fetchUrlMock.mockResolvedValue(JSON.stringify(MOBILE_POSITION_PAYLOAD));
+    const provider = new EastMoneyFundProvider();
+
+    const result = await provider.holdings('110022');
+
+    expect(result.items).toHaveLength(3);
+    // 名称不再是代码，且占比是百分数（9.77，不是 /100 后的 0.0977）
+    expect(result.items[0]).toMatchObject({
+      stockCode: '600519',
+      stockName: '贵州茅台',
+      market: '上海',
+      symbol: 'sh600519',
+      ratio: 9.77,
+      industry: '食品饮料',
+    });
+    expect(result.items[1]).toMatchObject({ stockName: '美的集团', market: '深圳', ratio: 9.31 });
+    // 海外代码（QDII）：不硬套市场/行业
+    expect(result.items[2]).toMatchObject({ stockCode: 'NVDA', stockName: '英伟达', market: null, symbol: null, industry: null });
+    expect(result.bondCodes).toEqual(['127045']);
+    expect(result.reportDate).toBe('2026-06-30');
+
+    const [url, options] = fetchUrlMock.mock.calls[0] as [string, { headers: Record<string, string> }];
+    expect(url).toContain('fundmobapi.eastmoney.com');
+    // 桌面 Chrome UA 会被该接口回 ErrCode 61136403，必须用非浏览器 UA
+    expect(options.headers['User-Agent']).not.toContain('Chrome');
+    // 主源成功就不该再打 pingzhongdata
+    expect(fetchUrlMock.mock.calls.some((c) => String(c[0]).includes('pingzhongdata'))).toBe(false);
+  });
+
+  it('treats an empty fundStocks list as a valid (not failed) answer', async () => {
+    fetchUrlMock.mockResolvedValue(JSON.stringify({ Datas: { fundStocks: [], fundboods: [] }, Expansion: '2026-06-30' }));
+    const provider = new EastMoneyFundProvider();
+
+    const result = await provider.holdings('007301');
+
+    expect(result.items).toEqual([]);
+    expect(fetchUrlMock.mock.calls.some((c) => String(c[0]).includes('pingzhongdata'))).toBe(false);
+  });
+
+  it('falls back to pingzhongdata codes + push2 names/industry when mobile is down', async () => {
+    fetchUrlMock.mockImplementation((url: string) => {
+      if (String(url).includes('fundmobapi')) throw new Error('mobile down');
+      if (String(url).includes('pingzhongdata')) return POSITION_SCRIPT;
+      throw new Error(`Unexpected url: ${url}`);
+    });
+    fetchTextMock.mockImplementation((url: string) => {
+      if (String(url).includes('ulist.np')) return JSON.stringify(ULIST_PAYLOAD);
+      throw new Error(`Unexpected url: ${url}`);
+    });
+    const provider = new EastMoneyFundProvider();
+
+    const result = await provider.holdings('110022');
+
+    expect(result.items.map((i) => [i.stockCode, i.stockName, i.industry, i.market])).toEqual([
+      ['600519', '贵州茅台', '白酒Ⅱ', '上海'],
+      ['000333', '美的集团', '白色家电', '深圳'],
+    ]);
+    // pingzhongdata 已无占比字段 → 老实给 null，不再编造 0
+    expect(result.items.every((i) => i.ratio === null)).toBe(true);
+    expect(result.bondCodes).toEqual(['127045']);
+    expect(result.reportDate).toBe('2026-06-30');
+
+    const ulistUrl = String(fetchTextMock.mock.calls[0][0]);
+    expect(ulistUrl).toContain('secids=1.600519,0.000333');
+  });
+
+  it('still returns the holding list when the push2 enrichment fails', async () => {
+    fetchUrlMock.mockImplementation((url: string) => {
+      if (String(url).includes('fundmobapi')) throw new Error('mobile down');
+      return POSITION_SCRIPT;
+    });
+    fetchTextMock.mockImplementation(() => {
+      throw new Error('push2 down');
+    });
+    const provider = new EastMoneyFundProvider();
+
+    const result = await provider.holdings('110022');
+
+    expect(result.items.map((i) => i.stockName)).toEqual(['600519', '000333']);
+    expect(result.items.every((i) => i.industry === null)).toBe(true);
+  });
+});

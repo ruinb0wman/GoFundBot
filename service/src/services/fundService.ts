@@ -752,7 +752,7 @@ export async function composeFundDetailLegacy(code: string): Promise<Record<stri
     })),
     stock_holdings: holdings,
     portfolio: {
-      stock_codes_new: holdings.map((item) => ({ code: item.stockCode, name: item.stockName, ratio: item.ratio })),
+      stock_codes_new: holdings.map((item) => ({ code: item.stockCode, name: item.stockName, ratio: item.ratio, industry: item.industry })),
     },
     asset_allocation: detail.sections.assetAllocation.data ?? { categories: [], series: [] },
     holder_structure: detail.sections.holderStructure.data ?? null,

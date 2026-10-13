@@ -158,9 +158,12 @@ export interface FundHoldingItemDto {
   stockName: string;
   market: string | null;
   symbol: string | null;
+  /** 占净值比例，百分数（9.77 = 9.77%） */
   ratio: number | null;
   shares: number | null;
   marketValue: number | null;
+  /** 所属行业（东财口径，如「食品饮料」）；取不到为 null */
+  industry: string | null;
 }
 
 export interface FundHoldingsDto {
