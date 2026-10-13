@@ -43,9 +43,9 @@ GET https://push2.eastmoney.com/api/qt/clist/get
 
 | 参数 | 值 | 说明 |
 |------|----|------|
-| `fs` | `m:90+t:2` | 行业板块分类 |
+| `fs` | `m:90+t:2` | 行业板块分类（实测 `total=496`，含 Ⅱ/Ⅲ 级细分行业） |
 | `fields` | `f12,f14` | 代码、名称 |
-| `pz` | `500` | 最多 500 个板块 |
+| `pz` | `100` | 单页条数：**东财硬上限 100**（传 200/500 也只回 100），取更多要 `pn` 翻页；provider 固定 `pn=1` |
 
 ### 3.2 板块行情查询
 
@@ -110,15 +110,16 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type sec
 
 ## 七、已知问题
 
-1. **板块数量限制**：最多返回 200 个板块，超出部分截断。
-2. **Python 回退较慢**：akshare 数据通常在 10-30 秒内返回，超时 60s。
-3. **数据日期标记**：非交易日返回最后交易日数据，前端标记 `stale`。
-4. **退化的 `code`**：同花顺回退不提供板块代码，`code` 为空串，因此 `/api/market/sectors/:code/constituents` 对该批数据不可用。
-5. **push2 `clist/get` 被封**：`push2.eastmoney.com/api/qt/clist/get`（行业+概念板块列表）在本机直连与代理下均被切断（`SSL_read: unexpected eof`）；同一 host 的 `ulist.np/get`（涨跌家数）与 `push2his`/`push2ex`/`datacenter-web` 正常。实测 2026-09-29 服务日志里板块是该日**唯一**持续报错的调用（26/26 次）。
+1. **只取第一页 100 个板块（真实缺口）**：东财 `clist/get` 单页硬上限 **100**（`pz` 传 200/500 都只回 100，要 `pn` 翻页），而 `EastMoneyMarketProvider.sectors()` 固定 `pn=1&pz=100` → 只能拿到「按涨跌幅降序的**前 100 名**」。实测 `fs=m:90+t:2` 的 `total=496`（含 Ⅱ/Ⅲ 级细分行业），其余 396 个要翻 5 页才拿得到。同花顺回退固定 90 个。
+2. **`limit` 上限**：route 与 service 都 clamp 到 1..`MARKET_SECTOR_MAX_LIMIT`（=120），比上面两个真实天花板都大，所以调大 `limit` 不会拿到更多；`MarketDashboard.vue`（当前**无人引用的旧组件**）原先传 `:limit="500"` 是无效值，已改 120。
+3. **Python 回退较慢**：akshare 数据通常在 10-30 秒内返回，超时 60s。
+4. **数据日期标记**：非交易日返回最后交易日数据，前端标记 `stale`。
+5. **退化的 `code`**：同花顺回退不提供板块代码，`code` 为空串，因此 `/api/market/sectors/:code/constituents` 对该批数据不可用。
+6. **push2 `clist/get` 被封**：`push2.eastmoney.com/api/qt/clist/get`（行业+概念板块列表）在本机直连与代理下均被切断（`SSL_read: unexpected eof`）；同一 host 的 `ulist.np/get`（涨跌家数）与 `push2his`/`push2ex`/`datacenter-web` 正常。实测 2026-09-29 服务日志里板块是该日**唯一**持续报错的调用（26/26 次）。
 
 ## 八、概念板块（AI 对话工具）
 
-概念板块目前只在 AI 对话/分析里通过 `get_concept_sectors` 工具暴露，没有独立页面。它**不走** EastMoney（原因见 §七.5），直接以 akshare 为唯一数据源。
+概念板块目前只在 AI 对话/分析里通过 `get_concept_sectors` 工具暴露，没有独立页面。它**不走** EastMoney（原因见 §七.6），直接以 akshare 为唯一数据源。
 
 ```
 GET /api/market/concept-sectors?limit=20
@@ -127,7 +128,7 @@ GET /api/market/concept-sectors?limit=20
       ├── ak.stock_fund_flow_concept(symbol="即时")   # 行情主表：387 个概念，按涨跌幅降序（每次现取 ~2s）
       └── ak.stock_board_concept_summary_ths()        # 驱动事件（约 10s，单独 file_cache 24h；失败不落盘、降级为空事件表）
     → {success, data: [...], total_count, data_date, source}
-  → 消费方（服务端工具 `service/src/agent/toolsMarket.ts` 的 get_concept_sectors、前端概念板块面板）
+  → 消费方（目前只有服务端工具 `service/src/agent/toolsMarket.ts` 的 get_concept_sectors；**前端暂无概念板块面板**）
     注意：该路由的 `data` 是**扁平数组**（不是 `{items}`），按数组解析
 ```
 
@@ -140,6 +141,11 @@ GET /api/market/concept-sectors?limit=20
 | `company_count` | 资金流 `公司家数` | 成分股数量 |
 | `leader` / `leader_change_pct` | 资金流 `领涨股` / `领涨股-涨跌幅` | 领涨股 |
 | `event` / `event_date` | 概念简介 `驱动事件` / `日期` | 两张表按概念名 join（先精确、后去「概念」后缀）；`event_date` 是**数据源标注的事件日期，可能早于当日**，不可当作行情日期 |
+
+> **将来做前端概念面板时**：概念板块与行业板块同款「`change_pct` 字符串 + `raw_change` 数值」结构，
+> 涨跌幅一律用 `fmtPercentPreferNumber(raw_change, change_pct)`（`frontend/src/utils/number.ts`），
+> **不要**直接 `fmtPercent(change_pct)` —— 字符串会被 `isFiniteNumber` 判掉、整列显示 `--`
+> （行业板块 2026-10-13 就这么踩过：`fix(frontend): 行业板块涨跌幅整列显示 --`）。
 
 工具返回 `data_status: 'available'`，`note` 里说明 `event_date` 的口径；数据源失败时返回 `data_status: 'unavailable'` + 空 `items`，避免模型编造概念板块表现。
 

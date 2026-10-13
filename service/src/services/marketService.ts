@@ -1040,13 +1040,21 @@ export interface SectorSpotItem {
   raw_main_inflow: number | null;
 }
 
+/**
+ * `/api/market/sectors` 的条数上限（route 与 service 共用，避免两处漂移）。
+ *
+ * 注意这不是真实天花板：东财 `clist/get` 单页硬上限 **100**（`pz` 传 200/500 也只回 100，要 `pn` 翻页），
+ * 而同花顺回退只有 90 个行业板块 —— 调大 `limit` 拿不到更多，见 `docs/market-sector-rank.md` §七.1。
+ */
+export const MARKET_SECTOR_MAX_LIMIT = 120;
+
 export async function getMarketSectorsFromAkshare(limit = 90): Promise<{
   items: SectorSpotItem[];
   source: string;
   data_date?: string;
   error?: string;
 }> {
-  const clampedLimit = Math.min(Math.max(limit, 1), 120);
+  const clampedLimit = Math.min(Math.max(limit, 1), MARKET_SECTOR_MAX_LIMIT);
 
   // Primary: EastMoney via provider
   try {

@@ -33,7 +33,7 @@
 
       <!-- 板块排行 Tab -->
       <div v-show="activeTab === 'sectors'" class="tab-content">
-        <SectorRank :limit="500" />
+        <SectorRank :limit="SECTOR_LIMIT" />
       </div>
 
       <!-- 快讯 Tab - 无限滚动，不设上限 -->
@@ -61,6 +61,10 @@ import FlashNews from './FlashNews.vue'
 import SectorRank from './SectorRank.vue'
 
 const activeTab = ref('overview')
+
+// `/api/market/sectors` 的 limit 上限（service 侧 `MARKET_SECTOR_MAX_LIMIT`）；
+// 东财单页实际最多 100 个，传更大的值没有意义。
+const SECTOR_LIMIT = 120
 
 const tabs = computed(() => [
   { key: 'overview', label: '综合概览', icon: 'Globe' },

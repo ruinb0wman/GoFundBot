@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../core/errors.js';
 import { sendSuccess } from '../core/response.js';
 import {
+  MARKET_SECTOR_MAX_LIMIT,
   fetchGoldRealtime,
   getAVolume7Days,
   getCombinedIndices,
@@ -87,7 +88,7 @@ marketRouter.get(
 marketRouter.get(
   '/sectors',
   asyncHandler(async (req, res) => {
-    const limit = Math.min(Math.max(parseInt(firstQueryValue(req.query.limit) ?? '90', 10) || 90, 1), 120);
+    const limit = Math.min(Math.max(parseInt(firstQueryValue(req.query.limit) ?? '90', 10) || 90, 1), MARKET_SECTOR_MAX_LIMIT);
     const result = await getMarketSectorsFromAkshare(limit);
     if (result.error) {
       res.json({
