@@ -119,7 +119,10 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **Proxy（2026-10-09 修正）**: 东财全系、腾讯、Binance、黄金（`api.jijinhao.com`）一律 `proxy: 'never'` = **真直连**；只有 Yahoo 兜底与搜索网关走 `proxy: 'auto'`。
   ⚠️ 以前 `never` 返回 `undefined`（= 随全局 `EnvHttpProxyAgent`）→ **标了直连其实仍然过代理**，这才是「push2 被反爬切断」的真正成因（09-29 的结论是在带代理的环境下测的）。实测：过代理时 push2 七个路径 0/3 全 RST，真直连时 `stock/get`、`clist/get`、`91.push2`、`push2his fflow` 都 3/3 通。详见 `.pi/plans/push2-resilience.md`。
 - **东财端点熔断**: `eastmoneyRequest.ts` 按 `host + pathname` 计数，连续 3 次失败 → 冷却 60s（快速失败，让上层立刻降级，而不是等满超时）。日志里出现 `eastmoney breaker open` 就说明该端点正被限流。粒度必须按端点：`ulist.np` 挂了不能连累 `clist/get`。
-- **IPv4 优先（2026-10-14）**: `core/fetch.ts` 导入时执行 `dns.setDefaultResultOrder('ipv4first')`。原因：`push2.eastmoney.com` 是多边缘双栈域名（CNAME 到 `push2ipv6.trafficmanager.cn`，A/AAAA 都有且每次都变），Node 默认 `verbatim` 会把 IPv6 边缘排前面，而 `net.connect` 的 Happy Eyeballs **首个候选被拒时不换族重试** → 直接 `UND_ERR_SOCKET`。实测同刻交错：默认 0/5、`ipv4first` 5/5。这是**偏好不是排除**（只有 AAAA 的主机照常走 IPv6）。详见 `.pi/plans/push2-resilience.md` §1.6。
+- **IPv4 优先（2026-10-14）**: `core/fetch.ts` 导入时执行 `dns.setDefaultResultOrder('ipv4first')`。原因：`push2.eastmoney.com` 是多边缘双栈域名（CNAME 到 `push2ipv6.trafficmanager.cn`，A/AAAA 都有且每次都变），Node 默认 `verbatim` 会把 IPv6 边缘排前面，而 `net.connect` 的 Happy Eyeballs **首个候选被拒时不换族重试** → 直接 `UND_ERR_SOCKET`。
+  - **机制已本地确定性复现**（不需要外网）：同一 hostname 的 `::1` 边缘 accept 后立刻 `destroy()`、`127.0.0.1` 边缘正常 → `verbatim` **0/3 失败**（`autoSelectFamily` 默认为 true 也没用），`ipv4first` **3/3 成功**且只命中 IPv4。回归测试 `service/__tests__/core/ipv4-first-fallback.test.ts`（反证：注释掉那行 → 用例红）。
+  - 外网同刻交错 A/B 也一致：默认 0/5、`ipv4first` 5/5、`family:4` 5/5（诊断脚本 `service/scripts/probe-push2.mts`，**不要连发**）。
+  - 这是**偏好不是排除**（只有 AAAA 的主机照常走 IPv6）。详见 `.pi/plans/push2-resilience.md` §5。
 - **海外行情源（2026-10-09）**: 全球指数主源是**腾讯** `qt.gtimg.cn`（覆盖 `usNDX/usDJI/usINX/hkHSI/hkHSCEI`），海外 K 线走腾讯 `newfqkline`，加密货币走 **Binance** `api.binance.com`；Yahoo 从主源降为「腾讯未收录标的」的兜底（本机实测直连与代理都不通）。标的真源在 `service/src/providers/globalIndexDefs.ts`，别在别处再抄一份代码表。详见 `.pi/plans/global-market-sources.md` 与 `docs/market-global.md`。
 - **Docs**: VitePress 构建的文档站，配置在 `docs/.vitepress/config.ts`（nav + sidebar）。模块级详细文档按功能目录组织（如 `docs/fund-screening/`），在侧边栏对应分组。文档通过 frontend `/docs/*` 代理访问。
 

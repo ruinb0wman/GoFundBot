@@ -265,7 +265,7 @@ bun run gen:tools      # 若改了 agent/ 下工具描述
 
 **与 §1.4 旧结论的关系**：§1.4 说「`--dns-result-order=ipv4first` 没改善、别当药方」——那个结论在**② 的窗口里做的**，而 ② 里换族毫无差别（§5.3 复现：family4 0/8、family6 0/8）。但 §5.2 在**① 的窗口里**测到同刻交错 0/5 → 5/5。两条都对：**`ipv4first` 只治边缘选择，不治限流**，所以「别指望它恢复 100%」这句继续成立。
 
-### 5.2 ① 的证据（`node /tmp/push2-probe.mjs`，同一分钟交错 A/B/C，`clist/get fs=m:90+t:2`）
+### 5.2 ① 的证据（`service/scripts/probe-push2.mts`，同一分钟交错 A/B/C，`clist/get fs=m:90+t:2`）
 
 | 变体 | 成功率 | 失败特征 |
 |---|---|---|
@@ -302,8 +302,25 @@ bun run gen:tools      # 若改了 agent/ 下工具描述
 
 验收（当天 ② 状态下）：`GET /api/market/breadth` → `upCount 918 / downCount 4213 / flatCount 83 / limitUp 39 / limitDown 13 / date 2026-10-14 / data_status available`，`meta.provider: akshare_legu`、`fallback: true`；pi 工具同值并带口径 note。
 
-### 5.6 仍未做
+### 5.6 ① 的机制已被**本地确定性复现**（2026-10-14，补 §5.2）
 
-1. `ipv4first` 只在 ① 窗口验证过一次（5 轮 15 请求），**没有**在恢复后做长样本回归；建议下次 push2 可用时各打 10–20 次做 A/B。
+外网 A/B 依赖「push2 恰好处于 ① 状态」，不可复现。改成**本地复刻故障形状**：同一 hostname（`localhost`）
+解析出 `::1` + `127.0.0.1`，`::1` 上的边缘 **accept 后立刻 `destroy()`**（即 push2 的 `other side closed`），
+`127.0.0.1` 上的边缘正常响应：
+
+| 解析顺序 | 3 次请求结果 | 备注 |
+|---|---|---|
+| `verbatim`（::1 在前） | **0/3 成功**，全部 `UND_ERR_SOCKET other side closed`（4–20ms） | `net.getDefaultAutoSelectFamily() === true` **也没用** → 首个候选「被拒」时不换族重试 |
+| `ipv4first` | **3/3 成功**（`ok-from-ipv4`），IPv4 边缘命中计数 = 3 | 没有一次落在 IPv6 |
+
+→ 「Happy Eyeballs 会救回来」这个想当然被证伪，`ipv4first` 的必要性成立。
+
+**已固化成回归测试** `service/src/__tests__/core/ipv4-first-fallback.test.ts`：用 `fetchUrl(..., { proxy: 'never' })`
+（生产同一条路径）打那个「IPv6 边缘拒连、IPv4 正常」的本地 host，断言拿到 `ok-from-ipv4` 且 IPv4 边缘恰好命中 1 次；
+没有 IPv6 环回的环境自动跳过。反证：把 `fetch.ts` 里那行注释掉 → 用例失败（`expected 6 to be 4`，即 ::1 又排到前面）。
+
+### 5.7 仍未做
+
+1. `ipv4first` 的**机制**已有本地确定性回归（§5.6）；缺的只是**外网长样本 A/B**（下次 push2 可用时各打 10–20 次，用仓库里的 `service/scripts/probe-push2.mts`，**别连发**）。
 2. 行业板块仍靠 akshare/THS 降级（`code` 空串 → 成分股不可用）；等 ② 稳定下来再考虑把 `fs=m:90+t:3`/`t:2` 接成**备源**（东财字段更全：真实 `BK` 代码、`f62` 主力净额、`f128/f136` 领涨股）。
 3. `www.cls.cn/nodeapi/telegraphList` 自 2026-10-10 起每小时触发 20–60 次熔断（快讯靠其他源顶着）——与 push2 无关，单独一笔。
