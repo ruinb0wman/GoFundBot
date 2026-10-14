@@ -50,4 +50,4 @@
 |------|------|------|------|
 | **fetch_fund** | `python/cli/fetch_fund.py` | `fund.eastmoney.com` (requests) | 单只/批量基金 NAV 历史、基本数据 |
 | ~~**backtest**~~ | ~~`python/cli/backtest.py`~~ | — | **已删除（2026-09-29）**：回测引擎现在在 `packages/core/src/backtest/`，前端与 service 共用 |
-| **data_complete** | `python/cli/data_complete.py` | `akshare` Python 库 | A 股列表、行业板块映射、行业板块行情回退（`sector_spot`→同花顺）、概念板块行情+驱动事件（`concept_spot`→同花顺）、大盘资金流向回退 |
+| **data_complete** | `python/cli/data_complete.py` | `akshare` Python 库 + 自抓同花顺（`cli/shared/ths_concept_flow.py`） | A 股列表、行业板块映射、行业板块行情回退（`sector_spot`→同花顺）、概念板块行情（`concept_spot`→同花顺，**自翻页不依赖 akshare 的 `page_info`**）+ 驱动事件、大盘资金流向回退 |

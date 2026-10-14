@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getMarketKline: vi.fn(),
   getAVolume7Days: vi.fn(),
   getMarketSectorConstituents: vi.fn(),
+  getMarketConceptSectorsFromAkshare: vi.fn(),
 }));
 
 vi.mock('../../services/marketService.js', async () => {
@@ -105,5 +106,62 @@ describe('行情细节工具', () => {
     expect(blank.body.data.result.data_status).toBe('unavailable');
     expect(blank.body.data.result.note).toContain('code 为空');
     expect(mocks.getMarketSectorConstituents).toHaveBeenCalledTimes(1); // 空 code 不请求上游
+  });
+
+  // 回归：`getMarketConceptSectorsFromAkshare` 返回的是 { items, source, data_date }，
+  // **不是** ServiceResult / 路由信封。曾经在这个 handler 里读 `body.data` → items 恒空，
+  // 工具永远报 unavailable，而 HTTP 路由一直是好的。
+  it('reads concept sectors from the service return shape (items), not a route envelope', async () => {
+    mocks.getMarketConceptSectorsFromAkshare.mockResolvedValue({
+      items: [
+        { name: '手机游戏', code: '', change_pct: '+2.27%', raw_change: 2.27, main_inflow: '+11.46亿', raw_main_inflow: 1146000000 },
+        { name: '短剧游戏', code: '', change_pct: '+2.09%', raw_change: 2.09, main_inflow: '+21.91亿', raw_main_inflow: 2191000000 },
+      ],
+      source: 'akshare_ths',
+      data_date: '2026-10-14',
+    });
+
+    const app = await createApp();
+    const res = await call(app, 'get_concept_sectors', { limit: 5 });
+    expect(mocks.getMarketConceptSectorsFromAkshare).toHaveBeenCalledWith(5);
+    expect(res.body.data.result).toMatchObject({
+      data_status: 'available',
+      date: '2026-10-14',
+      source: 'akshare_ths',
+      count: 2,
+    });
+    expect(res.body.data.result.items.map((i: { name: string }) => i.name)).toEqual(['手机游戏', '短剧游戏']);
+  });
+
+  it('tells the model when concept sectors came from the serve-stale fallback', async () => {
+    mocks.getMarketConceptSectorsFromAkshare.mockResolvedValue({
+      items: [
+        { name: '手机游戏', code: '', change_pct: '+2.27%', raw_change: 2.27, main_inflow: '+11.46亿', raw_main_inflow: 1146000000 },
+      ],
+      source: 'akshare_ths',
+      data_date: '2026-10-14',
+      stale: true,
+      stale_reason: '概念板块本次抓取失败（超时），返回 90s 前的快照',
+    });
+
+    const app = await createApp();
+    const res = await call(app, 'get_concept_sectors', { limit: 5 });
+    expect(res.body.data.result).toMatchObject({ data_status: 'available', count: 1, stale: true });
+    expect(res.body.data.result.note).toContain('本次抓取失败');
+    expect(res.body.data.result.note).toContain('90s 前的快照');
+  });
+
+  it('keeps concept sectors unavailable (with the upstream error) when the source fails', async () => {
+    mocks.getMarketConceptSectorsFromAkshare.mockResolvedValue({
+      items: [],
+      source: 'failed',
+      data_date: '',
+      error: '概念板块数据源不可用',
+    });
+
+    const app = await createApp();
+    const res = await call(app, 'get_concept_sectors', { limit: 5 });
+    expect(res.body.data.result).toMatchObject({ data_status: 'unavailable', count: 0, items: [] });
+    expect(res.body.data.result.note).toContain('概念板块数据源不可用');
   });
 });

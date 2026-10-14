@@ -26,7 +26,7 @@ GET /api/market/sectors?limit=90
 | Route | `service/src/routes/market.routes.ts:88` | `GET /api/market/sectors` |
 | service | `service/src/services/marketService.ts:1003` | `getMarketSectorsFromAkshare()` 编排 |
 | service | `service/src/services/marketService.ts:522` | `getMarketSectors()` EastMoney 主路 |
-| service | `service/src/services/marketService.ts:1091` | `getMarketConceptSectorsFromAkshare()` 概念板块 |
+| service | `service/src/services/marketService.ts:1156` | `getMarketConceptSectorsFromAkshare()` 概念板块 |
 | Provider | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts:143` | `sectors()` 东方财富实现 |
 | Python 回退 | `python/cli/data_complete.py` | `--source akshare --type sector_spot` |
 | frontend API | `frontend/src/services/api.ts:106` | `getSectorRank()` |
@@ -115,22 +115,31 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type sec
 3. **Python 回退较慢**：akshare 数据通常在 10-30 秒内返回，超时 60s。
 4. **数据日期标记**：非交易日返回最后交易日数据，前端标记 `stale`。
 5. **退化的 `code`**：同花顺回退不提供板块代码，`code` 为空串，因此 `/api/market/sectors/:code/constituents` 对该批数据不可用。
-6. **push2 `clist/get` 被封**：`push2.eastmoney.com/api/qt/clist/get`（行业+概念板块列表）在本机直连与代理下均被切断（`SSL_read: unexpected eof`）；同一 host 的 `ulist.np/get`（涨跌家数）与 `push2his`/`push2ex`/`datacenter-web` 正常。实测 2026-09-29 服务日志里板块是该日**唯一**持续报错的调用（26/26 次）。
+6. **push2 `clist/get` 不稳（2026-10-14 实测仍未恢复）**：`push2.eastmoney.com/api/qt/clist/get`（行业+概念板块列表）常被切断（`SSL_read: unexpected eof`）；同一 host 的 `ulist.np/get`（涨跌家数）正常。2026-10-14 复测：`m:90+t:3`（概念）1/5、`m:90+t:2`（行业）**0/5** 成功，日志里 `eastmoney breaker open`。同一域名 DNS 是 CNAME 到 **`push2ipv6.trafficmanager.cn`（带 AAAA）**，`curl -6` 必挂、`-4` 才可能通 → 想治得先强制 IPv4（尚未做）。
+7. **`fs=m:90+t:3` 才是概念板块**（东财口径，`total=506`，字段比同花顺全：真实 `code`=BKxxxx / `f62` 主力净额 / `f128`+`f136` 领涨股 / `f104`+`f105` 涨跌家数）。上面第 6 条修好后可作为**备源**，好处是能拿到真实板块代码（同花顺那条 `code` 恒为空串）。现在**没接**，因为成功率太低。
 
 ## 八、概念板块（AI 对话工具）
 
-概念板块目前只在 AI 对话/分析里通过 `get_concept_sectors` 工具暴露，没有独立页面。它**不走** EastMoney（原因见 §七.6），直接以 akshare 为唯一数据源。
+概念板块目前只在 AI 对话/分析里通过 `get_concept_sectors` 工具暴露，没有独立页面。它**不走** EastMoney（原因见 §七.6），直接以同花顺为唯一数据源（**自己翻页抓**，不再经由 akshare 的资金流函数）。
 
 ```
 GET /api/market/concept-sectors?limit=20
   → market.routes.ts → getMarketConceptSectorsFromAkshare()
+      · 25s 新鲜缓存（挡住连打），失败时 10min 内降级返回上一份好结果并标 stale=true
     → data_complete.py --source akshare --type concept_spot
-      ├── ak.stock_fund_flow_concept(symbol="即时")   # 行情主表：387 个概念，按涨跌幅降序（每次现取 ~2s）
-      └── ak.stock_board_concept_summary_ths()        # 驱动事件（约 10s，单独 file_cache 24h；失败不落盘、降级为空事件表）
-    → {success, data: [...], total_count, data_date, source}
+      ├── cli/shared/ths_concept_flow.py fetch_concept_spot_df()  # 行情主表，按涨跌幅降序（现取 ~2s）
+      └── ak.stock_board_concept_summary_ths()                    # 驱动事件（约 10s，单独 file_cache 24h；失败不落盘、降级为空事件表）
+    → {success, data: [...], total_count, data_date, source, stale}
   → 消费方（目前只有服务端工具 `service/src/agent/toolsMarket.ts` 的 get_concept_sectors；**前端暂无概念板块面板**）
-    注意：该路由的 `data` 是**扁平数组**（不是 `{items}`），按数组解析
+    注意：路由响应的 `data` 是**扁平数组**，而 `getMarketConceptSectorsFromAkshare()` 返回的是 `{ items, source, data_date }`
+    —— 工具 handler 直接调服务函数时**要读 `items`**，照抄路由信封读 `data` 会恒返回空（见下）
 ```
+
+### 两个已踩的坑（2026-10-14 修）
+
+1. **工具 handler 读错字段 → 永远 `unavailable`**：`toolsMarket.ts` 曾读 `body?.data`，而服务函数返回 `{ items, ... }`，且 `unwrapServiceResult` 对非 ServiceResult 原样穿透 → `items` 恒空。**判据：工具返回里 `date`/`source` 有值但 `count: 0`**，同时 HTTP 路由正常。已加回归测试（`service/src/__tests__/agent/toolsMarket.test.ts`），并约定：工具测试的 mock **按服务函数真实返回形状写**，不要用 `serviceResult()` 信封包。
+2. **akshare 依赖 `span.page_info`**：`ak.stock_fund_flow_concept` 先请求列表页、从 HTML 取分页控件算总页数，而同花顺常**只给表格、不给分页控件**（实测同一分钟 5/5 无 page_info、25 行数据都在）→ `AttributeError: 'NoneType' object has no attribute 'text'`。已换成 `python/cli/shared/ths_concept_flow.py` 自己翻页：`page_info` 有就用、没有就翻到空页；拿不到表格才重试（0 行表 = 正常终止页不重试）；带 15s 超时。该端点**不校验 `hexin-v`**，因此不需要 py_mini_racer/akshare 私有 helper。
+   - 注意：同花顺的 CDN **同时发多个版本**（同一分钟内 `page_info` 时而 8、时而 3，连续三次取数 337/250/200 行，甚至榜首不同）→ **头部可靠、尾部可能被截短**，按 `limit` 取前 N 名没问题，**别当全量概念清单用**。
 
 | 字段 | 来源 | 说明 |
 |------|------|------|
@@ -148,5 +157,6 @@ GET /api/market/concept-sectors?limit=20
 > （行业板块 2026-10-13 就这么踩过：`fix(frontend): 行业板块涨跌幅整列显示 --`）。
 
 工具返回 `data_status: 'available'`，`note` 里说明 `event_date` 的口径；数据源失败时返回 `data_status: 'unavailable'` + 空 `items`，避免模型编造概念板块表现。
+若走了 serve-stale 兜底，返回里带 `stale: true` 与 `stale_reason`（`note` 开头会提示“本次抓取失败，items 是上一份快照”），模型应说明数据是快照而非实时。
 
 > 对话里的工具状态条：请求成功但**没有可用数据**时显示黄色感叹号 + 「暂无数据」（`toolResultStatus.ts` 判定，`ToolCallStatus.status = 'empty'`）。注意判定按**数据内容**而非 `data_status`——北向资金恒为 `unavailable` 但成交总额有效，不会触发黄色提示。

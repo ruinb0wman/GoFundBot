@@ -137,6 +137,8 @@ marketRouter.get(
       update_time: new Date().toISOString(),
       data_date: result.data_date || '',
       source: result.source,
+      // true = 本次抓取失败，这里是上一次的好结果（service 的 serve-stale 缓存）。
+      stale: result.stale === true,
     });
   })
 );

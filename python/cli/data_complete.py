@@ -37,6 +37,7 @@ except ImportError:
 from _template import run_script  # noqa: E402
 
 from cli.shared.file_cache import file_cache  # noqa: E402
+from cli.shared.ths_concept_flow import fetch_concept_spot_df  # noqa: E402
 
 _REQUESTS_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -319,10 +320,10 @@ def _concept_events():
 
 def complete_concept_spot():
     """
-    Fetch real-time concept board spot data from akshare (THS source),
-    enriched with the driver event from the THS concept summary.
+    Fetch real-time concept board spot data from THS (同花顺概念资金流，自己翻页，
+    见 `cli/shared/ths_concept_flow.py`), enriched with the driver event from the THS concept summary.
 
-    故意不加 @file_cache：概念行情是盘中数据，每次调用都要新鲜（约 1.5s）；
+    故意不加 @file_cache：概念行情是盘中数据，每次调用都要新鲜（约 2s）；
     慢的驱动事件已在 _concept_events 里单独缓存 24h。
 
     Returns dict with keys:
@@ -343,11 +344,11 @@ def complete_concept_spot():
         events = {}
 
     try:
-        df = ak.stock_fund_flow_concept(symbol="即时")
+        df = fetch_concept_spot_df()
     except Exception as e:
-        raise RuntimeError(f"akshare concept spot failed: {e}") from e
+        raise RuntimeError(f"同花顺概念资金流获取失败: {e}") from e
     if df is None or df.empty:
-        raise RuntimeError("akshare concept spot returned no rows")
+        raise RuntimeError("同花顺概念资金流返回空表")
 
     rows = []
     for _, row in df.iterrows():

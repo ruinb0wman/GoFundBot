@@ -16,6 +16,7 @@ import {
   getMarketSectorsFromAkshare,
   getNorthFlow,
 } from '../services/marketService.js'
+import type { ConceptSpotItem } from '../services/marketService.js'
 
 const limit = (description: string) => z.number().int().min(1).max(120).optional().describe(description)
 
@@ -91,17 +92,22 @@ export const marketTools = [
     readOnly: true,
     async handler(args) {
       const body = (unwrapServiceResult(await getMarketConceptSectorsFromAkshare(args.limit ?? 10)) ?? {}) as unknown as Record<string, unknown>
-      // 该路由的 data 是扁平数组（与 /market/sectors 同款信封）。
-      const items = Array.isArray(body?.data) ? body.data : []
+      // 注意：不要照抄路由响应信封。`getMarketConceptSectorsFromAkshare` 直接返回
+      // `{ items, source, data_date, error }`（不是 ServiceResult，`unwrapServiceResult` 只会原样穿透），
+      // 曾经在这里读 `body.data` → items 恒空、工具永远 unavailable，而路由一直是好的。
+      const items = Array.isArray(body?.items) ? (body.items as ConceptSpotItem[]) : []
+      const stale = body?.stale === true
       return {
         data_status: items.length > 0 ? 'available' : 'unavailable',
         date: body?.data_date ?? '',
         source: body?.source ?? '',
+        stale,
         count: items.length,
         items,
         note:
           items.length > 0
-            ? 'items 按当日涨跌幅降序；event 为同花顺概念简介的驱动事件，event_date 为数据源标注的事件日期（可能早于当日，不要当作行情日期）。'
+            ? (stale ? `注意：${body?.stale_reason ?? '本次抓取失败，items 是上一份快照'}。` : '') +
+              'items 按当日涨跌幅降序；event 为同花顺概念简介的驱动事件，event_date 为数据源标注的事件日期（可能早于当日，不要当作行情日期）。'
             : body?.error || '概念板块数据本次未取到，请勿据此判断概念板块表现。',
       }
     },

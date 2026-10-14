@@ -1130,20 +1130,47 @@ export interface ConceptSpotItem {
 }
 
 /**
- * 概念板块行情（同花顺资金流 `stock_fund_flow_concept`，经 Python akshare）。
+ * 概念板块行情（同花顺概念资金流，经 Python `data_complete.py --type concept_spot`）。
  *
  * 为什么不走 ProviderChain / EastMoney：板块接口在 push2 `.../qt/clist/get`，
- * 该路径在本机与代理下均被反爬切断（SSL EOF），行业板块也已在用 akshare 降级，
- * 概念板块因此直接以 akshare 为唯一数据源（见 AGENTS.md「已知问题」）。
+ * 该路径被反爬/限流切断（2026-10-14 实测 `m:90+t:3` 1/5、`m:90+t:2` 0/5 成功），
+ * 行业板块也已在用 akshare 降级，概念板块因此以同花顺为唯一数据源（见 AGENTS.md「已知问题」）。
+ *
+ * 这条路是**现抓**（每次 1 次 Python spawn + 同花顺多页请求，约 2s），而上游会瞬时限流/降级
+ * （页面只给表格不给分页控件、甚至整页无表格）。所以这里兜两层：
+ *  - `CONCEPT_FRESH_MS` 内直接复用上一次好结果（挡住连着调）；
+ *  - 抓失败时，若手上还有 `CONCEPT_STALE_MS` 内的好结果，就返回它并标 `stale`，
+ *    而不是给用户一个空卡片。
  */
+const CONCEPT_FRESH_MS = 25_000;
+const CONCEPT_STALE_MS = 10 * 60_000;
+
+let conceptSpotLastGood: { items: ConceptSpotItem[]; source: string; data_date: string; at: number } | null = null;
+
+/** 测试用：清掉概念板块的最近一次好结果。 */
+export function resetConceptSpotCache(): void {
+  conceptSpotLastGood = null;
+}
+
 export async function getMarketConceptSectorsFromAkshare(limit = 20): Promise<{
   items: ConceptSpotItem[];
   source: string;
   data_date?: string;
   error?: string;
+  /** true = 本次抓取失败，返回的是 `CONCEPT_STALE_MS` 内的上一份好结果。 */
+  stale?: boolean;
+  /** 仅 `stale=true` 时有值：为什么降级用了旧快照。 */
+  stale_reason?: string;
 }> {
   const clampedLimit = Math.min(Math.max(limit, 1), 60);
 
+  const lastGood = conceptSpotLastGood;
+  const lastGoodAge = lastGood ? Date.now() - lastGood.at : Infinity;
+  if (lastGood && lastGoodAge < CONCEPT_FRESH_MS) {
+    return { source: lastGood.source, data_date: lastGood.data_date, items: lastGood.items.slice(0, clampedLimit) };
+  }
+
+  let failureReason = '';
   try {
     const spotResult = await runPython<Record<string, unknown>>('data_complete.py', {
       args: ['--source', 'akshare', '--type', 'concept_spot'],
@@ -1155,16 +1182,31 @@ export async function getMarketConceptSectorsFromAkshare(limit = 20): Promise<{
       : ((rawSpot as { items?: ConceptSpotItem[] } | undefined)?.items ?? []);
     const spotDate = Array.isArray(rawSpot) ? '' : ((rawSpot as { date?: string } | undefined)?.date ?? '');
     if (spotItems.length > 0) {
+      conceptSpotLastGood = { items: spotItems, source: 'akshare_ths', data_date: spotDate, at: Date.now() };
       return {
         source: 'akshare_ths',
         data_date: spotDate,
         items: spotItems.slice(0, clampedLimit),
       };
     }
+    failureReason = 'empty result';
   } catch (err) {
+    failureReason = err instanceof Error ? err.message : String(err);
     logger.error('Akshare concept sectors failed', {
-      error: err instanceof Error ? err.message : String(err),
+      error: failureReason,
     });
+  }
+
+  // 抓取失败／空结果：手上还有 10 分钟内的好结果就降级用它（标 stale），不返回空卡片。
+  if (lastGood && lastGoodAge < CONCEPT_STALE_MS) {
+    logger.warn('Concept sectors serving stale snapshot', { ageMs: lastGoodAge, reason: failureReason });
+    return {
+      source: lastGood.source,
+      data_date: lastGood.data_date,
+      items: lastGood.items.slice(0, clampedLimit),
+      stale: true,
+      stale_reason: `概念板块本次抓取失败（${failureReason}），返回 ${Math.round(lastGoodAge / 1000)}s 前的快照`,
+    };
   }
 
   return {
