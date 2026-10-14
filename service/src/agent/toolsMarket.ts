@@ -145,12 +145,14 @@ export const marketTools = [
     name: 'get_market_breadth',
     label: '获取涨跌统计',
     description:
-      '获取市场涨跌统计：沪深两市合计的上涨/下跌/平盘家数（scope 字段标注口径），以及涨停/跌停家数（limit_up/limit_down 可能为 null，不代表 0）。',
+      '获取市场涨跌统计：沪深两市合计的上涨/下跌/平盘家数（scope 字段标注口径），以及涨停/跌停家数（limit_up/limit_down 可能为 null，不代表 0）。东财 push2 被限流时会回退到乐咕乐股（provider 字段标注来源，家数口径与东财会差几十只，别与其他来源逐位对比）。',
     promptSnippet: 'get_market_breadth(): 沪深两市涨跌家数 + 涨跌停家数',
     params: z.object({}),
     readOnly: true,
     async handler() {
-      const d = (unwrapServiceResult(await getMarketBreadth()) ?? {}) as unknown as Record<string, unknown>
+      // 需要 ServiceResult 上的 provider/fallback（回退源的数值口径与东财不同，得告诉模型）
+      const res = await getMarketBreadth()
+      const d = (unwrapServiceResult(res) ?? {}) as unknown as Record<string, unknown>
       const hasLimitCounts = d.limitUp != null || d.limitDown != null
       // service 是权威（DTO 自带 data_status），这里只保留一个兼容回退
       const total = Number(d.total ?? 0)
@@ -160,8 +162,21 @@ export const marketTools = [
           : total > 0
             ? 'available'
             : 'unavailable'
+      const notes: string[] = []
+      if (res.fallback) {
+        notes.push(
+          `本次涨跌家数来自备用源 ${res.provider}（东财 push2 不可用），家数口径与东财略有出入，不要与其他来源逐位对比`,
+        )
+      }
+      if (dataStatus !== 'available') {
+        notes.push(d.error ? `涨跌家数本次未取到：${String(d.error)}` : '涨跌家数本次未取到（数据源异常或尚未更新），请勿据此判断市场涨跌结构')
+      } else if (!hasLimitCounts) {
+        notes.push('涨停/跌停家数本次未取到，仅涨跌家数有效')
+      }
       return {
         data_status: dataStatus,
+        provider: res.provider,
+        fallback: res.fallback,
         scope: d.scope ?? '沪深两市',
         date: d.date ?? '',
         up_count: d.upCount,
@@ -170,14 +185,7 @@ export const marketTools = [
         limit_up: d.limitUp ?? null,
         limit_down: d.limitDown ?? null,
         total: d.total,
-        note:
-          dataStatus === 'available'
-            ? hasLimitCounts
-              ? undefined
-              : '涨停/跌停家数本次未取到，仅涨跌家数有效'
-            : d.error
-              ? `涨跌家数本次未取到：${String(d.error)}`
-              : '涨跌家数本次未取到（数据源异常或尚未更新），请勿据此判断市场涨跌结构',
+        note: notes.length > 0 ? notes.join('；') : undefined,
       }
     },
   }),

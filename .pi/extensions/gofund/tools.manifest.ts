@@ -109,7 +109,7 @@ export const STATIC_MANIFEST = {
     {
       "name": "get_market_breadth",
       "label": "获取涨跌统计",
-      "description": "获取市场涨跌统计：沪深两市合计的上涨/下跌/平盘家数（scope 字段标注口径），以及涨停/跌停家数（limit_up/limit_down 可能为 null，不代表 0）。",
+      "description": "获取市场涨跌统计：沪深两市合计的上涨/下跌/平盘家数（scope 字段标注口径），以及涨停/跌停家数（limit_up/limit_down 可能为 null，不代表 0）。东财 push2 被限流时会回退到乐咕乐股（provider 字段标注来源，家数口径与东财会差几十只，别与其他来源逐位对比）。",
       "promptSnippet": "get_market_breadth(): 沪深两市涨跌家数 + 涨跌停家数",
       "readOnly": true,
       "parameters": {

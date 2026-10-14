@@ -95,7 +95,7 @@ return fetchUrl<string>(url, { timeoutMs, proxy: 'auto', headers: { Referer: ref
 | 接口 / 能力 | 上游 | 失败时表现 | 兜底 | 严重度 |
 |---|---|---|---|---|
 | `/api/market/sectors` | push2 `clist/get` | akshare 降级（每次 spawn Python ~1s）；全挂 → 「暂无数据」 | ✅ | **高**（今天 168 次失败 / 142 次 Python） |
-| `/api/market/breadth` | push2 `ulist.np` | **全 0 + success:true + 缓存 15s** | ❌ | **高**（静默撒谎） |
+| `/api/market/breadth` | push2 `ulist.np` | ~~全 0 + success:true + 缓存 15s~~ 已改为 `data_status: unavailable`（2026-10-09）；2026-10-14 加乐咕回退（见 §5.5） | ✅ akshare 乐咕 | **高** |
 | `/api/stocks/:code/reference` | push2 `stock/get` | 抛错 → 个股弹窗缺信息 | ❌ | 中 |
 | `/api/market/sectors/:code/constituents`、pi `get_sector_constituents` | push2 `clist/get` | 503 | ❌ | 中 |
 | `/api/alerts/market-anomaly` | sectors | 少报板块异动（静默） | — | 中 |
@@ -251,3 +251,59 @@ bun run gen:tools      # 若改了 agent/ 下工具描述
 1. push2 仍会限流（无法根除）：例子是同一分钟内 `ulist.np` 可用、`clist/get` 与 `91.push2` 被限——所以降级链 + 熔断必须保留。
 2. 个股资金流 `push2 .../fflow/daykline` 直连下仍 `rc:100, data:null`，且无调用方 → 建议删（P2）。
 3. 开发环境注意：一天 47 次重启时**多个进程会同时写同一个日志文件**（导致行序错乱、`eastmoney breaker open` 重复出现），排查时不要把它当成 bug。
+
+---
+
+## 5. 追加（2026-10-14）：IPv4 优先 + breadth 回退源
+
+### 5.1 结论：两层独立故障，别混为一谈
+
+| 故障 | 表现 | 是否已治 | 证据 |
+|---|---|---|---|
+| ① **边缘选择** | 默认 `verbatim` 把 IPv6 边缘排前，Node 的 Happy Eyeballs 在**首个候选被拒时不换族重试** → 直接 `UND_ERR_SOCKET`（~165ms） | ✅ `dns.setDefaultResultOrder('ipv4first')` | §5.2 |
+| ② **主机级限流** | 密集请求后**整段拒绝**，IPv4/IPv6 一起挂，同一路径几分钟内 200/000 交替，实测持续 >3 小时 | ❌ 治不了（只能靠降级链 + 熔断） | §5.3 |
+
+**与 §1.4 旧结论的关系**：§1.4 说「`--dns-result-order=ipv4first` 没改善、别当药方」——那个结论在**② 的窗口里做的**，而 ② 里换族毫无差别（§5.3 复现：family4 0/8、family6 0/8）。但 §5.2 在**① 的窗口里**测到同刻交错 0/5 → 5/5。两条都对：**`ipv4first` 只治边缘选择，不治限流**，所以「别指望它恢复 100%」这句继续成立。
+
+### 5.2 ① 的证据（`node /tmp/push2-probe.mjs`，同一分钟交错 A/B/C，`clist/get fs=m:90+t:2`）
+
+| 变体 | 成功率 | 失败特征 |
+|---|---|---|
+| A 默认（`verbatim`） | **0/5** | 全部 `UND_ERR_SOCKET other side closed`，~165ms |
+| B `dns.setDefaultResultOrder('ipv4first')` | **5/5** | 60–300ms |
+| C `new Agent({ connect: { family: 4 } })` | **5/5** | 60–240ms |
+
+补充事实（别写成「IPv6 坏了」）：
+- `push2.eastmoney.com` 是 CNAME 到 `push2ipv6.trafficmanager.cn` 的**多边缘双栈**域名，A/AAAA 都在且**每次解析的 IP 都不同**（实测 A 见过 `14.103.191.91` / `117.184.33.102`，AAAA 见过 `240e:e1:...` / `2406:d440:...`）。
+- 手工 `openssl s_client -connect [AAAA]:443 -servername push2.eastmoney.com` **能成功**（TLS 1.3、证书 OK）→ 不是静态的「IPv6 不可达」，而是「被分到的那个边缘在拒我们，且不会换族重试」。
+- 选 `ipv4first` 而不是 `connect:{family:4}`：前者是**偏好不是排除**，只有 AAAA 的主机照常走 IPv6，IPv6 仍作为 Happy Eyeballs 备选。
+
+### 5.3 ② 的证据（同一 host、交错、`family` 只按族区分）
+
+| 时刻 | 探测 | 结果 |
+|---|---|---|
+| 被限流窗口内 | `clist/get`：`family 4` vs `family 6`（各 8 次，交错） | 0/8 vs 0/8（**换族无用**） |
+| 同上 | `curl -4` / `curl -6` 交替打 `clist/get`、`ulist.np/get` | 200 与 000 随机交替，与族无关 |
+| 同上 | 服务 `/api/market/breadth` | `unavailable`（`fetch failed`），日志 `eastmoney breaker open: push2.eastmoney.com/api/qt/ulist.np/get` |
+| 静默 15 分钟后再探测 | `ulist.np/get` IPv4/IPv6 | 仍 000 → **单次限流可持续数小时**（与 §1.4 的「26/26 一整天」一致） |
+
+### 5.4 教训：**不要对 push2 连发探测请求**
+
+今天 13:36 之前 `breadth`/`clist/get` 都还有数据；从 13:59 起我用 `for` 循环连发了几十个探测请求（`clist/get` 5×2、家族对比 8×2×2、A/B/C 交错 12×3 …），整条 host 就进入 ② 状态并持续到当天收盘后。**要复核 push2，用服务自己的端点（带熔断 + 缓存）或单发一次，别用循环。**
+
+### 5.5 顺带修掉的真缺口：`breadth` 原本没有兜底
+
+§2 表里 `breadth` 那行「兜底 ❌」在 ② 期间就是**整小时不可用**（pi 工具只能报 unavailable）。已补第二源：
+
+- `python/cli/data_complete.py --type breadth` → akshare `stock_market_activity_legu()`（乐咕乐股）：`上涨/下跌/平盘/涨停/跌停` + 统计日期，~2s，失败 **raise**（不返回空表）。
+- `getMarketBreadth()`：东财 → 失败/`unavailable` → 乐咕；回退结果 `provider: 'akshare_legu'`、`fallback: true`，缓存 **60s**（东财那条仍 15s）；全挂仍 `200 + unavailable`，`error` 带两边原因；`unavailable` 一律不缓存。
+- pi 工具 `get_market_breadth` 输出加 `provider`/`fallback`，回退时 `note` 明确写「口径与东财略有出入，不要与其他来源逐位对比」。
+- **口径差异**（别逐位对齐）：东财 = 上证指数/深证成指的 `f104/f105/f106` 相加（沪深合计 ~5290），乐咕 = 它自己统计的全市场家数（~5210，另单列「停牌」11）；涨停/跌停一边取 push2ex 涨跌停池、一边取乐咕「涨停/跌停」列（含 ST）。
+
+验收（当天 ② 状态下）：`GET /api/market/breadth` → `upCount 918 / downCount 4213 / flatCount 83 / limitUp 39 / limitDown 13 / date 2026-10-14 / data_status available`，`meta.provider: akshare_legu`、`fallback: true`；pi 工具同值并带口径 note。
+
+### 5.6 仍未做
+
+1. `ipv4first` 只在 ① 窗口验证过一次（5 轮 15 请求），**没有**在恢复后做长样本回归；建议下次 push2 可用时各打 10–20 次做 A/B。
+2. 行业板块仍靠 akshare/THS 降级（`code` 空串 → 成分股不可用）；等 ② 稳定下来再考虑把 `fs=m:90+t:3`/`t:2` 接成**备源**（东财字段更全：真实 `BK` 代码、`f62` 主力净额、`f128/f136` 领涨股）。
+3. `www.cls.cn/nodeapi/telegraphList` 自 2026-10-10 起每小时触发 20–60 次熔断（快讯靠其他源顶着）——与 push2 无关，单独一笔。

@@ -119,6 +119,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **Proxy（2026-10-09 修正）**: 东财全系、腾讯、Binance、黄金（`api.jijinhao.com`）一律 `proxy: 'never'` = **真直连**；只有 Yahoo 兜底与搜索网关走 `proxy: 'auto'`。
   ⚠️ 以前 `never` 返回 `undefined`（= 随全局 `EnvHttpProxyAgent`）→ **标了直连其实仍然过代理**，这才是「push2 被反爬切断」的真正成因（09-29 的结论是在带代理的环境下测的）。实测：过代理时 push2 七个路径 0/3 全 RST，真直连时 `stock/get`、`clist/get`、`91.push2`、`push2his fflow` 都 3/3 通。详见 `.pi/plans/push2-resilience.md`。
 - **东财端点熔断**: `eastmoneyRequest.ts` 按 `host + pathname` 计数，连续 3 次失败 → 冷却 60s（快速失败，让上层立刻降级，而不是等满超时）。日志里出现 `eastmoney breaker open` 就说明该端点正被限流。粒度必须按端点：`ulist.np` 挂了不能连累 `clist/get`。
+- **IPv4 优先（2026-10-14）**: `core/fetch.ts` 导入时执行 `dns.setDefaultResultOrder('ipv4first')`。原因：`push2.eastmoney.com` 是多边缘双栈域名（CNAME 到 `push2ipv6.trafficmanager.cn`，A/AAAA 都有且每次都变），Node 默认 `verbatim` 会把 IPv6 边缘排前面，而 `net.connect` 的 Happy Eyeballs **首个候选被拒时不换族重试** → 直接 `UND_ERR_SOCKET`。实测同刻交错：默认 0/5、`ipv4first` 5/5。这是**偏好不是排除**（只有 AAAA 的主机照常走 IPv6）。详见 `.pi/plans/push2-resilience.md` §1.6。
 - **海外行情源（2026-10-09）**: 全球指数主源是**腾讯** `qt.gtimg.cn`（覆盖 `usNDX/usDJI/usINX/hkHSI/hkHSCEI`），海外 K 线走腾讯 `newfqkline`，加密货币走 **Binance** `api.binance.com`；Yahoo 从主源降为「腾讯未收录标的」的兜底（本机实测直连与代理都不通）。标的真源在 `service/src/providers/globalIndexDefs.ts`，别在别处再抄一份代码表。详见 `.pi/plans/global-market-sources.md` 与 `docs/market-global.md`。
 - **Docs**: VitePress 构建的文档站，配置在 `docs/.vitepress/config.ts`（nav + sidebar）。模块级详细文档按功能目录组织（如 `docs/fund-screening/`），在侧边栏对应分组。文档通过 frontend `/docs/*` 代理访问。
 
@@ -246,8 +247,11 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 
 - 规则：HTTP 仍 `200`（与 `get_north_flow` 的 `data_status` 同一约定），但 **`unavailable` 结果不进 15s 缓存**
   —— 否则一次瞬时失败会把「0 家上涨」钉住 15s。
-- 消费方：pi 工具 `get_market_breadth` 直接读 DTO 的 `data_status`（不再用 `total > 0` 反推）；前端无 breadth UI。
+- 消费方：pi 工具 `get_market_breadth` 直接读 DTO 的 `data_status`（不再用 `total > 0` 反推）；前端无 breadth UI。工具输出带 `provider`/`fallback`，回退时 `note` 会提醒口径不同。
 - 排查：`upCount/downCount` 全 0 时先看 `data_status`/`error`，**不要**读成「今天 0 家上涨」。
+- **回退源（2026-10-14）**：东财 push2 `ulist.np/get` 是**主机级限流**的（密集请求后 IPv4/IPv6 一起被拒，实测 >3 小时），而它原本是 breadth 的**唯一**来源 → 期间只能报 unavailable。现已加第二源：`data_complete.py --type breadth` = akshare `stock_market_activity_legu()`（乐咕乐股）→ `上涨/下跌/平盘/涨停/跌停` + 统计日期（~2s）。
+  - 回退结果的 `provider` 是 `akshare_legu`、`fallback: true`，缓存 **60s**（东财正宗那条仍 15s）。全源都挂时仍 `200 + unavailable`，`error` 里同时带两边的失败原因。
+  - **口径不同，别逐位对齐**：东财是「上证指数/深证成指成分的 f104/f105/f106 相加」（沪深合计 ~5290），乐咕是它自己统计的全市场家数（~5210，还单列「停牌」）；涨停/跌停东财取 push2ex 涨跌停池，乐咕取它的「涨停/跌停」列（含 ST）。2026-10-14 两边对比：东财 13:36 盘中 1372/3796/123，乐咕收盘 918/4213/83（时间点不同，不能直接当差异）。
 
 ### 板块数据 (market sectors)
 
@@ -259,7 +263,9 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
   2. **akshare 的 `stock_fund_flow_concept` 依赖 `span.page_info`**：它先请求列表页、从 HTML 里取分页控件的总页数，而同花顺在 CDN/限流下经常**只给表格、不给分页控件**（实测同一分钟内 5/5 没有 page_info、但 25 行数据都在）→ `AttributeError: 'NoneType' object has no attribute 'text'`。已改成自己翻页（`_fetch_page` 拿不到表格才重试、**0 行表 = 正常终止页不重试**；`page_info` 有就用、没有就翻到空页），并补了 15s 超时（akshare 那条是裸 `requests` 无 timeout）。实测该端点**不校验 `hexin-v`**（无 token/假 token/无 UA 都一样），所以不需要 py_mini_racer。
   - **同花顺会同时发多个数据版本**：同一分钟内 `page_info` 时而 8、时而 3，连续三次取数得到 337/250/200 行、甚至榜首不同 → **头部（前几页）可靠、尾部可能被截短**，按 limit 取前 N 名不受影响，别当「全量概念清单」用。
   - **兜底**：`getMarketConceptSectorsFromAkshare` 带 25s 新鲜缓存 + 10min serve-stale（失败返回上一份好结果并标 `stale: true` / `stale_reason`，路由与 pi 工具都会透出 `stale`）——一次瞬时抖动不再变成空卡片。
-- **push2 现状补充（2026-10-14 实测）**：`clist/get` 仍不稳（`m:90+t:3` 概念 1/5、`m:90+t:2` 行业 0/5 成功，日志里 `eastmoney breaker open: push2.eastmoney.com/api/qt/clist/get`），且 `push2.eastmoney.com` 的 DNS 是 CNAME 到 **`push2ipv6.trafficmanager.cn`（带 AAAA）**，`curl -6` 必挂（SSL unexpected eof）、`-4` 才可能通。所以「东财已恢复」的结论**对 clist/get 不成立**，行业板块仍在走 akshare 降级；要治得先强制 IPv4（undici `connect: {family: 4}` / `dns.setDefaultResultOrder('ipv4first')`），尚未做。
+- **push2 现状（2026-10-14 复测，更正下文多条旧结论）**：
+  - 有两层**独立**故障：① **边缘选择**（默认 IPv6 优先 → 被拒边缘 → 不换族重试）已由 `ipv4first` 治（同刻交错 0/5 → 5/5，见「IPv4 优先」条）；② **主机级限流**治不了——密集请求（约 30+ 次，含**探测**）后整段拒绝，**IPv4/IPv6 一起挂**，实测持续 >3 小时（`clist/get`、`stock/get`、`ulist.np/get` 轮流阵亡，同一路径几分钟内 200/000 交替）。
+  - 所以「东财已恢复」这个结论**反复不成立**；行业板块仍在 akshare 降级、`breadth` 已加乐咕回退（见「涨跌家数」）。**排查忌讳：不要对 push2 连发探测请求**，那正是触发 ② 的原因（今天就是探测把整条 host 打挂的）。
 - **踩过的坑（2026-09-29 修复）**：`toolHandlers.get_concept_sectors` 曾误按 `unpack(res)?.data?.items` 解析，而该路由的 `data` 是**扁平数组**（和 `/market/sectors` 同款信封），所以恒返回空 `items`；并且它早期直接复用了**行业**板块端点（`m:90+t:2`），契约里写的「驱动事件/成分股数量」从未接通。旧文件已删，**同类错在 2026-10-14 又犯了一次**（见上）。
 - **板块条数天花板比 `limit` 小得多（2026-10-13 核实）**：`/market/sectors` 的 `limit` 在 route 与 service 都 clamp 到 1..`MARKET_SECTOR_MAX_LIMIT`（=120），但东财 `clist/get` **单页硬上限 100**（`pz` 传 200/500 也只回 100，要 `pn` 翻页）而 `EastMoneyMarketProvider.sectors()` 固定 `pn=1&pz=100` → 实际只拿得到「按涨跌幅降序的前 100 名」（`fs=m:90+t:2` 实测 `total=496`，含 Ⅱ/Ⅲ 级细分行业）；同花顺回退 90 个。所以**调大 `limit` 没用**（原先在无人引用的旧组件 `MarketDashboard.vue` 里有个无效的 `:limit="500"`，该文件 2026-10-13 已删）。要全部 496 个得加翻页，尚未做。
 - **涨跌幅字段是「字符串 + 数值」双份**（`change_pct: "+11.94%"` / `raw_change: 11.94`）：前端展示一律用 `fmtPercentPreferNumber(raw_change, change_pct)`，直接 `fmtPercent(change_pct)` 会因 `isFiniteNumber` 类型检查整列显示 `--`（2026-10-13 修，仅前端，API 契约不变）。

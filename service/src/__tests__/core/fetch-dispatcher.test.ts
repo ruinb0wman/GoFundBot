@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
+import dns from 'node:dns';
 import { EnvHttpProxyAgent, getGlobalDispatcher, setGlobalDispatcher, type Dispatcher } from 'undici';
 import { fetchUrl, setGlobalProxyUrl } from '../../core/fetch.js';
 
@@ -100,5 +101,16 @@ describe("fetchUrl proxy: 'never'", () => {
 
     expect(text).toBe('proxied');
     expect(proxy.hits).toBe(1);
+  });
+
+  /**
+   * 回归：`core/fetch.ts` 在导入时把解析顺序钉成 `ipv4first`。
+   *
+   * `push2.eastmoney.com` 是多边缘双栈域名，默认 `verbatim` 会把 IPv6 排前面；当那个边缘正在
+   * 限流时会直接 `UND_ERR_SOCKET` 而**不会换族重试**（实测同刻交错：默认 0/5、`ipv4first` 5/5）。
+   * 这里只钉住“进程默认被改过”这件事，真实网络行为由 `.pi/plans/push2-resilience.md` §1.6 记录。
+   */
+  it('pins the DNS result order to ipv4first at import time', () => {
+    expect(dns.getDefaultResultOrder()).toBe('ipv4first');
   });
 });

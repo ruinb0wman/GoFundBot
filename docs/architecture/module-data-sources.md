@@ -32,12 +32,12 @@
 | `GET /api/market/concept-sectors` | `getMarketConceptSectorsFromAkshare` | 同花顺概念资金流，**自己翻页抓**（`python/cli/shared/ths_concept_flow.py`；不依赖 akshare 的 `span.page_info`）+ 概念简介驱动事件（akshare，24h file_cache） | 行情 25s（进程内，失败 10min 内降级旧快照 + `stale: true`）；事件 24h |
 | `GET /api/market/kline/:code` | `getMarketKline` | [joinquant → tencent → stock-sdk → eastmoney]（现命中 tencent newfqkline） | 1h |
 | `GET /api/market/money-flow` | `getMarketMoneyFlow` | eastmoney → akshare python fallback | 30s |
-| `GET /api/market/breadth` | `getMarketBreadth` | eastmoney only（`ulist.np/get` 的 f104/f105/f106 沪深合计 + push2ex 涨跌停池） | 15s |
+| `GET /api/market/breadth` | `getMarketBreadth` | eastmoney（`ulist.np/get` 的 f104/f105/f106 沪深合计 + push2ex 涨跌停池）→ akshare python fallback（乐咕乐股，`stock_market_activity_legu`；`provider: akshare_legu` + `fallback: true`，口径不同勿逐位对比） | 15s（eastmoney）；60s（乐咕回退）；两者都仅 `data_status: 'available'` 时缓存 |
 | `GET /api/market/north-flow` | `getNorthFlow` | eastmoney datacenter → akshare python fallback | 5min |
 | `GET /api/market/gold/realtime` | `getGoldRealtime` | eastmoney → akshare python | 60s |
 | `GET /api/market/gold/history` | `getGoldHistory` | eastmoney → akshare python | 1h |
 | `GET /api/market/kline/global/:symbol` | `getGlobalIndexKline` | [tencent → yahoo] | 1h |
-| `GET /api/market/breadth` | `getMarketBreadth` | eastmoney（`ulist.np/get`，端点级熔断） | 15s（仅 `data_status: 'available'` 时缓存） |
+| `GET /api/market/breadth` | `getMarketBreadth` | eastmoney（`ulist.np/get`，端点级熔断）→ akshare 乐咕 | 15s / 回退 60s（仅 `data_status: 'available'` 时缓存） |
 | `GET /api/market/crypto` | `getCryptoQuotes` | [binance]（Yahoo 已弃） | 15s |
 
 ## 筛选模块

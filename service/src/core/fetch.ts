@@ -1,5 +1,23 @@
+import dns from 'node:dns';
 import { Agent, ProxyAgent } from 'undici';
 import { AppError } from './errors.js';
+
+/**
+ * 进程级把 IPv4 排在解析结果前面（2026-10-14）。
+ *
+ * 背景：`push2.eastmoney.com` 是 CNAME 到 `push2ipv6.trafficmanager.cn` 的多边缘域名
+ * （实测 A 记录与 AAAA 都在，而且 IP 每次都变）。Node 默认 `verbatim` 顺序会把 IPv6 排在前面，
+ * `net.connect` 的 Happy Eyeballs 首个尝试候选也跟着变成 IPv6 边缘；**被限流的边缘回 RST 时
+ * 会直接失败，不会换族重试**。实测同一时刻交错对比（`/plans/push2-resilience.md` §1.6）：
+ * 默认顺序 0/5 成功（全部 `UND_ERR_SOCKET`，~165ms），`ipv4first` 5/5、`family: 4` 5/5。
+ *
+ * 这是**偏好而不是排除**：某主机若只有 AAAA，`ipv4first` 依旧返回 IPv6；
+ * 而两者都有时 IPv6 仍作为 Happy Eyeballs 的备选。
+ *
+ * 注意：这只治“被分到拒绝服务的边缘”。push2 的**主机级限流**是另一回事
+ * （密集请求后 IPv4/IPv6 一起失败几分钟到几小时），所以东财各链路各自的降级与熔断必须继续留着。
+ */
+dns.setDefaultResultOrder('ipv4first');
 
 export type ProxyMode = 'auto' | 'always' | 'never';
 

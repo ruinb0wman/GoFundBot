@@ -669,25 +669,119 @@ export async function getMarketMoneyFlow(): Promise<ServiceResult<MarketMoneyFlo
   }
 }
 
+/** 涨跌家数回退结果的缓存时长：乐咕那份是慢变的快照，15s 会白打第三方。 */
+const BREADTH_FALLBACK_TTL = 60_000;
+
+function emptyBreadth(error: string): MarketBreadthDto {
+  return {
+    upCount: 0,
+    downCount: 0,
+    flatCount: 0,
+    limitUp: null,
+    limitDown: null,
+    total: 0,
+    scope: '沪深两市',
+    date: '',
+    data_status: 'unavailable',
+    error,
+  };
+}
+
+/**
+ * 涨跌家数回退（乐咕乐股，经 Python akshare `stock_market_activity_legu`）。
+ *
+ * 为什么需要：`breadth` 原本只有东财 push2 `ulist.np/get` 一个源，而 push2 会**主机级限流**
+ * （密集请求后整段拒绝，IPv4/IPv6 一起挂，2026-10-14 实测持续 >3 小时），期间只能报 unavailable。
+ *
+ * 口径差异：东财那份是「上证指数/深证成指成分家数相加」，这里是乐咕统计的全市场家数，
+ * 两者会差几十只；涨跌停取它的「涨停/跌停」列（含 ST），与 push2ex 涨跌停池也不完全同口径。
+ * 所以**不要**拿两边的数字逐位对比。
+ */
+export async function getMarketBreadthFromAkshare(): Promise<MarketBreadthDto> {
+  const raw = await runPython<Record<string, unknown>>('data_complete.py', {
+    args: ['--source', 'akshare', '--type', 'breadth'],
+    timeoutMs: 30_000,
+  });
+  const body = (raw?.breadth ?? {}) as Record<string, unknown>;
+  const num = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
+
+  const upCount = num(body.up_count);
+  const downCount = num(body.down_count);
+  const flatCount = num(body.flat_count);
+  const date = typeof body.date === 'string' ? body.date : '';
+  if (upCount + downCount === 0 || !date) {
+    return emptyBreadth(`乐咕涨跌家数异常（上涨 ${upCount} / 下跌 ${downCount}，日期「${date}」）`);
+  }
+
+  return {
+    upCount,
+    downCount,
+    flatCount,
+    limitUp: body.limit_up == null ? null : num(body.limit_up),
+    limitDown: body.limit_down == null ? null : num(body.limit_down),
+    total: num(body.total) || upCount + downCount + flatCount,
+    scope: typeof body.scope === 'string' && body.scope ? body.scope : '沪深两市',
+    date,
+    data_status: 'available',
+  };
+}
+
 export async function getMarketBreadth(): Promise<ServiceResult<MarketBreadthDto>> {
   const key = 'market:breadth';
   const cached = cache.get<ProviderChainResult<MarketBreadthDto>>(key);
   if (cached) return toServiceResult(cached);
 
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
-  const result = await chain.run('market.breadth', (provider) => {
-    if (!provider.breadth) {
-      throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement breadth`, 501);
-    }
-    return provider.breadth();
-  });
+  let eastmoneyIssue = '';
+  try {
+    const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
+    const result = await chain.run('market.breadth', (provider) => {
+      if (!provider.breadth) {
+        throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement breadth`, 501);
+      }
+      return provider.breadth();
+    });
 
-  // 只有真的取到才缓存：`unavailable` 一旦进 15s 缓存，一次瞬时失败就会把「0 家上涨」钉住。
-  // （负峰由 `eastmoneyRequest` 的端点级熔断负责，见 .pi/plans/push2-resilience.md）
-  if (result.data.data_status === 'available') {
-    return toServiceResult(cache.set(key, result, ttl.marketBreadth));
+    // 只有真的取到才缓存：`unavailable` 一旦进 15s 缓存，一次瞬时失败就会把「0 家上涨」钉住。
+    // （负峰由 `eastmoneyRequest` 的端点级熔断负责，见 .pi/plans/push2-resilience.md）
+    if (result.data.data_status === 'available') {
+      return toServiceResult(cache.set(key, result, ttl.marketBreadth));
+    }
+    eastmoneyIssue = result.data.error ?? 'eastmoney 返回不可用';
+  } catch (err) {
+    eastmoneyIssue = err instanceof Error ? err.message : String(err);
   }
-  return toServiceResult({ value: result, cached: false, updatedAt: new Date() });
+  logger.warn('EastMoney breadth unavailable, trying akshare fallback', { error: eastmoneyIssue });
+
+  try {
+    const data = await getMarketBreadthFromAkshare();
+    const result: ProviderChainResult<MarketBreadthDto> = {
+      data,
+      provider: 'akshare_legu',
+      fallback: true,
+      stale: false,
+      providerErrors: [{ provider: 'eastmoney', message: eastmoneyIssue }],
+    };
+    if (data.data_status === 'available') {
+      return toServiceResult(cache.set(key, result, BREADTH_FALLBACK_TTL));
+    }
+    return toServiceResult({ value: result, cached: false, updatedAt: new Date() });
+  } catch (fallbackErr) {
+    const reason = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+    logger.error('Akshare breadth fallback also failed', { error: reason });
+    // 与既有约定一致：全部失败仍然 200 + `data_status: unavailable`（不抛），
+    // 否则消费方会把 0 当成真数据。
+    const result: ProviderChainResult<MarketBreadthDto> = {
+      data: emptyBreadth(`涨跌家数所有数据源均失败（eastmoney: ${eastmoneyIssue}；akshare: ${reason}）`),
+      provider: 'akshare_legu',
+      fallback: true,
+      stale: false,
+      providerErrors: [
+        { provider: 'eastmoney', message: eastmoneyIssue },
+        { provider: 'akshare_legu', message: reason },
+      ],
+    };
+    return toServiceResult({ value: result, cached: false, updatedAt: new Date() });
+  }
 }
 
 export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {

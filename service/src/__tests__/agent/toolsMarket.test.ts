@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   getAVolume7Days: vi.fn(),
   getMarketSectorConstituents: vi.fn(),
   getMarketConceptSectorsFromAkshare: vi.fn(),
+  getMarketBreadth: vi.fn(),
 }));
 
 vi.mock('../../services/marketService.js', async () => {
@@ -149,6 +150,57 @@ describe('行情细节工具', () => {
     expect(res.body.data.result).toMatchObject({ data_status: 'available', count: 1, stale: true });
     expect(res.body.data.result.note).toContain('本次抓取失败');
     expect(res.body.data.result.note).toContain('90s 前的快照');
+  });
+
+  it('labels the breadth fallback source so the model knows the 口径 differs', async () => {
+    mocks.getMarketBreadth.mockResolvedValue({
+      ...serviceResult({
+        upCount: 918,
+        downCount: 4213,
+        flatCount: 83,
+        limitUp: 39,
+        limitDown: 13,
+        total: 5214,
+        scope: '沪深两市',
+        date: '2026-10-14',
+        data_status: 'available',
+      }),
+      provider: 'akshare_legu',
+      fallback: true,
+    });
+
+    const app = await createApp();
+    const res = await call(app, 'get_market_breadth', {});
+    expect(res.body.data.result).toMatchObject({
+      data_status: 'available',
+      provider: 'akshare_legu',
+      fallback: true,
+      up_count: 918,
+      down_count: 4213,
+    });
+    expect(res.body.data.result.note).toContain('备用源 akshare_legu');
+    expect(res.body.data.result.note).toContain('不要与其他来源逐位对比');
+  });
+
+  it('notes when limit up/down counts are missing instead of reporting them as zero', async () => {
+    mocks.getMarketBreadth.mockResolvedValue(
+      serviceResult({
+        upCount: 3000,
+        downCount: 1000,
+        flatCount: 100,
+        limitUp: null,
+        limitDown: null,
+        total: 4100,
+        scope: '沪深两市',
+        date: '2026-10-14',
+        data_status: 'available',
+      }),
+    );
+
+    const app = await createApp();
+    const res = await call(app, 'get_market_breadth', {});
+    expect(res.body.data.result).toMatchObject({ data_status: 'available', limit_up: null, limit_down: null });
+    expect(res.body.data.result.note).toContain('仅涨跌家数有效');
   });
 
   it('keeps concept sectors unavailable (with the upstream error) when the source fails', async () => {
