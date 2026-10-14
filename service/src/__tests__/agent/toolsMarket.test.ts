@@ -98,15 +98,43 @@ describe('行情细节工具', () => {
     expect(empty.body.data.result.note).toContain('不是 0');
   });
 
-  it('reports sector constituents and guards the empty-code fallback', async () => {
+  it('reports sector constituents and rejects a call with no code and no name', async () => {
     const app = await createApp();
     const ok = await call(app, 'get_sector_constituents', { sector_code: 'BK0475' });
     expect(ok.body.data.result).toMatchObject({ data_status: 'available', sector_name: '酿酒行业', count: 1 });
 
+    // 两个参数都空 → Zod refine 拦下（INVALID_ARGUMENT），不去请求上游
     const blank = await call(app, 'get_sector_constituents', { sector_code: ' ' });
-    expect(blank.body.data.result.data_status).toBe('unavailable');
-    expect(blank.body.data.result.note).toContain('code 为空');
-    expect(mocks.getMarketSectorConstituents).toHaveBeenCalledTimes(1); // 空 code 不请求上游
+    expect(blank.body.success).toBe(false);
+    expect(mocks.getMarketSectorConstituents).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a sector name for boards whose data source has no code (THS fallback)', async () => {
+    // 同花顺降级的行业板块只给 name，旧契约下这条成分股根本查不了
+    mocks.getMarketSectorConstituents.mockResolvedValue({
+      ...serviceResult({
+        items: [
+          { code: '300299', name: '富春股份', price: 6.88, changePercent: 20.07, marketValue: 4743000000, pe: 71.18, turnoverRate: 27.05 },
+        ],
+        sectorCode: '881275',
+        sectorName: '游戏',
+      }),
+      provider: 'akshare_ths',
+      fallback: true,
+    });
+
+    const app = await createApp();
+    const res = await call(app, 'get_sector_constituents', { sector_name: '游戏' });
+    expect(mocks.getMarketSectorConstituents).toHaveBeenCalledWith('', '游戏');
+    expect(res.body.data.result).toMatchObject({
+      data_status: 'available',
+      provider: 'akshare_ths',
+      fallback: true,
+      sector_code: '881275',
+      sector_name: '游戏',
+      count: 1,
+    });
+    expect(res.body.data.result.items[0]).toMatchObject({ code: '300299', name: '富春股份' });
   });
 
   // 回归：`getMarketConceptSectorsFromAkshare` 返回的是 { items, source, data_date }，

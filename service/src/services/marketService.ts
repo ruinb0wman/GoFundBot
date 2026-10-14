@@ -20,6 +20,7 @@ import {
   isGlobalIndexSymbol,
 } from '../providers/globalIndexDefs.js';
 import type {
+  ConstituentDto,
   ConstituentListDto,
   GlobalIndexDto,
   GlobalIndexListDto,
@@ -555,19 +556,110 @@ export async function getMarketSectors(): Promise<ServiceResult<SectorListDto>> 
   return toServiceResult(result);
 }
 
-export async function getMarketSectorConstituents(code: string): Promise<ServiceResult<ConstituentListDto>> {
-  const sectorCode = assertCode(code, 'code');
-  const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
-  const result = await cacheThrough(`market:sector:${sectorCode}:constituents`, ttl.marketQuotes, () =>
-    chain.run('market.sectorConstituents', (provider) => {
-      if (!provider.sectorConstituents) {
-        throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement sector constituents`, 501);
-      }
-      return provider.sectorConstituents(sectorCode);
-    })
-  );
+/** 板块成分股回退（同花顺，按板块名）结果的缓存：现抓是 0.3–5s/次（20 行/页要翻好几页），15s 太贵。 */
+const CONSTITUENTS_FALLBACK_TTL = 60_000;
 
-  return toServiceResult(result);
+/** 参数里带汉字就当成**板块名**（THS 降级的行业板块 `code` 是空串，调用方只能拿到名字）。 */
+function looksLikeSectorName(value: string): boolean {
+  return /[^\x00-\x7F]/.test(value);
+}
+
+/**
+ * 板块成分股回退（同花顺 `q.10jqka.com.cn`，按**板块名**）。
+ *
+ * 为什么需要：`sectors/:code/constituents` 原本只有东财 push2 `clist/get` 一条路——
+ * 它既会路径级限流（见 `.pi/plans/push2-resilience.md` §5），又在行业板块走 THS 降级时
+ * **根本没有 code 可用**（那个数据源只给名字）。同花顺这条路只要名字，正好补上这个真空。
+ */
+export async function getSectorConstituentsFromAkshare(sectorName: string): Promise<ConstituentListDto> {
+  const name = sectorName.trim();
+  const raw = await runPython<Record<string, unknown>>('data_complete.py', {
+    args: ['--source', 'akshare', '--type', 'sector_cons', '--name', name],
+    timeoutMs: 60_000,
+  });
+  const body = (raw?.sector_cons ?? {}) as Record<string, unknown>;
+  const rawItems = Array.isArray(body.items) ? (body.items as Record<string, unknown>[]) : [];
+  const toNum = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null);
+
+  const items: ConstituentDto[] = rawItems
+    .map((item) => ({
+      code: String(item.code ?? ''),
+      name: String(item.name ?? ''),
+      price: toNum(item.price),
+      changePercent: toNum(item.change_pct),
+      marketValue: toNum(item.market_value),
+      pe: toNum(item.pe),
+      turnoverRate: toNum(item.turnover_rate),
+    }))
+    .filter((item) => item.code && item.name);
+
+  if (items.length === 0) {
+    throw new AppError('PROVIDER_UNAVAILABLE', `同花顺板块「${name}」没有取到成分股`, 502, { name });
+  }
+
+  return {
+    items,
+    sectorCode: typeof body.code === 'string' ? body.code : '',
+    sectorName: typeof body.name === 'string' && body.name ? body.name : name,
+  };
+}
+
+/**
+ * 板块成分股。`code` 可以是东财的 `BKxxxx`，也可以是**板块名**（带汉字则当名字处理）；
+ * `sectorName` 用于「有 BK 代码但东财取不到时回退同花顺」。
+ */
+export async function getMarketSectorConstituents(
+  code: string,
+  sectorName?: string,
+): Promise<ServiceResult<ConstituentListDto>> {
+  const rawCode = (code ?? '').trim();
+  const bkCode = /^BK\d+$/i.test(rawCode) ? assertCode(rawCode, 'code') : '';
+  const name = (sectorName ?? '').trim() || (looksLikeSectorName(rawCode) ? rawCode : '');
+
+  if (bkCode) {
+    try {
+      const chain = new ProviderChain<MarketProvider>([eastMoneyMarketProvider], dataSourceScorer);
+      const result = await cacheThrough(`market:sector:${bkCode}:constituents`, ttl.marketQuotes, () =>
+        chain.run('market.sectorConstituents', (provider) => {
+          if (!provider.sectorConstituents) {
+            throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement sector constituents`, 501);
+          }
+          return provider.sectorConstituents(bkCode);
+        })
+      );
+      if (result.value.data.items.length > 0) {
+        return toServiceResult(result);
+      }
+      logger.warn('EastMoney sector constituents came back empty, trying akshare fallback', { code: bkCode });
+    } catch (err) {
+      logger.error('EastMoney sector constituents failed, trying akshare fallback', {
+        code: bkCode,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  if (!name) {
+    throw new AppError(
+      'PROVIDER_UNAVAILABLE',
+      '板块成分股：东财不可用，且没有板块名可回退到同花顺（传 sector_name 或把板块名当 code 传）',
+      503,
+    );
+  }
+
+  const cacheKey = `market:sector:ths:${name}:constituents`;
+  const cached = cache.get<ProviderChainResult<ConstituentListDto>>(cacheKey);
+  if (cached) return toServiceResult(cached);
+
+  const data = await getSectorConstituentsFromAkshare(name);
+  const result: ProviderChainResult<ConstituentListDto> = {
+    data,
+    provider: 'akshare_ths',
+    fallback: true,
+    stale: false,
+    providerErrors: bkCode ? [{ provider: 'eastmoney', message: `sector constituents unavailable for ${bkCode}` }] : [],
+  };
+  return toServiceResult(cache.set(cacheKey, result, CONSTITUENTS_FALLBACK_TTL));
 }
 
 export async function getMarketIndices(): Promise<ServiceResult<IndexListDto>> {

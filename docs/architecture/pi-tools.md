@@ -33,8 +33,9 @@
 
 两个**有上游限制**的只读工具（遇到失败要如实说，不要编造）：
 
-- `get_sector_constituents`：`sector_code` 来自 `get_hot_sectors`；行业板块走同花顺降级时 `code` 是空串，
-  且上游 eastmoney（push2）在限流窗口内会 `PROVIDER_UNAVAILABLE`（可从日志 `eastmoney breaker open` 看出来）。
+- `get_sector_constituents`：`sector_code` / `sector_name` 来自 `get_hot_sectors`。东财数据带 `code`（`BKxxxx`）就传 code；
+  **同花顺降级数据的 `code` 是空串，此时传 `sector_name`**（走同花顺 `q.10jqka.com.cn` 成分股页，`provider: akshare_ths`、`fallback: true`）。
+  东财（push2）在限流窗口内会失败并自动回退到同花顺；两边都取不到才是 `PROVIDER_UNAVAILABLE`（可从日志 `eastmoney breaker open` 看出来）。
 - `get_a_volume_7days`：取不到时 `data_status: unavailable` + `data: []`（**不是成交额 0**）。
 
 ## 2. 写 / 执行类要用户确认

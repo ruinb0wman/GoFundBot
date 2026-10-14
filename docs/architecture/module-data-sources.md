@@ -29,6 +29,7 @@
 | `GET /api/market/indices` | `getMarketIndices` | [tencent → stock-sdk → eastmoney] | 15s |
 | `GET /api/market/indices/combined` | `getCombinedIndices` | [tencent → stock-sdk → eastmoney] + [tencent → eastmoney → yahoo] | 15s |
 | `GET /api/market/sectors` | `getMarketSectorsFromAkshare` | eastmoney（`push2 .../clist/get`，**直连可用但会限流**）→ akshare python fallback（同花顺行业） | 15s（eastmoney 结果） |
+| `GET /api/market/sectors/:code/constituents` | `getMarketSectorConstituents` | eastmoney（`clist/get`，`code=BKxxxx`）→ 同花顺成分股页（**按板块名**，`python/cli/shared/ths_board_cons.py`，不依赖 push2） | 15s（东财）/ 60s（同花顺） |
 | `GET /api/market/concept-sectors` | `getMarketConceptSectorsFromAkshare` | 同花顺概念资金流，**自己翻页抓**（`python/cli/shared/ths_concept_flow.py`；不依赖 akshare 的 `span.page_info`）+ 概念简介驱动事件（akshare，24h file_cache） | 行情 25s（进程内，失败 10min 内降级旧快照 + `stale: true`）；事件 24h |
 | `GET /api/market/kline/:code` | `getMarketKline` | [joinquant → tencent → stock-sdk → eastmoney]（现命中 tencent newfqkline） | 1h |
 | `GET /api/market/money-flow` | `getMarketMoneyFlow` | eastmoney → akshare python fallback | 30s |

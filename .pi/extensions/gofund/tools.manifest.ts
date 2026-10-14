@@ -59,7 +59,7 @@ export const STATIC_MANIFEST = {
     {
       "name": "get_hot_sectors",
       "label": "获取行业板块",
-      "description": "获取行业板块实时行情（同花顺行业分类，按涨跌幅降序）：涨跌幅、主力净流入、换手率。数据源降级时 code 可能为空串，此时成分股接口不可用。概念板块请用 get_concept_sectors。",
+      "description": "获取行业板块实时行情（同花顺行业分类，按涨跌幅降序）：涨跌幅、主力净流入、换手率。数据源降级时 code 可能为空串（此时查成分股请把 name 传给 get_sector_constituents 的 sector_name）。概念板块请用 get_concept_sectors。",
       "promptSnippet": "get_hot_sectors(limit?): 行业板块实时行情",
       "readOnly": true,
       "parameters": {
@@ -205,21 +205,21 @@ export const STATIC_MANIFEST = {
     {
       "name": "get_sector_constituents",
       "label": "板块成分股",
-      "description": "获取某个行业板块的成分股列表（代码、名称、涨跌幅、成交额等）。`sector_code` 来自 `get_hot_sectors`。**两个已知限制**：① 行业板块走同花顺降级时 `code` 是空串，此时无法使用；② 上游是 eastmoney 的板块成分股接口，被反爬封锁时整条链路不可用（返回 `PROVIDER_UNAVAILABLE`）——遇到这两种情况就如实告知用户，**不要编造成分股**。",
-      "promptSnippet": "get_sector_constituents(sector_code): 板块成分股",
+      "description": "获取某个行业/概念板块的成分股列表（代码、名称、涨跌幅、市值、市盈率、换手率）。`sector_code` / `sector_name` 来自 `get_hot_sectors`：东财数据有 `code`（BKxxxx）就传 code，同花顺降级数据 `code` 是空串，此时传 `sector_name`（板块名）。两个都缺时无法查询；数据取不到时返回 `PROVIDER_UNAVAILABLE`，如实告知用户，**不要编造成分股**。",
+      "promptSnippet": "get_sector_constituents(sector_code?, sector_name?): 板块成分股",
       "readOnly": true,
       "parameters": {
         "type": "object",
         "properties": {
           "sector_code": {
-            "type": "string",
-            "minLength": 1,
-            "description": "板块代码（来自 get_hot_sectors 的 code；空串表示该数据源不支持）"
+            "description": "板块代码（来自 get_hot_sectors 的 code，形如 BK1036）",
+            "type": "string"
+          },
+          "sector_name": {
+            "description": "板块名（来自 get_hot_sectors 的 name；同花顺数据没有 code 时必须用它）",
+            "type": "string"
           }
         },
-        "required": [
-          "sector_code"
-        ],
         "additionalProperties": false
       }
     },

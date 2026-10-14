@@ -114,7 +114,9 @@ Node.js → child_process.spawn → data_complete.py --source akshare --type sec
 2. **`limit` 上限**：route 与 service 都 clamp 到 1..`MARKET_SECTOR_MAX_LIMIT`（=120），比上面两个真实天花板都大，所以调大 `limit` 不会拿到更多（原先有个传 `:limit="500"` 的旧组件 `MarketDashboard.vue`，无人引用，2026-10-13 已删）。
 3. **Python 回退较慢**：akshare 数据通常在 10-30 秒内返回，超时 60s。
 4. **数据日期标记**：非交易日返回最后交易日数据，前端标记 `stale`。
-5. **退化的 `code`**：同花顺回退不提供板块代码，`code` 为空串，因此 `/api/market/sectors/:code/constituents` 对该批数据不可用。
+5. **退化的 `code`**：同花顺回退不提供**东财**板块代码，`code` 为空串；因此成分股接口现在两种传法都支持 ——
+   `/api/market/sectors/:code/constituents`（`code` 可以是 `BKxxxx`，**也可以是板块名**）、或 `?name=<板块名>` 配合 BK 代码做回退。
+   板块名走同花顺 `q.10jqka.com.cn` 成分股页（`provider: akshare_ths`，60s 缓存），不再受 push2 限流影响。
 6. **push2 `clist/get` 不稳（2026-10-14 实测仍未恢复）**：`push2.eastmoney.com/api/qt/clist/get`（行业+概念板块列表）常被切断（`SSL_read: unexpected eof`）；同一 host 的 `ulist.np/get`（涨跌家数）正常。2026-10-14 复测：`m:90+t:3`（概念）1/5、`m:90+t:2`（行业）**0/5** 成功，日志里 `eastmoney breaker open`。同一域名 DNS 是 CNAME 到 **`push2ipv6.trafficmanager.cn`（带 AAAA）**，`curl -6` 必挂、`-4` 才可能通 → 想治得先强制 IPv4（尚未做）。
 7. **`fs=m:90+t:3` 才是概念板块**（东财口径，`total=506`，字段比同花顺全：真实 `code`=BKxxxx / `f62` 主力净额 / `f128`+`f136` 领涨股 / `f104`+`f105` 涨跌家数）。上面第 6 条修好后可作为**备源**，好处是能拿到真实板块代码（同花顺那条 `code` 恒为空串）。现在**没接**，因为成功率太低。
 

@@ -146,7 +146,12 @@ marketRouter.get(
 marketRouter.get(
   '/sectors/:code/constituents',
   asyncHandler(async (req, res) => {
-    sendSuccess(res, await getMarketSectorConstituents(routeParam(req.params.code)));
+    // `:code` 可以是 BK 代码，也可以是**板块名**（同花顺降级的行业板块没有 code）；
+    // `?name=` 用于「有 BK 代码但东财取不到时回退同花顺」。
+    sendSuccess(
+      res,
+      await getMarketSectorConstituents(routeParam(req.params.code), firstQueryValue(req.query.name)),
+    );
   })
 );
 
