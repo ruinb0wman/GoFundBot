@@ -267,8 +267,8 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
   - **同花顺会同时发多个数据版本**：同一分钟内 `page_info` 时而 8、时而 3，连续三次取数得到 337/250/200 行、甚至榜首不同 → **头部（前几页）可靠、尾部可能被截短**，按 limit 取前 N 名不受影响，别当「全量概念清单」用。
   - **兜底**：`getMarketConceptSectorsFromAkshare` 带 25s 新鲜缓存 + 10min serve-stale（失败返回上一份好结果并标 `stale: true` / `stale_reason`，路由与 pi 工具都会透出 `stale`）——一次瞬时抖动不再变成空卡片。
 - **push2 现状（2026-10-14 复测，更正下文多条旧结论）**：
-  - 有两层**独立**故障：① **边缘选择**（默认 IPv6 优先 → 被拒边缘 → 不换族重试）已由 `ipv4first` 治（同刻交错 0/5 → 5/5，见「IPv4 优先」条）；② **主机级限流**治不了——密集请求（约 30+ 次，含**探测**）后整段拒绝，**IPv4/IPv6 一起挂**，实测持续 >3 小时（`clist/get`、`stock/get`、`ulist.np/get` 轮流阵亡，同一路径几分钟内 200/000 交替）。
-  - 所以「东财已恢复」这个结论**反复不成立**；行业板块仍在 akshare 降级、`breadth` 已加乐咕回退（见「涨跌家数」）。**排查忌讳：不要对 push2 连发探测请求**，那正是触发 ② 的原因（今天就是探测把整条 host 打挂的）。
+  - 有两层**独立**故障：① **边缘选择**（默认 IPv6 优先 → 被拒边缘 → 不换族重试）已由 `ipv4first` 治（本地确定性复现 0/3 → 3/3，见「IPv4 优先」条）；② **路径级限流**治不了——密集请求（约 30+ 次，含**探测**）后**该路径**整段拒绝，**IPv4/IPv6 一起挂**，实测持续 >3 小时；粒度是 `host + path`（17:12 实测同一 host 上 `stock/get` 200 而 `clist/get`/`ulist.np` 仍 000），所以端点级熔断必须保留。
+  - 所以「东财已恢复」这个结论**反复不成立**；行业板块仍在 akshare 降级、`breadth` 已加乐咕回退（见「涨跌家数」）。**排查忌讳：不要对 push2 连发探测请求**（用 `service/scripts/probe-push2.mts`，默认只有 9 个请求），那正是触发 ② 的原因（今天就是探测把这几条路径打挂的）。
 - **踩过的坑（2026-09-29 修复）**：`toolHandlers.get_concept_sectors` 曾误按 `unpack(res)?.data?.items` 解析，而该路由的 `data` 是**扁平数组**（和 `/market/sectors` 同款信封），所以恒返回空 `items`；并且它早期直接复用了**行业**板块端点（`m:90+t:2`），契约里写的「驱动事件/成分股数量」从未接通。旧文件已删，**同类错在 2026-10-14 又犯了一次**（见上）。
 - **板块条数天花板比 `limit` 小得多（2026-10-13 核实）**：`/market/sectors` 的 `limit` 在 route 与 service 都 clamp 到 1..`MARKET_SECTOR_MAX_LIMIT`（=120），但东财 `clist/get` **单页硬上限 100**（`pz` 传 200/500 也只回 100，要 `pn` 翻页）而 `EastMoneyMarketProvider.sectors()` 固定 `pn=1&pz=100` → 实际只拿得到「按涨跌幅降序的前 100 名」（`fs=m:90+t:2` 实测 `total=496`，含 Ⅱ/Ⅲ 级细分行业）；同花顺回退 90 个。所以**调大 `limit` 没用**（原先在无人引用的旧组件 `MarketDashboard.vue` 里有个无效的 `:limit="500"`，该文件 2026-10-13 已删）。要全部 496 个得加翻页，尚未做。
 - **涨跌幅字段是「字符串 + 数值」双份**（`change_pct: "+11.94%"` / `raw_change: 11.94`）：前端展示一律用 `fmtPercentPreferNumber(raw_change, change_pct)`，直接 `fmtPercent(change_pct)` 会因 `isFiniteNumber` 类型检查整列显示 `--`（2026-10-13 修，仅前端，API 契约不变）。
