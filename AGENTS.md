@@ -342,3 +342,18 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 
 **回归测试**：`service/src/__tests__/providers/eastmoney-fund-provider.test.ts` 的 `holdings` 组
 （主源映射 / 空列表合法 / 回退补名称行业 / push2 失败仍返回代码）。
+
+### 快讯 (flash news)
+
+`GET /api/news/flash` 聚合 **东方财富 / 百度股市通 / 财联社** 三家（`Promise.allSettled` → 按标题去重 → `publishedAt` 降序 → 切片），**不写缓存**。
+
+- **财联社 provider 曾整条死掉（2026-10-10 → 2026-10-14）**：`https://www.cls.cn/nodeapi/telegraphList` 变成 **404**（回 Next.js 的 404 页），
+  每次调用都被 `eastmoneyRequest` 的熔断器记账 → 日志里 `eastmoney breaker open: www.cls.cn/nodeapi/telegraphList` **每小时 20–60 条**
+  （快讯靠东财/百度顶着，用户侧无感，所以一直没人发现）。新端点是 `/v1/roll/get_roll_list`，**必须带签名**。
+- **签名算法**（照抄 akshare `stock_info_global_cls`，参数顺序进 hash 不能改）：
+  `md5(sha1(urlencode({app,category,last_time,os,refresh_type,rn,sv})))`，`last_time` = 当前秒级时间戳。
+  `buildClsSignedQuery(count, nowMs)` 暴露出来就是给测试用的，`cls-news.test.ts` 里钉了一个**由 python 算出**的对照 hash —— 算法漂了会红。
+- **两个静默坑**：① `rn` 上限 **50**（50 可用、**51 直接回 0 条且不报错**），而调用方传的是 `count*2` → count ≥ 26 时整批丢；
+  ② 该接口 `title` 常是**空串**、正文在 `brief`/`content`（同一段），`ctime` 是**秒级时间戳**。
+  ③ 时间戳必须按**东八区**格式化：`formatNewsTime` 原来用 `toISOString()`（UTC），会让这些条目凭空差 8 小时、在「最新在前」的排序里沉到列表底部（这正是外面看不见财联社的原因）。
+- 熔断器是**按 host+pathname** 记账，但日志前缀写着 `eastmoney` —— 出现非东财域名的 `eastmoney breaker open` 不要觉得奇怪。

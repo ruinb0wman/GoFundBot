@@ -33,7 +33,7 @@
 |----------|----------|---------|
 | **eastmoney** | `service/src/providers/eastmoney/eastmoneyNewsProvider.ts` | `newsapi.eastmoney.com` |
 | **baidu** | 同上 | `finance.pae.baidu.com` |
-| **cls (财联社)** | 同上 | `www.cls.cn` |
+| **cls (财联社)** | 同上 | `www.cls.cn`（`v1/roll/get_roll_list`，**需签名** md5(sha1(urlencode))，`rn` ≤ 50） |
 
 ## 网络搜索 (SearchService)
 

@@ -54,9 +54,11 @@ GET /api/news/flash?count=50&page=1
 
 | 项 | 说明 |
 |----|------|
-| 端点 | `https://www.cls.cn/nodeapi/telegraphList?app=CailianpressWeb&rn={count}` |
+| 端点 | `https://www.cls.cn/v1/roll/get_roll_list?app=CailianpressWeb&...&sign={sign}`（2026-10-14 换；旧 `nodeapi/telegraphList` 已 **404**） |
+| 签名 | `md5(sha1(urlencode(params)))`，参数顺序 `app/category/last_time/os/refresh_type/rn/sv` 会进 hash；算法对照 akshare `stock_info_global_cls`（`buildClsSignedQuery()` 有跨语言断言） |
+| `rn` 上限 | **50**：实测 50 可用、**51 静默回 0 条**（而调用方传的是 `count*2`，所以 count≥26 时原本会全丢） |
 | 解析 | JSON: `data.roll_data[]` |
-| 字段 | `content`, `brief`(摘要), `ctime`(时间戳) |
+| 字段 | `title` 常为空串，正文在 `brief`/`content`（同一段）；`ctime` 是**秒级时间戳**（→ 按东八区格式化，用 UTC 会凭空差 8 小时并沉到列表底部） |
 | 来源标签 | `财联社` |
 
 ## 四、服务端处理
