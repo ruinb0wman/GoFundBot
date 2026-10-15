@@ -319,6 +319,9 @@ async function getGlobalIndexDetail(def: { code: string; name: string }): Promis
       high = q.high;
       low = q.low;
       prevClose = q.prevClose;
+      volume = q.volume ?? null;
+      // 美股指数没有可用的成交额（腾讯是合成值，见 `parseTencentGlobalQuotes`）
+      amount = q.amount ?? null;
       if (q.market) market = q.market;
     }
   }
@@ -330,6 +333,8 @@ async function getGlobalIndexDetail(def: { code: string; name: string }): Promis
     if (high == null) high = latest.high;
     if (low == null) low = latest.low;
     prevClose = data.length >= 2 ? data[data.length - 2].close : (prevClose ?? latest.close);
+    // 只拿 K 线兜底成交量：K 线的 amount 对美股是脏值（Step 3 未修），不能回填。
+    if (volume == null) volume = latest.volume ?? null;
   }
 
   const amplitude = high != null && low != null && prevClose != null && prevClose !== 0
@@ -419,6 +424,9 @@ export async function getIndexDetail(symbol: string): Promise<ServiceResult<Inde
     high = latest.high;
     low = latest.low;
     prevClose = data.length >= 2 ? data[data.length - 2].close : latest.close;
+    // 报价行缺字段时用最近一根日 K 兜底（两者同口径：成交量手 / 成交额元）
+    if (!volume) volume = latest.volume ?? volume;
+    if (!amount) amount = latest.amount ?? amount;
   }
 
   const amplitude = high != null && low != null && prevClose != null && prevClose !== 0
@@ -997,6 +1005,8 @@ export async function getCryptoIndexDetail(symbol: string): Promise<ServiceResul
       high = q.high;
       low = q.low;
       prevClose = q.prevClose;
+      volume = q.volume ?? null;
+      amount = q.amount ?? null;
     }
   }
 
@@ -1007,6 +1017,8 @@ export async function getCryptoIndexDetail(symbol: string): Promise<ServiceResul
     if (high == null) high = latest.high;
     if (low == null) low = latest.low;
     prevClose = data.length >= 2 ? data[data.length - 2].close : (prevClose ?? latest.close);
+    // Binance K 线的 volume 也是 base asset（与 ticker.volume 同口径），可兜底
+    if (volume == null) volume = latest.volume ?? null;
   }
 
   const amplitude = high != null && low != null && prevClose != null && prevClose !== 0

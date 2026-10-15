@@ -17,11 +17,13 @@ const TICKERS = [
     symbol: 'BTCUSDT', lastPrice: '81058.00000000', priceChange: '-2351.88000000',
     priceChangePercent: '-2.820', prevClosePrice: '83409.88000000', openPrice: '83409.88000000',
     highPrice: '83630.02000000', lowPrice: '80800.95000000', closeTime: 1791478483003,
+    volume: '23249.84754000', quoteVolume: '1901765043.20846940',
   },
   {
     symbol: 'ETHUSDT', lastPrice: '2422.31000000', priceChange: '-144.70000000',
     priceChangePercent: '-5.637', prevClosePrice: '2567.01000000', openPrice: '2567.01000000',
     highPrice: '2587.28000000', lowPrice: '2416.59000000', closeTime: 1791478483013,
+    volume: '432233.50000000', quoteVolume: '1065200000.00000000',
   },
 ];
 
@@ -49,6 +51,9 @@ describe('fetchBinanceCryptoQuotes', () => {
       low: 80800.95,
       prevClose: 83409.88,
       market: '加密货币',
+      // volume = base asset（BTC），amount = quote asset（USDT）—— 与 K 线 volume 同口径
+      volume: 23249.84754,
+      amount: 1901765043.2084694,
       date: new Date(1791478483003).toISOString().slice(0, 10),
     });
     expect(items[0].updateTime).toBe(new Date(1791478483003).toISOString());

@@ -55,6 +55,9 @@ describe('TencentMarketProvider.globalIndices', () => {
       market: '全球',
       date: '2026-10-08',
       updateTime: new Date('2026-10-08T13:28:40+08:00').toISOString(),
+      // [36] 是成分股成交量（股，新浪/东财同值）；[37] 是「成交量 × 指数点位」的合成值，必须丢。
+      volume: 195502388,
+      amount: null,
     });
 
     // 港股时间用 `/` 分隔，且 market 必须是「港股」——标成「全球」会让前端
@@ -70,6 +73,9 @@ describe('TencentMarketProvider.globalIndices', () => {
       market: '港股',
       date: '2026-10-08',
       updateTime: new Date('2026-10-08T18:31:15+08:00').toISOString(),
+      // 港股指数行的 [36]/[37] 是「万」单位（个股行才是股/元）
+      volume: 207255289732,
+      amount: 207255289730,
     });
   });
 

@@ -201,6 +201,16 @@ export interface GlobalIndexDto {
   low: number | null;
   prevClose: number | null;
   market: string | null;
+  /**
+   * 成交量：A 股外口径 —— 港股/美股指数是「股」，加密货币是「币」（base asset）。
+   * 美股指数的 [36] 是成分股成交量之和（新浪/东财同值），可用。
+   */
+  volume?: number | null;
+  /**
+   * 成交额（计价货币的元）：港股指数 = 万港元 ×1e4；美股**指数**腾讯给的是
+   * 「成交量 × 指数点位」的合成值（东财 f48 也不提供）→ **一律 null，别当成交额展示**。
+   */
+  amount?: number | null;
   date?: string;
   /** ISO 完整时间（含时分秒），来自交易所最近成交时间 */
   updateTime?: string;

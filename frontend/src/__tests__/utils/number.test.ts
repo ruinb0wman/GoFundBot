@@ -4,6 +4,7 @@ import {
   calcReturn, calcAnnualReturn, calcMaxDrawdown,
   calcDailyReturns, calcVolatility, calcSharpe,
   fmtPercent, fmtPercentPreferNumber, fmtNumber, fmtMoney, fmtAmountYi,
+  fmtVolume, fmtMagnitude,
   fmtChange, fmtRatio, fmtDrawdown,
   returnClass, sharpeClass, scoreClass,
   DEFAULT_RISK_FREE_RATE
@@ -223,6 +224,25 @@ describe('fmtMoney', () => {
 describe('fmtAmountYi', () => {
   it('converts to 亿', () => { expect(fmtAmountYi(12345678900)).toBe('123.46亿') })
   it('returns fallback for invalid', () => { expect(fmtAmountYi(NaN)).toBe('--') })
+})
+
+describe('fmtVolume', () => {
+  it('formats 亿手', () => { expect(fmtVolume(510163189)).toBe('5.10亿手') })
+  it('formats 万手', () => { expect(fmtVolume(57677)).toBe('5.77万手') })
+  it('formats 手 below 1 万', () => { expect(fmtVolume(5767)).toBe('5767手') })
+  it('takes a market-specific unit', () => { expect(fmtVolume(442523838, '股')).toBe('4.43亿股') })
+  it('supports a crypto symbol as unit', () => { expect(fmtVolume(23249.85, 'BTC')).toBe('2.32万BTC') })
+  it('shows real zero instead of fallback', () => { expect(fmtVolume(0)).toBe('0手') })
+  it('returns fallback for null/undefined', () => {
+    expect(fmtVolume(null)).toBe('--')
+    expect(fmtVolume(undefined)).toBe('--')
+  })
+})
+
+describe('fmtMagnitude', () => {
+  it('formats 亿 without unit', () => { expect(fmtMagnitude(510163189)).toBe('5.1亿') })
+  it('formats 万 without unit', () => { expect(fmtMagnitude(57677)).toBe('5.8万') })
+  it('returns fallback for invalid', () => { expect(fmtMagnitude(null)).toBe('--') })
 })
 
 describe('fmtChange', () => {

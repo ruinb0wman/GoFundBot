@@ -31,6 +31,10 @@ interface BinanceTicker {
   openPrice?: string;
   highPrice?: string;
   lowPrice?: string;
+  /** 24h 成交量（base asset，如 BTC） */
+  volume?: string;
+  /** 24h 成交额（quote asset，USDT） */
+  quoteVolume?: string;
   closeTime?: number;
 }
 
@@ -94,6 +98,8 @@ export async function fetchBinanceCryptoQuotes(): Promise<GlobalIndexListDto> {
       low: num(ticker.lowPrice),
       prevClose: num(ticker.prevClosePrice),
       market: '加密货币',
+      volume: num(ticker.volume),
+      amount: num(ticker.quoteVolume),
       date: iso.slice(0, 10),
       updateTime: iso,
     });

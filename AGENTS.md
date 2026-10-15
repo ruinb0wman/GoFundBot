@@ -301,6 +301,37 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 
 **仍存在**：`python/cli/data_complete.py` 的 akshare kline 只支持指数且无 `amount`（`stock_zh_index_daily`），个股 Python 回退会返回空；baostock 分支当前也无输出。
 
+### A 股报价的成交量/成交额字段（2026-10-15 修复）
+
+腾讯 `qt.gtimg.cn` 报价行的硬事实（实测）：`[6]`=成交量（**手**）、`[7]`=**外盘**（指数恒 0）、
+`[35]`=`价/成交量/成交额` 三段式（末段**元**）、`[37]`=成交额（**万元**）。
+
+- 现象：指数详情页「成交额」恒 `--`（`amount=0`）、成交量裸数字；个股成交额显示成外盘手数（茅台 32619）。
+- 修法：`parseQtQuotes` 改用 `[35]` 末段，退化 `[37]×1e4`（新增 `parseQtAmount()`）。
+- **影响面超出指数页**：`/api/market/quotes` 的所有消费方（`getCombinedIndices` / `getMarketOverview` / 组合）都曾拿到错误的 `amount`。
+- 海外**不能照抄这张表**（见 `.pi/plans/index-detail-volume-amount.md` §2.6）：港股 `[37]` 是万港元（×1e4 对）；美股个股 `[37]` 已是美元（**不能乘**）；美股**指数** `[37]` ≈ 成交量×指数点位（腾讯合成值，东财 `f48` 也不提供）→ 应返回 `null`，**别当成交额展示**。
+- 前端展示用 `fmtVolumeLots`（手→万手/亿手）/ `fmtAmountYi`（元→亿）；K 线 tooltip 用 `fmtMagnitude`（不带单位，避免给港股/美股贴错「手」）。
+
+> 回归测试：`service/src/__tests__/providers/tencent-a-share-quotes.test.ts`（真实行 fixture）。
+
+### 全球指数/加密的成交量成交额（2026-10-15，Step 2）
+
+`qt.gtimg.cn` 的**指数行**字段（与 A 股行不同）：`[36]`=成交量、`[37]`=成交额；单位按市场：
+
+- **港股指数**（HSI/HSCEI）：`[36]/[37]` 是「万」（×1e4 → 股 / 港元）。
+  ⚠️ 港股**个股**行不是这样（`hk00700` 的 `[6]/[37]` 直接是股/元、kline `row[8]` 才是万元），别把个股结论套到指数上。
+- **美股指数**（DJI/NDX/SPX）：`[37]` 恒等于「成交量 × 指数点位」（腾讯合成值），**不是货币成交额** → 一律 `null`；
+  东财 `push2 stock/get?secid=100.DJIA` 的 `f48` 也是 `0`（不提供）。`[36]` 是真实成分股成交量（新浪 `gb_$dji` 同值）→ 保留。
+- **加密**（Binance 24hr ticker）：`volume` = base asset（BTC）、`quoteVolume` = USDT → `amount`。
+
+➡️ `GlobalIndexDto` 因此加了 `volume`/`amount`（可选）；`getGlobalIndexDetail` / `getCryptoIndexDetail` 只拿 K 线兜底 **volume**
+（K 线 amount 对美股是脏值，见下条）。前端 `fmtVolume(val, unit)` 的单位按 market 选：A 股手 / 港股·美股股 / 加密币种代码；
+美股指数成交额为 `null` 时卡片带 tooltip 说明「数据源不提供」，避免看起来像故障。
+
+> 已修（Step 3）：`fetchKlineFromTencent` 现调 `parseTencentKlineAmount(row[8], qtCode)` ——
+> `sh/sz/bj/hk` ×1e4，`us*` 个股原值，`us*` **指数**（`GLOBAL_INDEX_DEFS` 里那三个）直接 `null`。
+> 回归测试：`tencent-market-kline.test.ts`（HK ×1e4 / 美股指数 null / A 股不变）。详见 `.pi/plans/index-detail-volume-amount.md`。
+
 ### 回测净值口径：份额拆分 / 分红（2026-10-08 修复）
 
 **现象**：一只有过**份额拆分**的 ETF，整条回测都是错的 —— 512010 六年「−80.6%」（实际 −22.3%）、

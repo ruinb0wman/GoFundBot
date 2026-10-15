@@ -43,8 +43,8 @@
         <div class="stat-card"><span class="stat-label">{{ '最高' }}</span><span class="stat-value">{{ detail.high || '--' }}</span></div>
         <div class="stat-card"><span class="stat-label">{{ '最低' }}</span><span class="stat-value">{{ detail.low || '--' }}</span></div>
         <div class="stat-card"><span class="stat-label">{{ '昨收' }}</span><span class="stat-value">{{ detail.prev_close || '--' }}</span></div>
-        <div class="stat-card"><span class="stat-label">{{ '成交量' }}</span><span class="stat-value">{{ detail.volume || '--' }}</span></div>
-        <div class="stat-card"><span class="stat-label">{{ '成交额' }}</span><span class="stat-value">{{ detail.amount || '--' }}</span></div>
+        <div class="stat-card"><span class="stat-label">{{ '成交量' }}</span><span class="stat-value">{{ fmtVolume(detail.volume, volumeUnit) }}</span></div>
+        <div class="stat-card" :title="amountHint"><span class="stat-label">{{ '成交额' }}</span><span class="stat-value">{{ fmtAmountYi(detail.amount) }}</span></div>
         <div class="stat-card"><span class="stat-label">{{ '振幅' }}</span><span class="stat-value">{{ detail.amplitude ? detail.amplitude + '%' : '--' }}</span></div>
       </div>
     </template>
@@ -56,7 +56,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { marketAPI } from '../services/api'
 
 import { MA_PRESETS, calcMA } from '../utils/ma'
-import { fmtPercent } from '../utils/number'
+import { fmtAmountYi, fmtMagnitude, fmtPercent, fmtVolume } from '../utils/number'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"
@@ -118,6 +118,21 @@ const priceDir = computed(() => {
   return ''
 })
 
+/** 成交量单位按市场：A 股手 / 港股·美股指数股 / 加密货币币种代码（腾讯不提供时卡片出 `--`）。 */
+const volumeUnit = computed(() => {
+  const market = detail.value?.market
+  if (market === '加密货币') return detail.value?.code || ''
+  if (market === '港股' || market === '全球') return '股'
+  return '手'
+})
+
+/** 美股指数成交额：腾讯给的是「成交量 × 指数点位」的合成值、东财 f48 也恒为 0 → 告诉用户不是页面坏了。 */
+const amountHint = computed(() =>
+  detail.value?.market === '全球' && detail.value?.amount == null
+    ? '美股指数数据源（腾讯/东财）不提供成交额'
+    : ''
+)
+
 const cssVar = (name: string, fallback = '') =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
 
@@ -160,7 +175,7 @@ const klineOption = computed(() => {
           <div>收盘: <b style="color:${color}">${d.close}</b></div>
           <div>最高: <b>${d.high}</b></div>
           <div>最低: <b>${d.low}</b></div>
-          <div>成交量: ${d.volume || 0}</div>`
+          <div>成交量: ${fmtMagnitude(d.volume)}</div>`
         for (const p of params) {
           if (p.seriesName?.startsWith('MA') && p.value !== undefined && p.value !== '-' && p.value !== null) {
             html += `<div>${p.marker} ${p.seriesName}: <b>${p.value}</b></div>`

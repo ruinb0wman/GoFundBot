@@ -10,8 +10,9 @@ vi.mock('../../core/fetch.js', () => ({ fetchUrl: fetchUrlMock }));
  *
  * 旧端点 `web.ifzq.gtimg.cn/app/app/kline/kline` 已失效（返回 code:11），
  * 导致 ProviderChain 全线失败、「近7日A股成交量」为空。新实现改用
- * `proxy.finance.qq.com/.../newfqkline/get`，行内 [8] 是成交额（万元），
- * 必须换算成「元」以对齐 EastMoney/akshare 的 KlineDto 语义。
+ * `proxy.finance.qq.com/.../newfqkline/get`，行内 [8] 是成交额，**单位按市场不同**：
+ * A 股万元 / 港股万港元（×1e4 → 元），美股个股已是美元，美股指数那个值是合成值（丢）。
+ * 详见 `parseTencentKlineAmount` 与 `.pi/plans/index-detail-volume-amount.md` §2.6。
  */
 
 const INDEX_NODE = {
@@ -82,6 +83,36 @@ describe('TencentMarketProvider.kline', () => {
     expect(url).toContain('param=sh600000%2Cday%2C2026-09-15%2C2026-09-30%2C');
     expect(url).toContain('%2Cqfq');
     expect(options).toMatchObject({ proxy: 'never', as: 'json' });
+  });
+
+  it('keeps the「万」unit for HK index rows (×1e4 → 港元)', async () => {
+    fetchUrlMock.mockResolvedValue(ok({
+      hkHSI: {
+        day: [
+          ['2026-10-15', '24119.141', '24062.721', '24162.711', '23945.840', '224164565414.00', {}, '0.00', '22416456.54', '0.000', '0.000'],
+        ],
+      },
+    }));
+
+    const rows = await new TencentMarketProvider().kline('HSI', { period: 'daily', adjust: '' });
+
+    expect(rows[0]).toMatchObject({ code: 'HSI', amount: 224164565400, volume: 224164565414 });
+  });
+
+  it('drops US index 成交额：那是「成交量 × 指数点位」的合成值，不是货币', async () => {
+    fetchUrlMock.mockResolvedValue(ok({
+      usDJI: {
+        day: [
+          ['2026-10-14', '51684.75', '51621.48', '51869.75', '51365.42', '442523838.00', {}, '0.00', '22830851046927.00', '0.00', '0.00'],
+        ],
+      },
+    }));
+
+    const rows = await new TencentMarketProvider().kline('DJI', { period: 'daily', adjust: '' });
+
+    // 442523838 × 51621.48 = 22830851046927（恒等）——旧代码 ×1e4 会得到 2.28e17
+    expect(rows[0].amount).toBeNull();
+    expect(rows[0].volume).toBe(442523838);
   });
 
   it('returns [] when Tencent reports a non-zero code', async () => {

@@ -59,6 +59,31 @@ export function fmtAmountYi(val: unknown): string {
   return `${new Decimal(val as number).div(100000000).toFixed(2)}亿`
 }
 
+/**
+ * 成交量 → `5.10亿手` / `5.77万手` / `5768手`，缺失返回 `--`。
+ *
+ * `unit` 按市场传：A 股是「手」，港股/美股指数是「股」，加密货币传币种代码。
+ * 指数详情页原来直接渲染原始数字（`510163189`）。
+ */
+export function fmtVolume(val: unknown, unit = '手'): string {
+  if (!isFiniteNumber(val)) return '--'
+  const num = val as number
+  const abs = Math.abs(num)
+  if (abs >= 100000000) return `${new Decimal(num).div(100000000).toFixed(2)}亿${unit}`
+  if (abs >= 10000) return `${new Decimal(num).div(10000).toFixed(2)}万${unit}`
+  return `${new Decimal(num).toFixed(0)}${unit}`
+}
+
+/** 只出数量级（万/亿，不带单位），给 K 线成交量轴的紧凑刻度用。 */
+export function fmtMagnitude(val: unknown): string {
+  if (!isFiniteNumber(val)) return '--'
+  const num = val as number
+  const abs = Math.abs(num)
+  if (abs >= 100000000) return `${new Decimal(num).div(100000000).toFixed(1)}亿`
+  if (abs >= 10000) return `${new Decimal(num).div(10000).toFixed(1)}万`
+  return new Decimal(num).toFixed(0)
+}
+
 export function fmtChange(val: unknown): string {
   if (!isFiniteNumber(val)) return '-'
   const num = val as number

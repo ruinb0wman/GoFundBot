@@ -16,6 +16,14 @@ const KLINE_URL = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqklin
 // 备用 host 返回同样的行结构，但只有前 6 列（无成交额）。
 const KLINE_FALLBACK_URL = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get';
 
+/** 腾讯 `us*` 代码里哪些是**指数**（K 线 `row[8]` 是「成交量 × 指数点位」的合成值，不能当成交额）。 */
+const TENCENT_US_INDEX_CODES = new Set(
+  GLOBAL_INDEX_DEFS
+    .map((def) => def.tencentSymbol)
+    .filter((symbol): symbol is string => !!symbol && symbol.toLowerCase().startsWith('us'))
+    .map((symbol) => symbol.toLowerCase()),
+);
+
 export class TencentMarketProvider implements MarketProvider {
   readonly name = 'tencent';
 
@@ -124,8 +132,8 @@ async function fetchKlineFromTencent(qtCode: string, code: string, options: Klin
     const change = prevClose != null && close != null ? close - prevClose : null;
     const changePercent =
       change != null && prevClose != null && prevClose !== 0 ? (change / prevClose) * 100 : null;
-    // row[8] = 成交额（万元），与 EastMoney/akshare 的「元」对齐需 ×1e4。
-    const amountWan = toNullableNum(row[8]);
+    // row[8] = 成交额，单位按市场不同（见 parseTencentKlineAmount）
+    const amount = parseTencentKlineAmount(row[8], qtCode);
     const timestamp = date ? new Date(date).getTime() : NaN;
 
     mapped.push({
@@ -137,7 +145,7 @@ async function fetchKlineFromTencent(qtCode: string, code: string, options: Klin
       high: toNullableNum(row[3]),
       low: toNullableNum(row[4]),
       volume: toNullableNum(row[5]),
-      amount: amountWan != null ? amountWan * 1e4 : null,
+      amount,
       change,
       changePercent,
       turnoverRate: toNullableNum(row[7]),
@@ -156,7 +164,10 @@ async function fetchKlineFromTencent(qtCode: string, code: string, options: Klin
  *
  * 字段位置（2026-10 实测，美/港一致）：
  * `[1]` 名称、`[2]` 代码、`[3]` 现价、`[4]` 昨收、`[5]` 今开、`[6]` 成交量、
- * `[30]` 时间、`[33]` 最高、`[34]` 最低。
+ * `[30]` 时间、`[33]` 最高、`[34]` 最低、`[36]` 成交量、`[37]` 成交额。
+ *
+ * `[36]/[37]` 的单位按市场分（见 `.pi/plans/index-detail-volume-amount.md` §2.6）：
+ * 港股指数是「万」（×1e4），美股指数 [37] 是合成值（丢）。
  */
 function parseTencentGlobalQuotes(
   text: string,
@@ -182,6 +193,11 @@ function parseTencentGlobalQuotes(
     const changePercent =
       prevClose != null && prevClose !== 0 ? round2(((price - prevClose) / prevClose) * 100) : null;
     const { date, updateTime } = parseTencentGlobalTime(parts[30] ?? '');
+    const isHk = (def.tencentSymbol as string).toLowerCase().startsWith('hk');
+    // 港股**指数**行的 [36]/[37] 是「万」单位（港股个股行是「股/元」，US 行是「股」），
+    // 实测 hkHSI：quote [36]=22416456.54 而 kline row[5]=224164565414（差 1e4），同理 [37]。
+    const rawVolume = toNullableNum(parts[36]);
+    const rawAmount = toNullableNum(parts[37]);
 
     items.push({
       code: def.code,
@@ -193,7 +209,10 @@ function parseTencentGlobalQuotes(
       high: toNullableNum(parts[33]),
       low: toNullableNum(parts[34]),
       prevClose,
-      market: (def.tencentSymbol as string).toLowerCase().startsWith('hk') ? '港股' : '全球',
+      market: isHk ? '港股' : '全球',
+      volume: rawVolume != null ? (isHk ? rawVolume * 1e4 : rawVolume) : null,
+      // 美股指数 [37] 恒等于「成交量 × 指数点位」，不是货币成交额 → 不用。
+      amount: isHk && rawAmount != null ? rawAmount * 1e4 : null,
       date,
       updateTime,
     });
@@ -284,6 +303,25 @@ function detectMarket(qtCode: string): string {
   return 'CN';
 }
 
+/**
+ * 腾讯 K 线 `row[8]` = 成交额，但**单位按市场不同**（2026-10-15 实测，见
+ * `.pi/plans/index-detail-volume-amount.md` §2.6）：
+ *
+ * - A 股：万元 → ×1e4 得元
+ * - 港股（指数与个股）：万港元 → ×1e4 得港元
+ * - 美股个股：已是美元 → 原值（不能再乘）
+ * - 美股指数：恒等于「成交量 × 指数点位」（腾讯合成值，东财 `f48` 也不提供）→ **null**
+ */
+function parseTencentKlineAmount(raw: unknown, qtCode: string): number | null {
+  const value = toNullableNum(raw);
+  if (value == null) return null;
+  const lower = qtCode.toLowerCase();
+  if (lower.startsWith('us')) {
+    return TENCENT_US_INDEX_CODES.has(lower) ? null : value;
+  }
+  return value * 1e4;
+}
+
 function parseQtQuotes(
   text: string,
   requestedQtCodes: string[],
@@ -313,7 +351,7 @@ function parseQtQuotes(
     const prevClose = parseFloat(parts[4]);
     const open = parseFloat(parts[5]);
     const volume = parseFloat(parts[6]) || 0;
-    const amount = parseFloat(parts[7]) || 0;
+    const amount = parseQtAmount(parts);
 
     const change = prevClose > 0 && !isNaN(prevClose) && !isNaN(currentPrice) ? currentPrice - prevClose : 0;
     const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
@@ -337,6 +375,20 @@ function parseQtQuotes(
   }
 
   return results;
+}
+
+/**
+ * A 股报价行的成交额（单位：元）。
+ *
+ * `[35]` 是 `价/成交量/成交额` 三段式（末段单位元，2026-10-15 实测上证
+ * `3707.48/510163189/774391973455`），`[37]` 是成交额（万元，同刻 `77439197`）。
+ * **`[7]` 是外盘不是成交额** —— 指数行恒为 0，以前误用它才让成交额显示 0。
+ */
+function parseQtAmount(parts: string[]): number {
+  const yuan = toNullableNum(parts[35]?.split('/')[2]);
+  if (yuan != null) return yuan;
+  const wan = toNullableNum(parts[37]);
+  return wan != null ? wan * 1e4 : 0;
 }
 
 function toQuoteDate(value: string): string {
