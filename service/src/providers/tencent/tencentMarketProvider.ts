@@ -15,6 +15,8 @@ const QT_URL = 'https://qt.gtimg.cn/';
 const KLINE_URL = 'https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get';
 // 备用 host 返回同样的行结构，但只有前 6 列（无成交额）。
 const KLINE_FALLBACK_URL = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get';
+const TENCENT_KLINE_MAX_COUNT = 2000;
+const TENCENT_KLINE_MAX_PAGES = 12;
 
 /** 腾讯 `us*` 代码里哪些是**指数**（K 线 `row[8]` 是「成交量 × 指数点位」的合成值，不能当成交额）。 */
 const TENCENT_US_INDEX_CODES = new Set(
@@ -101,24 +103,37 @@ async function fetchKlineFromTencent(qtCode: string, code: string, options: Klin
 
   const start = toDashedDate(options.startDate);
   const end = toDashedDate(options.endDate);
-  // 腾讯用 count 决定返回条数（start 只是下限钳制），先取足量再按 [startDate, endDate] 过滤。
+  // 腾讯用 count 决定返回条数（start 只是下限钳制），一次最多 2000 根（再大直接返回空）。
+  // 没给 startDate（前端时间选「所有」）就按上限取，并向前翻页取到最早一根。
   const count = start && end
-    ? Math.min(640, Math.max(20, calendarDays(start, end) + 10))
-    : period === 'day' ? 320 : 200;
+    ? Math.min(TENCENT_KLINE_MAX_COUNT, Math.max(20, calendarDays(start, end) + 10))
+    : TENCENT_KLINE_MAX_COUNT;
 
-  let node: Record<string, unknown> | null = null;
-  for (const baseUrl of [KLINE_URL, KLINE_FALLBACK_URL]) {
-    try {
-      node = await fetchKlineNode(baseUrl, qtCode, period, start, end, count, fq);
-    } catch {
-      node = null;
+  const rows: unknown[] = [];
+  let pageEnd = end;
+  for (let page = 0; page < TENCENT_KLINE_MAX_PAGES; page++) {
+    let node: Record<string, unknown> | null = null;
+    for (const baseUrl of [KLINE_URL, KLINE_FALLBACK_URL]) {
+      try {
+        node = await fetchKlineNode(baseUrl, qtCode, period, start, pageEnd, count, fq);
+      } catch {
+        node = null;
+      }
+      if (node) break;
     }
-    if (node) break;
-  }
-  if (!node) return [];
+    if (!node) break;
 
-  const rows = pickKlineRows(node, period, fq);
-  if (!Array.isArray(rows)) return [];
+    const pageRows = pickKlineRows(node, period, fq);
+    if (!Array.isArray(pageRows) || pageRows.length === 0) break;
+    rows.unshift(...pageRows);
+    // 不满一页 = 已经到头
+    if (pageRows.length < count) break;
+    const earliest = String((pageRows[0] as unknown[])?.[0] ?? '');
+    const prev = earliest ? shiftDay(earliest, -1) : '';
+    if (!prev || (start && prev < start)) break;
+    pageEnd = prev;
+  }
+  if (rows.length === 0) return [];
 
   let prevClose: number | null = null;
   const mapped: KlineDto[] = [];
@@ -265,6 +280,12 @@ function pickKlineRows(node: Record<string, unknown>, period: string, fq: string
     if (Array.isArray(node[key])) return node[key] as unknown[];
   }
   return null;
+}
+
+function shiftDay(date: string, days: number): string {
+  const ms = new Date(`${date}T00:00:00Z`).getTime();
+  if (!Number.isFinite(ms)) return '';
+  return new Date(ms + days * 86400000).toISOString().slice(0, 10);
 }
 
 function toDashedDate(value?: string): string {

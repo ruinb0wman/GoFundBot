@@ -292,6 +292,7 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 
 **修复**：
 - `TencentMarketProvider.kline()` 改用腾讯新格式端点 `https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get?param=<code>,<period>,<start>,<end>,<count>,<fq>`（备用 `web.ifzq.gtimg.cn/appstock/app/fqkline/get`，但只有 6 列、无成交额）。行内 **`[8]` = 成交额（万元）**，写回 `KlineDto.amount` 时 `×1e4` 转**元**（与 EastMoney/akshare 对齐）；`[5]` = 成交量（手）、`[7]` = 换手率。指数 node 键为 `day/week/month`，个股复权为 `qfqday/hfqday`。`count` 才是返回条数（`start` 只是钳制），所以先取足量、再按 `[startDate,endDate]` 过滤。
+- **腾讯 `count` 硬上限 2000**（2002 起直接返回空 data）→ 时间选「所有」（不带 `startDate`）时按 2000 分页往回取（`end` = 上一页最早一根的前一天，最多 12 页）。上证指数 1990 起 8738 根 ≈ 5 次请求 0.9s，缓存 1h。改之前「所有」只有 320 根日 K / 200 根周 K（周 K 正好从 2022-12 开始，看着像「数据只到 2022 年」）。
 - `getAVolume7Days()` 不再谎报：`allSettled` 的 rejection 与「结果为空」都会 `logger.error`，空结果返回 `success:false`。
 - 同一修复也恢复了个股 K 线（`StockPopup` 走 `/api/market/kline/:code`）。
 

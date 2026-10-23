@@ -135,6 +135,27 @@ describe('TencentMarketProvider.kline', () => {
     expect(fetchUrlMock).toHaveBeenCalledTimes(2);
   });
 
+  it('pages backwards until the earliest bar when no startDate is given（时间选「所有」）', async () => {
+    const rowsFrom = (fromDay: number, n: number) =>
+      Array.from({ length: n }, (_, i) => {
+        const date = new Date(Date.UTC(2026, 0, 1) + (fromDay + i) * 86400000).toISOString().slice(0, 10);
+        return [date, '1', '1', '1', '1', '1', {}, '0', '1'];
+      });
+    fetchUrlMock
+      .mockResolvedValueOnce(ok({ sh000001: { day: rowsFrom(0, 2000) } })) // 满一页（腾讯单次上限）
+      .mockResolvedValueOnce(ok({ sh000001: { day: rowsFrom(-40, 3) } })); // 不满一页 → 到头
+
+    const rows = await new TencentMarketProvider().kline('sh000001', { period: 'daily', adjust: '' });
+
+    expect(fetchUrlMock).toHaveBeenCalledTimes(2);
+    expect(rows).toHaveLength(2003);
+    expect(rows[0].date).toBe('2025-11-22'); // 第二页最早一根
+    expect(rows.at(-1)?.date).toBe(new Date(Date.UTC(2026, 0, 1) + 1999 * 86400000).toISOString().slice(0, 10));
+    const secondUrl = decodeURIComponent(fetchUrlMock.mock.calls[1][0] as string);
+    expect(secondUrl).toContain('2025-12-31'); // end = 第一页最早一根的前一天
+    expect(secondUrl).toContain(',2000');
+  });
+
   it('returns [] when every Tencent host fails', async () => {
     fetchUrlMock.mockRejectedValue(new Error('blocked'));
 

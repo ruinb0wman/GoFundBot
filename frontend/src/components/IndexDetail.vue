@@ -322,7 +322,7 @@ const fetchKline = async () => {
 
 const switchPeriod = (key: string) => {
   activePeriod.value = key
-  const rangeMap: Record<string, string> = { daily: '1y', weekly: '3y', monthly: '5y' }
+  const rangeMap: Record<string, string> = { daily: '1y', weekly: '3y', monthly: 'all' }
   activeRange.value = rangeMap[key] || '1y'
   fetchKline()
 }
