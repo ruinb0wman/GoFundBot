@@ -17,6 +17,7 @@ import {
   getNorthFlow,
 } from '../services/marketService.js'
 import type { ConceptSpotItem } from '../services/marketService.js'
+import { getIndexValuation } from '../services/valuationService.js'
 
 const limit = (description: string) => z.number().int().min(1).max(120).optional().describe(description)
 
@@ -137,6 +138,58 @@ export const marketTools = [
         note: hasDealAmount
           ? '自 2024-08-19 起沪深港通不再披露北向资金净流入（*_net_inflow 恒为 null，不要解读为 0）；仅公布当日成交总额。以上 *_deal_amount_yi 即最新交易日的北向成交总额（单位：亿元）。'
           : '北向资金数据暂不可用（净流入自 2024-08-19 起停止披露，成交总额也尚未更新）。',
+      }
+    },
+  }),
+
+  defineAgentTool({
+    name: 'get_index_valuation',
+    label: '获取指数估值',
+    description:
+      '获取指数的 PE 估值：当前加权滚动 PE(TTM)、当前值在该指数全部可得周频历史中的排名分位，以及机会/中位/危险值（= 窗口内 20/50/80 分位 PE）。'
+      + '只覆盖 A 股指数（sh000300 沪深300 / sz399001 深证成指 / sz399006 创业板指 / sh000688 科创50 / sh000905 中证500 / sh000852 中证1000 / sh000016 上证50 / sh000922 中证红利 等）；'
+      + '上证综指、中证A500、科创100、创业板50、深证100 以及海外/加密指数**没有数据**（data_status=unavailable，不要编）。'
+      + '同一个指数的 PE 因口径（加权/等权）能差 1–2 倍，不要与其他软件的数字直接对比；分位是历史排名，不是买卖信号。',
+    promptSnippet: 'get_index_valuation(index_code): 指数PE估值分位 + 20/50/80 分位值',
+    params: z.object({
+      index_code: z.string().describe('A 股指数代码：sh000300 / sz399006 / sh000688（也接受 000300）'),
+    }),
+    readOnly: true,
+    async handler(args) {
+      const res = await getIndexValuation(args.index_code)
+      const d = (unwrapServiceResult(res) ?? {}) as unknown as Record<string, unknown>
+      const bands = (d.bands ?? {}) as Record<string, unknown>
+      const window = (d.window ?? null) as Record<string, unknown> | null
+      const percentile = typeof d.percentile === 'number' ? d.percentile : null
+      const dataStatus = d.data_status === 'available' ? 'available' : 'unavailable'
+
+      const notes: string[] = []
+      if (dataStatus !== 'available') {
+        notes.push(d.error ? `该指数没有估值数据：${String(d.error)}` : '该指数没有估值数据')
+        notes.push('不要编造 PE 或分位；可以改用 get_index_kline 讲走势，但不要推测估值高低')
+      } else {
+        notes.push(`分位 = 当前 PE 在窗口内的排名（${String(d.definition)}），不是买卖信号，也不要与其他软件的 PE 直接对比`)
+      }
+
+      // 4 位小数足够（页面只显示 2 位），顺手去掉 12.736999999999998 这类浮点噪声
+      const round4 = (value: unknown): number | null =>
+        typeof value === 'number' && Number.isFinite(value) ? +value.toFixed(4) : null
+
+      return {
+        data_status: dataStatus,
+        index_code: d.code,
+        as_of: d.as_of,
+        pe: round4(d.pe),
+        // 分位同时给小数与百分数：模型容易把 0.496 读成「0.496%」
+        percentile: round4(percentile),
+        percentile_pct: percentile == null ? null : +(percentile * 100).toFixed(1),
+        opportunity: round4(bands.opportunity),
+        median: round4(bands.median),
+        danger: round4(bands.danger),
+        window,
+        source: d.source,
+        definition: d.definition,
+        note: notes.join('；'),
       }
     },
   }),

@@ -8,6 +8,7 @@ vi.hoisted(() => {
 });
 
 const mocks = vi.hoisted(() => ({
+  getIndexValuation: vi.fn(),
   getMarketKline: vi.fn(),
   getAVolume7Days: vi.fn(),
   getMarketSectorConstituents: vi.fn(),
@@ -19,6 +20,8 @@ vi.mock('../../services/marketService.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../../services/marketService.js');
   return { ...actual, ...mocks };
 });
+
+vi.mock('../../services/valuationService.js', () => ({ getIndexValuation: mocks.getIndexValuation }));
 
 /** 造一个 ServiceResult 信封（`unwrapServiceResult` 靠这几个字段识别）。 */
 const serviceResult = (data: unknown) => ({
@@ -243,5 +246,73 @@ describe('行情细节工具', () => {
     const res = await call(app, 'get_concept_sectors', { limit: 5 });
     expect(res.body.data.result).toMatchObject({ data_status: 'unavailable', count: 0, items: [] });
     expect(res.body.data.result.note).toContain('概念板块数据源不可用');
+  });
+
+  it('returns index valuation with 分位 and the three band values', async () => {
+    mocks.getIndexValuation.mockResolvedValue(
+      serviceResult({
+        code: 'sh000300',
+        source_code: 'SH000300',
+        name: null,
+        as_of: '2026-10-22',
+        data_status: 'available',
+        pe: 12.7291,
+        percentile: 0.49612403100775193,
+        bands: { opportunity: 11.7383, median: 12.736999999999998, danger: 14.1813 },
+        source: 'danjuan',
+        definition: '加权滚动PE(TTM) · 20/50/80 分位',
+        window: { start: '2016-10-24', end: '2026-10-22', points: 516, freq: 'weekly' },
+      }),
+    );
+
+    const app = await createApp();
+    const res = await call(app, 'get_index_valuation', { index_code: 'sh000300' });
+
+    expect(mocks.getIndexValuation).toHaveBeenCalledWith('sh000300');
+    expect(res.body.data.result).toMatchObject({
+      data_status: 'available',
+      index_code: 'sh000300',
+      as_of: '2026-10-22',
+      pe: 12.7291,
+      percentile: 0.4961,
+      // 模型容易把 0.496 读成「0.496%」，所以百分数也给一份
+      percentile_pct: 49.6,
+      opportunity: 11.7383,
+      median: 12.737,
+      danger: 14.1813,
+    });
+    expect(res.body.data.result.note).toContain('不是买卖信号');
+  });
+
+  it('tells the model not to invent PE when the index has no valuation data', async () => {
+    mocks.getIndexValuation.mockResolvedValue(
+      serviceResult({
+        code: 'sh000001',
+        source_code: 'SH000001',
+        name: null,
+        as_of: '',
+        data_status: 'unavailable',
+        pe: null,
+        percentile: null,
+        bands: { opportunity: null, median: null, danger: null },
+        source: 'danjuan',
+        definition: '加权滚动PE(TTM) · 20/50/80 分位',
+        window: null,
+        error: '数据源未收录该指数',
+      }),
+    );
+
+    const app = await createApp();
+    const res = await call(app, 'get_index_valuation', { index_code: 'sh000001' });
+
+    expect(res.body.data.result).toMatchObject({
+      data_status: 'unavailable',
+      pe: null,
+      percentile: null,
+      percentile_pct: null,
+      opportunity: null,
+    });
+    expect(res.body.data.result.note).toContain('数据源未收录该指数');
+    expect(res.body.data.result.note).toContain('不要编造 PE 或分位');
   });
 });

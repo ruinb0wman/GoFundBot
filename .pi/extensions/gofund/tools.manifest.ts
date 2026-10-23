@@ -107,6 +107,26 @@ export const STATIC_MANIFEST = {
       }
     },
     {
+      "name": "get_index_valuation",
+      "label": "获取指数估值",
+      "description": "获取指数的 PE 估值：当前加权滚动 PE(TTM)、当前值在该指数全部可得周频历史中的排名分位，以及机会/中位/危险值（= 窗口内 20/50/80 分位 PE）。只覆盖 A 股指数（sh000300 沪深300 / sz399001 深证成指 / sz399006 创业板指 / sh000688 科创50 / sh000905 中证500 / sh000852 中证1000 / sh000016 上证50 / sh000922 中证红利 等）；上证综指、中证A500、科创100、创业板50、深证100 以及海外/加密指数**没有数据**（data_status=unavailable，不要编）。同一个指数的 PE 因口径（加权/等权）能差 1–2 倍，不要与其他软件的数字直接对比；分位是历史排名，不是买卖信号。",
+      "promptSnippet": "get_index_valuation(index_code): 指数PE估值分位 + 20/50/80 分位值",
+      "readOnly": true,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "index_code": {
+            "type": "string",
+            "description": "A 股指数代码：sh000300 / sz399006 / sh000688（也接受 000300）"
+          }
+        },
+        "required": [
+          "index_code"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "get_market_breadth",
       "label": "获取涨跌统计",
       "description": "获取市场涨跌统计：沪深两市合计的上涨/下跌/平盘家数（scope 字段标注口径），以及涨停/跌停家数（limit_up/limit_down 可能为 null，不代表 0）。东财 push2 被限流时会回退到乐咕乐股（provider 字段标注来源，家数口径与东财会差几十只，别与其他来源逐位对比）。",
@@ -1895,7 +1915,7 @@ export const STATIC_MANIFEST = {
       }
     }
   ],
-  "count": 59,
+  "count": 60,
   "destructive": [
     "add_to_watchlist",
     "remove_from_watchlist",

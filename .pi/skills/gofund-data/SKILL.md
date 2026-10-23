@@ -24,6 +24,8 @@ service 未启动时工具会明确报错 —— 如实转述，**不要据此�
   或自己写代码（`prepare(sdk)` 用 `sdk.screen()` 从本地基金库选池、`onDay(s)` 按基金代码逐日决策），
   想留档就 `save_strategy_script`。这三者都走 service 的隔离 worker（5s 超时），**执行/写入类需要确认令牌**。
 - **看指数历史**：`get_index_kline(code, start_date, end_date)`（A 股 `sh/sz` 前缀 + 海外 DJI/HSI），两个日期必填。
+- **看指数估值**：`get_index_valuation(index_code)` 给当前 PE、窗口分位（`percentile` 小数 + `percentile_pct` 百分数）
+  与机会/中位/危险值（= 20/50/80 分位 PE）。只覆盖 A 股主流宽基/行业指数，上证综指/中证A500/科创100/海外都没有数据。
 - **看个股**：`get_stock_kline(code, start_date, end_date, adjust?)`（`sh600519` / `sz000001` / 直接 6 位代码；adjust 可前/后复权）。
 - **看成交额/成分股**：`get_a_volume_7days()`（沪深近 7 个交易日成交额；`data_status: unavailable` 不是 0）、
   `get_sector_constituents(sector_code)`（code 来自 `get_hot_sectors`；同花顺降级时 code 为空串、eastmoney 被反爬时不可用 —— 失败就如实说）。
@@ -54,6 +56,8 @@ service 未启动时工具会明确报错 —— 如实转述，**不要据此�
 - 概念板块的 `event_date` 是数据源标注的事件日期，可能早于当日，**不要当作行情日期**。
 - `screen_funds` 的过滤语义：`max_drawdown_3m_max`/`_6m_max`/`_3y_max`/`_all_max` 实际都读近一年最大回撤（历史口径），
   `sharpe_ratio_1y` 为 null 表示该基金还没算风险指标（不是 0）。
+- 估值分位是「当前 PE 在该窗口内的历史排名」，**不是买卖信号**；同一指数的 PE 因加权/等权口径能差 1–2 倍，
+  不要拿本工具的 PE 去和别的软件（或乐咕「等权」口径）逐位对比。`percentile: 0.496` 是 49.6%，不是 0.496%。
 - 日期一律 `YYYY-MM-DD`；费率/止盈止损/权重用小数（`0.2` = 20%）。
 - 结果过大时工具会截断并提示 —— 缩小时间范围或减少 `limit` 重试，不要猜测被截掉的部分。
 

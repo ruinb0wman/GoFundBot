@@ -14,11 +14,11 @@
 - 语义：结构错误（未知工具 / 参数不合 Schema）→ `400`；取数失败 → `200` + `{ error }`；写/执行类 → 见下节的确认流程。
 - `/api/agent/*` 有自己的限流额度（**3000/15min**），不吃全局的 300/15min —— pi 一次分析会连着调十几个工具。
 
-当前 **59 个工具**（分组）：
+当前 **60 个工具**（分组）：
 
 | 组 | 工具 |
 |---|---|
-| 市场 | `get_market_indices` `get_index_kline` `get_stock_kline` `get_hot_sectors` `get_concept_sectors` `get_sector_constituents` `get_north_flow` `get_market_breadth` `get_main_flow` `get_a_volume_7days` `get_gold_realtime` |
+| 市场 | `get_market_indices` `get_index_kline` `get_index_valuation` `get_stock_kline` `get_hot_sectors` `get_concept_sectors` `get_sector_constituents` `get_north_flow` `get_market_breadth` `get_main_flow` `get_a_volume_7days` `get_gold_realtime` |
 | 基金 | `search_funds` `get_fund_detail` `get_fund_estimate` `get_fund_estimates` `get_fund_nav_history` `get_fund_holdings` `get_fund_managers` `get_flash_news` |
 | 自选 | `get_watchlist` `add_to_watchlist` `remove_from_watchlist` `save_watchlist_group` `delete_watchlist_group` `assign_watchlist_group` `reorder_watchlist` |
 | 告警 | `get_alerts` `save_alert` `delete_alert` `check_alerts` `get_market_anomaly` `save_anomaly_config` |

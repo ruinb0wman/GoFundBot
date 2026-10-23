@@ -96,6 +96,6 @@ curl -s localhost:8310/api/market/index/BTC/valuation | jq '.data | {data_status
 
 ## 七、不做的事
 
-- 不做 pi 工具 `get_index_valuation`（P2，未排期）。
+- pi 工具 `get_index_valuation` **已提供**（只读，返回 PE / 分位 / 三档值 + 口径 note；未收录时 `data_status: unavailable` 并提示不要编造）。
 - 不做基金详情页的 PE / 三档带值（P3，否决：只有 ~13% 的指数基金能映射到有估值的指数，主动基金的组合 PE 语义错位）。
 - 不做估值历史折线图、PB/股息率/ROE、低估/高估标签、告警联动。
