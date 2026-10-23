@@ -161,7 +161,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `.pi/extensions/gofund/` | **pi 通用桥**（不再定义具体工具）：启动时拉 `/api/agent/tools`（**60 个工具**）逐个 `registerTool`；服务离线 → 用 `tools.manifest.ts`（`bun run gen:tools` 生成）；都没有 → 只注册 `gofund_call(tool, args)`。配套 skill `.pi/skills/gofund-data/SKILL.md` |
 | `.pi/skills/gofund-strategy/SKILL.md` | 策略读写工作流（`list_strategies` / `save_strategy` + 确认门），以及「给用户看页面就调 bow 的 `browser_*`」 |
 | `packages/core/` | **共享计算内核 `@gofund/core`**（纯 TS，仅依赖 decimal.js）：回测引擎、组合引擎、策略沙箱、CPython 兼容、风险指标（`computeRiskMetricsLocal`）、行业分类、投研聚合。**前端与 service 同源同值**（前端走 vite alias/vitest alias 直连 src；service 用相对路径引 `packages/core/src`，不做 dist）；core 内相对 import 必须带 `.js` 后缀。黄金 fixtures 两侧各跑一次（`frontend/src/__tests__` + `service/src/__tests__/services/core-golden.test.ts`）。见 `packages/core/README.md` |
-| `packages/ui/` | **UI 组件库 `@gofund/ui`** — B* 系列表单控件与浮层/反馈组件、设计 token（明暗双主题）、composables；Vite lib mode 构建（组件级 chunk + dts）；frontend 经 vite/tsconfig 别名直连 `packages/ui/src/index.ts`（`@gofund/ui`），开发 HMR 与构建均从源；`file:../packages/ui` 仅为发布用依赖声明 |
+| `~/Workspace/ui`（**仓外**） | **跨项目 UI 库 `@ruinb0w/ui`** — 2026-10-24 从本仓 `packages/ui` 迁出，与 bow / exp1 共用同一套视觉尺度、四套语义主题、三档密度；VitePress 文档站（组件页内是真实可交互组件）+ `AI.md` / `ai/manifest.json` 给 AI 读。frontend 经 vite/tsconfig 别名直连 `../../ui/src/index.ts`（`@gofund/ui` 与 `@ruinb0w/ui` 两个名字都能用），开发 HMR 与构建均从源；`file:../../ui` 仅为依赖声明。规范见该仓 `DESIGN.md` |
 | `docs/fund-screening/` | 基金筛选模块细分文档（概览/数据流/筛选面板/指标丰富化/4433法则） |
 | `docs/market-*.md` | 市场数据各功能模块说明文档 |
 | `docs/architecture/` | 技术架构文档（数据源/数据流/回退策略/AI分析等） |

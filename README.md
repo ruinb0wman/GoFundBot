@@ -142,7 +142,7 @@ cd docs && bun install && bunx vitepress dev --port 8574   # 文档站 :8574
 *   **业务计算**: 来自 `@gofund/core`（与 service 共用同一份源码）；页面只做展示与交互
 *   **AI / 搜索客户端**: 无 —— 前端没有聊天或 AI 入口，AI 交互在终端 pi
 *   **环境适配**: `httpClient.ts`（统一浏览器 fetch；Electron 壳侧解禁 CORS）
-*   **UI 组件**: 自定义响应式组件 + `@gofund/ui` 基础组件库
+*   **UI 组件**: 自定义响应式组件 + 跨项目组件库 `@ruinb0w/ui`（仓外 `~/Workspace/ui`，本仓以 `@gofund/ui` 别名消费源码）
 *   **可视化**: ECharts + vue-echarts
 *   **测试**: Vitest + @vue/test-utils
 
@@ -171,7 +171,7 @@ cd GoFundBot
 ./setup.sh --help     # 选项：--skip-node / --skip-python
 ```
 
-Node 侧统一使用 **bun**（与 `bun dev` 一致）；`packages/ui` 会先于 `frontend` 安装（后者依赖 `@gofund/ui: file:../packages/ui`）。仓库只跟踪 `bun.lock`（已删 `package-lock.json`），所以下面的 npm 路径能装上但**不锁定版本**：
+Node 侧统一使用 **bun**（与 `bun dev` 一致）；`frontend` 依赖仓外 UI 库（`@ruinb0w/ui: file:../../ui`），需先确保 `~/Workspace/ui` 存在（它有自己的 `bun.lock`）。仓库只跟踪 `bun.lock`（已删 `package-lock.json`），所以下面的 npm 路径能装上但**不锁定版本**：
 
 ```bash
 # service（Express 后端）
@@ -272,7 +272,6 @@ GoFundBot/
 │   └── package.json
 ├── packages/
 │   ├── core/                     # 共享计算内核 @gofund/core（回测/组合/风险/分类/4433/投研聚合）
-│   └── ui/                       # UI 组件库 @gofund/ui（Vite lib mode 构建，组件级 chunk + dts）
 ├── .pi/                          # 终端 pi 的工具桥扩展与技能
 ├── python/                       # Python CLI 脚本（数据补全）
 │   ├── cli/                      # 可执行脚本
@@ -291,24 +290,14 @@ GoFundBot/
 └── AGENTS.md                    # AI Agent 开发指南
 ```
 
-## 🧩 UI 组件库抽离计划
+## 🧩 UI 组件库（已独立成仓）
 
-为提升前端组件复用性，将 `frontend/src/components/` 中的自定义基础组件抽离为独立 UI 库（monorepo workspace 子包 `packages/ui`，包名 `@gofund/ui`，Vite lib mode 构建）。
+基础组件（B* 表单控件、浮层、反馈/骨架、图标）已迁到仓外仓库 **`~/Workspace/ui`（包名 `@ruinb0w/ui`）**，
+与 bow、exp1 共用同一套视觉尺度（间距/圆角/字号/密度）和四套语义主题（`gofund-light` / `gofund-dark` / `bow-dark` / `exp1-dark`）。
 
-| 状态 | 组件 | 说明 |
-|------|------|------|
-| ✅ 首批已抽离 | B* 系列表单控件 + 浮层/反馈组件 | 已迁至 `packages/ui`（Vite lib mode 构建，组件级 chunk + dts）：BButton、BInput、BInputNumber、BDatePicker、BTimePicker、BRadio、BRadioGroup、BCheckbox、BSwitch、BFileInput、BaseModal、BDialog、BCard、SkeletonCard、SkeletonChart、ErrorBoundary、OfflineBanner（含 LucideIcon、useOnlineStatus） |
-| ⏳ 待后续处理 | AlertBadge、MobileDrawer、BottomNav、HamburgerButton | 与业务/路由耦合，需先解耦（详见下方分项说明） |
-
-**待后续处理组件 —— 暂缓原因与解耦建议：**
-
-- **AlertBadge**（告警铃铛）— 依赖 `alertStore`（Pinia）+ `useNotification`，需将告警规则数据抽象为 props/插槽外部注入后再抽离。
-- **MobileDrawer**（移动端抽屉导航）— 硬编码路由导航项 + 依赖 `useRouter`，需将 `items` 导航配置改为外部 props 传入。
-- **BottomNav**（移动端底部导航）— 依赖 `useRoute`/`useRouter`/`useBreakpoint`，导航项需外部注入。
-- **HamburgerButton**（汉堡按钮）— 本身较纯（props: `isOpen` + emit: `toggle`），仅与 MobileDrawer 配套使用，建议随其一起迁移。
-
-> 首批组件已抽离完成（`packages/ui`，包名 `@gofund/ui`，frontend 通过 `file:../packages/ui` 依赖 + Vite/TS 别名直接引用包源码）；
-> 抽离进展持续同步更新本节；详细组件级文档见文档站 [`docs/ui/extraction-plan.md`](docs/ui/extraction-plan.md)。
+- 本仓 `frontend` 通过 Vite/TS 别名直连源码（`@gofund/ui` 与 `@ruinb0w/ui` 都指向 `../../ui/src/index.ts`），所以历史 import 无需改动；源码在仓外，`vite.config.ts` 的 `server.fs.allow` 已放行。
+- 规范（判据）在 `~/Workspace/ui/DESIGN.md`；组件文档是该仓的 VitePress 站（每页示例都是真实可交互组件）；AI 入口是 `AI.md` + `ai/manifest.json`。
+- 与业务/路由耦合的组件（AlertBadge / MobileDrawer / BottomNav / HamburgerButton）仍在 `frontend/src/components/`，按规范解耦后再上移。
 
 ## ⚠️ 已知限制
 

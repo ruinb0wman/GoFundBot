@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",
-    "@gofund/ui": "file:../packages/ui",
     "@lucide/vue": "^1.21.0",
+    "@ruinb0w/ui": "file:../../ui",
     "@sinclair/typebox": "^0.34.52",
     "codemirror": "^6.0.2",
     "decimal.js": "^10.6.0",

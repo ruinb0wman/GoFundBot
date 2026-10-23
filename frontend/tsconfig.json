@@ -17,8 +17,10 @@
       "@/*": ["./src/*"],
       "@gofund/core": ["../packages/core/src/index.ts"],
       "@gofund/core/*": ["../packages/core/src/*"],
-      "@gofund/ui": ["../packages/ui/src/index.ts"],
-      "@gofund/ui/style.css": ["../packages/ui/src/index.css"]
+      "@gofund/ui": ["../../ui/src/index.ts"],
+      "@gofund/ui/style.css": ["../../ui/src/index.css"],
+      "@ruinb0w/ui": ["../../ui/src/index.ts"],
+      "@ruinb0w/ui/style.css": ["../../ui/src/index.css"]
     },
     "types": ["vitest/globals"]
   },

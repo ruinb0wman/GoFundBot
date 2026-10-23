@@ -2,8 +2,12 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath } from 'node:url'
 
-const uiEntry = fileURLToPath(new URL('../packages/ui/src/index.ts', import.meta.url))
-const uiCss = fileURLToPath(new URL('../packages/ui/src/index.css', import.meta.url))
+// UI 库源码在仓库外（~/Workspace/ui），dev/build 都直连源码
+const uiSrc = fileURLToPath(new URL('../../ui/src', import.meta.url))
+const uiEntry = `${uiSrc}/index.ts`
+const uiCss = `${uiSrc}/index.css`
+const projectRoot = fileURLToPath(new URL('./', import.meta.url))
+const uiRoot = fileURLToPath(new URL('../../ui', import.meta.url))
 const coreSrc = fileURLToPath(new URL('../packages/core/src', import.meta.url))
 const srcDir = fileURLToPath(new URL('./src', import.meta.url))
 
@@ -19,6 +23,8 @@ const alias = [
   // UI 库直连源码（开发 HMR 从源）
   { find: '@gofund/ui/style.css', replacement: uiCss },
   { find: '@gofund/ui', replacement: uiEntry },
+  { find: '@ruinb0w/ui/style.css', replacement: uiCss },
+  { find: '@ruinb0w/ui', replacement: uiEntry },
 ]
 
 export default defineConfig({
@@ -27,6 +33,8 @@ export default defineConfig({
   server: {
     port: 8517,
     strictPort: true,
+    // 源码在仓外：fs.allow 一旦设置就覆盖默认值，项目根要自己列
+    fs: { allow: [projectRoot, uiRoot] },
     proxy: {
       '/api': {
         target: 'http://localhost:8310',

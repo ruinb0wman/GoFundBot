@@ -1,73 +1,30 @@
-# @gofund/ui 组件库
+# UI 组件库（已独立成仓）
 
-独立 UI 组件库，从基金前端 `frontend/src/components/` 抽离而来（monorepo workspace `packages/ui`）。
+> 2026-10-24：`packages/ui` 迁出本仓，成为跨项目组件库 **`~/Workspace/ui`（包名 `@ruinb0w/ui`）**，与 bow、exp1 共用。
+> 本页只留 GoFundBot 侧的接入事实；组件文档见该仓的 VitePress 站（`cd ~/Workspace/ui && bun run docs:dev`）。
 
-## 接入方式
-
-**frontend 消费**（当前项目）：
-
-- `frontend/package.json` 声明 `"@gofund/ui": "file:../packages/ui"`
-- `frontend/vite.config.ts` / `vitest.config.js` / `tsconfig.json` 配置别名直连包源码：
-  - `@gofund/ui` → `packages/ui/src/index.ts`
-  - `@gofund/ui/style.css` → `packages/ui/src/index.css`
-
-**独立使用**：
+## GoFundBot 里怎么用
 
 ```ts
-import { BButton, BInput, GofundUI } from '@gofund/ui'
-import '@gofund/ui/style.css' // 设计 token（明暗双主题）+ 基线 + 组件 scoped 样式
-
-app.use(GofundUI) // 或按需使用组件
+import { BButton, BInput, BDialog } from '@gofund/ui'   // 历史名字，别名仍有效
+import { BButton } from '@ruinb0w/ui'                   // 新名字，同样有效
+import '@gofund/ui/style.css'                            // token + 基线样式（main.ts 已引）
 ```
 
-## 组件清单
+- `frontend/vite.config.ts` / `tsconfig.json` 的两个别名都指向 `../../ui/src/index.ts`（**直连源码**，dev HMR 与 build 均从源，不走 `dist`）。
+- `frontend/package.json` 的依赖声明是 `"@ruinb0w/ui": "file:../../ui"`。
+- 源码在仓库外，`vite.config.ts` 的 `server.fs.allow` 已显式放行项目根与 `../../ui`。
 
-### 表单控件
+## 主题与密度
 
-| 组件 | 说明 | 主要 Props |
-|------|------|-----------|
-| `BButton` | 按钮，6 type（default/primary/success/warning/danger/info）× 3 size，plain/round/circle/text/link/loading/active 变体，icon 插槽 | `type size plain round circle loading disabled text link active nativeType icon` |
-| `BInput` | 输入框/文本域/密码，clearable、字数限制、prefix/suffix/prepend/append 插槽、formatter/parser、拼音 composition 处理、textarea 自适应 | `modelValue type size placeholder disabled clearable showPassword showWordLimit maxlength rows autosize readonly prefixIcon suffixIcon formatter parser` |
-| `BInputNumber` | 数字输入，min/max/step/precision 钳制、stepStrictly、左右控件、键盘上下键 | `modelValue min max step stepStrictly precision size disabled controls controlsPosition formatter parser valueOnClear` |
-| `BCheckbox` | 复选框，indeterminate 半选、自定义插槽 | `modelValue label disabled indeterminate size` |
-| `BSwitch` | 开关，active/inactive 文案、loading、键盘可达（role=switch） | `modelValue activeText inactiveText disabled loading size` |
-| `BRadio` / `BRadioGroup` | 单选组（provide/inject 上下文），vertical/border 模式 | `modelValue disabled size vertical border` |
-| `BDatePicker` | 原生 date 输入包装（图标 + clearable） | `modelValue placeholder disabled clearable min max size` |
-| `BTimePicker` | 原生 time 输入包装（图标 + clearable） | `modelValue placeholder disabled clearable min max step size` |
-| `BFileInput` | 文件选择，隐藏原生 input，trigger/file 自定义插槽 | `accept multiple disabled placeholder` |
-
-### 浮层与反馈
-
-| 组件 | 说明 | 主要 Props |
-|------|------|-----------|
-| `BaseModal` | 模态框（Teleport），header/body/footer、closeOnOverlay、body 滚动锁、移动端底部弹出 | `visible title width height closable closeOnOverlay` |
-| `BDialog` | 确认选项对话框（图标选项列表，danger 变体） | `visible title subtitle options closable` |
-| `BCard` | 卡片，shadow always/hover/never、渐变 header | `shadow bodyStyle header` |
-| `SkeletonCard` | 骨架卡片（shimmer） | `lines widths height title` |
-| `SkeletonChart` | 骨架图表（虚线走势 + 图例） | `height width` |
-| `ErrorBoundary` | 渲染错误捕获 + 重试 | —— |
-| `OfflineBanner` | 网络断开提示条 | —— |
-
-### 原子与工具
-
-- `LucideIcon`：`@lucide/vue` 包装器（peer 依赖），缺失图标名回退显示原名
-- `useOnlineStatus`：浏览器 onLine/offline 监听
-- tokens：`lightTokens` / `darkTokens` / `getTokens(mode)` — 与 CSS 变量同源的 TS 常量（供 ECharts 主题等 JS 侧使用）
-
-## 主题
-
-- 样式入口 `@gofund/ui/style.css`：`:root`（明色，Ant Design 色板 + Tailwind 灰阶）与 `:root[data-theme="dark"]`（暗色）双套设计 token，切换方式为 `document.documentElement.setAttribute('data-theme', 'dark')`
-- 金融语义色约定：A 股红涨绿跌 —— 组件样式中 `.positive` 映射 `--color-danger`（红）、`.negative` 映射 `--color-success`（绿）
-
-## 开发
-
-```bash
-cd packages/ui
-bun run dev        # vite build --watch
-bun run build      # vite build + vue-tsc
-bun run typecheck
-bun run lint       # ESLint（max-lines 500）
-bun run test       # Vitest（jsdom）
+```ts
+document.documentElement.dataset.theme = 'gofund-light'   // 默认；深色 'gofund-dark'（也认 html.dark）
+document.documentElement.dataset.density = 'default'      // compact 28px / default 32px / touch 44px 控件高
 ```
 
-> 抽离背景与待处理组件（AlertBadge/MobileDrawer/BottomNav/HamburgerButton）见 [组件抽离计划](./extraction-plan)。
+本仓历史用法 `document.documentElement.setAttribute('data-theme', 'dark')` 依然生效（`dark` 是 `gofund-dark` 的别名）。
+
+## 规范
+
+判据在 `~/Workspace/ui/DESIGN.md`：间距档（4/8/12/16/24/32/48）、圆角档（6/10/16）、字号档、动效两档、层级五档，
+以及「只准读语义变量、禁止覆盖组件内部样式」。存量组件重写进度看该仓 `bun run lint:style` 的数字。
