@@ -8,6 +8,7 @@
  * 都直接读源码（不构建 dist）。
  */
 export * from './number.js'
+export * from './valuation.js'
 
 export * from './backtest/backtestTypes.js'
 export * from './backtest/backtestEngine.js'

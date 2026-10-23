@@ -367,7 +367,7 @@ async function getGlobalIndexDetail(def: { code: string; name: string }): Promis
   };
 }
 
-function normalizeIndexSymbol(symbol: string): string {
+export function normalizeIndexSymbol(symbol: string): string {
   const m = symbol.match(/^(\d)\.(\d{6})$/);
   if (m) {
     const prefix = m[1] === '1' ? 'sh' : 'sz';

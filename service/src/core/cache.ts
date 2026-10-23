@@ -178,4 +178,5 @@ export const ttl = {
   goldRealtime: 60 * 1000,
   goldHistory: 60 * 60 * 1000,
   marketAkshare: 30 * 1000,
+  marketValuation: 6 * 60 * 60 * 1000,
 };

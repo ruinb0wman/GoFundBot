@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../core/errors.js';
 import { sendSuccess } from '../core/response.js';
+import { getIndexValuation } from '../services/valuationService.js';
 import {
   MARKET_SECTOR_MAX_LIMIT,
   fetchGoldRealtime,
@@ -39,6 +40,13 @@ marketRouter.get(
   '/index/:code/detail',
   asyncHandler(async (req, res) => {
     sendSuccess(res, await getIndexDetail(routeParam(req.params.code)));
+  })
+);
+
+marketRouter.get(
+  '/index/:code/valuation',
+  asyncHandler(async (req, res) => {
+    sendSuccess(res, await getIndexValuation(routeParam(req.params.code)));
   })
 );
 

@@ -381,6 +381,22 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 **回归测试**：`service/src/__tests__/providers/eastmoney-fund-provider.test.ts` 的 `holdings` 组
 （主源映射 / 空列表合法 / 回退补名称行业 / push2 失败仍返回代码）。
 
+### 指数估值 PE 分位（2026-10-22 新增）
+
+`GET /api/market/index/:code/valuation` → 指数详情页底部的估值卡（当前 PE、窗口分位、机会/中位/危险值 = 20/50/80 分位 PE）。
+
+- **唯一数据源**是蛋卷 `danjuanfunds.com/djapi/index_eva/pe_history/<SH000300>?day=all`（周频、2016-10 起、无 key，0.3s/17.8KB）。
+  乐咕是月频 + 等权/加权两套口径，中证官方只有最近 20 个交易日，韭圈儿要签名 —— **换源会让分位和分档值不可比**，所以不做备源、不做多源平均。
+- **口径差 1–2 倍（2026-10-22 实测）**：沪深300 蛋卷 12.73 / 乐咕加权 12.06 / 乐咕**等权 28.62** / 中证官方 13.76；科创50 64.22~106.02。
+  分位窗口同样是口径的一部分：同一口径下沪深300 全历史（2005 起）分位 41%、近 10 年 50%。
+- 分位算法在 `packages/core/src/valuation.ts`（`count(pe<当前)/n`，并列不取中点；分档值用线性插值 = PERCENTILE.INC）。
+  蛋卷自带 `pe_percentile` 是它内部日频算的（0.498），我们按周频复现 0.496 —— 差 0.2pp 属正常，别当成 bug。
+- **时间戳按北京时间格式化**：`ts` 是北京 00:00（UTC 前一天 16:00），直接 `toISOString()` 会退一天（与快讯那个 8 小时坑同源）。
+- **未覆盖**（显示「暂无估值数据」）：`sh000001 上证指数`、`sh000510 中证A500`、`sh000698 科创100`、`sz399673 创业板50`、`sz399005 深证100`。
+  **不要**拿乐咕「沪市平均市盈率 15.94」冒充上证指数（中证官方 14.93，历史分位完全不同）。
+- 降级：任何失败都是 `200 + data_status: 'unavailable'`，且 **`unavailable` 不进缓存**（成功缓存 6h）。日志关键字 `index valuation unavailable`。
+- 回归测试：`service/src/__tests__/{core/valuation,providers/danjuan-valuation,services/index-valuation}.test.ts` + `frontend/src/__tests__/components/IndexValuation.test.ts`；黄金数字钉在 `service/src/__tests__/fixtures/danjuan-pe.ts`（516 个真实周频 PE）。详见 `docs/market-index-valuation.md`。
+
 ### 快讯 (flash news)
 
 `GET /api/news/flash` 聚合 **东方财富 / 百度股市通 / 财联社** 三家（`Promise.allSettled` → 按标题去重 → `publishedAt` 降序 → 切片），**不写缓存**。

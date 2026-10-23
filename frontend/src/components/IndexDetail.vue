@@ -47,6 +47,8 @@
         <div class="stat-card" :title="amountHint"><span class="stat-label">{{ '成交额' }}</span><span class="stat-value">{{ fmtAmountYi(detail.amount) }}</span></div>
         <div class="stat-card"><span class="stat-label">{{ '振幅' }}</span><span class="stat-value">{{ detail.amplitude ? detail.amplitude + '%' : '--' }}</span></div>
       </div>
+
+      <IndexValuation :indexCode="props.indexCode" />
     </template>
   </div>
 </template>
@@ -63,6 +65,7 @@ import { CanvasRenderer } from "echarts/renderers"
 import { CandlestickChart, BarChart, LineChart } from "echarts/charts"
 import { GridComponent, TooltipComponent, DataZoomComponent } from "echarts/components"
 import VChart from "vue-echarts"
+import IndexValuation from './IndexValuation.vue'
 
 use([CanvasRenderer, CandlestickChart, BarChart, LineChart, GridComponent, TooltipComponent, DataZoomComponent])
 

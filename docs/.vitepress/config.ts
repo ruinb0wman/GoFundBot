@@ -16,6 +16,7 @@ export default defineConfig({
         text: '市场大盘',
         items: [
           { text: '市场指数近一月走势', link: '/market-index-trend' },
+          { text: '指数估值 (PE 分位)', link: '/market-index-valuation' },
           { text: '全球行情', link: '/market-global' },
           { text: '近7日A股成交量', link: '/market-volume' },
           { text: '今日资金流向', link: '/market-money-flow' },
