@@ -69,7 +69,7 @@
           <span class="update-tag" :class="{ failed: volumeStatus === 'failed' }" v-if="volumeUpdateTime">
           {{ volumeStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(volumeUpdateTime) }}
         </span>
-        <span class="date-tag" v-if="aVolume.length && aVolume[0].date">{{ '数据日期' }} {{ formatDataDate(aVolume[0].date) }}</span>
+        <span class="date-tag" v-if="aVolume.length && aVolume[aVolume.length - 1].date">{{ '数据日期' }} {{ formatDataDate(aVolume[aVolume.length - 1].date) }}</span>
       </div>
     </div>
     <div class="chart-container volume-chart-container">
