@@ -184,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton, LucideIcon } from '@gofund/ui'
+import { BButton, LucideIcon } from '@ruinb0w/ui'
 import { openDocLink } from '../services/docLink'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'

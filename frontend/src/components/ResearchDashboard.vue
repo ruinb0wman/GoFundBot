@@ -325,7 +325,7 @@
 
 <script setup>
 
-import { BButton } from '@gofund/ui'
+import { BButton } from '@ruinb0w/ui'
 import { useResearchDashboard } from '../composables/useResearchDashboard'
 
 const emit = defineEmits(['view-fund'])

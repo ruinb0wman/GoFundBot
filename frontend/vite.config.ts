@@ -21,8 +21,6 @@ const alias = [
   { find: '@gofund/core/', replacement: `${coreSrc}/` },
   { find: '@gofund/core', replacement: `${coreSrc}/index.ts` },
   // UI 库直连源码（开发 HMR 从源）
-  { find: '@gofund/ui/style.css', replacement: uiCss },
-  { find: '@gofund/ui', replacement: uiEntry },
   { find: '@ruinb0w/ui/style.css', replacement: uiCss },
   { find: '@ruinb0w/ui', replacement: uiEntry },
 ]

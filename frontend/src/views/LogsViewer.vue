@@ -141,7 +141,7 @@
 
 <script setup lang="ts">
 
-import { BButton, BInput, BDatePicker } from '@gofund/ui'
+import { BButton, BInput, BDatePicker } from '@ruinb0w/ui'
 import { ref, onMounted, computed } from 'vue'
 import { VxeTable, VxeColumn } from 'vxe-table'
 

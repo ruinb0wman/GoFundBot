@@ -128,7 +128,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton, BSwitch, BaseModal, LucideIcon } from '@gofund/ui'
+import { BButton, BSwitch, BaseModal, LucideIcon } from '@ruinb0w/ui'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { marked } from 'marked'
 import { openDocLink } from '../services/docLink'

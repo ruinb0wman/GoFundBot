@@ -59,7 +59,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { BButton, LucideIcon } from '@gofund/ui'
+import { BButton, LucideIcon } from '@ruinb0w/ui'
 import type { StrategyScriptRecord } from '../../db/strategyScripts'
 
 defineProps<{ scripts: StrategyScriptRecord[]; currentId: number | null }>()

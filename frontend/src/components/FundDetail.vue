@@ -103,7 +103,7 @@
 
 <script setup lang="ts">
 
-import { BButton, BCard, LucideIcon, SkeletonCard, SkeletonChart } from '@gofund/ui'
+import { BButton, BCard, LucideIcon, SkeletonCard, SkeletonChart } from '@ruinb0w/ui'
 import FundBasicInfo from './FundBasicInfo.vue'
 import FundChart from './FundChart.vue'
 import FundRankingTrend from './FundRankingTrend.vue'

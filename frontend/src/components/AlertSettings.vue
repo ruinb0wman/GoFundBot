@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 
-import { BButton, BInputNumber, BSwitch } from '@gofund/ui'
+import { BButton, BInputNumber, BSwitch } from '@ruinb0w/ui'
 import { ref, computed, watch } from 'vue'
 import { useAlertStore } from '../stores/alertStore'
 

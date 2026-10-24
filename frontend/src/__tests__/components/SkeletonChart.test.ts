@@ -1,4 +1,4 @@
-import { SkeletonChart } from '@gofund/ui'
+import { SkeletonChart } from '@ruinb0w/ui'
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 

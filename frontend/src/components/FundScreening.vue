@@ -369,7 +369,7 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { BButton, BInputNumber, BCheckbox, BDialog } from '@gofund/ui'
+import { BButton, BInputNumber, BCheckbox, BDialog } from '@ruinb0w/ui'
 import { openDocLink } from '../services/docLink'
 import { useFundScreening } from '../composables/useFundScreening'
 

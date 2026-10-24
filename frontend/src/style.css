@@ -1,7 +1,7 @@
 /* 全局样式入口
- * 设计 token（明暗主题）+ 基线样式（重置/滚动条/工具类/关键帧）由 @gofund/ui 提供，
+ * 设计 token（明暗主题）+ 基线样式（重置/滚动条/工具类/关键帧）由 @ruinb0w/ui 提供，
  * 本项目仅保留 vxe-table 集成相关的暗色覆盖与移动端表格适配。 */
-@import '@gofund/ui/style.css';
+@import '@ruinb0w/ui/style.css';
 
 /* ── VXETable dark mode overrides (CSS variable approach) ── */
 [data-theme="dark"] {

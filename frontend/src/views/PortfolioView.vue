@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { LucideIcon } from '@gofund/ui'
+import { LucideIcon } from '@ruinb0w/ui'
 import FundRealtime from '../components/FundRealtime.vue'
 import MyPositions from '../components/MyPositions.vue'
 

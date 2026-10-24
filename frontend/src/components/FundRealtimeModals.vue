@@ -219,7 +219,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton, BaseModal, BDatePicker, BInput, BInputNumber, BSwitch } from '@gofund/ui'
+import { BButton, BaseModal, BDatePicker, BInput, BInputNumber, BSwitch } from '@ruinb0w/ui'
 import { ref, computed } from 'vue'
 
 import FundSearch from './FundSearch.vue'

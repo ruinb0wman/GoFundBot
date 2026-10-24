@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton } from '@gofund/ui'
+import { BButton } from '@ruinb0w/ui'
 import { ref, computed, watch, onMounted } from 'vue'
 import { fundAPI } from '../services/api'
 import { useSearchHistory } from '../composables/useSearchHistory'

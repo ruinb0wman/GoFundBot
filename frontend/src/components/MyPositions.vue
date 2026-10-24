@@ -180,7 +180,7 @@
 
 <script setup>
 
-import { BButton, BInput, BInputNumber, BDatePicker, BTimePicker } from '@gofund/ui'
+import { BButton, BInput, BInputNumber, BDatePicker, BTimePicker } from '@ruinb0w/ui'
 import { useMyPositions } from '../composables/useMyPositions'
 
 const {

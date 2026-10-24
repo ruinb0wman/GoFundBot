@@ -1,5 +1,5 @@
 /* App 业务布局样式
- * 设计 token（明暗主题变量）、全局重置/基线样式已抽离至 @gofund/ui（见 ./style.css 入口） */
+ * 设计 token（明暗主题变量）、全局重置/基线样式已抽离至 @ruinb0w/ui（见 ./style.css 入口） */
 .app-header {
   background: var(--bg-gradient);
   color: white;

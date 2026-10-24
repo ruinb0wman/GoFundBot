@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 
-import { LucideIcon, OfflineBanner, ErrorBoundary } from '@gofund/ui'
+import { LucideIcon, OfflineBanner, ErrorBoundary } from '@ruinb0w/ui'
 import FundSearch from './components/FundSearch.vue'
 import FundWatchlist from './components/FundWatchlist.vue'
 import FundComparison from './components/FundComparison.vue'

@@ -177,7 +177,7 @@
 
 <script setup lang="ts">
 
-import { LucideIcon, BButton } from '@gofund/ui'
+import { LucideIcon, BButton } from '@ruinb0w/ui'
 import { useFundComparison } from '../composables/useFundComparison'
 
 const props = defineProps({

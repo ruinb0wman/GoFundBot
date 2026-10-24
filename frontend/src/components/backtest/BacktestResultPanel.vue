@@ -107,7 +107,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import Decimal from 'decimal.js'
-import { BButton, LucideIcon } from '@gofund/ui'
+import { BButton, LucideIcon } from '@ruinb0w/ui'
 import BacktestChart from './BacktestChart.vue'
 import { returnClass as getReturnClass } from '../../utils/number'
 import type { PortfolioBacktestResult } from '@gofund/core/backtest/backtestTypes'

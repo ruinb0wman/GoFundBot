@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton, BCheckbox } from '@gofund/ui'
+import { BButton, BCheckbox } from '@ruinb0w/ui'
 import type { DraggingIndex, CompareFund } from '../types'
 
 const props = withDefaults(defineProps<{

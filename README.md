@@ -142,7 +142,7 @@ cd docs && bun install && bunx vitepress dev --port 8574   # 文档站 :8574
 *   **业务计算**: 来自 `@gofund/core`（与 service 共用同一份源码）；页面只做展示与交互
 *   **AI / 搜索客户端**: 无 —— 前端没有聊天或 AI 入口，AI 交互在终端 pi
 *   **环境适配**: `httpClient.ts`（统一浏览器 fetch；Electron 壳侧解禁 CORS）
-*   **UI 组件**: 自定义响应式组件 + 跨项目组件库 `@ruinb0w/ui`（仓外 `~/Workspace/ui`，本仓以 `@gofund/ui` 别名消费源码）
+*   **UI 组件**: 自定义响应式组件 + 跨项目组件库 `@ruinb0w/ui`（仓外 `~/Workspace/ui`，本仓以 `@ruinb0w/ui` 别名消费源码）
 *   **可视化**: ECharts + vue-echarts
 *   **测试**: Vitest + @vue/test-utils
 
@@ -295,7 +295,7 @@ GoFundBot/
 基础组件（B* 表单控件、浮层、反馈/骨架、图标）已迁到仓外仓库 **`~/Workspace/ui`（包名 `@ruinb0w/ui`）**，
 与 bow、exp1 共用同一套视觉尺度（间距/圆角/字号/密度）和四套语义主题（`gofund-light` / `gofund-dark` / `bow-dark` / `exp1-dark`）。
 
-- 本仓 `frontend` 通过 Vite/TS 别名直连源码（`@gofund/ui` 与 `@ruinb0w/ui` 都指向 `../../ui/src/index.ts`），所以历史 import 无需改动；源码在仓外，`vite.config.ts` 的 `server.fs.allow` 已放行。
+- 本仓 `frontend` 通过 Vite/TS 别名直连源码（`@ruinb0w/ui` → `../../ui/src/index.ts`）；源码在仓外，`vite.config.ts` 的 `server.fs.allow` 已放行。
 - 规范（判据）在 `~/Workspace/ui/DESIGN.md`；组件文档是该仓的 VitePress 站（每页示例都是真实可交互组件）；AI 入口是 `AI.md` + `ai/manifest.json`。
 - 与业务/路由耦合的组件（AlertBadge / MobileDrawer / BottomNav / HamburgerButton）仍在 `frontend/src/components/`，按规范解耦后再上移。
 

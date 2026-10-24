@@ -6,9 +6,8 @@
 ## GoFundBot 里怎么用
 
 ```ts
-import { BButton, BInput, BDialog } from '@gofund/ui'   // 历史名字，别名仍有效
-import { BButton } from '@ruinb0w/ui'                   // 新名字，同样有效
-import '@gofund/ui/style.css'                            // token + 基线样式（main.ts 已引）
+import { BButton, BInput, BDialog } from '@ruinb0w/ui'
+import '@ruinb0w/ui/style.css'   // token + 基线样式，入口引一次
 ```
 
 - `frontend/vite.config.ts` / `tsconfig.json` 的两个别名都指向 `../../ui/src/index.ts`（**直连源码**，dev HMR 与 build 均从源，不走 `dist`）。

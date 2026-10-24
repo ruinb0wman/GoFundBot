@@ -81,7 +81,7 @@
 
 <script setup lang="ts">
 
-import { BButton, LucideIcon } from '@gofund/ui'
+import { BButton, LucideIcon } from '@ruinb0w/ui'
 import { useStockPopup } from '../composables/useStockPopup'
 import { fmtNumber } from '../utils/number'
 

@@ -129,7 +129,7 @@
 
 <script setup lang="ts">
 
-import { BButton } from '@gofund/ui'
+import { BButton } from '@ruinb0w/ui'
 import { ref, computed, watch } from 'vue'
 import { fundAPI } from '../services/api'
 import { useFundStore } from '../stores/fundStore'

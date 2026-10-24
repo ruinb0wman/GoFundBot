@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { BButton, LucideIcon } from '@gofund/ui'
+import { BButton, LucideIcon } from '@ruinb0w/ui'
 import { useBacktestWorkspace } from '../composables/useBacktestWorkspace'
 import CodeEditor from '../components/backtest/CodeEditor.vue'
 import BacktestScriptList from '../components/backtest/BacktestScriptList.vue'

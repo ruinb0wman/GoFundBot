@@ -179,7 +179,7 @@
 </template>
 
 <script setup>
-import { BButton, BInput, SkeletonCard } from '@gofund/ui'
+import { BButton, BInput, SkeletonCard } from '@ruinb0w/ui'
 import { openDocLink } from '../services/docLink'
 import { useFundWatchlist } from '../composables/useFundWatchlist'
 

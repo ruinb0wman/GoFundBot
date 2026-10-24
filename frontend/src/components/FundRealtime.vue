@@ -202,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton, BCard, BInputNumber, BFileInput } from '@gofund/ui'
+import { BButton, BCard, BInputNumber, BFileInput } from '@ruinb0w/ui'
 import { computed, onMounted, watch, nextTick } from 'vue'
 import { useFundMiniChart } from '../composables/useFundMiniChart'
 

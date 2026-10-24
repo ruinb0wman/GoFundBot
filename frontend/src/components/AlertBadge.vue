@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 
-import { BButton, BSwitch } from '@gofund/ui'
+import { BButton, BSwitch } from '@ruinb0w/ui'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAlertStore } from '../stores/alertStore'
 import { useNotification } from '../composables/useNotification'

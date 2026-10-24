@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton } from '@gofund/ui'
+import { BButton } from '@ruinb0w/ui'
 import { openDocLink } from '../services/docLink'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 

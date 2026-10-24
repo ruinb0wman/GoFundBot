@@ -40,7 +40,7 @@
 
 <script setup lang="ts">
 
-import { BButton } from '@gofund/ui'
+import { BButton } from '@ruinb0w/ui'
 import { ref, computed } from 'vue'
 
 const props = withDefaults(defineProps<{

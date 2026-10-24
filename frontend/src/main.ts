@@ -1,5 +1,5 @@
 // frontend/src/main.ts
-import { LucideIcon } from '@gofund/ui'
+import { LucideIcon } from '@ruinb0w/ui'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import VXETable from 'vxe-table'
