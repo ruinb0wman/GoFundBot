@@ -11,7 +11,7 @@
           <FundSearch @fund-selected="handleHeaderSearch" :compact="true" />
         </div>
         <div class="header-right">
-          <HamburgerButton :isOpen="drawerOpen" @toggle="drawerOpen = !drawerOpen" />
+          <BHamburgerButton class="hamburger-btn" :open="drawerOpen" @toggle="drawerOpen = !drawerOpen" />
           <div class="mode-switch">
             <button class="mode-btn" :class="{ active: route.name === 'dashboard' }" @click="resetToDashboard"><LucideIcon name="Home" :size="16" /> {{ '市场大盘' }}</button>
             <button class="mode-btn" :class="{ active: route.name === 'screening' }" @click="router.push({ name: 'screening' })"><LucideIcon name="Search" :size="16" /> {{ '基金筛选' }}</button>
@@ -71,20 +71,23 @@
       <p>{{ `数据来源：天天基金 / 东方财富 / 百度股市通 | 更新时间：${currentTime}` }}</p>
     </footer>
 
-    <MobileDrawer :isOpen="drawerOpen" :activeRoute="String(route.name || '')" @close="drawerOpen = false" />
-    <BottomNav />
+    <BDrawer
+      :visible="drawerOpen"
+      :items="navItems"
+      :active-key="String(route.name || '')"
+      @close="drawerOpen = false"
+      @select="goToRoute"
+    />
+    <BTabBar v-if="isMobile" class="mobile-tabbar" :items="tabItems" :active-key="String(route.name || '')" @select="goToRoute" />
   </div>
 </template>
 
 <script setup lang="ts">
 
-import { LucideIcon, OfflineBanner, ErrorBoundary } from '@ruinb0w/ui'
+import { BDrawer, BHamburgerButton, BTabBar, LucideIcon, OfflineBanner, ErrorBoundary } from '@ruinb0w/ui'
 import FundSearch from './components/FundSearch.vue'
 import FundWatchlist from './components/FundWatchlist.vue'
 import FundComparison from './components/FundComparison.vue'
-import HamburgerButton from './components/HamburgerButton.vue'
-import MobileDrawer from './components/MobileDrawer.vue'
-import BottomNav from './components/BottomNav.vue'
 
 import FlashNews from './components/FlashNews.vue'
 import SectorRank from './components/SectorRank.vue'
@@ -100,6 +103,24 @@ const {
   handleNavigate, handleHeaderSearch, resetToDashboard,
   handleAddToCompare, handleRemoveFromCompare, handleClearCompare
 } = useApp()
+
+// 抽屉与底部标签栏共用一份导航数据（键 = 路由名）
+const navItems = [
+  { key: 'dashboard', label: '市场大盘', icon: 'Home' },
+  { key: 'screening', label: '基金筛选', icon: 'Search' },
+  { key: 'backtest', label: '回测', icon: 'Code2' },
+  { key: 'portfolio', label: '估值与持仓', icon: 'BarChart3' },
+  { key: 'research', label: '投研看板', icon: 'TrendingUp' },
+  { key: 'strategy', label: '策略研究', icon: 'NotebookPen' },
+]
+const shortLabels: Record<string, string> = { dashboard: '大盘', screening: '筛选', backtest: '回测', portfolio: '持仓', research: '投研', strategy: '策略' }
+const tabItems = navItems.map((item) => ({ ...item, label: shortLabels[item.key] ?? item.label }))
+
+function goToRoute(name: string) {
+  if (name === 'dashboard') resetToDashboard()
+  else router.push({ name })
+  drawerOpen.value = false
+}
 </script>
 
 <style>

@@ -61,13 +61,17 @@
 .content-area.full-width { width: 100%; }
 .compare-panel { margin-bottom: 20px; border-radius: var(--radius-lg); background: var(--bg-card); box-shadow: var(--shadow-md); overflow: hidden; }
 /* 头部导航阈值（唯一一处）：≤1400px 时头部内联导航放不下（6 个按钮 ≈649px + 搜索框），
- * 此时只保留「浮动导航」——汉堡按钮 → MobileDrawer 抽屉；≤768px 另有底部 BottomNav。
- * .hamburger-btn 的显示也由这里控制（HamburgerButton.vue 不再自带 media query）。 */
+ * 此时只保留「浮动导航」——汉堡按钮 → BDrawer 抽屉；≤768px 另有 BTabBar 底部标签栏。
+ * 库组件不自带断点，显示条件都在这里。 */
 .hamburger-btn { display: none; }
+/* BTabBar 自带 display:flex（scoped 选择器优先级更高，别在这里跟它抢 display），
+ * 移动端显示与否由 App.vue 的 v-if="isMobile" 决定，这里只负责贴底。 */
+.mobile-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-sticky); }
 @media (max-width: 1400px) {
-  .hamburger-btn { display: flex; }
+  .hamburger-btn { display: inline-flex; }
   .mode-switch { display: none; }
 }
+
 @media (max-width: 1024px) { .mobile-hidden { display: none !important; } }
 .app-footer { background: var(--bg-card); text-align: center; padding: 12px; border-top: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-tertiary); }
 @media (max-width: 1600px) { .header-search { max-width: 400px; margin: 0 20px; } }
