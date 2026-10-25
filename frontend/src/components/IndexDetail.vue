@@ -8,7 +8,7 @@
           <h2>{{ detail.name }}</h2>
           <div class="price-section" :class="priceDir">
             <span class="price">{{ detail.price }}</span>
-            <span class="change">{{ detail.change_amt >= 0 ? '+' : '' }}{{ detail.change_amt }}</span>
+            <span class="change">{{ fmtSignedNumber(detail.change_amt) }}</span>
             <span class="pct">{{ fmtPercent(detail.change_pct) }}</span>
           </div>
         </div>
@@ -58,7 +58,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { marketAPI } from '../services/api'
 
 import { MA_PRESETS, calcMA } from '../utils/ma'
-import { fmtAmountYi, fmtMagnitude, fmtPercent, fmtVolume } from '../utils/number'
+import { fmtAmountYi, fmtMagnitude, fmtPercent, fmtSignedNumber, fmtVolume } from '../utils/number'
 import { useEChartsTheme } from '../composables/useEChartsTheme'
 import { use } from "echarts/core"
 import { CanvasRenderer } from "echarts/renderers"

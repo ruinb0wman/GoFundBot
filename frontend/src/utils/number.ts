@@ -84,6 +84,13 @@ export function fmtMagnitude(val: unknown): string {
   return new Decimal(num).toFixed(0)
 }
 
+/** 涨跌额（数值，不带 %）：`+69.03` / `-1.01`，缺失返回 `--`。 */
+export function fmtSignedNumber(val: unknown, decimals = 2): string {
+  if (!isFiniteNumber(val)) return '--'
+  const num = val as number
+  return `${num > 0 ? '+' : ''}${new Decimal(num).toFixed(decimals)}`
+}
+
 export function fmtChange(val: unknown): string {
   if (!isFiniteNumber(val)) return '-'
   const num = val as number

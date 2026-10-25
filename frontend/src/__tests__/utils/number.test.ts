@@ -5,7 +5,7 @@ import {
   calcDailyReturns, calcVolatility, calcSharpe,
   fmtPercent, fmtPercentPreferNumber, fmtNumber, fmtMoney, fmtAmountYi,
   fmtVolume, fmtMagnitude,
-  fmtChange, fmtRatio, fmtDrawdown,
+  fmtChange, fmtSignedNumber, fmtRatio, fmtDrawdown,
   returnClass, sharpeClass, scoreClass,
   DEFAULT_RISK_FREE_RATE
 } from '../../utils/number'
@@ -243,6 +243,12 @@ describe('fmtMagnitude', () => {
   it('formats 亿 without unit', () => { expect(fmtMagnitude(510163189)).toBe('5.1亿') })
   it('formats 万 without unit', () => { expect(fmtMagnitude(57677)).toBe('5.8万') })
   it('returns fallback for invalid', () => { expect(fmtMagnitude(null)).toBe('--') })
+})
+
+describe('fmtSignedNumber', () => {
+  it('rounds float noise to 2 decimals', () => { expect(fmtSignedNumber(69.02999999999975)).toBe('+69.03') })
+  it('keeps negative sign', () => { expect(fmtSignedNumber(-1.005)).toBe('-1.01') })
+  it('returns fallback for invalid', () => { expect(fmtSignedNumber(null)).toBe('--') })
 })
 
 describe('fmtChange', () => {
