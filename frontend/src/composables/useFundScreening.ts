@@ -242,7 +242,7 @@ export function useFundScreening(emit: (event: string, ...args: unknown[]) => vo
         },
         {
             name: '货币/其他',
-            icon: '💰',
+            icon: 'Coins',
             expanded: false,
             types: [
                 { value: '货币型', label: '货币型' },

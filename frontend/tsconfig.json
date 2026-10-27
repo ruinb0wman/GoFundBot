@@ -15,6 +15,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "vue": ["./node_modules/vue"],
       "@gofund/core": ["../packages/core/src/index.ts"],
       "@gofund/core/*": ["../packages/core/src/*"],
       "@ruinb0w/ui": ["../../ui/src/index.ts"],

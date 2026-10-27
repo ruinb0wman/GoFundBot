@@ -17,6 +17,7 @@ VXETable.setup({
 
 import { clientLogger, initClientLogger } from './core/logger'
 import router from './router/index'
+import './core/icons'
 
 initClientLogger()
 
