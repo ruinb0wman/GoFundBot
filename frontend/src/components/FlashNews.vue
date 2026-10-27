@@ -4,15 +4,15 @@
     <!-- 头部 -->
     <div class="news-header-bar">
       <div class="header-left">
-        <h3 class="header-title"><LucideIcon name="Newspaper" :size="18" /> {{ '7×24 快讯' }}</h3>
+        <h3 class="header-title"><RLucideIcon name="Newspaper" :size="18" /> {{ '7×24 快讯' }}</h3>
         <span v-if="!loading && newsList.length" class="count-badge">{{ newsList.length }} {{ '条' }}</span>
       </div>
       <div class="header-right">
         <a class="doc-link" href="/docs/market-news" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-news')">
-          <LucideIcon name="HelpCircle" :size="16" />
+          <RLucideIcon name="HelpCircle" :size="16" />
         </a>
         <span v-if="sourcesText" class="sources-tag" :title="sourcesText">{{ sourcesText }}</span>
-        <BButton circle size="small" icon="RefreshCw" @click="resetAndFetch" :loading="loading" :title="'刷新快讯'" />
+        <RButton circle size="small" icon="RefreshCw" @click="resetAndFetch" :loading="loading" :title="'刷新快讯'" />
       </div>
     </div>
 
@@ -27,14 +27,14 @@
 
     <!-- 错误 -->
     <div v-else-if="error && !newsList.length" class="error-state">
-      <span class="error-icon"><LucideIcon name="TriangleAlert" :size="20" /></span>
+      <span class="error-icon"><RLucideIcon name="TriangleAlert" :size="20" /></span>
       <span class="error-text">{{ error }}</span>
-      <BButton type="danger" size="small" @click="resetAndFetch">{{ '重试' }}</BButton>
+      <RButton type="danger" size="small" @click="resetAndFetch">{{ '重试' }}</RButton>
     </div>
 
     <!-- 空 -->
     <div v-else-if="!newsList.length && !loading" class="empty-state">
-      <span class="empty-icon"><LucideIcon name="MailOpen" :size="28" /></span>
+      <span class="empty-icon"><RLucideIcon name="MailOpen" :size="28" /></span>
       <span>{{ '暂无快讯数据' }}</span>
     </div>
 
@@ -85,7 +85,7 @@
         <div class="news-modal">
           <div class="modal-header">
             <span class="modal-time">{{ modal.news?.publish_time }}</span>
-            <button class="modal-close" @click="closeDetail"><LucideIcon name="X" :size="18" /></button>
+            <button class="modal-close" @click="closeDetail"><RLucideIcon name="X" :size="18" /></button>
           </div>
           <div class="modal-body">
             <p class="modal-title">{{ modal.news?.title }}</p>
@@ -123,7 +123,7 @@
 
 <script setup lang="ts">
 
-import { BButton } from '@ruinb0w/ui'
+import { RButton } from '@ruinb0w/ui'
 import { openDocLink } from '../services/docLink'
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { marketAPI } from '../services/api'

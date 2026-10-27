@@ -14,7 +14,7 @@
             <div class="history-dropdown" @mousedown.prevent>
               <div class="history-header">
                 <span>{{ '最近搜索' }}</span>
-                <BButton text size="small" @click="clearHistory">{{ '清空' }}</BButton>
+                <RButton text size="small" @click="clearHistory">{{ '清空' }}</RButton>
               </div>
               <div
                 v-for="(item, index) in searchHistory"
@@ -24,13 +24,13 @@
               >
                 <span class="history-code">{{ item.code }}</span>
                 <span class="history-name">{{ item.name }}</span>
-                <BButton text size="small" circle @click.stop="removeFromHistory(item.code)" icon="X" />
+                <RButton text size="small" circle @click.stop="removeFromHistory(item.code)" icon="X" />
               </div>
             </div>
           </template>
         </SearchBar>
-        <BButton type="primary" @click="performSearch">{{ '搜索' }}</BButton>
-        <BButton
+        <RButton type="primary" @click="performSearch">{{ '搜索' }}</RButton>
+        <RButton
           circle
           @click="updateDatabase"
           :disabled="updating"
@@ -38,9 +38,9 @@
         >
           <template #icon>
             <span v-if="updating" class="spinner"></span>
-            <LucideIcon v-else name="RefreshCw" :size="16" />
+            <RLucideIcon v-else name="RefreshCw" :size="16" />
           </template>
-        </BButton>
+        </RButton>
       </div>
     </div>
 
@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton } from '@ruinb0w/ui'
+import { RButton } from '@ruinb0w/ui'
 import { ref, computed, watch, onMounted } from 'vue'
 import { fundAPI } from '../services/api'
 import { useSearchHistory } from '../composables/useSearchHistory'

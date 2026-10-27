@@ -5,7 +5,7 @@
         <div class="title-row">
           <h2>{{ fundInfo.name || '未知' }}</h2>
           <span class="fund-code">{{ fundCode }}</span>
-          <BButton
+          <RButton
             text
             :class="{ 'in-watchlist': isInWatchlist }"
             @click="toggleWatchlist"
@@ -13,10 +13,10 @@
             :title="isInWatchlist ? '移除' : '添加自选'"
           >
             <template #icon>
-              <LucideIcon name="Star" :size="16" :fill="isInWatchlist ? 'currentColor' : 'none'" />
+              <RLucideIcon name="Star" :size="16" :fill="isInWatchlist ? 'currentColor' : 'none'" />
             </template>
             <span class="btn-text">{{ isInWatchlist ? '已自选' : '自选' }}</span>
-          </BButton>
+          </RButton>
           <span
             v-if="fundIndustryTag"
             class="industry-tag"
@@ -129,7 +129,7 @@
 
 <script setup lang="ts">
 
-import { BButton } from '@ruinb0w/ui'
+import { RButton } from '@ruinb0w/ui'
 import { ref, computed, watch } from 'vue'
 import { fundAPI } from '../services/api'
 import { useFundStore } from '../stores/fundStore'

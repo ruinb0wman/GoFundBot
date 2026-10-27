@@ -2,18 +2,18 @@
   <div class="fund-comparison" :class="{ 'compact-mode': compact }">
     <div class="comparison-header">
       <h2>
-        <span class="header-icon"><LucideIcon name="TrendingUp" :size="20" /></span>
+        <span class="header-icon"><RLucideIcon name="TrendingUp" :size="20" /></span>
         {{ '基金对比' }}
         <span class="count-badge" v-if="selectedFunds.length">{{ selectedFunds.length }}/{{ maxFunds }}</span>
       </h2>
       <div class="header-actions" v-if="selectedFunds.length > 0">
-        <BButton type="primary" icon="Download" @click="exportComparison">{{ '导出 CSV' }}</BButton>
-        <BButton @click="clearSelection" :disabled="selectedFunds.length === 0">{{ '清空' }}</BButton>
+        <RButton type="primary" icon="Download" @click="exportComparison">{{ '导出 CSV' }}</RButton>
+        <RButton @click="clearSelection" :disabled="selectedFunds.length === 0">{{ '清空' }}</RButton>
       </div>
     </div>
 
     <div v-if="selectedFunds.length === 0" class="empty-compare-hint">
-      <span class="hint-icon"><LucideIcon name="ArrowBigUp" :size="16" /></span>
+      <span class="hint-icon"><RLucideIcon name="ArrowBigUp" :size="16" /></span>
       <span v-html="'点击自选基金的 + 按钮添加对比'"></span>
     </div>
 
@@ -28,7 +28,7 @@
           <span class="tag-color" :style="{ background: fund.color }"></span>
           <span class="tag-name">{{ fund.name }}</span>
           <span class="tag-code">({{ fund.code }})</span>
-          <BButton circle size="small" @click="removeFund(fund.code)">×</BButton>
+          <RButton circle size="small" @click="removeFund(fund.code)">×</RButton>
         </div>
         <div v-if="selectedFunds.length < maxFunds" class="add-fund-hint">
           <span>{{ `还可添加${maxFunds - selectedFunds.length}只` }}</span>
@@ -39,7 +39,7 @@
     <div class="comparison-content" v-if="selectedFunds.length >= 2 && !compact">
       <div class="chart-section">
         <div class="section-header">
-          <h3><LucideIcon name="BarChart3" :size="20" /> {{ '净值走势对比' }}</h3>
+          <h3><RLucideIcon name="BarChart3" :size="20" /> {{ '净值走势对比' }}</h3>
           <div class="time-ranges">
             <div
               v-for="range in timeRanges"
@@ -62,7 +62,7 @@
       </div>
 
       <div class="data-table-section">
-        <h3><LucideIcon name="ClipboardList" :size="20" /> {{ '多维度对比' }}</h3>
+        <h3><RLucideIcon name="ClipboardList" :size="20" /> {{ '多维度对比' }}</h3>
         <div class="table-wrapper">
           <table class="comparison-table">
             <thead>
@@ -78,7 +78,7 @@
             </thead>
             <tbody>
               <tr class="section-row">
-                <td colspan="100%" class="section-title"><LucideIcon name="TrendingUp" :size="16" /> {{ '收益率' }}</td>
+                <td colspan="100%" class="section-title"><RLucideIcon name="TrendingUp" :size="16" /> {{ '收益率' }}</td>
               </tr>
               <tr>
                 <td class="sticky-col">{{ '近3月' }}</td>
@@ -111,7 +111,7 @@
                 </td>
               </tr>
               <tr class="section-row">
-                <td colspan="100%" class="section-title"><LucideIcon name="Briefcase" :size="16" /> {{ '基金信息' }}</td>
+                <td colspan="100%" class="section-title"><RLucideIcon name="Briefcase" :size="16" /> {{ '基金信息' }}</td>
               </tr>
               <tr>
                 <td class="sticky-col">{{ '基金规模' }}</td>
@@ -122,7 +122,7 @@
                 <td v-for="fund in selectedFunds" :key="fund.code">{{ fund.fundType || '--' }}</td>
               </tr>
               <tr class="section-row">
-                <td colspan="100%" class="section-title"><LucideIcon name="TriangleAlert" :size="16" /> {{ '风险指标' }}</td>
+                <td colspan="100%" class="section-title"><RLucideIcon name="TriangleAlert" :size="16" /> {{ '风险指标' }}</td>
               </tr>
               <tr>
                 <td class="sticky-col">{{ '最大回撤(1年)' }}</td>
@@ -145,7 +145,7 @@
                 <td v-for="fund in selectedFunds" :key="fund.code">{{ formatVolatility(fund.riskMetrics?.volatility_1y) }}</td>
               </tr>
               <tr class="section-row">
-                <td colspan="100%" class="section-title"><LucideIcon name="Star" :size="16" /> {{ '评分指标' }}</td>
+                <td colspan="100%" class="section-title"><RLucideIcon name="Star" :size="16" /> {{ '评分指标' }}</td>
               </tr>
               <tr>
                 <td class="sticky-col">{{ '综合评分' }}</td>
@@ -157,7 +157,7 @@
               <tr><td class="sticky-col">{{ '稳定性' }}</td><td v-for="fund in selectedFunds" :key="fund.code">{{ getEvalScore(fund, 3) }}</td></tr>
               <tr><td class="sticky-col">{{ '择时能力' }}</td><td v-for="fund in selectedFunds" :key="fund.code">{{ getEvalScore(fund, 4) }}</td></tr>
               <tr class="section-row">
-                <td colspan="100%" class="section-title"><LucideIcon name="User" :size="16" /> {{ '基金经理' }}</td>
+                <td colspan="100%" class="section-title"><RLucideIcon name="User" :size="16" /> {{ '基金经理' }}</td>
               </tr>
               <tr><td class="sticky-col">{{ '基金经理' }}</td><td v-for="fund in selectedFunds" :key="fund.code">{{ fund.manager?.name || '--' }}</td></tr>
               <tr><td class="sticky-col">{{ '从业经验' }}</td><td v-for="fund in selectedFunds" :key="fund.code">{{ fund.manager?.experience || '--' }}</td></tr>
@@ -170,14 +170,14 @@
     </div>
 
     <div v-else-if="selectedFunds.length === 1" class="single-fund-hint">
-      <p><LucideIcon name="ArrowBigLeft" :size="16" /> {{ '请再选择至少1只基金进行对比' }}</p>
+      <p><RLucideIcon name="ArrowBigLeft" :size="16" /> {{ '请再选择至少1只基金进行对比' }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 
-import { LucideIcon, BButton } from '@ruinb0w/ui'
+import { RLucideIcon, RButton } from '@ruinb0w/ui'
 import { useFundComparison } from '../composables/useFundComparison'
 
 const props = defineProps({

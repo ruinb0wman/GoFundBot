@@ -4,7 +4,7 @@
     :class="[`size-${size}`, { compact }]"
   >
     <slot name="prepend">
-      <LucideIcon v-if="showIcon" name="Search" :size="iconSize" class="search-bar-icon" />
+      <RLucideIcon v-if="showIcon" name="Search" :size="iconSize" class="search-bar-icon" />
     </slot>
     <input
       ref="inputRef"
@@ -24,7 +24,7 @@
       type="button"
       tabindex="-1"
     >
-      <LucideIcon name="X" :size="14" />
+      <RLucideIcon name="X" :size="14" />
     </button>
     <div v-if="$slots.dropdown" class="search-bar-dropdown">
       <slot name="dropdown" />

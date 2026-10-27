@@ -2,10 +2,10 @@
   <div class="market-overview-container">
     <div class="market-section" v-if="showSSE30Min">
       <div class="section-header">
-        <h3><LucideIcon name="TrendingDown" :size="20" /> {{ '市场指数近一月走势' }}</h3>
+        <h3><RLucideIcon name="TrendingDown" :size="20" /> {{ '市场指数近一月走势' }}</h3>
         <div class="header-actions">
           <a class="doc-link" href="/docs/market-index-trend" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-index-trend')">
-            <LucideIcon name="HelpCircle" :size="16" />
+            <RLucideIcon name="HelpCircle" :size="16" />
           </a>
         </div>
         <div class="tab-group">
@@ -24,15 +24,15 @@
 
     <div class="market-section">
       <div class="section-header">
-        <h3><LucideIcon name="Globe" :size="20" /> {{ '全球行情' }}</h3>
+        <h3><RLucideIcon name="Globe" :size="20" /> {{ '全球行情' }}</h3>
         <div class="header-actions">
           <a class="doc-link" href="/docs/market-global" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-global')">
-            <LucideIcon name="HelpCircle" :size="16" />
+            <RLucideIcon name="HelpCircle" :size="16" />
           </a>
           <span class="update-tag" :class="{ failed: indicesStatus === 'failed' }" v-if="indicesUpdateTime">
             {{ indicesStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(indicesUpdateTime) }}
           </span>
-          <BButton size="small" icon="RefreshCw" :loading="loading" @click="fetchAll" :disabled="loading" />
+          <RButton size="small" icon="RefreshCw" :loading="loading" @click="fetchAll" :disabled="loading" />
         </div>
       </div>
 
@@ -48,7 +48,7 @@
       </div>
 
       <div class="market-sub-section">
-        <h4 class="sub-title"><span class="flag"><LucideIcon name="Globe" :size="16" /></span> {{ '全球指数' }}<span class="date-tag" v-if="globalIndicesDate">{{ '数据日期' }} {{ formatDataDate(globalIndicesDate) }}</span></h4>
+        <h4 class="sub-title"><span class="flag"><RLucideIcon name="Globe" :size="16" /></span> {{ '全球指数' }}<span class="date-tag" v-if="globalIndicesDate">{{ '数据日期' }} {{ formatDataDate(globalIndicesDate) }}</span></h4>
         <div class="index-grid global-grid" v-if="indices.global.length">
             <div v-for="item in indices.global" :key="item.name" class="index-card clickable" :class="getUpDnClass(item.change_pct)" @click="navigateToIndex(item)" :title="item.code ? '点击查看详情' : ''">
             <div class="index-name">{{ item.name }}</div>
@@ -61,10 +61,10 @@
 
     <div class="market-section">
       <div class="section-header">
-        <h3><LucideIcon name="BarChart3" :size="20" /> {{ '近7日A股成交量' }}</h3>
+        <h3><RLucideIcon name="BarChart3" :size="20" /> {{ '近7日A股成交量' }}</h3>
         <div class="header-actions">
           <a class="doc-link" href="/docs/market-volume" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-volume')">
-            <LucideIcon name="HelpCircle" :size="16" />
+            <RLucideIcon name="HelpCircle" :size="16" />
           </a>
           <span class="update-tag" :class="{ failed: volumeStatus === 'failed' }" v-if="volumeUpdateTime">
           {{ volumeStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(volumeUpdateTime) }}
@@ -80,10 +80,10 @@
 
     <div class="market-section">
       <div class="section-header">
-        <h3><LucideIcon name="TrendingUp" :size="20" /> {{ '今日资金流向' }}</h3>
+        <h3><RLucideIcon name="TrendingUp" :size="20" /> {{ '今日资金流向' }}</h3>
         <div class="header-actions">
           <a class="doc-link" href="/docs/market-money-flow" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-money-flow')">
-            <LucideIcon name="HelpCircle" :size="16" />
+            <RLucideIcon name="HelpCircle" :size="16" />
           </a>
           <span class="update-tag" :class="{ failed: moneyFlowStatus === 'failed' }" v-if="moneyFlowUpdateTime">
           {{ moneyFlowStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(moneyFlowUpdateTime) }}
@@ -99,10 +99,10 @@
 
     <div class="market-section">
       <div class="section-header">
-        <h3><LucideIcon name="Award" :size="20" /> {{ '实时贵金属' }}</h3>
+        <h3><RLucideIcon name="Award" :size="20" /> {{ '实时贵金属' }}</h3>
         <div class="header-actions">
           <a class="doc-link" href="/docs/market-gold" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-gold')">
-            <LucideIcon name="HelpCircle" :size="16" />
+            <RLucideIcon name="HelpCircle" :size="16" />
           </a>
           <span class="update-tag" :class="{ failed: goldStatus === 'failed' }" v-if="goldUpdateTime">
             {{ goldStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(goldUpdateTime) }}
@@ -112,7 +112,7 @@
       </div>
       <div class="gold-grid" v-if="goldRealtime.length">
         <div v-for="item in goldRealtime" :key="item.name" class="gold-card" :class="{ 'up': item.change >= 0, 'down': item.change < 0, 'clickable': isGoldItem(item) }"             @click="isGoldItem(item) && openGoldHistory(item)" :title="isGoldItem(item) ? '点击查看历史走势' : ''">
-          <div class="gold-name">{{ item.name }}<span v-if="isGoldItem(item)" class="chart-hint"><LucideIcon name="TrendingUp" :size="14" /></span></div>
+          <div class="gold-name">{{ item.name }}<span v-if="isGoldItem(item)" class="chart-hint"><RLucideIcon name="TrendingUp" :size="14" /></span></div>
           <div class="gold-price">{{ item.price }} <span class="unit">{{ item.unit }}</span></div>
           <div class="gold-change"><span>{{ item.change >= 0 ? '+' : '' }}{{ item.change }}</span><span class="pct">{{ fmtPercent(item.change_pct) }}</span></div>
         </div>
@@ -121,7 +121,7 @@
 
     <div class="market-section">
       <div class="section-header">
-        <h3><LucideIcon name="Bitcoin" :size="20" /> {{ '加密货币' }}</h3>
+        <h3><RLucideIcon name="Bitcoin" :size="20" /> {{ '加密货币' }}</h3>
         <div class="header-actions">
           <span class="update-tag" :class="{ failed: cryptoStatus === 'failed' }" v-if="cryptoUpdateTime">
             {{ cryptoStatus === 'success' ? '更新于' : '获取失败' + ': ' }}{{ formatUpdateTime(cryptoUpdateTime) }}
@@ -142,14 +142,14 @@
 
     <div class="market-section">
       <div class="section-header">
-        <h3><LucideIcon name="BellRing" :size="20" /> {{ '市场异动' }}</h3>
+        <h3><RLucideIcon name="BellRing" :size="20" /> {{ '市场异动' }}</h3>
         <div class="header-actions">
-          <BButton size="small" icon="RefreshCw" :loading="anomaliesLoading" @click="fetchAnomalies" :disabled="anomaliesLoading" />
-          <BButton size="small" icon="Settings" @click="goToAnomalySettings" />
+          <RButton size="small" icon="RefreshCw" :loading="anomaliesLoading" @click="fetchAnomalies" :disabled="anomaliesLoading" />
+          <RButton size="small" icon="Settings" @click="goToAnomalySettings" />
         </div>
       </div>
       <div v-if="anomaliesLoading" class="anomaly-loading">{{ '加载中...' }}</div>
-      <div v-else-if="anomalies.length === 0" class="anomaly-empty"><LucideIcon name="CheckCircle" :size="16" /> {{ '今日未检测到市场异动' }}</div>
+      <div v-else-if="anomalies.length === 0" class="anomaly-empty"><RLucideIcon name="CheckCircle" :size="16" /> {{ '今日未检测到市场异动' }}</div>
       <div v-else class="anomaly-list">
         <div v-for="(item, i) in anomalies" :key="i" class="anomaly-item" :class="item.type">
           <span class="anomaly-type-badge">{{ item.type === 'index_surge' ? '大涨' : item.type === 'index_plunge' ? '大跌' : '异动' }}</span>
@@ -163,14 +163,14 @@
       <div v-if="goldModal.visible" class="gold-modal-overlay" @click.self="closeGoldHistory">
         <div class="gold-modal">
           <div class="gold-modal-header">
-            <h3><LucideIcon name="TrendingUp" :size="20" /> {{ goldModal.name }} — {{ `近${goldDays}日走势` }}</h3>
+            <h3><RLucideIcon name="TrendingUp" :size="20" /> {{ goldModal.name }} — {{ `近${goldDays}日走势` }}</h3>
             <div class="gold-modal-controls">
               <select v-model="goldDays" class="days-select" @change="fetchMetalHistoryForModal">
                 <option :value="7">{{ '7天' }}</option>
                 <option :value="10">{{ '10天' }}</option>
                 <option :value="30">{{ '30天' }}</option>
               </select>
-              <BButton circle size="small" @click="closeGoldHistory">×</BButton>
+              <RButton circle size="small" @click="closeGoldHistory">×</RButton>
             </div>
           </div>
           <div class="gold-modal-body">
@@ -184,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton, LucideIcon } from '@ruinb0w/ui'
+import { RButton, RLucideIcon } from '@ruinb0w/ui'
 import { openDocLink } from '../services/docLink'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'

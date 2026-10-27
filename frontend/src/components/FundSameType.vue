@@ -1,9 +1,9 @@
 <template>
   <div class="same-type-container">
     <div class="section-header">
-      <h3><LucideIcon name="TrendingUp" :size="20" /> {{ '同类型基金涨幅榜' }}</h3>
+      <h3><RLucideIcon name="TrendingUp" :size="20" /> {{ '同类型基金涨幅榜' }}</h3>
       <div class="period-tabs">
-        <BButton
+        <RButton
           v-for="(period, index) in periods"
           :key="index"
           plain
@@ -12,7 +12,7 @@
           @click.stop="activePeriod = index"
         >
           {{ period }}
-        </BButton>
+        </RButton>
       </div>
     </div>
     <div class="fund-list" v-if="currentFunds.length > 0">
@@ -40,7 +40,7 @@
 
 <script setup lang="ts">
 
-import { BButton } from '@ruinb0w/ui'
+import { RButton } from '@ruinb0w/ui'
 import { ref, computed } from 'vue'
 
 const props = withDefaults(defineProps<{

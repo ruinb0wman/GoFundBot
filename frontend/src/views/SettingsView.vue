@@ -8,7 +8,7 @@
         :class="{ active: route.name === tab.name }"
         @click="router.push({ name: tab.name })"
       >
-        <LucideIcon :name="tab.icon" :size="18" />
+        <RLucideIcon :name="tab.icon" :size="18" />
         <span>{{ tab.label }}</span>
       </button>
     </div>

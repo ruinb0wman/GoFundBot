@@ -6,7 +6,7 @@
     </div>
 
     <div v-else-if="error" class="stock-error">
-      <span class="error-icon"><LucideIcon name="TriangleAlert" :size="16" /></span>
+      <span class="error-icon"><RLucideIcon name="TriangleAlert" :size="16" /></span>
       <p>{{ error }}</p>
     </div>
 
@@ -56,7 +56,7 @@
         <div class="chart-header">
           <h4 class="section-title">{{ '走势图' }}</h4>
           <div class="chart-period-tabs">
-            <BButton v-for="range in klinePeriods" :key="range.value" plain size="small" :class="{ active: klineSelectedRange === range.value }" @click="setKlineRange(range.value)">{{ range.label }}</BButton>
+            <RButton v-for="range in klinePeriods" :key="range.value" plain size="small" :class="{ active: klineSelectedRange === range.value }" @click="setKlineRange(range.value)">{{ range.label }}</RButton>
           </div>
         </div>
         <div class="chart-loading" v-if="klineLoading"><div class="loading-spinner"></div><span>{{ '加载走势数据...' }}</span></div>
@@ -81,7 +81,7 @@
 
 <script setup lang="ts">
 
-import { BButton, LucideIcon } from '@ruinb0w/ui'
+import { RButton, RLucideIcon } from '@ruinb0w/ui'
 import { useStockPopup } from '../composables/useStockPopup'
 import { fmtNumber } from '../utils/number'
 

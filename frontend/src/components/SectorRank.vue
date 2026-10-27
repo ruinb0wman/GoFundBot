@@ -2,13 +2,13 @@
   <div class="sector-rank-container">
     <div class="section-header">
       <div class="section-header-row section-header-actions">
-        <h3><LucideIcon name="Factory" :size="20" /> {{ '行业板块排行' }}</h3>
+        <h3><RLucideIcon name="Factory" :size="20" /> {{ '行业板块排行' }}</h3>
         <a class="doc-link" href="/docs/market-sector-rank" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-sector-rank')">
-          <LucideIcon name="HelpCircle" :size="16" />
+          <RLucideIcon name="HelpCircle" :size="16" />
         </a>
         <div class="section-header-buttons">
-          <BButton circle icon="RefreshCw" :loading="loading" @click="fetchSectors" :title="'刷新板块数据'" />
-          <BButton
+          <RButton circle icon="RefreshCw" :loading="loading" @click="fetchSectors" :title="'刷新板块数据'" />
+          <RButton
             circle
             icon="Maximize2"
             @click="openSectorModal()"
@@ -19,15 +19,15 @@
       </div>
       <div class="section-header-row section-header-meta">
         <span v-if="isFromCache && sectors.length" class="data-source-badge stale" :title="'本地缓存'">
-          <LucideIcon name="Package" :size="14" /> {{ '本地缓存' }}
+          <RLucideIcon name="Package" :size="14" /> {{ '本地缓存' }}
         </span>
         <span v-if="dataDate" class="data-date" :title="'数据对应的交易日'">
-          <LucideIcon v-if="isStale" name="Calendar" :size="14" /> {{ '数据日期' }} {{ dataDate }}
+          <RLucideIcon v-if="isStale" name="Calendar" :size="14" /> {{ '数据日期' }} {{ dataDate }}
         </span>
         <span class="update-tag" v-if="adaptiveRefresh.lastSuccessTime.value && sectors.length">
           {{ '更新于' }} {{ formatUpdateTime(adaptiveRefresh.lastSuccessTime.value) }}
         </span>
-        <span v-if="adaptiveRefresh.isStale.value && sectors.length" class="stale-badge"><LucideIcon name="Clock" :size="14" /> {{ '超时' }}</span>
+        <span v-if="adaptiveRefresh.isStale.value && sectors.length" class="stale-badge"><RLucideIcon name="Clock" :size="14" /> {{ '超时' }}</span>
       </div>
     </div>
     <div class="filter-panel">
@@ -46,7 +46,7 @@
 
     <div v-else-if="error" class="error-state">
       <span>{{ error }}</span>
-      <BButton type="danger" size="small" @click="fetchSectors">{{ '重试' }}</BButton>
+      <RButton type="danger" size="small" @click="fetchSectors">{{ '重试' }}</RButton>
     </div>
 
     <div v-else class="sector-content">
@@ -90,10 +90,10 @@
       <div v-if="!displayedSectors.length" class="empty-filter">{{ '没有匹配的板块' }}</div>
 
       <div v-if="filteredSectors.length > pageSize" class="pagination">
-        <BButton size="small" @click="currentPage = 1" :disabled="currentPage === 1">{{ '首页' }}</BButton>
-        <BButton size="small" @click="currentPage -= 1" :disabled="currentPage === 1">{{ '上一页' }}</BButton>
+        <RButton size="small" @click="currentPage = 1" :disabled="currentPage === 1">{{ '首页' }}</RButton>
+        <RButton size="small" @click="currentPage -= 1" :disabled="currentPage === 1">{{ '上一页' }}</RButton>
         <span class="page-info">{{ `第 ${currentPage} / ${totalPages} 页` }}</span>
-        <BButton size="small" @click="currentPage += 1" :disabled="currentPage === totalPages">{{ '下一页' }}</BButton>
+        <RButton size="small" @click="currentPage += 1" :disabled="currentPage === totalPages">{{ '下一页' }}</RButton>
       </div>
     </div>
 
@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton } from '@ruinb0w/ui'
+import { RButton } from '@ruinb0w/ui'
 import { openDocLink } from '../services/docLink'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 

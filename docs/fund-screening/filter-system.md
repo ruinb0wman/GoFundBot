@@ -11,14 +11,14 @@ FundScreening.vue
 │   │   └── update-time-chip: 最后更新时间
 │   └── .header-right
 │       ├── doc-link: 文档图标
-│       └── BButton: 更新数据
+│       └── RButton: 更新数据
 ├── .inline-update-bar (更新进度条，更新中显示)
 ├── .screening-panel (筛选面板)
 │   ├── .filter-bar
 │   │   ├── SearchBar: 关键词搜索（代码/名称/拼音）
 │   │   ├── type-select-wrap: 基金类型下拉
-│   │   ├── BButton: 查询
-│   │   └── BButton: 清空
+│   │   ├── RButton: 查询
+│   │   └── RButton: 清空
 │   ├── .selected-types-tags: 已选类型标签
 │   └── .filter-section (标签筛选区)
 │       ├── .filter-zone: 基金大类标签

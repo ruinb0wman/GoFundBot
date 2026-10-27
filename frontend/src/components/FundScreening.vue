@@ -5,32 +5,32 @@
       <div class="header-actions">
         <div class="header-left">
           <span class="stat-chip">
-            <LucideIcon name="Package" :size="14" /> {{ dbStatus.basic_count || 0 }} {{ '只基金' }}
+            <RLucideIcon name="Package" :size="14" /> {{ dbStatus.basic_count || 0 }} {{ '只基金' }}
           </span>
           <span class="stat-chip complete">
-            <LucideIcon name="Check" :size="14" /> {{ dbStatus.complete_count || 0 }} 完整
+            <RLucideIcon name="Check" :size="14" /> {{ dbStatus.complete_count || 0 }} 完整
           </span>
           <span class="update-time-chip" v-if="dbStatus.latest_update">
-            <LucideIcon name="Clock" :size="14" /> {{ formatDate(dbStatus.latest_update) }}
+            <RLucideIcon name="Clock" :size="14" /> {{ formatDate(dbStatus.latest_update) }}
           </span>
         </div>
         <div class="header-right">
           <a class="doc-link" href="/docs/fund-screening" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/fund-screening/')">
-            <LucideIcon name="HelpCircle" :size="16" />
+            <RLucideIcon name="HelpCircle" :size="16" />
           </a>
-          <BButton type="primary" :disabled="updateStatus.running || syncing" @click="openUpdateDialog" :title="'选择要执行的更新任务'">
+          <RButton type="primary" :disabled="updateStatus.running || syncing" @click="openUpdateDialog" :title="'选择要执行的更新任务'">
             <template #icon>
-              <LucideIcon v-if="updateStatus.running" name="Hourglass" :size="14" />
-              <LucideIcon v-else name="Download" :size="14" />
+              <RLucideIcon v-if="updateStatus.running" name="Hourglass" :size="14" />
+              <RLucideIcon v-else name="Download" :size="14" />
             </template>
             {{ updateStatus.running ? '更新中...' : '更新数据' }}
-          </BButton>
+          </RButton>
         </div>
       </div>
     </div>
 
     <!-- 更新数据确认弹窗：三个任务选项在后端均触发同一全量更新（/screening/update 忽略 tasks），故为单一确认 -->
-    <BDialog
+    <RDialog
       :visible="showUpdateDialog"
       title="更新数据"
       subtitle="全量更新所有基金：拉取快照 → 重算风险指标（回撤/夏普/卡玛）→ 更新板块分类，耗时较长。"
@@ -55,7 +55,7 @@
           :style="{ width: progressPercent + '%' }"
         ></div>
       </div>
-      <BButton type="warning" size="small" @click="stopUpdate" icon="Square">{{ '停止' }}</BButton>
+      <RButton type="warning" size="small" @click="stopUpdate" icon="Square">{{ '停止' }}</RButton>
     </div>
 
     <!-- 筛选面板 -->
@@ -90,12 +90,12 @@
             </div>
             <!-- 基金类型下拉 -->
             <div class="type-select-wrap" ref="typeDropdownRef">
-              <span class="input-icon"><LucideIcon name="Folder" :size="16" /></span>
+              <span class="input-icon"><RLucideIcon name="Folder" :size="16" /></span>
               <div class="type-trigger" @click="showTypeDropdown = !showTypeDropdown">
                 <span class="type-trigger-text">
                   {{ filters.fund_types.length ? filters.fund_types.length + ' 种类型' : '基金类型' }}
                 </span>
-                <span class="type-trigger-arrow"><LucideIcon name="ChevronDown" :size="12" /></span>
+                <span class="type-trigger-arrow"><RLucideIcon name="ChevronDown" :size="12" /></span>
               </div>
               <div class="type-dropdown" v-show="showTypeDropdown" @click.stop>
                 <div
@@ -109,9 +109,9 @@
                     @click="toggleCategoryTypes(cat)"
                   >
                     <span class="cat-check">
-                      <LucideIcon v-if="isCatAllSelected(cat)" name="Check" :size="12" /><LucideIcon v-if="isCatPartialSelected(cat) && !isCatAllSelected(cat)" name="Minus" :size="12" />
+                      <RLucideIcon v-if="isCatAllSelected(cat)" name="Check" :size="12" /><RLucideIcon v-if="isCatPartialSelected(cat) && !isCatAllSelected(cat)" name="Minus" :size="12" />
                     </span>
-                    <span><LucideIcon :name="cat.icon" :size="14" /> {{ cat.name }}</span>
+                    <span><RLucideIcon :name="cat.icon" :size="14" /> {{ cat.name }}</span>
                   </div>
                   <div class="type-cat-items">
                     <label
@@ -133,8 +133,8 @@
                 </div>
               </div>
             </div>
-            <BButton type="primary" icon="Search" @click="search(true)" :disabled="syncing">查询</BButton>
-            <BButton @click="resetFilters" :disabled="syncing">清空</BButton>
+            <RButton type="primary" icon="Search" @click="search(true)" :disabled="syncing">查询</RButton>
+            <RButton @click="resetFilters" :disabled="syncing">清空</RButton>
           </div>
 
           <!-- 已选类型标签 -->
@@ -145,7 +145,7 @@
               class="type-tag-selected"
               @click="removeFundType(t)"
             >
-              {{ getShortTypeName(t) }} <LucideIcon name="X" :size="12" />
+              {{ getShortTypeName(t) }} <RLucideIcon name="X" :size="12" />
             </span>
           </div>
 
@@ -197,10 +197,10 @@
             <div class="filter-zone" v-if="displaySectorGroups.length">
               <div class="filter-zone-title">
                 行业 / 市场板块
-                <BButton text size="small" @click="sectorExpanded = !sectorExpanded">
+                <RButton text size="small" @click="sectorExpanded = !sectorExpanded">
                   {{ sectorExpanded ? '收起' : '展开全部' }}
-                  <template #icon><LucideIcon :name="sectorExpanded ? 'ChevronUp' : 'ChevronDown'" :size="12" /></template>
-                </BButton>
+                  <template #icon><RLucideIcon :name="sectorExpanded ? 'ChevronUp' : 'ChevronDown'" :size="12" /></template>
+                </RButton>
               </div>
               <div class="filter-zone-tags">
                 <div class="tag-primary-row">
@@ -236,8 +236,8 @@
         <!-- 高级筛选 -->
         <div class="advanced-section-wrapper">
           <div class="advanced-toggle" @click="showAdvanced = !showAdvanced">
-            <span><LucideIcon name="Settings" :size="14" /> 高级筛选条件</span>
-            <span class="toggle-arrow"><LucideIcon :name="showAdvanced ? 'ChevronUp' : 'ChevronDown'" :size="14" /></span>
+            <span><RLucideIcon name="Settings" :size="14" /> 高级筛选条件</span>
+            <span class="toggle-arrow"><RLucideIcon :name="showAdvanced ? 'ChevronUp' : 'ChevronDown'" :size="14" /></span>
           </div>
           <div class="advanced-section" v-show="showAdvanced">
           <div class="adv-group" v-for="group in advancedFilterGroups" :key="group.title">
@@ -246,17 +246,17 @@
               <div class="adv-item" v-for="item in group.items" :key="item.key || item.minKey || item.maxKey">
                 <label>{{ item.label }}</label>
                 <label class="adv-check" v-if="item.type === 'checkbox'">
-                  <BCheckbox v-model="advFilters[item.key]" :label="item.text" size="small" />
+                  <RCheckbox v-model="advFilters[item.key]" :label="item.text" size="small" />
                 </label>
                 <div class="adv-range" v-else-if="item.type === 'range'">
-                  <BInputNumber v-model="advFilters[item.minKey]" placeholder="最小值" :controls="false" size="small" style="width:80px" />
+                  <RInputNumber v-model="advFilters[item.minKey]" placeholder="最小值" :controls="false" size="small" style="width:80px" />
                   <span class="adv-sep">~</span>
-                  <BInputNumber v-model="advFilters[item.maxKey]" placeholder="最大值" :controls="false" size="small" style="width:80px" />
+                  <RInputNumber v-model="advFilters[item.maxKey]" placeholder="最大值" :controls="false" size="small" style="width:80px" />
                   <span class="adv-unit" v-if="item.unit">{{ item.unit }}</span>
                 </div>
                 <div class="adv-range" v-else>
                   <span class="adv-op">{{ item.operator }}</span>
-                  <BInputNumber v-model="advFilters[item.key]" :placeholder="item.placeholder || ''" :controls="false" size="small" style="width:80px" />
+                  <RInputNumber v-model="advFilters[item.key]" :placeholder="item.placeholder || ''" :controls="false" size="small" style="width:80px" />
                   <span class="adv-unit" v-if="item.unit">{{ item.unit }}</span>
                 </div>
               </div>
@@ -328,13 +328,13 @@
             <span :class="getCalmarClass(row.calmar_ratio_1y)">{{ formatNumber(row.calmar_ratio_1y) }}</span>
           </template>
           <template #pass4433="{ row }">
-            <span v-if="row.pass_4433 === 1" class="pass-badge"><LucideIcon name="Check" :size="14" /></span>
+            <span v-if="row.pass_4433 === 1" class="pass-badge"><RLucideIcon name="Check" :size="14" /></span>
             <span v-else class="fail-badge">-</span>
           </template>
           <template #actions="{ row }">
             <div class="actions">
-              <BButton circle size="small" :class="{ watched: isInWatchlist(row.fund_code) }" @click.stop="toggleWatchlist(row)" :title="isInWatchlist(row.fund_code) ? '取消自选' : '加入自选'" icon="Star" />
-              <BButton circle size="small" @click.stop="addToCompare(row)" title="加入对比" icon="LayoutGrid" />
+              <RButton circle size="small" :class="{ watched: isInWatchlist(row.fund_code) }" @click.stop="toggleWatchlist(row)" :title="isInWatchlist(row.fund_code) ? '取消自选' : '加入自选'" icon="Star" />
+              <RButton circle size="small" @click.stop="addToCompare(row)" title="加入对比" icon="LayoutGrid" />
             </div>
           </template>
         </vxe-grid>
@@ -342,24 +342,24 @@
 
       <!-- 分页 -->
       <div class="pagination">
-        <BButton size="small" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">上一页</BButton>
+        <RButton size="small" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">上一页</RButton>
         <span class="page-info">
           第 {{ currentPage }} / {{ totalPages }} 页
         </span>
-        <BButton size="small" :disabled="currentPage === totalPages" @click="changePage(currentPage + 1)">下一页</BButton>
+        <RButton size="small" :disabled="currentPage === totalPages" @click="changePage(currentPage + 1)">下一页</RButton>
       </div>
     </div>
 
     <!-- 空状态 -->
     <div v-else-if="searched && !loading" class="empty-state">
-      <div class="empty-icon"><LucideIcon name="MailOpen" :size="36" /></div>
+      <div class="empty-icon"><RLucideIcon name="MailOpen" :size="36" /></div>
       <p>未找到符合条件的基金</p>
       <p class="hint">请尝试调整筛选条件</p>
     </div>
 
     <!-- 初始状态 -->
     <div v-else class="initial-state">
-      <div class="initial-icon"><LucideIcon name="Target" :size="36" /></div>
+      <div class="initial-icon"><RLucideIcon name="Target" :size="36" /></div>
       <p>选择筛选策略或设置筛选条件</p>
       <p class="hint">支持4433法则（同类排名）、夏普比率、卡玛比率等多维度筛选</p>
       <p class="hint sub-hint">注：4433法则的排名是在同类型基金中计算的</p>
@@ -369,7 +369,7 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { BButton, BInputNumber, BCheckbox, BDialog } from '@ruinb0w/ui'
+import { RButton, RInputNumber, RCheckbox, RDialog } from '@ruinb0w/ui'
 import { openDocLink } from '../services/docLink'
 import { useFundScreening } from '../composables/useFundScreening'
 

@@ -25,11 +25,11 @@
             <option value="" disabled>{{ '插入模板…' }}</option>
             <option v-for="tpl in templates" :key="tpl.key" :value="tpl.key">{{ tpl.label }}</option>
           </select>
-          <BButton size="small" plain @click="save">{{ '保存' }}</BButton>
-          <BButton size="small" plain @click="saveAs">{{ '另存为' }}</BButton>
-          <BButton size="small" type="primary" :disabled="running" @click="runTest">
+          <RButton size="small" plain @click="save">{{ '保存' }}</RButton>
+          <RButton size="small" plain @click="saveAs">{{ '另存为' }}</RButton>
+          <RButton size="small" type="primary" :disabled="running" @click="runTest">
             {{ running ? '运行中…' : '运行回测' }}
-          </BButton>
+          </RButton>
         </div>
       </div>
 
@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { BButton, LucideIcon } from '@ruinb0w/ui'
+import { RButton, RLucideIcon } from '@ruinb0w/ui'
 import { useBacktestWorkspace } from '../composables/useBacktestWorkspace'
 import CodeEditor from '../components/backtest/CodeEditor.vue'
 import BacktestScriptList from '../components/backtest/BacktestScriptList.vue'

@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <OfflineBanner />
+    <ROfflineBanner />
     <header class="app-header">
       <div class="header-content">
         <div class="header-left">
@@ -11,18 +11,18 @@
           <FundSearch @fund-selected="handleHeaderSearch" :compact="true" />
         </div>
         <div class="header-right">
-          <BHamburgerButton class="hamburger-btn" :open="drawerOpen" @toggle="drawerOpen = !drawerOpen" />
+          <RHamburgerButton class="hamburger-btn" :open="drawerOpen" @toggle="drawerOpen = !drawerOpen" />
           <div class="mode-switch">
-            <button class="mode-btn" :class="{ active: route.name === 'dashboard' }" @click="resetToDashboard"><LucideIcon name="Home" :size="16" /> {{ '市场大盘' }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'screening' }" @click="router.push({ name: 'screening' })"><LucideIcon name="Search" :size="16" /> {{ '基金筛选' }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'backtest' || route.name === 'backtest-fund' }" @click="router.push({ name: 'backtest' })"><LucideIcon name="Code2" :size="16" /> {{ '回测' }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'portfolio' }" @click="router.push({ name: 'portfolio' })"><LucideIcon name="BarChart3" :size="16" /> {{ '估值与持仓' }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'research' }" @click="router.push({ name: 'research' })"><LucideIcon name="TrendingUp" :size="16" /> {{ '投研看板' }}</button>
-            <button class="mode-btn" :class="{ active: route.name === 'strategy' }" @click="router.push({ name: 'strategy' })"><LucideIcon name="NotebookPen" :size="16" /> {{ '策略研究' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'dashboard' }" @click="resetToDashboard"><RLucideIcon name="Home" :size="16" /> {{ '市场大盘' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'screening' }" @click="router.push({ name: 'screening' })"><RLucideIcon name="Search" :size="16" /> {{ '基金筛选' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'backtest' || route.name === 'backtest-fund' }" @click="router.push({ name: 'backtest' })"><RLucideIcon name="Code2" :size="16" /> {{ '回测' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'portfolio' }" @click="router.push({ name: 'portfolio' })"><RLucideIcon name="BarChart3" :size="16" /> {{ '估值与持仓' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'research' }" @click="router.push({ name: 'research' })"><RLucideIcon name="TrendingUp" :size="16" /> {{ '投研看板' }}</button>
+            <button class="mode-btn" :class="{ active: route.name === 'strategy' }" @click="router.push({ name: 'strategy' })"><RLucideIcon name="NotebookPen" :size="16" /> {{ '策略研究' }}</button>
           </div>
           <AlertBadge />
           <button class="header-icon-btn" @click="router.push('/settings')" :title="'设置'">
-            <LucideIcon name="Settings" :size="20" />
+            <RLucideIcon name="Settings" :size="20" />
           </button>
         </div>
       </div>
@@ -43,11 +43,11 @@
 
         <div class="dashboard-main">
           <FundComparison v-if="compareMode && compareFunds.length >= 2" :compareFunds="compareFunds" @remove-fund="handleRemoveFromCompare" @clear-funds="handleClearCompare" />
-          <ErrorBoundary v-else>
+          <RErrorBoundary v-else>
             <router-view v-slot="{ Component }">
               <component :is="Component" @navigate-to-fund="handleNavigate" @view-fund="handleNavigate" @view-detail="handleNavigate" />
             </router-view>
-          </ErrorBoundary>
+          </RErrorBoundary>
         </div>
 
         <aside v-if="!showFullContent" class="dashboard-right">
@@ -58,11 +58,11 @@
 
       <div v-else class="main-layout">
         <div class="content-area full-width">
-          <ErrorBoundary>
+          <RErrorBoundary>
             <router-view v-slot="{ Component }">
               <component :is="Component" @navigate-to-fund="handleNavigate" @view-fund="handleNavigate" @view-detail="handleNavigate" />
             </router-view>
-          </ErrorBoundary>
+          </RErrorBoundary>
         </div>
       </div>
     </main>
@@ -71,20 +71,20 @@
       <p>{{ `数据来源：天天基金 / 东方财富 / 百度股市通 | 更新时间：${currentTime}` }}</p>
     </footer>
 
-    <BDrawer
+    <RDrawer
       :visible="drawerOpen"
       :items="navItems"
       :active-key="String(route.name || '')"
       @close="drawerOpen = false"
       @select="goToRoute"
     />
-    <BTabBar v-if="isMobile" class="mobile-tabbar" :items="tabItems" :active-key="String(route.name || '')" @select="goToRoute" />
+    <RTabBar v-if="isMobile" class="mobile-tabbar" :items="tabItems" :active-key="String(route.name || '')" @select="goToRoute" />
   </div>
 </template>
 
 <script setup lang="ts">
 
-import { BDrawer, BHamburgerButton, BTabBar, LucideIcon, OfflineBanner, ErrorBoundary } from '@ruinb0w/ui'
+import { RDrawer, RHamburgerButton, RTabBar, RLucideIcon, ROfflineBanner, RErrorBoundary } from '@ruinb0w/ui'
 import FundSearch from './components/FundSearch.vue'
 import FundWatchlist from './components/FundWatchlist.vue'
 import FundComparison from './components/FundComparison.vue'

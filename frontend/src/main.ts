@@ -1,5 +1,5 @@
 // frontend/src/main.ts
-import { LucideIcon } from '@ruinb0w/ui'
+import { RLucideIcon } from '@ruinb0w/ui'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import VXETable from 'vxe-table'
@@ -33,7 +33,7 @@ app.config.errorHandler = (err, instance, _info) => {
   })
 }
 
-app.component('LucideIcon', LucideIcon)
+app.component('RLucideIcon', RLucideIcon)
 
 import SearchBar from './components/SearchBar.vue'
 app.component('SearchBar', SearchBar)

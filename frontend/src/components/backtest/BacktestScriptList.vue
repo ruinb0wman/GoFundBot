@@ -1,15 +1,15 @@
 <template>
   <aside class="script-panel">
     <div class="panel-head">
-      <span class="panel-title"><LucideIcon name="Code2" :size="16" /> {{ '回测方案' }}</span>
-      <BButton size="small" plain @click="$emit('create')">
-        <LucideIcon name="Plus" :size="14" /> {{ '新建' }}
-      </BButton>
+      <span class="panel-title"><RLucideIcon name="Code2" :size="16" /> {{ '回测方案' }}</span>
+      <RButton size="small" plain @click="$emit('create')">
+        <RLucideIcon name="Plus" :size="14" /> {{ '新建' }}
+      </RButton>
     </div>
 
     <div class="script-list">
       <div v-if="scripts.length === 0" class="script-empty">
-        <LucideIcon name="FileCode2" :size="26" />
+        <RLucideIcon name="FileCode2" :size="26" />
         <p>{{ '还没有保存的方案' }}</p>
         <p class="sub">{{ '点「新建」写一段策略代码，或让右侧 AI 帮你写' }}</p>
       </div>
@@ -28,10 +28,10 @@
         <div class="item-foot">
           <span>{{ script.lastRunAt ? `上次运行 ${formatTime(script.lastRunAt)}` : '尚未运行' }}</span>
           <div class="item-actions" @click.stop>
-            <BButton circle size="small" title="复制" @click="$emit('duplicate', script.id as number)">
-              <LucideIcon name="Copy" :size="12" />
-            </BButton>
-            <BButton
+            <RButton circle size="small" title="复制" @click="$emit('duplicate', script.id as number)">
+              <RLucideIcon name="Copy" :size="12" />
+            </RButton>
+            <RButton
               v-if="confirmDeleteId !== script.id"
               circle
               size="small"
@@ -39,13 +39,13 @@
               title="删除"
               @click="confirmDeleteId = script.id ?? null"
             >
-              <LucideIcon name="Trash2" :size="12" />
-            </BButton>
+              <RLucideIcon name="Trash2" :size="12" />
+            </RButton>
             <template v-else>
-              <BButton size="small" type="danger" @click="$emit('remove', script.id as number); confirmDeleteId = null">
+              <RButton size="small" type="danger" @click="$emit('remove', script.id as number); confirmDeleteId = null">
                 {{ '确认' }}
-              </BButton>
-              <BButton size="small" text @click="confirmDeleteId = null">{{ '取消' }}</BButton>
+              </RButton>
+              <RButton size="small" text @click="confirmDeleteId = null">{{ '取消' }}</RButton>
             </template>
           </div>
         </div>
@@ -59,7 +59,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { BButton, LucideIcon } from '@ruinb0w/ui'
+import { RButton, RLucideIcon } from '@ruinb0w/ui'
 import type { StrategyScriptRecord } from '../../db/strategyScripts'
 
 defineProps<{ scripts: StrategyScriptRecord[]; currentId: number | null }>()

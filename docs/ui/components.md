@@ -6,7 +6,7 @@
 ## GoFundBot 里怎么用
 
 ```ts
-import { BButton, BInput, BDialog } from '@ruinb0w/ui'
+import { RButton, RInput, RDialog } from '@ruinb0w/ui'
 import '@ruinb0w/ui/style.css'   // token + 基线样式，入口引一次
 ```
 

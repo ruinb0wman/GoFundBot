@@ -15,7 +15,7 @@
       @dragover="$emit('drag-over', $event, index, groupId)"
     >
       <div class="col-checkbox" v-if="editMode">
-        <BCheckbox :modelValue="selectedFunds.includes(fund.fund_code)" @update:modelValue="$emit('toggle-select', fund.fund_code)" size="small" />
+        <RCheckbox :modelValue="selectedFunds.includes(fund.fund_code)" @update:modelValue="$emit('toggle-select', fund.fund_code)" size="small" />
       </div>
 
       <div class="col-drag" v-if="editMode">
@@ -23,14 +23,14 @@
       </div>
 
       <div class="col-compare" v-if="compareMode && !editMode">
-        <BButton
+        <RButton
           circle size="small"
           :type="isInCompare(fund.fund_code) ? 'primary' : 'default'"
           @click.stop="$emit('add-to-compare', { code: fund.fund_code, name: fund.fund_name })"
           :title="isInCompare(fund.fund_code) ? '已添加到对比' : '添加到对比'"
         >
-          <LucideIcon :name="isInCompare(fund.fund_code) ? 'Check' : 'Plus'" :size="14" />
-        </BButton>
+          <RLucideIcon :name="isInCompare(fund.fund_code) ? 'Check' : 'Plus'" :size="14" />
+        </RButton>
       </div>
 
       <div class="col-name" @click="!editMode && !compareMode && $emit('view-fund', fund.fund_code)">
@@ -58,7 +58,7 @@
       </div>
 
       <div class="col-action" v-if="!editMode && !compareMode">
-        <BButton
+        <RButton
           circle size="small"
           v-if="addToRealtimeMode"
           @click.stop="$emit('add-to-realtime', fund)"
@@ -66,7 +66,7 @@
           icon="Plus"
         />
         <template v-else>
-          <BButton
+          <RButton
             circle size="small"
             @click.stop="$emit('show-alert-settings', fund.fund_code)"
             :title="'告警设置'"
@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton, BCheckbox } from '@ruinb0w/ui'
+import { RButton, RCheckbox } from '@ruinb0w/ui'
 import type { DraggingIndex, CompareFund } from '../types'
 
 const props = withDefaults(defineProps<{

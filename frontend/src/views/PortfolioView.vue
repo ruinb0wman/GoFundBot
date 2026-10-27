@@ -2,10 +2,10 @@
   <div class="portfolio-page">
     <div class="portfolio-tabs">
       <button class="portfolio-tab" :class="{ active: tab === 'realtime' }" @click="tab = 'realtime'">
-        <LucideIcon name="BarChart3" :size="15" /> {{ '实时估值' }}
+        <RLucideIcon name="BarChart3" :size="15" /> {{ '实时估值' }}
       </button>
       <button class="portfolio-tab" :class="{ active: tab === 'positions' }" @click="tab = 'positions'">
-        <LucideIcon name="Wallet" :size="15" /> {{ '持仓管理' }}
+        <RLucideIcon name="Wallet" :size="15" /> {{ '持仓管理' }}
       </button>
     </div>
     <FundRealtime v-show="tab === 'realtime'" @view-detail="$emit('view-detail', $event)" />
@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { LucideIcon } from '@ruinb0w/ui'
+import { RLucideIcon } from '@ruinb0w/ui'
 import FundRealtime from '../components/FundRealtime.vue'
 import MyPositions from '../components/MyPositions.vue'
 

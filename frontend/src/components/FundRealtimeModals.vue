@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-if="funds" />
-    <BaseModal :visible="addFundModalOpen" width="520" @close="emit('close-add-fund')">
+    <RModal :visible="addFundModalOpen" width="520" @close="emit('close-add-fund')">
       <template #header>
         <h3>{{ '添加基金' }}</h3>
       </template>
@@ -11,12 +11,12 @@
         @fund-selected="emit('select-fund', $event)"
       />
       <template #footer>
-        <BButton @click="emit('close-add-fund')">{{ '取消' }}</BButton>
-        <BButton type="primary" @click="emit('confirm-add-fund')" :disabled="!selectedFunds?.length">{{ '确定添加' }}</BButton>
+        <RButton @click="emit('close-add-fund')">{{ '取消' }}</RButton>
+        <RButton type="primary" @click="emit('confirm-add-fund')" :disabled="!selectedFunds?.length">{{ '确定添加' }}</RButton>
       </template>
-    </BaseModal>
+    </RModal>
 
-    <BaseModal :visible="holdingModal?.open" width="560" height="auto" @close="emit('close-holding')">
+    <RModal :visible="holdingModal?.open" width="560" height="auto" @close="emit('close-holding')">
       <template #header>
         <div>
           <div class="modal-kicker">{{ '买卖交易' }}</div>
@@ -39,7 +39,7 @@
         </div>
         <div class="form-group elegant-input-group">
           <label>{{ '交易日期' }}</label>
-          <BDatePicker
+          <RDatePicker
             :modelValue="tradeForm?.tradeDate"
             @update:modelValue="emit('update-trade-date', $event)"
             :max="todayDate"
@@ -52,23 +52,23 @@
         </div>
         <div class="form-group elegant-input-group">
           <label>{{ tradeForm?.type === 'buy' ? '加仓金额' : '减仓份额' }}</label>
-          <BInputNumber
+          <RInputNumber
             :modelValue="tradeForm?.inputValue"
             @update:modelValue="emit('update-trade-value', String($event ?? ''))"
             :placeholder="tradeForm?.type === 'buy' ? '请输入加仓金额' : '请输入减仓份额'"
             :controls="false"
           >
             <template #prefix v-if="tradeForm?.type === 'buy'">¥</template>
-          </BInputNumber>
+          </RInputNumber>
         </div>
       </div>
       <template #footer>
-        <BButton @click="emit('close-holding')">{{ '取消' }}</BButton>
-        <BButton :type="tradeForm?.type === 'sell' ? 'danger' : 'primary'" @click="emit('save-trade')" :disabled="!canSubmitTrade?.()">{{ submitButtonText?.() }}</BButton>
+        <RButton @click="emit('close-holding')">{{ '取消' }}</RButton>
+        <RButton :type="tradeForm?.type === 'sell' ? 'danger' : 'primary'" @click="emit('save-trade')" :disabled="!canSubmitTrade?.()">{{ submitButtonText?.() }}</RButton>
       </template>
-    </BaseModal>
+    </RModal>
 
-    <BaseModal :visible="tradeHistoryModal?.open" width="680" height="auto" @close="emit('close-trade-history')">
+    <RModal :visible="tradeHistoryModal?.open" width="680" height="auto" @close="emit('close-trade-history')">
       <template #header>
         <div>
           <div class="modal-kicker">{{ '持仓记录' }}</div>
@@ -96,14 +96,14 @@
         </div>
       </div>
       <div class="trade-history-empty" v-else>{{ '暂无记录' }}</div>
-    </BaseModal>
+    </RModal>
 
-    <BaseModal :visible="showGroupModal" width="420" height="auto" @close="emit('close-group')">
+    <RModal :visible="showGroupModal" width="420" height="auto" @close="emit('close-group')">
       <template #header>
         <h3 style="margin:0">{{ editingGroup ? '重命名分组' : '新建分组' }}</h3>
       </template>
       <div style="margin-bottom:12px">
-        <BInput
+        <RInput
           :modelValue="groupName"
           @update:modelValue="emit('update-group-name', String($event ?? ''))"
           :placeholder="'请输入分组名称'"
@@ -114,48 +114,48 @@
       <div class="rebalance-section">
         <div class="rebalance-header">
           <span>{{ '再平衡设置' }}</span>
-          <BSwitch :modelValue="rebalanceForm?.enabled" @update:modelValue="emit('update-rebalance', 'enabled', $event)" />
+          <RSwitch :modelValue="rebalanceForm?.enabled" @update:modelValue="emit('update-rebalance', 'enabled', $event)" />
         </div>
         <div v-if="rebalanceForm?.enabled" class="rebalance-fields">
           <div class="form-group elegant-input-group">
             <label>{{ '目标占比（每只基金）' }}</label>
-            <BInputNumber
+            <RInputNumber
               :modelValue="rebalanceForm?.target"
               @update:modelValue="emit('update-rebalance', 'target', $event)"
               :min="1" :max="100" :controls="false"
             >
               <template #suffix>%</template>
-            </BInputNumber>
+            </RInputNumber>
           </div>
           <div class="form-group elegant-input-group">
             <label>{{ '上限阈值' }}</label>
-            <BInputNumber
+            <RInputNumber
               :modelValue="rebalanceForm?.upper"
               @update:modelValue="emit('update-rebalance', 'upper', $event)"
               :min="1" :max="100" :controls="false"
             >
               <template #suffix>%</template>
-            </BInputNumber>
+            </RInputNumber>
           </div>
           <div class="form-group elegant-input-group">
             <label>{{ '下限阈值' }}</label>
-            <BInputNumber
+            <RInputNumber
               :modelValue="rebalanceForm?.lower"
               @update:modelValue="emit('update-rebalance', 'lower', $event)"
               :min="0" :max="100" :controls="false"
             >
               <template #suffix>%</template>
-            </BInputNumber>
+            </RInputNumber>
           </div>
         </div>
       </div>
       <template #footer>
-        <BButton @click="emit('close-group')">{{ '取消' }}</BButton>
-        <BButton type="primary" @click="emit('save-group')" :disabled="!groupName?.trim()">{{ editingGroup ? '保存' : '创建' }}</BButton>
+        <RButton @click="emit('close-group')">{{ '取消' }}</RButton>
+        <RButton type="primary" @click="emit('save-group')" :disabled="!groupName?.trim()">{{ editingGroup ? '保存' : '创建' }}</RButton>
       </template>
-    </BaseModal>
+    </RModal>
 
-    <BaseModal :visible="adjustmentModal?.open" width="560" height="auto" @close="emit('close-adjustment')">
+    <RModal :visible="adjustmentModal?.open" width="560" height="auto" @close="emit('close-adjustment')">
       <template #header>
         <div>
           <div class="modal-kicker">{{ '调整' }}</div>
@@ -165,7 +165,7 @@
       <div class="set-holding-form">
         <div class="form-group elegant-input-group">
           <label>{{ '交易日期' }}</label>
-          <BDatePicker
+          <RDatePicker
             :modelValue="adjustmentForm?.tradeDate"
             @update:modelValue="emit('update-adjustment-date', $event)"
             :max="todayDate"
@@ -181,7 +181,7 @@
         </div>
         <div class="form-group elegant-input-group">
           <label>{{ adjustmentForm?.subtype === 'dividend' ? '再投金额' : '调整金额' }}</label>
-          <BInputNumber
+          <RInputNumber
             :modelValue="adjustmentForm?.amount"
             @update:modelValue="emit('update-adjustment-amount', String($event ?? ''))"
             :placeholder="'手续费金额'"
@@ -189,11 +189,11 @@
             :min="0"
           >
             <template #prefix>¥</template>
-          </BInputNumber>
+          </RInputNumber>
         </div>
         <div v-if="adjustmentForm?.subtype === 'dividend'" class="form-group elegant-input-group">
           <label>{{ '再投份额' }}</label>
-          <BInputNumber
+          <RInputNumber
             :modelValue="adjustmentForm?.share"
             @update:modelValue="emit('update-adjustment-share', String($event ?? ''))"
             :placeholder="'请输入再投份额'"
@@ -203,7 +203,7 @@
         </div>
         <div class="form-group elegant-input-group">
           <label>{{ '备注' }}</label>
-          <BInput
+          <RInput
             :modelValue="adjustmentForm?.note"
             @update:modelValue="emit('update-adjustment-note', String($event ?? ''))"
             :placeholder="'可选备注'"
@@ -211,15 +211,15 @@
         </div>
       </div>
       <template #footer>
-        <BButton @click="emit('close-adjustment')">{{ '取消' }}</BButton>
-        <BButton type="primary" @click="emit('save-adjustment')">{{ '保存调整' }}</BButton>
+        <RButton @click="emit('close-adjustment')">{{ '取消' }}</RButton>
+        <RButton type="primary" @click="emit('save-adjustment')">{{ '保存调整' }}</RButton>
       </template>
-    </BaseModal>
+    </RModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { BButton, BaseModal, BDatePicker, BInput, BInputNumber, BSwitch } from '@ruinb0w/ui'
+import { RButton, RModal, RDatePicker, RInput, RInputNumber, RSwitch } from '@ruinb0w/ui'
 import { ref, computed } from 'vue'
 
 import FundSearch from './FundSearch.vue'

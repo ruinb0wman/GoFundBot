@@ -1,6 +1,6 @@
 <template>
   <div class="settings-anomaly">
-    <h3 class="page-title"><LucideIcon name="BellRing" :size="22" /> {{ '市场异动阈值配置' }}</h3>
+    <h3 class="page-title"><RLucideIcon name="BellRing" :size="22" /> {{ '市场异动阈值配置' }}</h3>
 
     <div v-if="loading" class="loading-state">{{ '加载中...' }}</div>
 
@@ -9,11 +9,11 @@
         <h4 class="section-title">{{ '指数异动' }}</h4>
         <div class="config-row">
           <label>{{ '大涨阈值 (%)' }}</label>
-          <BInputNumber v-model="form.index_surge_threshold" size="small" :min="0.1" :max="20" :step="0.1" />
+          <RInputNumber v-model="form.index_surge_threshold" size="small" :min="0.1" :max="20" :step="0.1" />
         </div>
         <div class="config-row">
           <label>{{ '大跌阈值 (%)' }}</label>
-          <BInputNumber v-model="form.index_plunge_threshold" size="small" :min="-20" :max="-0.1" :step="0.1" />
+          <RInputNumber v-model="form.index_plunge_threshold" size="small" :min="-20" :max="-0.1" :step="0.1" />
         </div>
       </section>
 
@@ -21,11 +21,11 @@
         <h4 class="section-title">{{ '成交量异动' }}</h4>
         <div class="config-row">
           <label>{{ '放量倍数 (x)' }}</label>
-          <BInputNumber v-model="form.volume_surge_ratio" size="small" :min="1.1" :max="10" :step="0.1" />
+          <RInputNumber v-model="form.volume_surge_ratio" size="small" :min="1.1" :max="10" :step="0.1" />
         </div>
         <div class="config-row">
           <label>{{ '缩量倍数 (x)' }}</label>
-          <BInputNumber v-model="form.volume_shrink_ratio" size="small" :min="0.05" :max="0.95" :step="0.05" />
+          <RInputNumber v-model="form.volume_shrink_ratio" size="small" :min="0.05" :max="0.95" :step="0.05" />
         </div>
       </section>
 
@@ -33,15 +33,15 @@
         <h4 class="section-title">{{ '板块异动' }}</h4>
         <div class="config-row">
           <label>{{ '暴涨阈值 (%)' }}</label>
-          <BInputNumber v-model="form.sector_surge_threshold" size="small" :min="0.1" :max="20" :step="0.1" />
+          <RInputNumber v-model="form.sector_surge_threshold" size="small" :min="0.1" :max="20" :step="0.1" />
         </div>
         <div class="config-row">
           <label>{{ '暴跌阈值 (%)' }}</label>
-          <BInputNumber v-model="form.sector_plunge_threshold" size="small" :min="-20" :max="-0.1" :step="0.1" />
+          <RInputNumber v-model="form.sector_plunge_threshold" size="small" :min="-20" :max="-0.1" :step="0.1" />
         </div>
         <div class="config-row">
           <label>{{ '主力流入 (亿)' }}</label>
-          <BInputNumber v-model="form.sector_inflow_threshold" size="small" :min="0" :max="1000" :step="1" />
+          <RInputNumber v-model="form.sector_inflow_threshold" size="small" :min="0" :max="1000" :step="1" />
         </div>
       </section>
 
@@ -49,21 +49,21 @@
         <h4 class="section-title">{{ '北向资金异动' }}</h4>
         <div class="config-row">
           <label>{{ '大幅流入 (亿)' }}</label>
-          <BInputNumber v-model="form.north_inflow_threshold" size="small" :min="0" :max="500" :step="1" />
+          <RInputNumber v-model="form.north_inflow_threshold" size="small" :min="0" :max="500" :step="1" />
         </div>
         <div class="config-row">
           <label>{{ '大幅流出 (亿)' }}</label>
-          <BInputNumber v-model="form.north_outflow_threshold" size="small" :min="-500" :max="-1" :step="1" />
+          <RInputNumber v-model="form.north_outflow_threshold" size="small" :min="-500" :max="-1" :step="1" />
         </div>
       </section>
 
       <div class="actions">
-        <BButton type="primary" :disabled="saving" @click="saveConfig">
-          <LucideIcon name="Save" :size="16" /> {{ '保存设置' }}
-        </BButton>
-        <BButton :disabled="saving" @click="resetDefaults">
-          <LucideIcon name="RotateCcw" :size="16" /> {{ '恢复默认值' }}
-        </BButton>
+        <RButton type="primary" :disabled="saving" @click="saveConfig">
+          <RLucideIcon name="Save" :size="16" /> {{ '保存设置' }}
+        </RButton>
+        <RButton :disabled="saving" @click="resetDefaults">
+          <RLucideIcon name="RotateCcw" :size="16" /> {{ '恢复默认值' }}
+        </RButton>
       </div>
 
       <div v-if="message" class="message" :class="messageType">{{ message }}</div>
@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton, BInputNumber, LucideIcon } from '@ruinb0w/ui'
+import { RButton, RInputNumber, RLucideIcon } from '@ruinb0w/ui'
 import { ref, onMounted } from 'vue'
 
 import { anomalyConfigAPI } from '../services/api'

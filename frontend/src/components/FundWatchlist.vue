@@ -1,57 +1,57 @@
 <template>
   <div class="watchlist-container">
     <div v-if="showCompareToggle" class="compare-toggle-bar">
-      <BButton
+      <RButton
         :active="compareMode"
         @click="$emit('toggle-compare')"
         icon="TrendingUp"
       >
         {{ compareMode ? '退出对比' : '基金对比' }}
         <span v-if="compareFunds.length && compareMode" class="compare-count">{{ compareFunds.length }}</span>
-      </BButton>
+      </RButton>
       <div v-if="compareMode && compareFunds.length > 0" class="compare-selected">
         <div v-for="fund in compareFunds" :key="fund.code" class="compare-tag">
           <span class="tag-name">{{ fund.name }}</span>
         </div>
       </div>
       <div v-if="compareMode && compareFunds.length === 0" class="compare-hint">
-        <LucideIcon name="ArrowBigUp" :size="14" /> {{ '点击下方基金的 + 按钮添加对比' }}
+        <RLucideIcon name="ArrowBigUp" :size="14" /> {{ '点击下方基金的 + 按钮添加对比' }}
       </div>
       <div v-if="compareMode && compareFunds.length === 1" class="compare-hint">
         {{ `还需选择至少 ${1} 只基金才能对比` }}
       </div>
       <a class="doc-link" href="/docs/market-watchlist" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/market-watchlist')">
-        <LucideIcon name="HelpCircle" :size="16" />
+        <RLucideIcon name="HelpCircle" :size="16" />
       </a>
     </div>
 
     <div class="watchlist-header">
       <h2>
-        <span class="header-icon"><LucideIcon name="Star" :size="18" /></span>
+        <span class="header-icon"><RLucideIcon name="Star" :size="18" /></span>
         {{ '我的自选' }}
         <span class="count-badge" v-if="totalCount">{{ totalCount }}</span>
       </h2>
       <div class="header-actions">
-        <BButton plain @click="openAddGroupModal" :title="'新建分组'" icon="FolderPlus" />
-        <BButton
+        <RButton plain @click="openAddGroupModal" :title="'新建分组'" icon="FolderPlus" />
+        <RButton
           v-if="!editMode && totalCount > 0"
           @click="enterEditMode"
         >
           {{ '编辑' }}
-        </BButton>
+        </RButton>
         <template v-if="editMode">
-          <BButton
+          <RButton
             type="danger"
             :disabled="selectedFunds.length === 0"
             @click="batchDelete"
           >
             {{ selectedFunds.length > 0 ? `删除(${selectedFunds.length})` : '删除' }}
-          </BButton>
-          <BButton @click="exitEditMode">
+          </RButton>
+          <RButton @click="exitEditMode">
             {{ '完成' }}
-          </BButton>
+          </RButton>
         </template>
-        <BButton
+        <RButton
           @click="refreshEstimates"
           :disabled="isRefreshingEstimates || totalCount === 0"
           :title="lastEstimateUpdate ? `估值更新于 ${lastEstimateUpdate}` : '刷新估值'"
@@ -61,20 +61,20 @@
     </div>
 
     <div v-if="lastEstimateUpdate && totalCount > 0" class="estimate-update-hint">
-      <span class="hint-icon"><LucideIcon name="BarChart3" :size="12" /></span>
+      <span class="hint-icon"><RLucideIcon name="BarChart3" :size="12" /></span>
       <span>{{ `估值更新于 ${lastEstimateUpdate}` }}</span>
-      <span v-if="adaptiveRefresh.isStale.value" class="stale-badge"><LucideIcon name="Clock" :size="12" /> {{ '超时' }}</span>
+      <span v-if="adaptiveRefresh.isStale.value" class="stale-badge"><RLucideIcon name="Clock" :size="12" /> {{ '超时' }}</span>
       <span class="hint-auto">{{ '（自动刷新）' }}</span>
     </div>
 
     <div v-if="loading && totalCount === 0" class="skeleton-loading">
-      <SkeletonCard v-for="n in 4" :key="n" :lines="2" :height="80" />
+      <RSkeletonCard v-for="n in 4" :key="n" :lines="2" :height="80" />
     </div>
 
     <div v-else-if="totalCount === 0" class="empty-state">
-      <div class="empty-icon"><LucideIcon name="ClipboardList" :size="36" /></div>
+      <div class="empty-icon"><RLucideIcon name="ClipboardList" :size="36" /></div>
       <p>{{ '暂无自选基金' }}</p>
-      <p class="empty-hint">{{ `在基金详情页点击 ${''} 添加自选` }} <LucideIcon name="Star" :size="12" /></p>
+      <p class="empty-hint">{{ `在基金详情页点击 ${''} 添加自选` }} <RLucideIcon name="Star" :size="12" /></p>
     </div>
 
     <div v-else class="watchlist-content" @dragover.prevent @drop="onDrop">
@@ -84,7 +84,7 @@
         @drop="onGroupDrop($event, null)"
       >
         <div class="group-header" @click="toggleGroup(null)">
-          <span class="group-toggle"><LucideIcon :name="isGroupExpanded(null) ? 'ChevronDown' : 'ChevronRight'" :size="14" /></span>
+          <span class="group-toggle"><RLucideIcon :name="isGroupExpanded(null) ? 'ChevronDown' : 'ChevronRight'" :size="14" /></span>
           <span class="group-name">{{ groups.length > 0 ? '未分组' : '全部基金' }}</span>
           <span class="group-count">{{ ungroupedFunds.length }}</span>
         </div>
@@ -120,12 +120,12 @@
         @drop="onGroupDrop($event, group.id)"
       >
         <div class="group-header" @click="toggleGroup(group.id)">
-          <span class="group-toggle"><LucideIcon :name="isGroupExpanded(group.id) ? 'ChevronDown' : 'ChevronRight'" :size="14" /></span>
-          <span class="group-name"><LucideIcon name="Folder" :size="14" /> {{ group.name }}</span>
+          <span class="group-toggle"><RLucideIcon :name="isGroupExpanded(group.id) ? 'ChevronDown' : 'ChevronRight'" :size="14" /></span>
+          <span class="group-name"><RLucideIcon name="Folder" :size="14" /> {{ group.name }}</span>
           <span class="group-count">{{ getGroupFunds(group.id).length }}</span>
           <div class="group-actions" v-if="editMode" @click.stop>
-            <BButton circle size="small" @click="openEditGroupModal(group)" :title="'重命名分组'" icon="Pencil" />
-            <BButton circle size="small" type="danger" @click="deleteGroup(group)" :title="'删除'" icon="Trash2" />
+            <RButton circle size="small" @click="openEditGroupModal(group)" :title="'重命名分组'" icon="Pencil" />
+            <RButton circle size="small" type="danger" @click="deleteGroup(group)" :title="'删除'" icon="Trash2" />
           </div>
         </div>
         <div class="group-content" v-show="isGroupExpanded(group.id)">
@@ -159,17 +159,17 @@
     <div v-if="showGroupModal" class="modal-overlay" @click.self="closeGroupModal">
       <div class="modal-box">
         <h3>{{ editingGroup ? '重命名分组' : '新建分组' }}</h3>
-        <BInput
+        <RInput
           v-model="groupName"
           :placeholder="'请输入分组名称'"
           ref="groupNameInput"
           @keydown="(e) => e.key === 'Enter' && saveGroup()"
         />
         <div class="modal-actions">
-          <BButton @click="closeGroupModal">{{ '取消' }}</BButton>
-          <BButton type="primary" @click="saveGroup" :disabled="!groupName.trim()">
+          <RButton @click="closeGroupModal">{{ '取消' }}</RButton>
+          <RButton type="primary" @click="saveGroup" :disabled="!groupName.trim()">
             {{ editingGroup ? '保存' : '创建' }}
-          </BButton>
+          </RButton>
         </div>
       </div>
     </div>
@@ -179,7 +179,7 @@
 </template>
 
 <script setup>
-import { BButton, BInput, SkeletonCard } from '@ruinb0w/ui'
+import { RButton, RInput, RSkeletonCard } from '@ruinb0w/ui'
 import { openDocLink } from '../services/docLink'
 import { useFundWatchlist } from '../composables/useFundWatchlist'
 

@@ -2,16 +2,16 @@
   <div class="alert-settings-overlay" v-if="visible" @mousedown.self="close">
     <div class="alert-settings-dialog">
       <div class="dialog-header">
-        <h3><LucideIcon name="Bell" :size="18" /> {{ `告警设置 - ${fundCode}` }}</h3>
-        <BButton circle size="small" @click="close">&times;</BButton>
+        <h3><RLucideIcon name="Bell" :size="18" /> {{ `告警设置 - ${fundCode}` }}</h3>
+        <RButton circle size="small" @click="close">&times;</RButton>
       </div>
       <div class="dialog-body">
         <div v-if="existing.length > 0" class="current-rules">
           <label class="section-label">{{ '当前规则' }}</label>
           <div v-for="rule in existing" :key="rule.id" class="rule-row">
             <span class="rule-type">{{ typeLabel(rule.alert_type) }} {{ rule.threshold }}%</span>
-            <BSwitch :modelValue="!!rule.enabled" @update:modelValue="v => toggleRule(rule, v)" size="small" />
-            <BButton circle size="small" type="danger" icon="Trash2" @click="deleteRule(rule.id)" />
+            <RSwitch :modelValue="!!rule.enabled" @update:modelValue="v => toggleRule(rule, v)" size="small" />
+            <RButton circle size="small" type="danger" icon="Trash2" @click="deleteRule(rule.id)" />
           </div>
         </div>
         <div class="new-rule">
@@ -23,9 +23,9 @@
               <option value="return_above">{{ '收益大于' }}</option>
               <option value="return_below">{{ '收益小于' }}</option>
             </select>
-            <BInputNumber v-model="newThreshold" :min="0.1" :max="1000" :step="0.1"
+            <RInputNumber v-model="newThreshold" :min="0.1" :max="1000" :step="0.1"
                           :placeholder="'阈值 (%)'" :controls="false" />
-            <BButton type="primary" size="small" @click="addRule" :disabled="!newThreshold">{{ '添加' }}</BButton>
+            <RButton type="primary" size="small" @click="addRule" :disabled="!newThreshold">{{ '添加' }}</RButton>
           </div>
         </div>
       </div>
@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 
-import { BButton, BInputNumber, BSwitch } from '@ruinb0w/ui'
+import { RButton, RInputNumber, RSwitch } from '@ruinb0w/ui'
 import { ref, computed, watch } from 'vue'
 import { useAlertStore } from '../stores/alertStore'
 

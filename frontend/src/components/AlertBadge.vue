@@ -1,5 +1,5 @@
 <template>
-  <BAlertBell
+  <RAlertBell
     :items="items"
     :unread-count="unreadCount"
     solid
@@ -7,19 +7,19 @@
     @update:open="onOpenChange"
   >
     <template #footer>
-      <BButton type="primary" size="small" :disabled="store.loading" @click="refreshCheck">
-        <LucideIcon name="RefreshCw" :size="14" :class="{ spinning: store.loading }" /> {{ '检查' }}
-      </BButton>
+      <RButton type="primary" size="small" :disabled="store.loading" @click="refreshCheck">
+        <RLucideIcon name="RefreshCw" :size="14" :class="{ spinning: store.loading }" /> {{ '检查' }}
+      </RButton>
     </template>
-  </BAlertBell>
+  </RAlertBell>
 </template>
 
 <script setup lang="ts">
 /**
- * 告警铃铛的 GoFundBot 胶水层：把 alertStore 的数据映射成 BAlertBell 的 props，
+ * 告警铃铛的 GoFundBot 胶水层：把 alertStore 的数据映射成 RAlertBell 的 props，
  * 组件本体（铃铛 + 下拉面板）在 @ruinb0w/ui 里，不认识 store。
  */
-import { BAlertBell, BButton, LucideIcon } from '@ruinb0w/ui'
+import { RAlertBell, RButton, RLucideIcon } from '@ruinb0w/ui'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useAlertStore } from '../stores/alertStore'
 

@@ -7,12 +7,12 @@
       </div>
       <div class="header-actions">
         <span v-if="updatedAt" class="updated-time">更新 {{ formatDateTime(updatedAt) }}</span>
-        <BButton type="primary" icon="RefreshCw" :disabled="loading" @click="refreshDashboard">{{ loading ? '刷新中...' : '刷新' }}</BButton>
+        <RButton type="primary" icon="RefreshCw" :disabled="loading" @click="refreshDashboard">{{ loading ? '刷新中...' : '刷新' }}</RButton>
       </div>
     </div>
 
     <div class="tab-bar">
-      <BButton
+      <RButton
         v-for="tab in tabs"
         :key="tab.key"
         text
@@ -20,7 +20,7 @@
         @click="activeTab = tab.key"
       >
         {{ tab.label }}
-      </BButton>
+      </RButton>
     </div>
 
     <div v-if="loading" class="state-card">{{ '正在加载投研数据...' }}</div>
@@ -233,7 +233,7 @@
 
         <transition name="toast-fade">
           <div v-if="showToast" class="sector-toast">
-            <span class="toast-icon"><LucideIcon name="Check" :size="16" /></span>
+            <span class="toast-icon"><RLucideIcon name="Check" :size="16" /></span>
             <span>{{ toastMessage }}</span>
             <button class="toast-close" @click="showToast = false">×</button>
           </div>
@@ -325,7 +325,7 @@
 
 <script setup>
 
-import { BButton } from '@ruinb0w/ui'
+import { RButton } from '@ruinb0w/ui'
 import { useResearchDashboard } from '../composables/useResearchDashboard'
 
 const emit = defineEmits(['view-fund'])

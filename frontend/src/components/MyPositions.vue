@@ -1,14 +1,14 @@
 <template>
   <div class="positions-container">
     <div class="positions-header">
-      <h2><LucideIcon name="Briefcase" :size="22" /> {{ '我的持仓' }}</h2>
+      <h2><RLucideIcon name="Briefcase" :size="22" /> {{ '我的持仓' }}</h2>
       <p>{{ '输入基金代码自动补全名称；按中国基金交易规则自动处理购买日净值；持仓按实时估值刷新盈亏。' }}</p>
     </div>
 
     <form class="position-form" @submit.prevent="addPosition">
       <div class="field">
         <label>{{ '基金代码' }}</label>
-        <BInput
+        <RInput
           v-model="form.code"
           :placeholder="'如 110022'"
           :maxlength="6"
@@ -18,27 +18,27 @@
 
       <div class="field">
         <label>{{ '基金名称' }}</label>
-        <BInput v-model="form.name" :placeholder="'自动填充，可手动修改'" />
+        <RInput v-model="form.name" :placeholder="'自动填充，可手动修改'" />
       </div>
 
       <div class="field">
         <label>{{ '购买日期' }}</label>
-        <BDatePicker v-model="form.purchaseDate" :max="today" />
+        <RDatePicker v-model="form.purchaseDate" :max="today" />
       </div>
 
       <div class="field">
         <label>{{ '购买时间（用于当日15:00规则）' }}</label>
-        <BTimePicker v-model="form.purchaseTime" />
+        <RTimePicker v-model="form.purchaseTime" />
       </div>
 
       <div class="field">
         <label>{{ '持有份额' }}</label>
-        <BInputNumber v-model="form.shares" :min="0" :step="0.01" :placeholder="'持有份额'" :controls="false" />
+        <RInputNumber v-model="form.shares" :min="0" :step="0.01" :placeholder="'持有份额'" :controls="false" />
       </div>
 
       <div class="field">
         <label>{{ '成本净值' }}</label>
-        <BInputNumber v-model="form.cost" :min="0" :step="0.0001" :placeholder="'自动填充，可手动修改'" :controls="false" />
+        <RInputNumber v-model="form.cost" :min="0" :step="0.0001" :placeholder="'自动填充，可手动修改'" :controls="false" />
       </div>
 
       <button type="submit" :disabled="isAutoFilling">{{ isAutoFilling ? '处理中...' : '添加' }}</button>
@@ -47,7 +47,7 @@
     <p class="tips" v-if="helperText">{{ helperText }}</p>
 
     <div class="operation-panel" v-if="positions.length">
-      <h3><LucideIcon name="Repeat" :size="18" /> {{ '持仓变更（加仓 / 减仓 / 转换）' }}</h3>
+      <h3><RLucideIcon name="Repeat" :size="18" /> {{ '持仓变更（加仓 / 减仓 / 转换）' }}</h3>
       <p class="operation-tip">{{ '建议在晚上 21:00 后操作：基金准确净值通常在晚间更新，按金额换算份额更准确。' }}</p>
       <form class="operation-form" @submit.prevent="applyOperation">
         <div class="field">
@@ -71,7 +71,7 @@
 
         <div class="field" v-if="operationForm.type === 'convert'">
           <label>{{ '目标基金代码' }}</label>
-          <BInput
+          <RInput
             v-model="operationForm.targetCode"
             :maxlength="6"
             :placeholder="'如 001632'"
@@ -81,17 +81,17 @@
 
         <div class="field" v-if="operationForm.type === 'convert'">
           <label>{{ '目标基金名称' }}</label>
-          <BInput v-model="operationForm.targetName" placeholder="自动填充，可手动修改" />
+          <RInput v-model="operationForm.targetName" placeholder="自动填充，可手动修改" />
         </div>
 
         <div class="field">
           <label>{{ '金额（元）' }}</label>
-          <BInputNumber v-model="operationForm.amount" :min="0.01" :step="0.01" :placeholder="'输入金额'" :controls="false" />
+          <RInputNumber v-model="operationForm.amount" :min="0.01" :step="0.01" :placeholder="'输入金额'" :controls="false" />
         </div>
 
         <div class="field">
           <label>{{ '操作日期' }}</label>
-          <BDatePicker v-model="operationForm.date" :max="today" />
+          <RDatePicker v-model="operationForm.date" :max="today" />
         </div>
 
         <button type="submit" :disabled="operationLoading">{{ operationLoading ? '处理中...' : '确认变更' }}</button>
@@ -124,11 +124,11 @@
 
     <div class="charts" v-if="positions.length">
       <div class="chart-card">
-        <h3><LucideIcon name="BarChart3" :size="18" /> {{ '持仓盈亏柱状图（明细）' }}</h3>
+        <h3><RLucideIcon name="BarChart3" :size="18" /> {{ '持仓盈亏柱状图（明细）' }}</h3>
         <div ref="pnlBarChartEl" class="chart-el"></div>
       </div>
       <div class="chart-card">
-        <h3><LucideIcon name="TrendingUp" :size="18" /> {{ '持有收益率走势（从成本起算）' }}</h3>
+        <h3><RLucideIcon name="TrendingUp" :size="18" /> {{ '持有收益率走势（从成本起算）' }}</h3>
         <div ref="returnTrendChartEl" class="chart-el"></div>
       </div>
     </div>
@@ -167,7 +167,7 @@
             <td :class="profit(item) >= 0 ? 'up' : 'down'">{{ formatSigned(profit(item)) }}</td>
             <td :class="profitRate(item) >= 0 ? 'up' : 'down'">{{ formatSigned(profitRate(item)) }}%</td>
             <td>
-              <BButton type="danger" size="small" @click="removePosition(item.id)">{{ '删除' }}</BButton>
+              <RButton type="danger" size="small" @click="removePosition(item.id)">{{ '删除' }}</RButton>
             </td>
           </tr>
         </tbody>
@@ -180,7 +180,7 @@
 
 <script setup>
 
-import { BButton, BInput, BInputNumber, BDatePicker, BTimePicker } from '@ruinb0w/ui'
+import { RButton, RInput, RInputNumber, RDatePicker, RTimePicker } from '@ruinb0w/ui'
 import { useMyPositions } from '../composables/useMyPositions'
 
 const {

@@ -71,8 +71,8 @@
     <div class="result-note">{{ result.note }}</div>
 
     <div class="detail-header" @click="showDetail = !showDetail">
-      <h4><LucideIcon name="ClipboardList" :size="18" /> {{ '逐日明细' }}</h4>
-      <LucideIcon :name="showDetail ? 'ChevronDown' : 'ChevronRight'" :size="16" />
+      <h4><RLucideIcon name="ClipboardList" :size="18" /> {{ '逐日明细' }}</h4>
+      <RLucideIcon :name="showDetail ? 'ChevronDown' : 'ChevronRight'" :size="16" />
     </div>
     <div v-if="showDetail" class="detail-table-wrapper">
       <table class="detail-table">
@@ -96,9 +96,9 @@
         </tbody>
       </table>
       <div v-if="totalPages > 1" class="pagination">
-        <BButton plain :disabled="currentPage === 1" @click="currentPage--">{{ '上一页' }}</BButton>
+        <RButton plain :disabled="currentPage === 1" @click="currentPage--">{{ '上一页' }}</RButton>
         <span>{{ `第 ${currentPage} / ${totalPages} 页` }}</span>
-        <BButton plain :disabled="currentPage === totalPages" @click="currentPage++">{{ '下一页' }}</BButton>
+        <RButton plain :disabled="currentPage === totalPages" @click="currentPage++">{{ '下一页' }}</RButton>
       </div>
     </div>
   </div>
@@ -107,7 +107,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import Decimal from 'decimal.js'
-import { BButton, LucideIcon } from '@ruinb0w/ui'
+import { RButton, RLucideIcon } from '@ruinb0w/ui'
 import BacktestChart from './BacktestChart.vue'
 import { returnClass as getReturnClass } from '../../utils/number'
 import type { PortfolioBacktestResult } from '@gofund/core/backtest/backtestTypes'

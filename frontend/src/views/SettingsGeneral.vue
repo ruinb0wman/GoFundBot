@@ -11,7 +11,7 @@
           :class="{ active: savedTheme === opt.value }"
           @click="setTheme(opt.value)"
         >
-          <LucideIcon :name="opt.icon" :size="20" />
+          <RLucideIcon :name="opt.icon" :size="20" />
           <span>{{ opt.label }}</span>
         </button>
       </div>

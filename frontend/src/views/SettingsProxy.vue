@@ -6,7 +6,7 @@
 
       <div class="field-group">
         <label class="field-label">
-          <LucideIcon name="Globe" :size="16" />
+          <RLucideIcon name="Globe" :size="16" />
           {{ '代理地址' }}
         </label>
         <input
@@ -26,7 +26,7 @@
 
       <div class="action-row">
         <button class="save-btn" @click="handleSave" :disabled="saving">
-          <LucideIcon name="Save" :size="16" />
+          <RLucideIcon name="Save" :size="16" />
           {{ '保存' }}
         </button>
         <span v-if="status" class="status-msg" :class="{ success: status === 'saved', error: status === 'error' }">

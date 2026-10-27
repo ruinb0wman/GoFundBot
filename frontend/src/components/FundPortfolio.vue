@@ -1,7 +1,7 @@
 <template>
   <div class="portfolio-card">
     <div class="card-header">
-      <h3><LucideIcon name="TrendingUp" :size="20" /> {{ '持仓明细' }}</h3>
+      <h3><RLucideIcon name="TrendingUp" :size="20" /> {{ '持仓明细' }}</h3>
     </div>
     <div class="card-body">
       <div class="portfolio-content">

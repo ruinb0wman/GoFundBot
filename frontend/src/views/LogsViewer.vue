@@ -5,22 +5,22 @@
         <option value="dataservice">DataService</option>
         <option value="frontend">Frontend</option>
       </select>
-      <BDatePicker v-model="dateStr" class="tb-input" @change="loadLogs" />
+      <RDatePicker v-model="dateStr" class="tb-input" @change="loadLogs" />
       <select v-model="levelFilter" class="tb-select" @change="loadLogs">
         <option value="">All</option>
         <option value="error">Error</option>
         <option value="warn">Warn</option>
         <option value="info">Info</option>
       </select>
-      <BInput
+      <RInput
         v-model="keyword"
         class="search-input"
         :placeholder="'搜索关键词...'"
         @input="onSearchInput"
       />
-      <BButton size="small" @click="loadLogs" :disabled="loading">
-        <LucideIcon name="RefreshCw" :size="16" :class="{ spinning: loading }" />
-      </BButton>
+      <RButton size="small" @click="loadLogs" :disabled="loading">
+        <RLucideIcon name="RefreshCw" :size="16" :class="{ spinning: loading }" />
+      </RButton>
     </div>
 
     <div class="stats-row">
@@ -66,13 +66,13 @@
         <VxeColumn field="message" :title="'消息'" min-width="200" show-overflow="tooltip" />
         <VxeColumn :title="'上下文'" width="100">
           <template #default="{ row }">
-            <BButton
+            <RButton
               v-if="row.context || row.module"
               size="small"
               @click="expandRow(row)"
             >
               {{ '查看' }}
-            </BButton>
+            </RButton>
           </template>
         </VxeColumn>
       </VxeTable>
@@ -80,17 +80,17 @@
 
     <div class="pagination-row" v-if="total > limit">
       <span class="page-info">{{ '共' }} {{ total }} {{ '条' }}</span>
-      <BButton size="small" :disabled="offset <= 0" @click="prevPage">{{ '上一页' }}</BButton>
+      <RButton size="small" :disabled="offset <= 0" @click="prevPage">{{ '上一页' }}</RButton>
       <span class="page-num">{{ currentPage }} / {{ maxPage }}</span>
-      <BButton size="small" :disabled="offset + limit >= total" @click="nextPage">{{ '下一页' }}</BButton>
+      <RButton size="small" :disabled="offset + limit >= total" @click="nextPage">{{ '下一页' }}</RButton>
     </div>
 
     <div class="analysis-section">
       <h3>{{ '日志分析（规则）' }}</h3>
-      <BButton type="primary" size="small" @click="runAnalysis" :disabled="analyzing">
-        <LucideIcon name="Sparkles" :size="16" />
+      <RButton type="primary" size="small" @click="runAnalysis" :disabled="analyzing">
+        <RLucideIcon name="Sparkles" :size="16" />
         {{ analyzing ? '分析中...' : '开始分析' }}
-      </BButton>
+      </RButton>
       <div v-if="analyzing" class="analysis-loading">
         {{ '正在分析日志...' }}
       </div>
@@ -133,7 +133,7 @@
       <div class="modal-card">
         <h4>日志详情</h4>
         <pre>{{ JSON.stringify(detailEntry, null, 2) }}</pre>
-        <BButton size="small" @click="detailEntry = null">关闭</BButton>
+        <RButton size="small" @click="detailEntry = null">关闭</RButton>
       </div>
     </div>
   </div>
@@ -141,7 +141,7 @@
 
 <script setup lang="ts">
 
-import { BButton, BInput, BDatePicker } from '@ruinb0w/ui'
+import { RButton, RInput, RDatePicker } from '@ruinb0w/ui'
 import { ref, onMounted, computed } from 'vue'
 import { VxeTable, VxeColumn } from 'vxe-table'
 

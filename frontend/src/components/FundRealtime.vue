@@ -1,8 +1,8 @@
 <template>
   <div class="realtime-container">
     <div class="top-row">
-      <BButton type="primary" @click="openAddFundModal">+ {{ '添加基金' }}</BButton>
-      <BButton @click="refreshAll" :disabled="refreshing || funds.length === 0">{{ refreshing ? '刷新中...' : '刷新估值' }}</BButton>
+      <RButton type="primary" @click="openAddFundModal">+ {{ '添加基金' }}</RButton>
+      <RButton @click="refreshAll" :disabled="refreshing || funds.length === 0">{{ refreshing ? '刷新中...' : '刷新估值' }}</RButton>
       <div class="sort-box">
         <select v-model="sortBy" class="select-sort">
           <option value="changeDesc">{{ '收益率从高到低' }}</option>
@@ -11,17 +11,17 @@
           <option value="totalProfitDesc">{{ '持有收益从高到低' }}</option>
         </select>
       </div>
-      <BButton @click="exportData">{{ '导出数据' }}</BButton>
-      <BFileInput accept="application/json" @change="onImport">
+      <RButton @click="exportData">{{ '导出数据' }}</RButton>
+      <RFileInput accept="application/json" @change="onImport">
         <template #trigger="{ trigger }">
           <span class="import-btn" @click="trigger">{{ '导入数据' }}</span>
         </template>
-      </BFileInput>
+      </RFileInput>
     </div>
 
     <div class="overview-box">
       <div class="overview-head">
-        <div class="title-with-icon"><LucideIcon name="BarChart3" :size="18" /> {{ '投资总览' }}<span v-if="activeTab.startsWith('group_')" class="scope-tag">{{ portfolioGroups.find(g => 'group_' + g.id === activeTab)?.name || '' }}</span><span v-else-if="activeTab==='dividend'" class="scope-tag">{{ '红利低波' }}</span></div>
+        <div class="title-with-icon"><RLucideIcon name="BarChart3" :size="18" /> {{ '投资总览' }}<span v-if="activeTab.startsWith('group_')" class="scope-tag">{{ portfolioGroups.find(g => 'group_' + g.id === activeTab)?.name || '' }}</span><span v-else-if="activeTab==='dividend'" class="scope-tag">{{ '红利低波' }}</span></div>
         <div class="meta-info">{{ '实时数据来自互联网，仅供参考。数据更新时间:' }} {{ nowTime }}</div>
       </div>
       <div class="overview-grid" v-if="hasHoldings">
@@ -43,8 +43,8 @@
 
     <div class="pending-txns-bar" v-if="pendingTxns.length">
       <div class="pending-header" @click="showPending = !showPending">
-        <span><LucideIcon name="Hourglass" :size="14" /> {{ pendingTxns.length }} {{ '笔交易待结算（等待当日净值公布）' }}</span>
-        <span class="pending-toggle">{{ showPending ? '收起' : '展开' }} <LucideIcon :name="showPending ? 'ChevronUp' : 'ChevronDown'" :size="12" /></span>
+        <span><RLucideIcon name="Hourglass" :size="14" /> {{ pendingTxns.length }} {{ '笔交易待结算（等待当日净值公布）' }}</span>
+        <span class="pending-toggle">{{ showPending ? '收起' : '展开' }} <RLucideIcon :name="showPending ? 'ChevronUp' : 'ChevronDown'" :size="12" /></span>
       </div>
       <div class="pending-list" v-if="showPending">
         <div class="pending-item" v-for="txn in pendingTxns" :key="txn.id">
@@ -52,33 +52,33 @@
           <span class="p-name">{{ txn.fundName }}</span>
           <span class="p-val">{{ txn.type === 'buy' ? '¥' + fmtMoney(txn.inputValue) : fmtNumber(txn.inputValue) + ' 份' }}</span>
           <span class="p-date">{{ '交易日' }} {{ txn.tradeDate }}</span>
-          <BButton size="small" @click="cancelPendingTxn(txn.id)">{{ '取消' }}</BButton>
+          <RButton size="small" @click="cancelPendingTxn(txn.id)">{{ '取消' }}</RButton>
         </div>
       </div>
     </div>
 
     <div class="content-tabs">
-      <div class="ctab" :class="{active: activeTab==='all'}" @click="activeTab='all'"><LucideIcon name="Briefcase" :size="16" /> 基金持仓</div>
+      <div class="ctab" :class="{active: activeTab==='all'}" @click="activeTab='all'"><RLucideIcon name="Briefcase" :size="16" /> 基金持仓</div>
       <div v-for="g in portfolioGroups" :key="g.id" class="ctab" :class="{active: activeTab === 'group_' + g.id}" @click="activeTab = 'group_' + g.id" @contextmenu.prevent="openGroupContextMenu($event, g.id)">
-        <LucideIcon name="Folder" :size="16" /> {{ g.name }}
+        <RLucideIcon name="Folder" :size="16" /> {{ g.name }}
         <span v-if="g.rebalance_enabled && groupRebalanceWarningCount[g.id]" class="rebalance-badge" :title="rebalanceTooltip(g.id)">
-          <LucideIcon name="TriangleAlert" :size="12" />
+          <RLucideIcon name="TriangleAlert" :size="12" />
         </span>
       </div>
-      <BButton circle size="small" @click="openAddGroupModal" title="新建分组" icon="FolderPlus" />
-      <div v-if="hasDividendFunds" class="ctab" :class="{active: activeTab==='dividend'}" @click="activeTab='dividend'"><LucideIcon name="TrendingDown" :size="16" /> 红利低波</div>
+      <RButton circle size="small" @click="openAddGroupModal" title="新建分组" icon="FolderPlus" />
+      <div v-if="hasDividendFunds" class="ctab" :class="{active: activeTab==='dividend'}" @click="activeTab='dividend'"><RLucideIcon name="TrendingDown" :size="16" /> 红利低波</div>
     </div>
 
     <div v-if="contextMenu.show" class="context-menu" :style="{left: contextMenu.x + 'px', top: contextMenu.y + 'px'}" @click.stop>
-      <div class="context-menu-item" @click="renameGroupFromMenu"><LucideIcon name="Pencil" :size="14" /> 重命名</div>
-      <div class="context-menu-item danger" @click="deleteGroupFromMenu"><LucideIcon name="Trash2" :size="14" /> 删除分组</div>
+      <div class="context-menu-item" @click="renameGroupFromMenu"><RLucideIcon name="Pencil" :size="14" /> 重命名</div>
+      <div class="context-menu-item danger" @click="deleteGroupFromMenu"><RLucideIcon name="Trash2" :size="14" /> 删除分组</div>
     </div>
 
     <div class="fund-grid" v-if="displayFunds.length">
       <div v-for="(fund, index) in displayFunds" :key="fund.code" class="fund-item-card" :class="{ dragging: dragIndex === index }" :draggable="activeTab === 'all'" @dragstart="activeTab === 'all' && onDragStart($event, index)" @dragend="onDragEnd" @dragover="onDragOver($event, index)">
         <div class="card-head">
-          <BButton text @click.stop="openFundDetail(fund)" title="查看基金详情">{{ fund.name }}</BButton>
-          <BButton type="danger" size="small" @click.stop="removeFund(fund.code)">删除</BButton>
+          <RButton text @click.stop="openFundDetail(fund)" title="查看基金详情">{{ fund.name }}</RButton>
+          <RButton type="danger" size="small" @click.stop="removeFund(fund.code)">删除</RButton>
         </div>
         <div class="c-tags">
           <span class="tag code-tag">{{ fund.code }}</span>
@@ -111,10 +111,10 @@
         </div>
         <div class="c-holdings-area">
           <div class="c-h-head">
-            <span class="c-h-title"><LucideIcon name="Briefcase" :size="14" /> 持仓信息<BButton text size="small" @click.stop="openTradeHistory(fund)" icon="FileText">{{ getFundTradeRecords(fund).length }}笔</BButton></span>
+            <span class="c-h-title"><RLucideIcon name="Briefcase" :size="14" /> 持仓信息<RButton text size="small" @click.stop="openTradeHistory(fund)" icon="FileText">{{ getFundTradeRecords(fund).length }}笔</RButton></span>
             <div class="c-h-actions">
-              <BButton type="primary" size="small" round @click.stop="openTradeModal(fund, 'buy')">买卖</BButton>
-              <BButton v-if="holdings[fund.code]" size="small" round @click.stop="openAdjustmentModal(fund)">修正</BButton>
+              <RButton type="primary" size="small" round @click.stop="openTradeModal(fund, 'buy')">买卖</RButton>
+              <RButton v-if="holdings[fund.code]" size="small" round @click.stop="openAdjustmentModal(fund)">修正</RButton>
             </div>
           </div>
       <div class="c-h-grid" v-if="holdings[fund.code]">
@@ -130,7 +130,7 @@
           </div>
           <div v-else class="c-h-grid">
             <div class="grid-box" style="grid-column: 1 / -1; text-align: center; color: var(--text-tertiary);">
-              <BButton type="primary" size="small" round @click.stop="openTradeModal(fund, 'buy')">点击设置首次买入</BButton>
+              <RButton type="primary" size="small" round @click.stop="openTradeModal(fund, 'buy')">点击设置首次买入</RButton>
             </div>
           </div>
         </div>
@@ -142,16 +142,16 @@
       </div>
     </div>
     <div v-else-if="searched" class="portfolio-empty">
-      <LucideIcon name="PackageOpen" class="portfolio-empty-icon" :size="34" />
+      <RLucideIcon name="PackageOpen" class="portfolio-empty-icon" :size="34" />
       <div class="portfolio-empty-title">{{ emptyTitle }}</div>
       <div class="portfolio-empty-hint">{{ emptyHint }}</div>
-      <BButton type="primary" @click="openAddFundModal">添加基金</BButton>
+      <RButton type="primary" @click="openAddFundModal">添加基金</RButton>
     </div>
     <div v-else class="portfolio-empty">
-      <LucideIcon name="PackageOpen" class="portfolio-empty-icon" :size="34" />
+      <RLucideIcon name="PackageOpen" class="portfolio-empty-icon" :size="34" />
       <div class="portfolio-empty-title">基金持仓</div>
       <div class="portfolio-empty-hint">点击下方按钮添加基金后，即可实时查看盘中估值、持仓盈亏等数据</div>
-      <BButton type="primary" @click="openAddFundModal">添加基金</BButton>
+      <RButton type="primary" @click="openAddFundModal">添加基金</RButton>
     </div>
 
     <FundRealtimeModals
@@ -202,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { BButton, BCard, BInputNumber, BFileInput } from '@ruinb0w/ui'
+import { RButton, RCard, RInputNumber, RFileInput } from '@ruinb0w/ui'
 import { computed, onMounted, watch, nextTick } from 'vue'
 import { useFundMiniChart } from '../composables/useFundMiniChart'
 

@@ -2,16 +2,16 @@
   <div class="strategy-page">
     <div class="page-header">
       <div class="page-title">
-        <h1><LucideIcon name="NotebookPen" :size="22" /> {{ '策略研究' }}</h1>
+        <h1><RLucideIcon name="NotebookPen" :size="22" /> {{ '策略研究' }}</h1>
         <p>{{ '在这里维护你的投资策略；pi（终端 AI）可以读到全部策略，「启用」标记出你当前在用的那几条。' }}</p>
       </div>
       <div class="page-stats">
         <span class="stat-chip">
-          <LucideIcon name="Activity" :size="14" />
+          <RLucideIcon name="Activity" :size="14" />
           {{ `${activeCount} 个启用 · ${strategies.length} 个总计` }}
         </span>
         <a class="doc-link" href="/docs/strategy" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/strategy/')">
-          <LucideIcon name="HelpCircle" :size="16" />
+          <RLucideIcon name="HelpCircle" :size="16" />
         </a>
       </div>
     </div>
@@ -19,15 +19,15 @@
     <div class="page-body">
       <aside class="memory-panel">
         <div class="panel-head">
-          <span class="panel-title"><LucideIcon name="BookMarked" :size="16" /> {{ '策略记忆' }}</span>
-          <BButton size="small" plain @click="startCreate">
-            <LucideIcon name="Plus" :size="14" /> {{ '新建' }}
-          </BButton>
+          <span class="panel-title"><RLucideIcon name="BookMarked" :size="16" /> {{ '策略记忆' }}</span>
+          <RButton size="small" plain @click="startCreate">
+            <RLucideIcon name="Plus" :size="14" /> {{ '新建' }}
+          </RButton>
         </div>
 
         <div class="memory-list">
           <div v-if="strategies.length === 0" class="memory-empty">
-            <LucideIcon name="BookOpen" :size="28" />
+            <RLucideIcon name="BookOpen" :size="28" />
             <p>{{ '还没有策略记忆' }}</p>
             <p class="sub">{{ '点「新建」手动添加策略。' }}</p>
           </div>
@@ -36,23 +36,23 @@
             <div class="mem-head">
               <span class="mem-title">{{ s.title }}</span>
               <div class="mem-actions">
-                <BSwitch
+                <RSwitch
                   size="small"
                   :model-value="s.active === 1"
                   @update:model-value="toggleActive(s, $event)"
                 />
-                <BButton circle size="small" :title="'预览'" @click="previewItem = s">
-                  <LucideIcon name="Eye" :size="13" />
-                </BButton>
-                <BButton circle size="small" :title="'编辑'" @click="startEdit(s)">
-                  <LucideIcon name="Pencil" :size="13" />
-                </BButton>
-                <BButton v-if="confirmDeleteId !== s.id" circle size="small" type="danger" :title="'删除'" @click="confirmDeleteId = s.id ?? null">
-                  <LucideIcon name="Trash2" :size="13" />
-                </BButton>
+                <RButton circle size="small" :title="'预览'" @click="previewItem = s">
+                  <RLucideIcon name="Eye" :size="13" />
+                </RButton>
+                <RButton circle size="small" :title="'编辑'" @click="startEdit(s)">
+                  <RLucideIcon name="Pencil" :size="13" />
+                </RButton>
+                <RButton v-if="confirmDeleteId !== s.id" circle size="small" type="danger" :title="'删除'" @click="confirmDeleteId = s.id ?? null">
+                  <RLucideIcon name="Trash2" :size="13" />
+                </RButton>
                 <span v-else class="delete-confirm">
-                  <BButton size="small" type="danger" @click="handleRemove(s)">{{ '确认' }}</BButton>
-                  <BButton size="small" text @click="confirmDeleteId = null">{{ '取消' }}</BButton>
+                  <RButton size="small" type="danger" @click="handleRemove(s)">{{ '确认' }}</RButton>
+                  <RButton size="small" text @click="confirmDeleteId = null">{{ '取消' }}</RButton>
                 </span>
               </div>
             </div>
@@ -68,7 +68,7 @@
         </div>
       </aside>
 
-      <BaseModal
+      <RModal
         :visible="formOpen"
         :title="editingId != null ? '编辑策略记忆' : '新建策略记忆'"
         :width="680"
@@ -99,14 +99,14 @@
           </div>
         </div>
         <template #footer>
-          <BButton size="small" @click="closeForm">{{ '取消' }}</BButton>
-          <BButton size="small" type="primary" :disabled="!form.title.trim() || !form.content.trim()" @click="handleSave">
+          <RButton size="small" @click="closeForm">{{ '取消' }}</RButton>
+          <RButton size="small" type="primary" :disabled="!form.title.trim() || !form.content.trim()" @click="handleSave">
             {{ '保存' }}
-          </BButton>
+          </RButton>
         </template>
-      </BaseModal>
+      </RModal>
 
-      <BaseModal
+      <RModal
         :visible="previewItem !== null"
         :title="previewItem?.title ?? '策略预览'"
         :width="620"
@@ -122,13 +122,13 @@
             <span class="mem-time">{{ formatDate(previewItem.updatedAt) }}</span>
           </div>
         </div>
-      </BaseModal>
+      </RModal>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { BButton, BSwitch, BaseModal, LucideIcon } from '@ruinb0w/ui'
+import { RButton, RSwitch, RModal, RLucideIcon } from '@ruinb0w/ui'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { marked } from 'marked'
 import { openDocLink } from '../services/docLink'
