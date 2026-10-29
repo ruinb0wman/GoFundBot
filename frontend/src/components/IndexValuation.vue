@@ -10,15 +10,15 @@
     <template v-else>
       <div class="valuation-grid">
         <div class="valuation-item">
-          <span class="valuation-label">{{ '当前PE' }}</span>
+          <span class="valuation-label">{{ '当前PE' }}<RInfoTip label="当前PE" :text="TIPS.pe" /></span>
           <span class="valuation-value">{{ fmtNumber(data!.pe, 2) }}</span>
         </div>
-        <div class="valuation-item" :title="'当前 PE 在窗口内的排名（0% = 窗口最低，100% = 窗口最高）'">
-          <span class="valuation-label">{{ '分位' }}</span>
+        <div class="valuation-item">
+          <span class="valuation-label">{{ '分位' }}<RInfoTip label="分位" :text="TIPS.percentile" /></span>
           <span class="valuation-value">{{ percentileText }}</span>
         </div>
-        <div v-for="band in bandItems" :key="band.label" class="valuation-item" :title="band.tip">
-          <span class="valuation-label">{{ band.label }}</span>
+        <div v-for="band in bandItems" :key="band.label" class="valuation-item">
+          <span class="valuation-label">{{ band.label }}<RInfoTip :label="band.label" :text="band.tip" /></span>
           <span class="valuation-value">{{ fmtNumber(band.value, 2) }}</span>
         </div>
       </div>
@@ -34,6 +34,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { RInfoTip } from '@ruinb0w/ui'
 import { marketAPI } from '../services/api'
 import { fmtNumber } from '../utils/number'
 
@@ -61,6 +62,12 @@ const props = defineProps<{ indexCode: string }>()
 
 const TICKS = [20, 50, 80]
 const SOURCE_LABELS: Record<string, string> = { danjuan: '蛋卷' }
+
+/** 字段口径说明（hover 气泡）。只说「这个数字是什么」，不写买卖建议。 */
+const TIPS = {
+  pe: '当前加权滚动市盈率（TTM，最近 12 个月盈利口径），不是静态 PE；换数据源口径能差 1–2 倍。',
+  percentile: '当前 PE 在该窗口全部周频历史里的排名：0% = 窗口最低，100% = 窗口最高。',
+}
 
 const loading = ref(true)
 const data = ref<IndexValuation | null>(null)
@@ -91,9 +98,9 @@ const metaLine = computed(() => {
 const bandItems = computed(() => {
   const bands = data.value?.bands
   return [
-    { label: '机会值', value: bands?.opportunity ?? null, tip: '窗口内 PE 的 20% 分位值（不是目标价，也不是买卖信号）' },
-    { label: '中位值', value: bands?.median ?? null, tip: '窗口内 PE 的 50% 分位值（不是目标价，也不是买卖信号）' },
-    { label: '危险值', value: bands?.danger ?? null, tip: '窗口内 PE 的 80% 分位值（不是目标价，也不是买卖信号）' },
+    { label: '机会值', value: bands?.opportunity ?? null, tip: '窗口内 PE 的 20% 分位，历史上只有 20% 的时间比它更便宜。' },
+    { label: '中位值', value: bands?.median ?? null, tip: '窗口内 PE 的 50% 分位，历史一半时间低于它，可当作中性估值参照。' },
+    { label: '危险值', value: bands?.danger ?? null, tip: '窗口内 PE 的 80% 分位，历史上只有 20% 的时间比它更贵。' },
   ]
 })
 
@@ -166,7 +173,10 @@ onMounted(load)
 }
 
 .valuation-label {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   font-size: 0.8em;
   color: var(--text-tertiary);
   margin-bottom: 4px;
