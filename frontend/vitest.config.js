@@ -13,6 +13,6 @@ export default defineConfig({
     setupFiles: ['src/__tests__/setup.ts'],
   },
   resolve: {
-    alias: viteConfig.resolve.alias,
+    ...viteConfig.resolve,
   },
 })

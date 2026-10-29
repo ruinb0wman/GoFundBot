@@ -27,7 +27,9 @@ const alias = [
 
 export default defineConfig({
   plugins: [vue()],
-  resolve: { alias },
+  // dedupe：ui 库在仓外、自带一份 vue（版本还不同），不收敛成一份会出现
+  // 两个 Vue 运行时 → 跨库的 inject/provide 全失效（lucide Icon 就是这么炸的）。
+  resolve: { alias, dedupe: ['vue', '@lucide/vue'] },
   server: {
     port: 8517,
     strictPort: true,
