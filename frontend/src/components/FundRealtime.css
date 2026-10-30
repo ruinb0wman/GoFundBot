@@ -367,3 +367,11 @@
   margin-left: 8px;
   vertical-align: middle;
 }
+
+/* 手机：6 格横排每格只剩 ~50px，标签换两行、数值错位 → 改 3 列 × 2 行 */
+@media (max-width: 768px) {
+  .overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .overview-cell { padding: 8px 0; }
+  .cell-label { font-size: 12px; }
+  .cell-val { font-size: 16px; }
+}

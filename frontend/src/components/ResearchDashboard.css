@@ -437,7 +437,11 @@
 @media (max-width: 720px) {
   .tab-bar {
     overflow-x: auto;
+    /* 手机上横向 tab 条常驻一条灰滚动条，很难看；滑动能力不变 */
+    scrollbar-width: none;
   }
+
+  .tab-bar::-webkit-scrollbar { display: none; }
 
   .card-grid {
     grid-template-columns: 1fr;

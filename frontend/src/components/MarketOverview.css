@@ -65,3 +65,11 @@
 .stale-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 0.8em; color: var(--color-warning); background: var(--color-warning-bg); padding: 2px 6px; border-radius: 4px; font-weight: 600; }
 .doc-link { display: inline-flex; align-items: center; color: var(--text-tertiary); transition: color 0.2s; }
 .doc-link:hover { color: var(--color-primary); }
+
+/* 手机：标题行不换行时「更新时间」会被压到裁字、和刷新按钮叠在一起 */
+@media (max-width: 480px) {
+  .section-header { flex-wrap: wrap; row-gap: 6px; }
+  .section-header .header-actions { flex-shrink: 0; margin-left: auto; }
+  .index-grid, .china-grid, .global-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .index-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}

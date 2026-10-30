@@ -21,6 +21,13 @@ import './core/icons'
 
 initClientLogger()
 
+// 触摸尺寸走库的 density token（default=36px / touch=44px）：手机上继续用桌面档会又小又挤
+const applyDensity = () => {
+  document.documentElement.dataset.density = window.innerWidth < 768 ? 'touch' : 'default'
+}
+applyDensity()
+window.addEventListener('resize', applyDensity)
+
 const app = createApp(App)
 app.use(createPinia())
 app.use(VXETable)

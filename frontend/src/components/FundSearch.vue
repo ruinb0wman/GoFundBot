@@ -253,6 +253,16 @@ function selectFund(fund: any) {
   flex: 1;
 }
 
+/* 搜索/刷新按钮不能被 flex 压扁（360 宽下刷新圆按钮曾被挤成 18px）；
+ * 搜索框本身要能缩（`flex:1` 的自动最小宽度是内容宽 267px，窄屏会把整页顶出横向滚动） */
+.search-box > .r-btn {
+  flex-shrink: 0;
+}
+
+.search-box > .search-bar {
+  min-width: 0;
+}
+
 .spinner {
   width: 14px;
   height: 14px;

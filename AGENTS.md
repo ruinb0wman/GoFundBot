@@ -417,3 +417,25 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
   ② 该接口 `title` 常是**空串**、正文在 `brief`/`content`（同一段），`ctime` 是**秒级时间戳**。
   ③ 时间戳必须按**东八区**格式化：`formatNewsTime` 原来用 `toISOString()`（UTC），会让这些条目凭空差 8 小时、在「最新在前」的排序里沉到列表底部（这正是外面看不见财联社的原因）。
 - 熔断器是**按 host+pathname** 记账，但日志前缀写着 `eastmoney` —— 出现非东财域名的 `eastmoney breaker open` 不要觉得奇怪。
+
+### 移动端布局（2026-10-30 修复）
+
+**触摸尺寸只用 density，不用断点**：`frontend/src/main.ts` 按 `<768px` 设 `html[data-density="touch"]`（44px 控件）。
+库里那条 `@media (max-width:768px){ button,a,input…{min-height:44px} }` 已删除 —— 它只改高度不改内距，把
+`.r-btn--small` 压成 28×44 的畸形形状。新增控件请靠 density，**别再写全局 min-height**。
+
+手机上的 6 个根因（都是「量一下就知道」的类型，别凭肉眼断言）：
+
+- **`1fr` 带 min-content 下限**：`FundDetail.css` 的 `.dashboard{1fr 380px}` 把宽内容顶出屏幕（390 宽下整页横溢 36px）
+  → 一律写 `minmax(0,1fr)`。
+- **flex 项缺 `min-width:0`**：`.header-search .search-box` 里的 `.search-bar` 自动最小宽 = 内容宽 267px，
+  360 宽下整页横溢 13px（顺带把刷新圆按钮挤成 18px）→ 两边都要 `min-width:0` + 按钮 `flex-shrink:0`。
+- **不换行 + 外层 `overflow:hidden`**：`.screening-header` 不换行时「更新数据」按钮被 `.fund-screening` 裁掉（手机上点不到）。
+- **写死列数**：`.overview-grid` 6 列、`FundBasicInfo` 的左右两组、`MarketOverview` 的 `.section-header`
+  在手机上互相压字 → 各自加 ≤768 / ≤480 覆盖。
+- **CodeMirror 要父容器定高**：`.code-editor{height:100%}` 在 `height:auto` 的父容器里会按全文撑开（实测 2886px）。
+- **库侧同类**：`RAlertBell` 面板 320px 右对齐在 390 宽下 x=**-110**（已改成 ≤480 贴边浮层）；`RModal` 的数值 width
+  现在带 `max-width:100%`，否则 680px 弹窗只能靠 flex 硬挤。
+
+**验收方式**：Electron（bow 自带）离屏渲染 360/390 × 9 条路由，断言 `documentElement.scrollWidth <= innerWidth`、
+无 `overflow:hidden` 裁切、无 <32px 点击目标。改完页面先跑这个再看截图，比猜快。

@@ -395,4 +395,15 @@ function formatMinSubscription(value: unknown): string {
 .positive { color: var(--color-danger); }
 .negative { color: var(--color-success); }
 .loading { text-align: center; padding: 20px; opacity: 0.8; }
+
+/* 手机：左右两组（名称/风险指标 + 涨幅/净值）挤在一起会互相压字，改为上下堆叠 */
+@media (max-width: 768px) {
+  .fund-basic-info { padding: 16px; }
+  .info-header { flex-direction: column; gap: 16px; margin-bottom: 16px; padding-bottom: 16px; }
+  .header-right { width: 100%; justify-content: space-between; gap: 16px; }
+  .change-box .value, .net-worth-box .value, .estimate-box .value { font-size: 22px; }
+  .info-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .metric-item { padding: 8px 4px; }
+  .metric-value { font-size: 16px; }
+}
 </style>

@@ -6,7 +6,8 @@
 }
 .dashboard {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  /* minmax(0,…)：`1fr` 带 min-content 下限，宽内容会把单列顶出屏幕（390 宽下曾横向溢出 36px） */
+  grid-template-columns: minmax(0, 1fr) 380px;
   gap: 16px;
   padding: 16px 0;
 }
@@ -66,9 +67,9 @@
 }
 .empty-icon { display: inline-flex; align-items: center; margin-bottom: 24px; opacity: 0.6; }
 .empty-state p { font-size: 18px; color: var(--text-tertiary); }
-@media (max-width: 1400px) { .dashboard { grid-template-columns: 1fr 340px; } }
+@media (max-width: 1400px) { .dashboard { grid-template-columns: minmax(0, 1fr) 340px; } }
 @media (max-width: 1200px) {
-  .dashboard { grid-template-columns: 1fr; }
+  .dashboard { grid-template-columns: minmax(0, 1fr); }
   .sidebar { flex-direction: row; }
   .card-sidebar { flex: 1; max-height: 400px; }
 }

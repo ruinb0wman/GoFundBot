@@ -21,8 +21,10 @@
 /* 顶部状态栏 */
 .screening-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 14px 24px;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-default);
@@ -49,8 +51,10 @@
 .header-left {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   flex: 1;
+  min-width: 0;
 }
 
 .header-right {
@@ -1066,4 +1070,11 @@
 .sync-loading-text span {
   font-size: 12px;
   color: var(--text-tertiary, #888);
+}
+
+/* 手机：状态条不换行就被外层 overflow:hidden 裁掉，「更新数据」按钮会直接消失 */
+@media (max-width: 768px) {
+  .screening-header { padding: 12px; }
+  .screening-panel { padding: 12px; }
+  .header-right { margin-left: auto; }
 }

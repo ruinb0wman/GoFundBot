@@ -240,7 +240,13 @@ function onTemplateChange(event: Event) {
 
 @media (max-width: 900px) {
   .workspace-top {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
+  /* 手机上高度不锁视口：固定 100vh 计算会把编辑器压成一两行；
+   * 但编辑器本身要给固定高，否则 CodeMirror 会按全文撑开（实测 2886px）。 */
+  .backtest-workspace { height: auto; min-height: 0; }
+  .workspace-top { min-height: 0; }
+  .workbench { overflow: visible; }
+  .editor-wrap { height: 60vh; min-height: 220px; }
 }
 </style>
