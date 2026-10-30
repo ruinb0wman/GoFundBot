@@ -98,9 +98,9 @@ const metaLine = computed(() => {
 const bandItems = computed(() => {
   const bands = data.value?.bands
   return [
-    { label: '机会值', value: bands?.opportunity ?? null, tip: '窗口内 PE 的 20% 分位，历史上只有 20% 的时间比它更便宜。' },
-    { label: '中位值', value: bands?.median ?? null, tip: '窗口内 PE 的 50% 分位，历史一半时间低于它，可当作中性估值参照。' },
-    { label: '危险值', value: bands?.danger ?? null, tip: '窗口内 PE 的 80% 分位，历史上只有 20% 的时间比它更贵。' },
+    { label: '机会值', value: bands?.opportunity ?? null, tip: '窗口内 PE 的 20% 分位值。公式：把窗口内全部周频 PE 升序排列后线性插值 = PERCENTILE.INC(PE, 0.2) —— 约有 20% 的周频点比它低。' },
+    { label: '中位值', value: bands?.median ?? null, tip: '窗口内 PE 的 50% 分位值 = PERCENTILE.INC(PE, 0.5)，即中位数 —— 历史一半周频点低于它。' },
+    { label: '危险值', value: bands?.danger ?? null, tip: '窗口内 PE 的 80% 分位值 = PERCENTILE.INC(PE, 0.8) —— 只有约 20% 的周频点比它高。' },
   ]
 })
 
