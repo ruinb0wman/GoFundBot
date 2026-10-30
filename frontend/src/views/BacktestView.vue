@@ -242,11 +242,18 @@ function onTemplateChange(event: Event) {
   .workspace-top {
     grid-template-columns: minmax(0, 1fr);
   }
-  /* 手机上高度不锁视口：固定 100vh 计算会把编辑器压成一两行；
-   * 但编辑器本身要给固定高，否则 CodeMirror 会按全文撑开（实测 2886px）。 */
-  .backtest-workspace { height: auto; min-height: 0; }
-  .workspace-top { min-height: 0; }
-  .workbench { overflow: visible; }
-  .editor-wrap { height: 60vh; min-height: 220px; }
+  /* 工作台占满「视口 - 头部 - 底栏」，页面本身不滚（否则整页一滚，搜索行和底栏就离开屏幕遮挡内容）。
+   * 两个高度变量在 App.css 的 ≤768 块里定，改头部/底栏时要同步。 */
+  .backtest-workspace {
+    height: calc(
+      100dvh - var(--app-header-h, 0px) - var(--app-tabbar-h, 0px) - 24px - env(safe-area-inset-bottom, 0px)
+    );
+    min-height: 0;
+  }
+  /* 方案列表按内容定高（最多 40%），剩下的给编辑器；两边各自内部滚 */
+  .workspace-top { flex: 0 0 auto; min-height: 96px; max-height: 32%; }
+  .workbench { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  .edit-pane { flex: 1; min-height: 0; }
+  .editor-wrap { flex: 1; height: auto; min-height: 180px; }
 }
 </style>

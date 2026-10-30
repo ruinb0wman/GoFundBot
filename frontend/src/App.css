@@ -102,6 +102,9 @@
 }
 /* 手机只留搜索行：应用名/slogan/汉堡菜单/告警铃/设置按钮全部隐藏，导航交给底部 BTabBar */
 @media (max-width: 768px) {
+  /* 壳层真实高度：给「装满视口、自己内部滚」的页面（回测工作台）算高度用。
+   * 改动这里的 padding / 头部行高 / 底栏高度就要同步这两个值。 */
+  :root { --app-header-h: 64px; --app-tabbar-h: 57px; }
   .app-header { padding: 10px 16px; }
   .header-content { flex-direction: column; gap: 12px; }
   .header-left { display: none; }
