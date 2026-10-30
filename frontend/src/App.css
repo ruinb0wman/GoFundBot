@@ -100,9 +100,18 @@
   .dashboard-right .sector-content { overflow: visible; }
   .dashboard-right .sector-list { max-height: 60vh; overflow-y: auto; }
 }
-@media (max-width: 768px) { .app-header { padding: 10px 16px; } .header-content { flex-direction: column; gap: 12px; } .header-left { text-align: center; } .header-search { order: 3; width: 100%; max-width: 100%; margin: 10px 0 0 0; } .app-main { padding: 12px; padding-bottom: 64px; } .header-search .db-status { display: none; }
+/* 手机只留搜索行：应用名/slogan/汉堡菜单/告警铃/设置按钮全部隐藏，导航交给底部 BTabBar */
+@media (max-width: 768px) {
+  .app-header { padding: 10px 16px; }
+  .header-content { flex-direction: column; gap: 12px; }
+  .header-left { display: none; }
+  .header-right { display: none; }
+  .header-search { order: 3; width: 100%; max-width: 100%; margin: 0; }
+  .header-search .db-status { display: none; }
   /* 搜索行里 300px 底宽 + 搜索/刷新两个按钮在 360 宽手机上会撑出 13px 横向滚动 */
-  .header-search .search-box { min-width: 0; } }
+  .header-search .search-box { min-width: 0; }
+  .app-main { padding: 12px; padding-bottom: 64px; }
+}
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--text-disabled); border-radius: 3px; }
