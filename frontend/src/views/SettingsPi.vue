@@ -4,7 +4,7 @@
       <h3>AI 在终端 pi 里</h3>
       <p class="section-desc">
         App 不接 LLM、不存任何密钥 —— 页面只做展示与计算，分析和对话发生在终端
-        <code>pi</code>。它通过 service 的工具面读写本应用的数据，下面是可用的三类扩展。
+        <code>pi</code>。它通过 service 的工具面读写本应用的数据，下面是它手上的工具与技能。
       </p>
     </section>
 
@@ -70,33 +70,6 @@ pi          # 首次会问 project trust，信任后才会加载本仓库的扩�
       <p class="section-desc">
         位置 <code>.pi/skills/</code>；工具定义与口径的唯一真源仍在 <code>service/src/agent/</code>。
       </p>
-    </section>
-
-    <section class="setting-section">
-      <h3>MCP 服务器</h3>
-      <p class="section-desc">这些不是 App 自己的，是你 pi 环境里配的（<code>~/.pi/agent/mcp.json</code>），可以和上面的工具混着用。</p>
-      <table class="info-table">
-        <thead>
-          <tr><th>服务器</th><th>能力</th><th>和本应用组合的用法</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>knowledge</code></td>
-            <td>个人中文知识库检索与读取（只读）</td>
-            <td>查交易/心理/回顾类的既有结论，再和当下行情对照</td>
-          </tr>
-          <tr>
-            <td><code>browser</code>（bow）</td>
-            <td>真实浏览器：打开、点击、读 DOM、截图</td>
-            <td>改完策略或方案后把 <code>/strategy</code>、<code>/backtest</code> 页面翻出来给你看</td>
-          </tr>
-          <tr>
-            <td><code>codegraph</code></td>
-            <td>代码结构检索</td>
-            <td>想知道某个数字是从哪个 provider 来的、改工具会不会连带别的页面</td>
-          </tr>
-        </tbody>
-      </table>
     </section>
 
     <section class="setting-section">
