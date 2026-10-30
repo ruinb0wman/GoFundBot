@@ -75,7 +75,3 @@ pi/脚本 ──> POST /api/agent/call: run_strategy_code ──> service node:w
 - 净值都取自 `/api/funds/:code/nav-history`（即上面的 SQLite 缓存）。
 - 固定参数回测还有 `/api/backtest/{fixed-investment,portfolio,compare-strategies}`（参数沿用 snake_case，见 `packages/core/src/backtest/toolArgs.ts`）。
 - 代码沙箱的隔离强度与确认流程见 [pi 工具面#代码回测](/architecture/pi-tools)。
-
-## 搜索
-
-`POST /api/search`（Exa → DuckDuckGo，**无需 key**）—— service 唯一的「AI 相关」能力；service 不做 LLM 调用。

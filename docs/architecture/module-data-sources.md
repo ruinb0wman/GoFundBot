@@ -66,10 +66,10 @@
 
 | 能力 | 现在怎么做 |
 |---|---|
-| 对话 + 工具调用 | pi 会话，工具来自 `GET /api/agent/tools`（27 个） |
+| 对话 + 工具调用 | pi 会话，工具来自 `GET /api/agent/tools`（60 个） |
 | 基金/持仓分析 | pi 组合工具：`get_fund_detail` + `get_positions` + `run_backtest` + `list_strategies` |
 | 策略起草/更新 | `list_strategies` → 展示方案 → 用户确认 → `save_strategy`（带确认令牌） |
-| 联网搜索 | `POST /api/search`（Exa → DuckDuckGo，无需 key）；pi 侧也可用自带 `web_search` |
+| 联网搜索 | pi 自带的 `web_search` / `fetch_content`；service **没有搜索网关**（原有的 `POST /api/search` 已删） |
 
 细节见 [pi 工具面](/architecture/pi-tools)。
 

@@ -22,7 +22,6 @@ import { newsRouter } from './routes/news.routes.js';
 import { screeningRouter } from './routes/screening.routes.js';
 import { stockRouter } from './routes/stock.routes.js';
 import { settingsRouter } from './routes/settings.routes.js';
-import { searchRouter } from './routes/search.routes.js';
 import { systemRouter } from './routes/system.routes.js';
 import { logsRouter } from './routes/logs.routes.js';
 
@@ -72,7 +71,6 @@ export function createApp() {
   app.use('/api/alerts', alertRouter);
   app.use('/api/screening', screeningRouter);
   app.use('/api/settings', settingsRouter);
-  app.use('/api/search', searchRouter);
   app.use('/api', systemRouter);
   app.use('/api/logs', logsRouter);
 

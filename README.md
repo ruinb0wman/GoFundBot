@@ -9,11 +9,11 @@ GoFundBot 是一个本机跑的基金分析与可视化工具：Node 后端负�
 ## 🚀 功能特性
 
 ### 🤖 AI 由终端 pi 承担
-*   **工具面单一真源**：`GET /api/agent/tools` 提供 **59 个工具**（行情/板块/资金流/基金/快讯 + 自选/分组 + 告警 + 实时组合与交易 + 回测 + 筛选 + 投研看板 + 策略/方案/持仓），pi 扩展启动时拉清单动态注册。
+*   **工具面单一真源**：`GET /api/agent/tools` 提供 **60 个工具**（行情/板块/资金流/基金/快讯 + 自选/分组 + 告警 + 实时组合与交易 + 回测 + 筛选 + 投研看板 + 策略/方案/持仓），pi 扩展启动时拉清单动态注册。
 *   **同源同值**：工具处理器直接调 service 内部函数（同一份 core 引擎、同一份 SQLite 缓存），所以模型看到的数字与页面一致。
 *   **执行/写入要确认**：`save_strategy`、`run_strategy_code`、`save_strategy_script` 第一次调用只返回确认令牌，用户确认并原样重调才真正执行。
 *   **自由代码回测**：pi 可以写策略代码（`prepare(sdk)` 声明池、`onDay(s)` 逐日决策）并直接跑出结果；在 `node:worker_threads` 沙箱里执行，5s 超时强制终止。
-*   **零密钥**：应用不存 LLM key；唯一的"AI 相关"服务端能力是无需 key 的搜索 `POST /api/search`（Exa → DuckDuckGo）。
+*   **零密钥**：应用不存 LLM key，也没有服务端搜索网关 —— 联网搜索、对话全在终端 pi 里。
 
 ### 📊 全面数据可视化
 *   **基金详情页**：
@@ -132,7 +132,7 @@ cd docs && bun install && bunx vitepress dev --port 8574   # 文档站 :8574
 *   **语言**: Python 3.11+
 *   **职责**: 只做数据补全 —— `data_complete.py`（akshare/eastmoney）、`fetch_fund.py`（单只基金）
 *   **回测引擎**: 已迁到 `packages/core/src/backtest/`（TS），Python 侧不再承担
-*   **风险指标 / 行业分类 / 搜索**: 分别在 `packages/core` 与 `service/src/ai/search.ts`，Python 侧不再承担
+*   **风险指标 / 行业分类**: 在 `packages/core`，Python 侧不再承担
 
 ### 前端 (frontend)
 *   **框架**: Vue 3 (Composition API + TypeScript, 全部 `<script setup lang="ts">`)

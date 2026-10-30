@@ -83,8 +83,8 @@
 
 ## 4. AI：终端 pi（service 不做 LLM）
 
-- service **没有任何 LLM 客户端、不持有密钥**；唯一「AI 相关」能力是无需 key 的搜索 `POST /api/search`（Exa → DuckDuckGo）。
-- pi 的工具清单由 service 给出：`GET /api/agent/tools`（33 个），调用 `POST /api/agent/call`。
+- service **没有任何 LLM 客户端、不持有密钥**，也没有搜索网关（旧 `POST /api/search` 已删）；联网搜索由 pi 自带的 `web_search` 承担。
+- pi 的工具清单由 service 给出：`GET /api/agent/tools`（60 个），调用 `POST /api/agent/call`。
   详见 [pi 工具面](/architecture/pi-tools)。
 - 页面上已没有聊天/AI 入口（原来的 `chatEngine`、两位分析师、分析场景框架等约 40 个文件已删除）。
 

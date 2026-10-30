@@ -26,7 +26,7 @@
 - 回测：页面在浏览器 Worker 跑、pi 走 `/api/agent/call` 的服务端沙箱，**同一份 `packages/core` 引擎**；净值都从 `/api/funds/:code/nav-history`（SQLite 切片）取。
 - 筛选：`/api/screening/sync`（快照 + 4433 排名，**立即返回**）→ 前端/pi 循环 `/api/screening/compute` 分批富化风险指标。
 - pi 工具面：`.pi/extensions/gofund` 通用桥 → `GET /api/agent/tools` → `POST /api/agent/call`；写/执行类要确认令牌。
-- 搜索：`POST /api/search`（Exa → DuckDuckGo，无 key）；**AI 只在终端 pi**，service 不做 LLM。
+- **AI 只在终端 pi**，service 不做 LLM，也**没有搜索网关**（旧 `POST /api/search` 已删）；联网搜索用 pi 的 `web_search`。
 
 ## Commands
 
@@ -117,13 +117,12 @@ python/.venv/bin/python python/cli/check_file_length.py
   **Dexie 依赖与 `db/index.ts` / `db/migrateToServer.ts` 已删除**（2026-10-08），旧 IndexedDB 数据留在浏览器里但不再被读。
 - **实时页组合/告警（2026-10-08）**：`/api/user/portfolio/*`（组合基金/分组/映射/交易）与 `/api/alerts`（规则 CRUD + 真评估 + 异动配置）**已从桩换成真 SQLite CRUD**（迁移 005/006）。持仓（share/cost）不落表，由已结算交易推导。
 - **已知缺口**：实时页的「清除持仓」只改前端内存（不调接口）；异动检测的 `north_*` 阈值无数据可判（北向净流入已停止披露）。
-- **Settings endpoint**: `GET/PUT /api/settings` — **仅 proxy 子域**（落 SQLite）。应用不持有 LLM/搜索密钥（pi 是唯一 AI）。
-- **搜索网关**: `POST /api/search`（Exa 免费 → DuckDuckGo 降级；`service/src/ai/search.ts`）——无 key，留给需要 HTTP 搜索的服务端调用方。
+- **Settings endpoint**: `GET/PUT /api/settings` — **仅 proxy 子域**（落 SQLite）。应用不持有任何密钥（pi 是唯一 AI）。
 - **AI 定位（2026-10-07）**: 前端 AI 层（chatEngine / analysis / 两位分析师 / ChatPanel / 设置里的密钥页）**已全部删除**；AI 由**终端 pi** 承担（`.pi/extensions/` + `.pi/skills/`）。service 不做任何 LLM 调用。
-- **Search chain（service）**: Bocha → Tavily → Exa（免费无 Key）→ DuckDuckGo（自动降级）；`service/src/ai/search.ts`。
+- **搜索网关已删（2026-10-30）**: `service/src/ai/search.ts` + `/api/search` + 它的测试一起删掉（前端从未调用；联网搜索由 pi 的 `web_search` 承担）。设置页原来的「搜索」「AI 配置」两个 tab 本就是死链，现在合成一个 `AI 与扩展`（`/settings/pi`）。
 - **投研看板（P3.4）**: `GET /api/research/dashboard`（core `buildDashboard`，读 SQLite 筛选行）。payload 里**不再带全量基金行**（曾经 1.6MB），汇总口径（`pass_4433` / `risk_ready`）由 core 算好，前端与 pi 工具共用紧凑版（`compactDashboard`）。进程内缓存 60s，key 含 `screeningDataVersion()`（同步/富化/排名后自动失效）。
 - **Screening（P3.3 起在 service）**: `/api/screening/sync`（快照 + 行业标签 + 4433 排名；**默认 `enrich_limit=0`，不再阻塞首屏**）、`/compute`（分批富化风险指标，默认 300/批）、`/ranks`、`/query`（筛选/排序/分页，读进程内整表缓存）、`/status`、`/industry-tags`、`/screen-rows`（沙箱 `sdk.screen()` 的 7 列）。数据落 SQLite `screening_funds`；前端 `useScreeningDb` 只是薄客户端（本地 `screeningFunds` 表已删），同步后**后台**分批富化并把 `syncing` 保持到追平。`/query` 的过滤语义与迁移前逐条对齐（含 `max_drawdown_*_max` 都读 `max_drawdown_1y` 这类历史口径）。
-- **Proxy（2026-10-09 修正）**: 东财全系、腾讯、Binance、黄金（`api.jijinhao.com`）一律 `proxy: 'never'` = **真直连**；只有 Yahoo 兜底与搜索网关走 `proxy: 'auto'`。
+- **Proxy（2026-10-09 修正）**: 东财全系、腾讯、Binance、黄金（`api.jijinhao.com`）一律 `proxy: 'never'` = **真直连**；只有 Yahoo 兜底走 `proxy: 'auto'`。
   ⚠️ 以前 `never` 返回 `undefined`（= 随全局 `EnvHttpProxyAgent`）→ **标了直连其实仍然过代理**，这才是「push2 被反爬切断」的真正成因（09-29 的结论是在带代理的环境下测的）。实测：过代理时 push2 七个路径 0/3 全 RST，真直连时 `stock/get`、`clist/get`、`91.push2`、`push2his fflow` 都 3/3 通。详见 `.pi/plans/push2-resilience.md`。
 - **东财端点熔断**: `eastmoneyRequest.ts` 按 `host + pathname` 计数，连续 3 次失败 → 冷却 60s（快速失败，让上层立刻降级，而不是等满超时）。日志里出现 `eastmoney breaker open` 就说明该端点正被限流。粒度必须按端点：`ulist.np` 挂了不能连累 `clist/get`。
 - **IPv4 优先（2026-10-14）**: `core/fetch.ts` 导入时执行 `dns.setDefaultResultOrder('ipv4first')`。原因：`push2.eastmoney.com` 是多边缘双栈域名（CNAME 到 `push2ipv6.trafficmanager.cn`，A/AAAA 都有且每次都变），Node 默认 `verbatim` 会把 IPv6 边缘排前面，而 `net.connect` 的 Happy Eyeballs **首个候选被拒时不换族重试** → 直接 `UND_ERR_SOCKET`。
@@ -143,7 +142,6 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `service/src/app.ts` | App bootstrap — route registration, middleware |
 | `service/src/routes/` | All Express route handlers (fund, market, screening, backtest, research, agent, settings, etc.) |
 | `service/src/services/` | 数据层与计算服务（fundService, marketService, pythonRunner, settingsService（SQLite）, **userDataService**（用户数据 CRUD）, **strategyStore**（策略记忆 = markdown 文件夹，fs 读写）, **backtestService**（core 回测引擎）, **screeningService**（筛选存储+富化+查询）, **navCacheService**（净值缓存 + 覆盖度）, **researchService**（投研看板聚合））|
-| `service/src/ai/` | 搜索网关（`search.ts`，Exa→DDG，无 key）。service **不做 LLM 调用** |
 | `service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo, binance)；海外标的真源 `globalIndexDefs.ts`；eastmoney 的涨跌家数/北向资金实现在 `eastmoney/marketBreadth.ts`、`eastmoney/marketNorthFlow.ts` |
 | `service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |
 | `service/src/db/` | **SQLite 连接与迁移**（Node 内置 `node:sqlite`，零依赖）。用户数据/设置/缓存的唯一真源；文件路径由 `core/dbPaths.ts` 决定（`GOFUND_DB_PATH`，默认 `service/data/gofund.db`，测试用 `:memory:`）。迁移只追加不改，`schema_version` 记版本 |

@@ -19,20 +19,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 
-const tabs = computed(() => [
+const tabs = [
   { name: 'settings-general', icon: 'Settings', label: '设置' },
-  { name: 'settings-llm', icon: 'Brain', label: 'AI 配置' },
+  { name: 'settings-pi', icon: 'Sparkles', label: 'AI 与扩展' },
   { name: 'settings-proxy', icon: 'Network', label: '代理设置' },
-  { name: 'settings-search', icon: 'Search', label: '搜索' },
   { name: 'settings-logs', icon: 'FileText', label: '日志' },
   { name: 'settings-anomaly', icon: 'BellRing', label: '异动配置' },
-])
+]
 </script>
 
 <style scoped>

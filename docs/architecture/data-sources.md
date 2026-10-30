@@ -35,15 +35,6 @@
 | **baidu** | 同上 | `finance.pae.baidu.com` |
 | **cls (财联社)** | 同上 | `www.cls.cn`（`v1/roll/get_roll_list`，**需签名** md5(sha1(urlencode))，`rn` ≤ 50） |
 
-## 网络搜索 (SearchService)
-
-| 引擎 | 文件 | 来源 | 优先级 |
-|------|------|------|--------|
-| **Exa** | `service/src/ai/search.ts` | MCP/JSON-RPC | 1（免费、无需 key） |
-| **DuckDuckGo** | 同上 | `api.duckduckgo.com` | 2（兜底） |
-
-接口：`POST /api/search`（service 唯一的"AI 相关"能力，仍不需要任何密钥）。
-
 ## Python 脚本数据来源
 
 | 脚本 | 文件 | 来源 | 能力 |

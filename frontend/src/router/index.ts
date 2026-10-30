@@ -9,6 +9,7 @@ import ResearchView from '../views/ResearchView.vue'
 import StrategyView from '../views/StrategyView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import SettingsGeneral from '../views/SettingsGeneral.vue'
+import SettingsPi from '../views/SettingsPi.vue'
 import LogsViewer from '../views/LogsViewer.vue'
 import SettingsProxy from '../views/SettingsProxy.vue'
 import SettingsAnomalyThreshold from '../views/SettingsAnomalyThreshold.vue'
@@ -79,6 +80,7 @@ const routes: RouteRecordRaw[] = [
       children: [
         { path: '', redirect: { name: 'settings-general' } },
         { path: 'general', name: 'settings-general', component: SettingsGeneral },
+        { path: 'pi', name: 'settings-pi', component: SettingsPi },
         { path: 'proxy', name: 'settings-proxy', component: SettingsProxy },
         { path: 'logs', name: 'settings-logs', component: LogsViewer },
         { path: 'anomaly', name: 'settings-anomaly', component: SettingsAnomalyThreshold },
