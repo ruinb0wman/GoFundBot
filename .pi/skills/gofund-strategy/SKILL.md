@@ -5,8 +5,10 @@ description: 读取、分析并更新 GoFundBot 应用「策略记忆」（/stra
 
 # GoFundBot 策略记忆（读 + 写）
 
-策略记忆的真源是 **service 的 SQLite**（`service/data/gofund.db` 的 `strategies` 表，P2 迁移过来的；
-浏览器 Dexie 只留着旧副本，前端经 `/api/strategies` 走 HTTP）。
+策略记忆的真源是**用户设置的那个 markdown 文件夹**（页右上角「文件夹」里配绝对路径，落 SQLite `settings.strategy.dir`）：
+一条策略 = 一个 `.md`，frontmatter 存 `id`/`title`/`tags`/`active`/`source`/时间戳，正文就是内容。
+实现见 `service/src/services/strategyStore.ts`；HTTP 仍是 `/api/strategies`。
+文件夹**默认为空（未配置）**——那时 `list_strategies` 返回空数组、`save_strategy` 直接 400（要先去页面设置路径）。
 
 | 工具 | 用途 |
 |---|---|
@@ -42,6 +44,9 @@ description: 读取、分析并更新 GoFundBot 应用「策略记忆」（/stra
 
 ## 硬约束
 
+- **策略现在是普通 md 文件，但不要因此绕确认。** 你可以 `read`/`grep` 那个文件夹（很便宜），但**改文件一律走
+  `save_strategy` / `delete_strategy`**（它会原子写、保留未知 frontmatter 键、保持 `id` 稳定）。
+  用 `bash`/编辑器直接改 md 虽然技术上能干，但跳过了用户确认 —— 不要。
 - **没有用户确认，绝不去拿/不去用确认令牌。** `save_strategy` 与 `delete_strategy` 是仅有的两个会改
   用户数据的工具；service 会用令牌把「确认」变成机制，但**别把机制当形式**：没跟用户确认过就不要调第二次。
 - 要改的是**已有策略**时必须带 `id`（来自 `list_strategies`）；不要新建一条近似重复的策略，

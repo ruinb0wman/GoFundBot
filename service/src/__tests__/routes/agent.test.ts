@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+// 策略记忆落在 markdown 文件夹（不再走 SQLite 的 strategies 表）。
+const strategyDir = mkdtempSync(join(tmpdir(), 'gofund-agent-strategies-'));
 
 vi.hoisted(() => {
   process.env.GOFUND_DB_PATH = ':memory:';
@@ -32,9 +38,13 @@ async function createApp() {
 }
 
 async function freshDb() {
-  const { resetDbForTests, getDb } = await import('../../db/index.js');
+  const { resetDbForTests } = await import('../../db/index.js');
+  const { resetSettingsCacheForTests } = await import('../../services/settingsService.js');
   resetDbForTests();
-  getDb().exec('DELETE FROM strategies');
+  resetSettingsCacheForTests();
+  process.env.GOFUND_STRATEGY_DIR = strategyDir;
+  rmSync(strategyDir, { recursive: true, force: true });
+  mkdirSync(strategyDir, { recursive: true });
 }
 
 describe('GET /api/agent/tools', () => {

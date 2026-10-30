@@ -5,16 +5,24 @@ import { getDb } from '../db/index.js';
 /**
  * 应用设置，落 SQLite `settings` 表的单行 JSON（key = 'app'）。
  *
- * 当前只有 proxy 子域：service 不做 LLM 调用（pi 是唯一 AI），
- * 因此不存任何 API 密钥。
+ * 两个子域：`proxy`（网络代理）与 `strategy`（策略记忆的 markdown 文件夹）。
+ * service 不做 LLM 调用（pi 是唯一 AI），因此不存任何 API 密钥。
  */
 
 export interface ProxySettings {
   url: string;
 }
 
+export interface StrategySettings {
+  /** 策略文件夹绝对路径；空串 = 未配置（策略记忆不可用）。 */
+  dir: string;
+  /** 旧 SQLite 策略导出成 md 的时间戳；非空表示已导出过，不再重复导出。 */
+  importedAt: number | null;
+}
+
 export interface AppSettings {
   proxy: ProxySettings;
+  strategy: StrategySettings;
 }
 
 const SETTINGS_KEY = 'app';
@@ -36,15 +44,21 @@ function load(): AppSettings {
   if (row) {
     try {
       const parsed = JSON.parse(row.value) as Partial<AppSettings>;
-      _cache = { proxy: { url: parsed.proxy?.url ?? '' } };
+      _cache = {
+        proxy: { url: parsed.proxy?.url ?? '' },
+        strategy: {
+          dir: parsed.strategy?.dir ?? '',
+          importedAt: parsed.strategy?.importedAt ?? null,
+        },
+      };
     } catch (error) {
       logger.warn('settings row is not valid JSON; falling back to env default', {
         error: String(error),
       });
-      _cache = { proxy: { url: envProxyUrl() } };
+      _cache = { proxy: { url: envProxyUrl() }, strategy: { dir: '', importedAt: null } };
     }
   } else {
-    _cache = { proxy: { url: envProxyUrl() } };
+    _cache = { proxy: { url: envProxyUrl() }, strategy: { dir: '', importedAt: null } };
   }
 
   _applyProxy(_cache.proxy.url);
@@ -62,11 +76,20 @@ function save(settings: AppSettings): void {
 
 export function getSettings(): AppSettings {
   const settings = load();
-  return { proxy: { ...settings.proxy } };
+  return { proxy: { ...settings.proxy }, strategy: { ...settings.strategy } };
 }
 
 export function getProxySettings(): ProxySettings {
   return { ...load().proxy };
+}
+
+export function getStrategySettings(): StrategySettings {
+  return { ...load().strategy };
+}
+
+/** 策略文件夹：settings 优先，其次 `GOFUND_STRATEGY_DIR`（默认没有目录 = 空串）。 */
+export function getStrategyDir(): string {
+  return load().strategy.dir || process.env.GOFUND_STRATEGY_DIR || '';
 }
 
 export function updateSettings(partial: Partial<AppSettings>): AppSettings {
@@ -74,9 +97,15 @@ export function updateSettings(partial: Partial<AppSettings>): AppSettings {
   if (partial.proxy !== undefined) {
     current.proxy = { ...current.proxy, ...partial.proxy };
   }
+  if (partial.strategy !== undefined) {
+    current.strategy = { ...current.strategy, ...partial.strategy };
+  }
   save(current);
   _applyProxy(current.proxy.url);
-  logger.info('Settings updated', { proxy: current.proxy.url ? 'configured' : 'not configured' });
+  logger.info('Settings updated', {
+    proxy: current.proxy.url ? 'configured' : 'not configured',
+    strategyDir: current.strategy.dir || 'not configured',
+  });
   return getSettings();
 }
 

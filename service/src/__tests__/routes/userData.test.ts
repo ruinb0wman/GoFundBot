@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+// 策略记忆现在落在 markdown 文件夹（`GOFUND_STRATEGY_DIR`），不再是 SQLite。
+const strategyDir = mkdtempSync(join(tmpdir(), 'gofund-user-data-'));
 
 vi.hoisted(() => {
   process.env.GOFUND_DB_PATH = ':memory:';
@@ -9,7 +15,12 @@ vi.hoisted(() => {
 
 async function createApp() {
   const db = await import('../../db/index.js');
+  const settings = await import('../../services/settingsService.js');
   db.resetDbForTests();
+  settings.resetSettingsCacheForTests();
+  process.env.GOFUND_STRATEGY_DIR = strategyDir;
+  rmSync(strategyDir, { recursive: true, force: true });
+  mkdirSync(strategyDir, { recursive: true });
 
   const { watchlistRouter } = await import('../../routes/watchlist.routes.js');
   const { positionsRouter } = await import('../../routes/positions.routes.js');

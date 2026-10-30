@@ -96,6 +96,25 @@
   flex-direction: column;
 }
 
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dir-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+}
+
+.dir-error {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
 .editor-field {
   margin-bottom: 12px;
 }

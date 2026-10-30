@@ -10,6 +10,9 @@
           <RLucideIcon name="Activity" :size="14" />
           {{ `${activeCount} 个启用 · ${strategies.length} 个总计` }}
         </span>
+        <RButton size="small" plain :title="'策略文件夹与刷新'" @click="openDir">
+          <RLucideIcon name="FolderOpen" :size="14" /> {{ '文件夹' }}
+        </RButton>
         <a class="doc-link" href="/docs/strategy" target="_blank" title="查看文档" @click="openDocLink($event, '/docs/strategy/')">
           <RLucideIcon name="HelpCircle" :size="16" />
         </a>
@@ -20,16 +23,23 @@
       <aside class="memory-panel">
         <div class="panel-head">
           <span class="panel-title"><RLucideIcon name="BookMarked" :size="16" /> {{ '策略记忆' }}</span>
-          <RButton size="small" plain @click="startCreate">
-            <RLucideIcon name="Plus" :size="14" /> {{ '新建' }}
-          </RButton>
+          <div class="panel-actions">
+            <RButton size="small" plain @click="startCreate">
+              <RLucideIcon name="Plus" :size="14" /> {{ '新建' }}
+            </RButton>
+            <RButton circle size="small" :title="'刷新（重读磁盘）'" @click="refresh">
+              <RLucideIcon name="RefreshCw" :size="13" />
+            </RButton>
+          </div>
         </div>
 
         <div class="memory-list">
           <div v-if="strategies.length === 0" class="memory-empty">
             <RLucideIcon name="BookOpen" :size="28" />
-            <p>{{ '还没有策略记忆' }}</p>
-            <p class="sub">{{ '点「新建」手动添加策略。' }}</p>
+            <p>{{ strategyDir ? '还没有策略记忆' : '还没有配置策略文件夹' }}</p>
+            <p class="sub">
+              {{ strategyDir ? '点「新建」手动添加，或把 .md 放进文件夹后点刷新。' : '点右上角「文件夹」填一个绝对路径，目录里的每个 .md 就是一条策略。' }}
+            </p>
           </div>
 
           <div v-for="s in strategies" :key="s.id" class="memory-item" :class="{ disabled: !s.active }">
@@ -67,6 +77,28 @@
           </div>
         </div>
       </aside>
+
+      <RModal
+        :visible="dirOpen"
+        title="策略文件夹"
+        :width="620"
+        @close="dirOpen = false"
+      >
+        <div class="editor-body">
+          <div class="editor-field">
+            <label>{{ '文件夹绝对路径' }}</label>
+            <input v-model="dirInput" class="text-input" placeholder="/home/you/notes/strategies" />
+          </div>
+          <p class="dir-hint">
+            {{ '文件夹里的每个 .md 就是一条策略：frontmatter 里的 id 是标识，文件名随意；正文就是策略内容。目录不存在会自动创建，留空则关闭策略记忆。' }}
+          </p>
+          <p v-if="dirError" class="dir-error">{{ dirError }}</p>
+        </div>
+        <template #footer>
+          <RButton size="small" @click="dirOpen = false">{{ '取消' }}</RButton>
+          <RButton size="small" type="primary" :disabled="dirSaving" @click="handleSaveDir">{{ '保存' }}</RButton>
+        </template>
+      </RModal>
 
       <RModal
         :visible="formOpen"
@@ -138,6 +170,8 @@ import {
   updateStrategy,
   toggleStrategyActive,
   removeStrategy,
+  fetchStrategyDir,
+  saveStrategyDir,
   STRATEGIES_CHANGED_EVENT,
   type StrategyInput,
 } from '../db/strategyMemory'
@@ -152,19 +186,61 @@ const form = ref({ title: '', content: '', tagsText: '', active: true })
 const confirmDeleteId = ref<number | null>(null)
 const previewItem = ref<StrategyRecord | null>(null)
 
+const strategyDir = ref('')
+const dirOpen = ref(false)
+const dirInput = ref('')
+const dirError = ref('')
+const dirSaving = ref(false)
+
 const activeCount = computed(() => strategies.value.filter(s => s.active === 1).length)
 
 async function refresh() {
   strategies.value = await listStrategies()
 }
 
+async function loadDir() {
+  try {
+    strategyDir.value = await fetchStrategyDir()
+  } catch {
+    strategyDir.value = ''
+  }
+}
+
+function openDir() {
+  dirInput.value = strategyDir.value
+  dirError.value = ''
+  dirOpen.value = true
+}
+
+async function handleSaveDir() {
+  dirSaving.value = true
+  dirError.value = ''
+  try {
+    strategyDir.value = await saveStrategyDir(dirInput.value.trim())
+    dirOpen.value = false
+    await refresh()
+  } catch (error) {
+    const message = (error as { response?: { data?: { error?: { message?: string } } } })
+      ?.response?.data?.error?.message
+    dirError.value = message || '保存失败：请检查是绝对路径且目录可写'
+  } finally {
+    dirSaving.value = false
+  }
+}
+
 onMounted(() => {
+  loadDir()
   refresh()
   // 写者无关：UI 表单、HTTP 客户端（pi 走 /api/agent/call → /api/strategies）都发同一个信号。
   window.addEventListener(STRATEGIES_CHANGED_EVENT, refresh)
+  // 策略是磁盘上的文件：切回窗口时重读，外部编辑器改完不必手动刷新。
+  window.addEventListener('focus', refresh)
 })
 
-onUnmounted(() => window.removeEventListener(STRATEGIES_CHANGED_EVENT, refresh))
+onUnmounted(() => {
+  window.removeEventListener(STRATEGIES_CHANGED_EVENT, refresh)
+  window.removeEventListener('focus', refresh)
+})
 
 function openForm() {
   formOpen.value = true

@@ -5,6 +5,9 @@
  * 前端 `db/*.ts` 模块只是加了薄封装，所以迁移后调用点无需改动。
  */
 import { getDb, transaction } from '../db/index.js';
+import { addStrategy, isStrategyDirConfigured, listStrategies, type StrategyInput } from './strategyStore.js';
+
+export type { StrategyInput, StrategyRecord } from './strategyStore.js';
 
 export interface PositionRecord {
   id: number;
@@ -24,25 +27,6 @@ export interface PositionInput {
   purchaseTime?: string | null;
   shares: number;
   cost: number;
-}
-
-export interface StrategyRecord {
-  id: number;
-  title: string;
-  content: string;
-  tags: string[];
-  active: number;
-  source: 'manual' | 'ai-draft';
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface StrategyInput {
-  title: string;
-  content: string;
-  tags?: string[];
-  active?: number;
-  source?: 'manual' | 'ai-draft';
 }
 
 export interface StrategyScriptRecord {
@@ -176,73 +160,11 @@ export function replaceAllPositions(rows: PositionInput[]): PositionRecord[] {
 }
 
 // ── strategies ───────────────────────────────────────────────────────────────
+//
+// 策略记忆已从 SQLite `strategies` 表搬到「设置里那个 markdown 文件夹」
+// （实现见 `strategyStore.ts`）。路由与 agent 工具仍然调这里的同名函数，签名不变。
 
-function toStrategy(row: Row): StrategyRecord {
-  return {
-    id: num(row.id),
-    title: String(row.title ?? ''),
-    content: String(row.content ?? ''),
-    tags: parseJsonArray(row.tags),
-    active: num(row.active, 1),
-    source: (row.source === 'ai-draft' ? 'ai-draft' : 'manual') as StrategyRecord['source'],
-    createdAt: num(row.created_at),
-    updatedAt: num(row.updated_at),
-  };
-}
-
-/** 启用优先、其次按更新时间倒序（与前端 `listStrategies` 一致）。 */
-export function listStrategies(): StrategyRecord[] {
-  return getDb()
-    .prepare('SELECT * FROM strategies ORDER BY active DESC, updated_at DESC')
-    .all()
-    .map((row) => toStrategy(row as Row));
-}
-
-export function addStrategy(input: StrategyInput): StrategyRecord {
-  const now = Date.now();
-  const title = String(input.title ?? '').trim() || '未命名策略';
-  const content = String(input.content ?? '').trim();
-  const tags = (input.tags ?? []).filter(Boolean);
-  const info = getDb()
-    .prepare(
-      `INSERT INTO strategies (title, content, tags, active, source, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(title, content, JSON.stringify(tags), input.active ?? 1, input.source ?? 'manual', now, now);
-  return {
-    id: Number(info.lastInsertRowid),
-    title,
-    content,
-    tags,
-    active: input.active ?? 1,
-    source: input.source ?? 'manual',
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-export function updateStrategy(id: number, patch: Partial<StrategyInput>): StrategyRecord | null {
-  const current = getDb().prepare('SELECT * FROM strategies WHERE id = ?').get(id) as Row | undefined;
-  if (!current) return null;
-  const before = toStrategy(current);
-  const next: StrategyRecord = {
-    ...before,
-    title: patch.title !== undefined ? String(patch.title).trim() || '未命名策略' : before.title,
-    content: patch.content !== undefined ? String(patch.content).trim() : before.content,
-    tags: patch.tags !== undefined ? patch.tags.filter(Boolean) : before.tags,
-    active: patch.active !== undefined ? patch.active : before.active,
-    source: patch.source ?? before.source,
-    updatedAt: Date.now(),
-  };
-  getDb()
-    .prepare('UPDATE strategies SET title = ?, content = ?, tags = ?, active = ?, source = ?, updated_at = ? WHERE id = ?')
-    .run(next.title, next.content, JSON.stringify(next.tags), next.active, next.source, next.updatedAt, id);
-  return next;
-}
-
-export function removeStrategy(id: number): void {
-  getDb().prepare('DELETE FROM strategies WHERE id = ?').run(id);
-}
+export { addStrategy, listStrategies, removeStrategy, updateStrategy } from './strategyStore.js';
 
 // ── backtest scripts ─────────────────────────────────────────────────────────
 
@@ -471,7 +393,7 @@ export function importUserData(dump: UserDataDump): ImportSummary {
     if (count('positions') === 0 && dump.positions?.length) {
       for (const row of dump.positions) summary.positions += addPosition(row) ? 1 : 0;
     }
-    if (count('strategies') === 0 && dump.strategies?.length) {
+    if (dump.strategies?.length && isStrategyDirConfigured() && listStrategies().length === 0) {
       for (const row of dump.strategies) summary.strategies += addStrategy(row) ? 1 : 0;
     }
     if (count('strategy_scripts') === 0 && dump.strategyScripts?.length) {

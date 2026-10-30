@@ -11,7 +11,9 @@
 4. **Python**（`python/`）— 只做数据补全（akshare/eastmoney），无 HTTP 服务，由 service `child_process.spawn()` 调（stdin/stdout JSON）。
 
 **User data lives in the service's SQLite**（P2，2026-10-07）；前端**已无 Dexie/IndexedDB**（2026-10-08 加固删掉）：
-- 用户数据（归 service）：watchlist(+groups)、positions、strategies、strategy_scripts（`service/src/db/migrations/002_user_data.ts`）
+- 用户数据（归 service）：watchlist(+groups)、positions、strategy_scripts（`service/src/db/migrations/002_user_data.ts`）
+- **例外：策略记忆（strategies）已不在 SQLite**（2026-10-30）——一条策略 = 用户设置的那个 markdown 文件夹里的一个 `.md`
+  （`service/src/services/strategyStore.ts`；路径落 `settings.strategy.dir`，默认空 = 未配置）。旧 `strategies` 表只在首次配置目录时导出一回，之后不再读。
 - 缓存（**P3.4 起都在 service SQLite**）：净值序列（`nav_history`，覆盖度判断 + 10 年保留 / 300 万行上限）、筛选库（`screening_funds`）
 - 记录形状（原 Dexie 接口）在 `frontend/src/types/records.ts`
 
@@ -90,6 +92,11 @@ python/.venv/bin/python python/cli/check_file_length.py
 - **监听地址**: 默认 `127.0.0.1`（`HOST` 覆盖）。service 承载用户数据后不再默认暴露局域网。
 - **策略代码沙箱（3.4③，2026-10-07）**: `node:worker_threads`，与浏览器 Worker 同款全局遮蔽 + 5s 超时 `terminate()`。**不是硬沙箱**（动态 `import()` 关不掉，见 `sandbox/strategyWorker.ts` 说明），所以 `run_strategy_code` 属**执行类**工具，需确认令牌。
 - **pi 工具面（P4，2026-10-07；2026-10-08 加固 + 补全到 59 个，2026-10-22 加 `get_index_valuation` → 60 个）**: service 是工具契约唯一真源 —— `GET /api/agent/tools`（**60 个工具**：市场/基金/快讯 20 + 自选 7 + 告警 6 + 实时组合 9 + 回测 3 + 筛选 3 + 投研 1 + 用户数据 11）、`POST /api/agent/call`（Zod 校验 → 执行 → 截断 30k 字符）。写/执行类（共 25 个：自选 6 + 告警 3 + 实时组合 8 + 持仓 3 + 策略/方案 4 + 代码回测 1）第一次只回 `CONFIRM_REQUIRED` + 令牌，参数一致才能落库（`agent/confirm.ts`）。扩展端不再抄任何映射。静态清单用 `bun run gen:tools` 重新生成。
+- **策略记忆 = markdown 文件夹（2026-10-30）**: `/api/strategies` 仍然照旧，但存储层换成了 `strategyStore.ts` —— 每条策略一个 `.md`，
+  frontmatter 存 `id/title/tags/active/source/时间戳`、正文就是内容。`id` 才是标识，**文件名随意**（改标题不重命名）；
+  普通 md 丢进去也能读（`title` 取首个 `# `，缺 `id` 时读时补写，未知 frontmatter 键保留）；写入是临时文件 + `rename` 原子替换；删除移到 `<目录>/.trash/`。
+  文件夹**默认空**（`settings.strategy.dir`，页面右上角「文件夹」弹窗配置，`GOFUND_STRATEGY_DIR` 可覆盖）→ 未配置时列表空、写入 400。
+  首次配置会把旧 `strategies` 表导成 md（`id` 不变，`importedAt` 记标记防重复）。**副作用**：pi 用 bash 改这些 md 会绕过 `save_strategy` 的确认令牌。
 - **服务端计算（P3.2，2026-10-07）**: `POST /api/backtest/fixed-investment` · `/portfolio` · `/compare-strategies` ——
   用 `packages/core` 的引擎（与前端同源同值），参数沿用**聊天时代的 snake_case**（`toolArgs.ts` 映射），
   净值走 `/api/funds/:code/nav-history` 的 provider 链 + 24h 缓存。语义：结构错误 → 400，取数/数据不足 → 200 + `data.error`。
@@ -135,7 +142,7 @@ python/.venv/bin/python python/cli/check_file_length.py
 | `service/src/` | Express app with ProviderChain, all routes |
 | `service/src/app.ts` | App bootstrap — route registration, middleware |
 | `service/src/routes/` | All Express route handlers (fund, market, screening, backtest, research, agent, settings, etc.) |
-| `service/src/services/` | 数据层与计算服务（fundService, marketService, pythonRunner, settingsService（SQLite）, **userDataService**（用户数据 CRUD）, **backtestService**（core 回测引擎）, **screeningService**（筛选存储+富化+查询）, **navCacheService**（净值缓存 + 覆盖度）, **researchService**（投研看板聚合））|
+| `service/src/services/` | 数据层与计算服务（fundService, marketService, pythonRunner, settingsService（SQLite）, **userDataService**（用户数据 CRUD）, **strategyStore**（策略记忆 = markdown 文件夹，fs 读写）, **backtestService**（core 回测引擎）, **screeningService**（筛选存储+富化+查询）, **navCacheService**（净值缓存 + 覆盖度）, **researchService**（投研看板聚合））|
 | `service/src/ai/` | 搜索网关（`search.ts`，Exa→DDG，无 key）。service **不做 LLM 调用** |
 | `service/src/providers/` | ProviderChain implementations (stock-sdk, eastmoney, tencent, yahoo, binance)；海外标的真源 `globalIndexDefs.ts`；eastmoney 的涨跌家数/北向资金实现在 `eastmoney/marketBreadth.ts`、`eastmoney/marketNorthFlow.ts` |
 | `service/src/core/` | Infrastructure (logger, cache, errors, response, providerChain) |

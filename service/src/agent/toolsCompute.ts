@@ -232,7 +232,7 @@ export const computeTools = [
     name: 'save_strategy',
     label: '写入策略记忆',
     description:
-      '保存或更新一条策略记忆（写入 service SQLite，前端 /strategy 页面可见）。'
+      '保存或更新一条策略记忆（写入用户在设置里指定的策略文件夹，每条策略 = 一个 markdown 文件；前端 /strategy 页面可见）。'
       + '**这是写操作**：必须先把内容给用户看过并得到明确同意；'
       + '第一次调用只会返回 CONFIRM_REQUIRED 与确认令牌，带上该令牌再调一次才真正写入。',
     promptSnippet: 'save_strategy(title, content, tags?, active?, id?): 写入策略记忆（需用户确认）',
@@ -261,7 +261,8 @@ export const computeTools = [
     name: 'delete_strategy',
     label: '删除策略记忆',
     description:
-      '删除一条策略记忆（前端 /strategy 页面同步消失）。**破坏性写入**：'
+      '删除一条策略记忆（前端 /strategy 页面同步消失；对应 markdown 文件会被移到文件夹的 .trash/ 而不是真删）。'
+      + '**破坏性写入**：'
       + '第一次调用只返回 CONFIRM_REQUIRED 与令牌，必须先把要删的标题给用户看过并取得明确同意，再带 __confirm_token 重调。',
     promptSnippet: 'delete_strategy(id): 删除策略记忆（需用户确认）',
     params: z.object({

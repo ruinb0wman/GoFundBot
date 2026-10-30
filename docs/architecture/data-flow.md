@@ -53,8 +53,13 @@ page / pi ──> service fundService ──> ProviderChain ──> （净值）
 ## 用户数据（自选 / 持仓 / 策略 / 回测方案）
 
 ```
-页面 / pi ──> /api/{watchlist,positions,strategies,backtest-scripts} ──> SQLite
+页面 / pi ──> /api/{watchlist,positions,backtest-scripts} ──> SQLite
+页面 / pi ──> /api/strategies ──> 设置里那个 markdown 文件夹（`service/src/services/strategyStore.ts`）
 ```
+
+- 策略记忆**不在 SQLite**：每条策略 = 文件夹里的一个 `.md`（frontmatter 存 `id`/`title`/`tags`/`active`/`source`/时间戳，正文 = 内容）。
+  路径在 `/api/settings` 的 `strategy.dir`（未配置 = 列表空、写入 400）；删除是移到 `<目录>/.trash/`。
+  SQLite `strategies` 表只在首次配置目录时被一次性导出成 md（之后不再读，表留着当备份）。
 
 - 前端 `db/{positions,strategyMemory,strategyScripts}.ts` 保留原导出签名、内部转发 HTTP。
 - 旧 Dexie 数据由 `db/migrateToServer.ts` 一次性导入（localStorage flag + 服务端幂等，成功才清本地）。

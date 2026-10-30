@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
+import { existsSync, mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 vi.hoisted(() => {
   process.env.GOFUND_DB_PATH = ':memory:';
@@ -65,5 +68,26 @@ describe('/api/settings (proxy only, SQLite-backed)', () => {
     const res = await request(app).get('/api/settings');
     expect(res.body.data).not.toHaveProperty('llm');
     expect(res.body.data).not.toHaveProperty('search');
+  });
+
+  it('rejects a relative strategy folder', async () => {
+    const app = await createApp();
+    const res = await request(app).put('/api/settings').send({ strategy: { dir: 'notes/strategies' } });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_ARGUMENT');
+  });
+
+  it('creates and persists an absolute strategy folder', async () => {
+    const dir = join(mkdtempSync(join(tmpdir(), 'gofund-settings-')), 'strategies');
+    const app = await createApp();
+
+    const put = await request(app).put('/api/settings').send({ strategy: { dir } });
+    expect(put.status).toBe(200);
+    expect(put.body.data.strategy.dir).toBe(dir);
+    expect(existsSync(dir)).toBe(true);
+    // proxy 不被顺手清掉
+    expect(put.body.data.proxy.url).toBe('');
+
+    expect((await request(app).get('/api/settings')).body.data.strategy.dir).toBe(dir);
   });
 });

@@ -46,7 +46,7 @@
 | 迁移 | 表 | 用途 |
 |---|---|---|
 | `001_init` | `settings` | 仅 proxy URL（`clearProxy` 才清除） |
-| `002_user_data` | `positions` / `strategies` / `strategy_scripts` / `watchlist` / `watchlist_groups` | 用户数据 |
+| `002_user_data` | `positions` / `strategies` / `strategy_scripts` / `watchlist` / `watchlist_groups` | 用户数据（`strategies` 表已废：策略记忆改存设置里那个 markdown 文件夹，表只在首次配置目录时导出一回） |
 | `003_screening_cache` | `screening_funds` / `screening_meta` | 基金筛选库（含富化结果） |
 | `004_nav_cache` | `nav_history` / `nav_history_meta` | 净值序列 + 覆盖度 |
 | `005_alerts` | `alerts` | 告警规则（前端 `AlertSettings`/`AlertBadge`） |
@@ -96,7 +96,7 @@
 | 筛选刷新 | 前端 `/api/screening/sync` → service 拉快照写 `screening_funds` + 算行业标签 + 算 4433 排名（**默认不富化，立即返回**）→ 前端/pi 循环 `/compute` 分批补指标 |
 | 筛选查询 | 前端/pi → `POST /api/screening/query`（过滤/排序/分页都在 service，语义见 [筛选](/fund-screening/)) |
 | 投研看板 | `/api/research/dashboard`（core `buildDashboard` 读 SQLite 筛选行） |
-| 用户数据 | 前端/pi → `/api/{watchlist,positions,strategies,backtest-scripts}` → SQLite |
+| 用户数据 | 前端/pi → `/api/{watchlist,positions,backtest-scripts}` → SQLite；`/api/strategies` → markdown 文件夹（`strategyStore.ts`） |
 | 实时页组合/告警 | 前端 → `/api/user/portfolio/*`、`/api/alerts` → SQLite（迁移 005/006）；持仓由已结算交易推导 |
 | 单基金/组合回测 | 两条路同一份 core 引擎：页面在浏览器算（净值取自 `/api/funds/:code/nav-history`）；service 侧 `/api/backtest/*` |
 | 自由代码回测 | service `node:worker_threads` 沙箱（pi 工具 `run_strategy_code`）／浏览器 Worker（`/backtest` 页面） |
