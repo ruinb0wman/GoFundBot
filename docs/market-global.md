@@ -38,9 +38,9 @@ GET /api/market/crypto
 |----|------|------|
 | Route | `service/src/routes/market.routes.ts` | `/indices/combined`、`/crypto`、`/crypto/:symbol/detail`、`/index/:code/detail`、`/kline/global/:symbol` |
 | service | `service/src/services/marketService.ts` | `getCombinedIndices()` 合并 / `getGlobalIndices()` / `getGlobalIndexKline()` / `getGlobalIndexDetail()` / `getCryptoQuotes()` / `getCryptoKline()` |
-| 标的真源 | `service/src/providers/globalIndexDefs.ts` | `GLOBAL_INDEX_DEFS`（含 `tencentSymbol`/`yahooSymbol`）、`CRYPTO_DEFS`（含 `binanceSymbol`）、`isGlobalIndexSymbol` / `isCryptoSymbol` / `findGlobalIndexDef` / `findCryptoDef` |
+| 标的真源 | `service/src/providers/globalIndexDefs.ts` | `GLOBAL_INDEX_DEFS`（含 `tencentSymbol`/`eastmoneySecid`/`yahooSymbol`）、`CRYPTO_DEFS`（含 `binanceSymbol`）、`isGlobalIndexSymbol` / `isCryptoSymbol` / `findGlobalIndexDef` / `findCryptoDef` |
 | Provider | `service/src/providers/tencent/tencentMarketProvider.ts` | `globalIndices()` + `kline()` 的海外分支 |
-| Provider | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `globalIndices()`（push2 `ulist.np/get`，当前不可用） |
+| Provider | `service/src/providers/eastmoney/eastmoneyMarketProvider.ts` | `globalIndices()`（push2 `ulist.np/get`，一次拿全部 11 个）+ `kline()` 的海外分支（`100.<code>`） |
 | Provider | `service/src/providers/yahoo/yahooMarketProvider.ts` | `globalIndices()` / `kline()` 兜底（`fetchYahooGlobalIndices(timeoutMs = 3500)`） |
 | Provider | `service/src/providers/binance/binanceClient.ts` | `fetchBinanceCryptoQuotes()` / `fetchBinanceCryptoKline()` |
 | frontend API | `frontend/src/services/api.ts` | `getCombinedIndices()` / `getCryptoQuotes()` |
@@ -96,32 +96,40 @@ GET https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=&
 
 ### 3.4 支持的标的与覆盖
 
-| 代码 | 名称 | 腾讯 | Yahoo | 现状 |
+| 代码 | 名称 | 腾讯 | 东财 | 现状 |
 |------|------|------|-------|------|
-| `NDX` | 纳斯达克100 | `usNDX` | `^NDX` | 腾讯 ✅ |
-| `DJI` | 道琼斯指数 | `usDJI` | `^DJI` | 腾讯 ✅ |
-| `SPX` | 标普500 | `usINX` | `^GSPC` | 腾讯 ✅ |
-| `HSI` | 恒生指数 | `hkHSI` | `^HSI` | 腾讯 ✅（`market: 港股`） |
-| `HSCEI` | 国企指数 | `hkHSCEI` | `^HSCE` | 腾讯 ✅（`market: 港股`） |
-| `N225` | 日经225 | — | `^N225` | Yahoo（当前网络取不到） |
-| `KS11` | 韩国综合指数 | — | `^KS11` | Yahoo（当前网络取不到） |
-| `FTSE` / `GDAXI` / `FCHI` / `SENSEX` | 英/德/法/印度 | — | 各自 | Yahoo（当前网络取不到） |
+| `NDX` | 纳斯达克100 | `usNDX` | `100.NDX` | 腾讯 ✅ |
+| `DJI` | 道琼斯指数 | `usDJI` | `100.DJIA` | 腾讯 ✅ |
+| `SPX` | 标普500 | `usINX` | `100.SPX` | 腾讯 ✅ |
+| `HSI` | 恒生指数 | `hkHSI` | `100.HSI` | 腾讯 ✅（`market: 港股`） |
+| `HSCEI` | 国企指数 | `hkHSCEI` | `100.HSCEI` | 腾讯 ✅（`market: 港股`） |
+| `N225` | 日经225 | — | `100.N225` | 东财 ✅ |
+| `KS11` | 韩国综合指数 | — | `100.KS11` | 东财 ✅ |
+| `FTSE` / `GDAXI` / `FCHI` / `SENSEX` | 英/德/法/印度 | — | `100.FTSE` / `100.GDAXI` / `100.FCHI` / `100.SENSEX` | 东财 ✅ |
 | `BTC` / `ETH` / `SOL` / `BNB` | 加密货币 | — | — | Binance ✅ |
 
-> akshare 的 `index_global_*` 同样走东财 push2（受限流影响），不能作为这几只的替代源。
+> 东财的 `secid` 与对外代码不是一套（`DJI` ↔ `100.DJIA`），映射表在 `GLOBAL_INDEX_DEFS` 里，别在别处再抄一份。
+> akshare 的 `index_global_*` 同样走东财 push2（只是另一个 client），没有额外价值。
 
 ## 四、回退方案
 
 ### 4.1 A 股指数
 ProviderChain 自动降级：`tencent → stock-sdk → eastmoney`（`timeoutMs: 5000`）。
 
-### 4.2 全球指数
-`tencent`（主）→ `eastmoney`（push2 已挂，快速失败）→ `yahoo`（3.5s 单请求预算）。
-**chain 是「第一个非空结果即返回」**：腾讯拿到 5 只后不会再问后面两家，所以 Yahoo 只对
-日经/欧股/印度这些腾讯未收录的代码生效。
+### 4.2 全球指数（2026-11-01 起是并行合并，不再走 ProviderChain）
+`tencent` + `eastmoney` **并行**取数，按 `code` 合并（同一个 code 腾讯优先，东财只补腾讯未收录的），
+最后按 `GLOBAL_INDEX_DEFS` 顺序输出（`mergeGlobalIndexItems()`）。
+
+- 为什么不用 chain：链只会返回第一个「非空」结果，而腾讯**永远非空**（只有 5 个），
+  日经/韩国/英德法/印度就永远轮不到东财 —— 这正是「全球只有 3 种」的成因。
+- 为什么把 Yahoo 从这条腿删掉：本机直连与代理都超时，只在缺数时白等 3.5s；东财已覆盖全部 11 个。
+- `provider` 字段是 `tencent+eastmoney`；任一家失败时结果仍然返回（只少那几家），
+  两家都失败才 503。
 
 ### 4.3 海外指数 K 线
-`tencent → yahoo`，`validate: length > 0`（腾讯对未收录代码返回 `[]`，必须靠 validate 触发降级）。
+`tencent → eastmoney → yahoo`，`validate: length > 0`（腾讯对未收录代码返回 `[]`，必须靠 validate 触发降级）。
+东财走 `push2his …/stock/kline/get?secid=100.<code>`，**必须带 `beg`/`end`**（缺了直接 `rc:102`，
+所以「所有」用 `beg=0&end=20500101`）；它的行是 `[7]=振幅、[8]=涨跌幅、[9]=涨跌额、[10]=换手率`。
 
 ### 4.4 加密货币
 Binance 直连 → 代理重试 → 503。没有 Yahoo 分支。
@@ -150,13 +158,15 @@ Binance 直连 → 代理重试 → 503。没有 Yahoo 分支。
 
 ## 七、已知问题
 
-1. **Yahoo 在本机直连与代理都不通**（2026-10-09 实测：直连 16.1s 超时、走 7890 代理 15.8s 超时；
-   同一代理访问 google/binance 正常）。因此日经/韩国/英德法/印度这几只**当前拿不到**，
-   卡片不会出现 —— 这是「明确拿不到」，不是「数据为 0」。
+1. **日经/韩国/英德法/印度只靠东财 `push2`**（2026-11-01 补齐）。push2 是**路径级限流**的：
+   密集请求后整段拒绝、IPv4/IPv6 一起挂数小时。所以这几只仍可能整段消失
+   （此时 `/indices/combined` 只剩腾讯那 5 个 + A 股，不是 0 值，也不是配置丢了）。
+   Yahoo 保底在本机直连与代理都不通（2026-10-09 实测 16.1s / 15.8s 超时），已从行情链里摘掉。
 2. **不要退回串行分批**：`fetchYahooGlobalIndices` 曾经是 `concurrency = 2` + 15s 超时，
    11 个代码 6 批 ≈ **84s**，`/indices/combined` 一天出现 15 次 84.0s。
    回归测试见 `service/src/__tests__/providers/yahoo-global-budget.test.ts`（断言同一波次发出 + 总耗时 ≈ 单次超时）。
-3. **东财 push2 会限流**（2026-10-09 更正：此前说的「已全挂」其实是经代理访问所致，真直连下可用）；`globalIndices()` 保留只是
-   「如果哪天恢复就能命中」的免费一跳。
+3. **东财 `ulist.np` 一次拿 11 个**（别改成逐个 `stock/get`，那是 11 倍请求量，更容易被限流）。
+   它的字段口径是 `f15=最高、f16=最低、f17=今开、f18=昨收` —— 与 `stock/get` 的 `f44/f45/f46` 编号不同，套错过一次。
+4. 东财的海外指数 K 线 `volume` 恒为 0 → 详情页成交量给 `null`（「数据源不提供」），不要显示成 0。
 4. **数据 15 秒缓存**：实时性不高，适合仪表盘概览。
 5. **A 股指数依赖正常交易时间**：非交易时段返回最后收盘价。

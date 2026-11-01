@@ -34,6 +34,7 @@ import type {
   MarketQuoteDto,
   NorthFlowDto,
   ProviderChainResult,
+  ProviderErrorSummary,
   SectorListDto,
   StockMoneyFlowDto,
 } from '../providers/types.js';
@@ -216,9 +217,9 @@ export async function getGlobalIndexKline(symbol: string, query: KlineQuery): Pr
   const globalSymbol = assertGlobalIndexSymbol(symbol);
   const options = parseGlobalKlineOptions(query);
   const key = `market:kline:global:${globalSymbol}:${JSON.stringify(options)}`;
-  // 腾讯覆盖美股/港股指数（秒回），Yahoo 只做未收录标的（日经/欧股/印度）的兜底。
+  // 腾讯覆盖美股/港股指数（秒回），东财补日经/韩国/英德法/印度（`100.<code>`），Yahoo 末位兜底。
   // validate 必须有：腾讯对未收录代码返回空数组，否则会被当成成功、不再降级。
-  const chain = new ProviderChain<MarketProvider>([tencentMarketProvider, yahooMarketProvider], dataSourceScorer);
+  const chain = new ProviderChain<MarketProvider>([tencentMarketProvider, eastMoneyMarketProvider, yahooMarketProvider], dataSourceScorer);
   const result = await cacheThrough(key, ttl.marketGlobalKline, () =>
     chain.run('market.kline', (provider) => provider.kline(globalSymbol, options), {
       timeoutMs: 6000,
@@ -334,7 +335,8 @@ async function getGlobalIndexDetail(def: { code: string; name: string }): Promis
     if (low == null) low = latest.low;
     prevClose = data.length >= 2 ? data[data.length - 2].close : (prevClose ?? latest.close);
     // 只拿 K 线兜底成交量：K 线的 amount 对美股是脏值（Step 3 未修），不能回填。
-    if (volume == null) volume = latest.volume ?? null;
+    // 东财的海外指数 K 线 volume 恒为 0 → 当未知（null），别把 0 当「没成交」。
+    if (!volume) volume = latest.volume || null;
   }
 
   const amplitude = high != null && low != null && prevClose != null && prevClose !== 0
@@ -923,26 +925,51 @@ export async function getNorthFlow(): Promise<ServiceResult<NorthFlowDto>> {
   }
 }
 
+/**
+ * 腾讯（5 个，带成交量/成交额）+ 东财（11 个）合并：同一个 code 腾讯优先，东财只补腾讯未收录的。
+ * 输出顺序跟 `GLOBAL_INDEX_DEFS` 一致，避免前端两栏分类跟着数据源顺序变。
+ */
+export function mergeGlobalIndexItems(...sources: GlobalIndexDto[][]): GlobalIndexDto[] {
+  const byCode = new Map<string, GlobalIndexDto>();
+  for (const items of sources) {
+    for (const item of items) if (!byCode.has(item.code)) byCode.set(item.code, item);
+  }
+  return GLOBAL_INDEX_DEFS.flatMap((def) => {
+    const hit = byCode.get(def.code);
+    return hit ? [hit] : [];
+  });
+}
+
 export async function getGlobalIndices(): Promise<ServiceResult<GlobalIndexListDto>> {
-  // 主源腾讯（国内直连，覆盖 NDX/DJI/SPX/HSI/HSCEI）；eastmoney 的 push2 已全挂，
-  // 留作免费一跳；Yahoo 末位兜底（只有腾讯完全拿不到时才会被问到）。
-  // timeoutMs 是总预算：没有它时 Yahoo 会让请求挂满「批次数 × 15s」。
-  const chain = new ProviderChain<MarketProvider>(
-    [tencentMarketProvider, eastMoneyMarketProvider, yahooMarketProvider],
-    dataSourceScorer
-  );
-  const result = await cacheThrough('market:global-indices', ttl.marketGlobalIndices, () =>
-    chain.run(
-      'market.globalIndices',
-      (provider) => {
-        if (!provider.globalIndices) {
-          throw new AppError('PROVIDER_UNAVAILABLE', `${provider.name} does not implement globalIndices`, 501);
-        }
-        return provider.globalIndices();
-      },
-      { timeoutMs: 6000, validate: (data) => (data.items ?? []).length > 0 }
-    )
-  );
+  // 两家**并行**再合并，不走 ProviderChain：链只会返回第一个「非空」的结果，而腾讯永远非空
+  // （只有 5 个），日经/韩国/英德法/印度就永远轮不到东财。Yahoo 已从这条腿拿掉：
+  // 本机直连与代理都超时，留着只会让每次缺数时白等 3.5s（见 AGENTS「海外行情」）。
+  const result = await cacheThrough('market:global-indices', ttl.marketGlobalIndices, async () => {
+    const providers = [tencentMarketProvider, eastMoneyMarketProvider];
+    const settled = await Promise.allSettled(
+      providers.map((provider) => provider.globalIndices?.() ?? Promise.reject(new Error(`${provider.name} 不支持 globalIndices`)))
+    );
+
+    const providerErrors: ProviderErrorSummary[] = [];
+    const sources: GlobalIndexDto[][] = [];
+    settled.forEach((r, i) => {
+      if (r.status === 'fulfilled') sources.push(r.value.items ?? []);
+      else providerErrors.push({ provider: providers[i].name, message: r.reason instanceof Error ? r.reason.message : String(r.reason) });
+    });
+
+    const items = mergeGlobalIndexItems(...sources);
+    if (items.length === 0) {
+      throw new AppError('PROVIDER_UNAVAILABLE', 'All providers failed for global indices', 503, { providerErrors });
+    }
+
+    return {
+      data: { items },
+      provider: providers.map((p) => p.name).join('+'),
+      fallback: sources.length < providers.length,
+      stale: false,
+      providerErrors,
+    } satisfies ProviderChainResult<GlobalIndexListDto>;
+  });
 
   return toServiceResult(result);
 }

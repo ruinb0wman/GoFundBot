@@ -164,3 +164,71 @@ describe('EastMoneyMarketProvider.northFlow', () => {
     await expect(new EastMoneyMarketProvider().northFlow()).rejects.toThrow(/no rows/);
   });
 });
+
+describe('EastMoneyMarketProvider.globalIndices', () => {
+  /** 2026-10-30 真实 ulist.np 行：f15=最高、f16=最低、f17=今开、f18=昨收（别按 stock/get 的 f44/f45/f46 套） */
+  const GLOBAL_PAYLOAD = {
+    data: {
+      total: 2,
+      diff: [
+        { f2: 63290.11, f3: -2.12, f4: -1369.36, f12: 'N225', f13: 100, f14: '日经225', f15: 64589.04, f16: 62711.42, f17: 64344.37, f18: 64659.47, f124: 1793341800 },
+        { f2: 23294.42, f3: 1.46, f4: 335.77, f12: 'HSI', f13: 100, f14: '恒生指数', f15: 0, f16: 0, f17: 0, f18: 0, f124: 1793341800 },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    fetchJsonMock.mockReset();
+  });
+
+  it('maps secids back to the canonical codes and marks 恒生 as 港股', async () => {
+    fetchJsonMock.mockResolvedValue(GLOBAL_PAYLOAD);
+    const { items } = await new EastMoneyMarketProvider().globalIndices();
+
+    expect(items.map((i) => i.code)).toEqual(['N225', 'HSI']);
+    expect(items[0]).toMatchObject({ name: '日经225', open: 64344.37, high: 64589.04, low: 62711.42, prevClose: 64659.47, market: '全球' });
+    // 港股标「全球」会让前端 chinaNames 与 globalNames 同时命中 → 同一张卡片两栏重复
+    expect(items[1].market).toBe('港股');
+  });
+
+  it('drops rows whose secid is not in GLOBAL_INDEX_DEFS', async () => {
+    fetchJsonMock.mockResolvedValue({ data: { diff: [{ f2: 1, f3: 1, f12: 'UNKNOWN', f13: 100 }] } });
+    const { items } = await new EastMoneyMarketProvider().globalIndices();
+
+    expect(items).toEqual([]);
+  });
+
+  it('fetches all defs in one ulist.np request', async () => {
+    fetchJsonMock.mockResolvedValue(GLOBAL_PAYLOAD);
+    await new EastMoneyMarketProvider().globalIndices();
+
+    const url = decodeURIComponent(String(fetchJsonMock.mock.calls[0][0]));
+    expect(url).toContain('ulist.np/get');
+    expect(url).toContain('100.N225,100.KS11,100.FTSE,100.GDAXI,100.FCHI,100.SENSEX');
+  });
+});
+
+describe('EastMoneyMarketProvider.kline', () => {
+  beforeEach(() => {
+    fetchJsonMock.mockReset();
+  });
+
+  it('supports global indices via the 100.<code> secid', async () => {
+    fetchJsonMock.mockResolvedValue({
+      data: { klines: ['2026-10-30,64344.37,63290.11,64589.04,62711.42,0,0.00,2.90,-2.12,-1369.36,0.00'] },
+    });
+    const rows = await new EastMoneyMarketProvider().kline('N225', { period: 'daily' });
+
+    const url = decodeURIComponent(String(fetchJsonMock.mock.calls[0][0]));
+    expect(url).toContain('secid=100.N225');
+    // 东财 kline 缺 beg/end 会直接回 rc:102 → 必须带默认值
+    expect(url).toContain('beg=0');
+    expect(url).toContain('end=20500101');
+    // fields2 = f51..f61 → [7]=振幅、[8]=涨跌幅、[9]=涨跌额、[10]=换手率
+    expect(rows[0]).toMatchObject({ code: 'N225', change: -1369.36, changePercent: -2.12, turnoverRate: 0 });
+  });
+
+  it('returns [] for symbols it cannot map', async () => {
+    expect(await new EastMoneyMarketProvider().kline('usNDX', { period: 'daily' })).toEqual([]);
+  });
+});

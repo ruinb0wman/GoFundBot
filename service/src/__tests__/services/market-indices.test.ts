@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeIndexCodes } from '../../services/marketService.js';
+import { mergeGlobalIndexItems, normalizeIndexCodes } from '../../services/marketService.js';
 
 describe('normalizeIndexCodes', () => {
   const item = (code: string, name: string, price: number | null = null) => ({
@@ -44,5 +44,26 @@ describe('normalizeIndexCodes', () => {
     const unknown = { items: [item('XX999999', '未知指数')] };
 
     expect(normalizeIndexCodes(unknown)).toEqual(unknown);
+  });
+});
+
+describe('mergeGlobalIndexItems', () => {
+  const quote = (code: string, provider: string) =>
+    ({ code, name: code, price: 1, changePercent: null, changeAmount: null, market: '全球', volume: provider === 'tencent' ? 1 : null }) as never;
+
+  it('keeps every def in GLOBAL_INDEX_DEFS order (tencent 5 + eastmoney 6)', () => {
+    const tencent = [quote('NDX', 'tencent'), quote('DJI', 'tencent'), quote('SPX', 'tencent'), quote('HSI', 'tencent'), quote('HSCEI', 'tencent')];
+    const eastmoney = ['NDX', 'DJI', 'SPX', 'HSI', 'HSCEI', 'N225', 'KS11', 'FTSE', 'GDAXI', 'FCHI', 'SENSEX'].map((c) => quote(c, 'eastmoney'));
+    const merged = mergeGlobalIndexItems(tencent, eastmoney);
+
+    expect(merged.map((i) => i.code)).toEqual(['NDX', 'DJI', 'SPX', 'HSI', 'HSCEI', 'N225', 'KS11', 'FTSE', 'GDAXI', 'FCHI', 'SENSEX']);
+    // 前面的源优先：腾讯那 5 个带成交量，不能被东财的空 volume 覆盖
+    expect(merged[0].volume).toBe(1);
+    expect(merged[5].volume).toBeNull();
+  });
+
+  it('survives one source failing and drops unknown codes', () => {
+    expect(mergeGlobalIndexItems([quote('N225', 'eastmoney'), quote('HSTECH', 'eastmoney')]).map((i) => i.code)).toEqual(['N225']);
+    expect(mergeGlobalIndexItems()).toEqual([]);
   });
 });

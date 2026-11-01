@@ -21,6 +21,7 @@ import type {
 import { fetchJson, fetchText } from './eastmoneyRequest.js';
 import { fetchMarketBreadth } from './marketBreadth.js';
 import { fetchMarketNorthFlow } from './marketNorthFlow.js';
+import { GLOBAL_INDEX_DEFS, findGlobalIndexDef } from '../globalIndexDefs.js';
 
 const DEFAULT_REFERER = 'https://quote.eastmoney.com/';
 
@@ -79,11 +80,13 @@ export class EastMoneyMarketProvider implements MarketProvider {
   }
 
   async kline(symbol: string, options: KlineOptions): Promise<KlineDto[]> {
+    // 海外指数（日经/韩国/英德法/印度）走东财 `100.<code>` 口径：腾讯未收录，Yahoo 在本机不可达。
+    const globalDef = findGlobalIndexDef(symbol);
     const m = symbol.match(/^(sh|sz|bj)(\d{5,6})$/i);
-    if (!m) return [];
-    const prefix = m[1].toLowerCase() === 'sh' ? '1.' : '0.';
-    const secid = prefix + m[2];
-    const cleanCode = m[2];
+    const secid = globalDef?.eastmoneySecid
+      ?? (m ? (m[1].toLowerCase() === 'sh' ? '1.' : '0.') + m[2] : null);
+    if (!secid) return [];
+    const cleanCode = globalDef?.code ?? m![2];
 
     const kltMap: Record<string, string> = { daily: '101', weekly: '102', monthly: '103' };
     const klt = kltMap[options.period] || '101';
@@ -100,8 +103,9 @@ export class EastMoneyMarketProvider implements MarketProvider {
       _: String(Date.now()),
     });
 
-    if (options.startDate) params.set('beg', options.startDate.replaceAll('-', ''));
-    if (options.endDate) params.set('end', options.endDate.replaceAll('-', ''));
+    // 东财 kline **必须**带 beg/end，否则直接回 `rc:102`（data:null）；历史全量用 beg=0。
+    params.set('beg', options.startDate ? options.startDate.replaceAll('-', '') : '0');
+    params.set('end', options.endDate ? options.endDate.replaceAll('-', '') : '20500101');
 
     const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get';
     const respData = await fetchJson(`${url}?${params.toString()}`);
@@ -119,9 +123,11 @@ export class EastMoneyMarketProvider implements MarketProvider {
       const low = toNum(parts[4]);
       const volume = toNum(parts[5]);
       const amount = toNum(parts[6]);
-      const change = toNum(parts[7]);
+      // fields2 = f51..f61 → [date, open, close, high, low, volume, amount, 振幅, 涨跌幅, 涨跌额, 换手率]
+      // （以前错位成 [7]=涨跌额 / [8]=涨跌幅 / [9]=换手率，把振幅当成了涨跌额）
       const changePercent = toNum(parts[8]);
-      const turnoverRate = toNum(parts[9]);
+      const change = toNum(parts[9]);
+      const turnoverRate = toNum(parts[10]);
 
       return {
         code: cleanCode,
@@ -395,19 +401,18 @@ export class EastMoneyMarketProvider implements MarketProvider {
   // -----------------------------------------------------------------------
 
   async globalIndices(): Promise<GlobalIndexListDto> {
-    const secids = [
-      '100.NDX', '100.DJIA', '100.SPX',
-      '100.HSI', '100.HSCEI', '100.HSTECH',
-      '100.N225', '100.KS11',
-      '100.FTSE', '100.GDAXI', '100.FCHI', '100.SENSEX',
-    ];
+    // 腾讯只覆盖 5 个（NDX/DJI/SPX/HSI/HSCEI），日经/韩国/英德法/印度只有东财 `100.<code>` 这个口径。
+    // 用批量端点 `ulist.np`（一次 11 个）而不是逐个 `stock/get`：请求量少一个数量级，
+    // 而 push2 是路径级限流的（见 AGENTS「push2 现状」）。
+    const defs = GLOBAL_INDEX_DEFS.filter((def) => def.eastmoneySecid);
+    const bySecid = new Map(defs.map((def) => [def.eastmoneySecid as string, def]));
 
     const url = 'https://push2.eastmoney.com/api/qt/ulist.np/get';
     const params = new URLSearchParams({
       fltt: '2',
       invt: '2',
-      fields: 'f2,f3,f4,f12,f14,f15,f16,f17,f18,f371,f124',
-      secids: secids.join(','),
+      fields: 'f2,f3,f4,f12,f13,f14,f15,f16,f17,f18,f124',
+      secids: defs.map((def) => def.eastmoneySecid).join(','),
       _: String(Date.now()),
     });
 
@@ -416,19 +421,25 @@ export class EastMoneyMarketProvider implements MarketProvider {
     const diff = (dataNode.diff ?? []) as Record<string, unknown>[];
     const diffArr: Record<string, unknown>[] = Array.isArray(diff) ? diff : Object.values(diff);
 
-    const items: GlobalIndexDto[] = diffArr.map((item) => ({
-      code: toString(item.f12 ?? ''),
-      name: toString(item.f14 ?? ''),
-      price: toNum(item.f2),
-      changePercent: toNum(item.f3),
-      changeAmount: toNum(item.f4),
-      open: toNum(item.f15),
-      high: toNum(item.f16),
-      low: toNum(item.f17),
-      prevClose: toNum(item.f18),
-      market: 'global',
-      date: toQuoteDate(item.f124),
-    }));
+    const items: GlobalIndexDto[] = diffArr.flatMap((item) => {
+      const def = bySecid.get(`${toString(item.f13 ?? 100)}.${toString(item.f12 ?? '')}`);
+      // 海外指数不给成交额（东财 f6 也没有）：美股指数的成交量×点位是合成值，见 `parseTencentGlobalQuotes`。
+      if (!def) return [];
+      return [{
+        code: def.code,
+        name: def.name,
+        price: toNum(item.f2),
+        changePercent: toNum(item.f3),
+        changeAmount: toNum(item.f4),
+        open: toNum(item.f17),
+        high: toNum(item.f15),
+        low: toNum(item.f16),
+        prevClose: toNum(item.f18),
+        // 恒生系归「港股」，否则前端会同时命中 chinaNames 与 globalNames 而两栏重复。
+        market: def.code.startsWith('HS') ? '港股' : '全球',
+        date: toQuoteDate(item.f124),
+      }];
+    });
 
     return { items };
   }

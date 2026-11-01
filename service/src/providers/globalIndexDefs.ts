@@ -14,6 +14,8 @@ export interface GlobalIndexDef {
   name: string;
   /** 腾讯 `qt.gtimg.cn` / `newfqkline` 的代码；腾讯未收录的指数为 undefined */
   tencentSymbol?: string;
+  /** 东财 `push2` 的 secid（`100.<code>`），腾讯未收录的日经/韩国/英德法/印度只有这一条路 */
+  eastmoneySecid?: string;
   /** Yahoo 代码，末位兜底 */
   yahooSymbol: string;
 }
@@ -29,17 +31,17 @@ export interface CryptoDef {
 }
 
 export const GLOBAL_INDEX_DEFS: GlobalIndexDef[] = [
-  { code: 'NDX', name: '纳斯达克100', tencentSymbol: 'usNDX', yahooSymbol: '^NDX' },
-  { code: 'DJI', name: '道琼斯指数', tencentSymbol: 'usDJI', yahooSymbol: '^DJI' },
-  { code: 'SPX', name: '标普500', tencentSymbol: 'usINX', yahooSymbol: '^GSPC' },
-  { code: 'HSI', name: '恒生指数', tencentSymbol: 'hkHSI', yahooSymbol: '^HSI' },
-  { code: 'HSCEI', name: '国企指数', tencentSymbol: 'hkHSCEI', yahooSymbol: '^HSCE' },
-  { code: 'N225', name: '日经225', yahooSymbol: '^N225' },
-  { code: 'KS11', name: '韩国综合指数', yahooSymbol: '^KS11' },
-  { code: 'FTSE', name: '英国富时100', yahooSymbol: '^FTSE' },
-  { code: 'GDAXI', name: '德国DAX', yahooSymbol: '^GDAXI' },
-  { code: 'FCHI', name: '法国CAC40', yahooSymbol: '^FCHI' },
-  { code: 'SENSEX', name: '印度SENSEX', yahooSymbol: '^BSESN' },
+  { code: 'NDX', name: '纳斯达克100', tencentSymbol: 'usNDX', eastmoneySecid: '100.NDX', yahooSymbol: '^NDX' },
+  { code: 'DJI', name: '道琼斯指数', tencentSymbol: 'usDJI', eastmoneySecid: '100.DJIA', yahooSymbol: '^DJI' },
+  { code: 'SPX', name: '标普500', tencentSymbol: 'usINX', eastmoneySecid: '100.SPX', yahooSymbol: '^GSPC' },
+  { code: 'HSI', name: '恒生指数', tencentSymbol: 'hkHSI', eastmoneySecid: '100.HSI', yahooSymbol: '^HSI' },
+  { code: 'HSCEI', name: '国企指数', tencentSymbol: 'hkHSCEI', eastmoneySecid: '100.HSCEI', yahooSymbol: '^HSCE' },
+  { code: 'N225', name: '日经225', eastmoneySecid: '100.N225', yahooSymbol: '^N225' },
+  { code: 'KS11', name: '韩国综合指数', eastmoneySecid: '100.KS11', yahooSymbol: '^KS11' },
+  { code: 'FTSE', name: '英国富时100', eastmoneySecid: '100.FTSE', yahooSymbol: '^FTSE' },
+  { code: 'GDAXI', name: '德国DAX', eastmoneySecid: '100.GDAXI', yahooSymbol: '^GDAXI' },
+  { code: 'FCHI', name: '法国CAC40', eastmoneySecid: '100.FCHI', yahooSymbol: '^FCHI' },
+  { code: 'SENSEX', name: '印度SENSEX', eastmoneySecid: '100.SENSEX', yahooSymbol: '^BSESN' },
 ];
 
 export const CRYPTO_DEFS: CryptoDef[] = [

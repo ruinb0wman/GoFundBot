@@ -246,7 +246,15 @@ EastMoney `push2*` 子域名的 `/api/qt/stock/fflow/daykline/get` 接口被反�
 **验收**：`/indices/combined` 0.20s（原先 84s）、`/crypto` 0.76s、`GET /api/market/kline/global/DJI` 0.22s、`/api/market/index/BTC/detail` 0.14s。
 **回归测试**：`service/src/__tests__/providers/{tencent-global-indices,yahoo-global-budget,binance-client}.test.ts`
 （`yahoo-global-budget` 断言「同一波次发出」+「总耗时 ≈ 单次超时」，专门拦住退回串行分批）。
-**仍未覆盖**：日经/韩国/英德法/印度指数当前拿不到（akshare 的 `index_global_*` 也走东财 push2，同样死）。
+**2026-11-01 补齐日经/韩国/英德法/印度**（此前「全球只有 3 种」）：根因不是数据源死了，是**用错了链** ——
+`getGlobalIndices()` 走 ProviderChain，而链只返回第一个「非空」结果；腾讯永远非空（只有 NDX/DJI/SPX/HSI/HSCEI 5 个），
+后面东财永远轮不到。现在改成 `tencent` + `eastmoney` **并行合并**（`mergeGlobalIndexItems()`，同 code 腾讯优先，
+按 `GLOBAL_INDEX_DEFS` 排序），Yahoo 从行情腿里摘掉（本机不可达）。东财用批量 `push2 …/ulist.np/get` 一次拿 11 个，
+secid 写进 `globalIndexDefs.ts`（`DJI` ↔ `100.DJIA`）。**注意它的字段是 `f15=最高/f16=最低/f17=今开/f18=昨收`**，
+与 `stock/get` 的 `f44/f45/f46` 不是一套（套错过一次，详情页 open/high/low 全乱）。
+海外指数 K 线链 `tencent → eastmoney → yahoo`；东财 kline **必须带 `beg`/`end`**（缺了回 `rc:102`，所有历史用 `beg=0&end=20500101`），
+它的行是 `[7]=振幅、[8]=涨跌幅、[9]=涨跌额、[10]=换手率`（原来的 parser 错位成 `[7]=涨跌额`，已修）。
+残余风险：push2 路径级限流时这 6 只仍会整段消失（不是 0，也不是配置丢）。
 
 ### 涨跌家数 (market breadth)
 
